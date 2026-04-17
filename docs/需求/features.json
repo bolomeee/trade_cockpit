@@ -24,7 +24,10 @@
         "F004",
         "F005",
         "F006",
-        "F007",
+        "F007-a",
+        "F007-b",
+        "F007-c",
+        "F007-d",
         "F008"
       ],
       "status": "in_progress"
@@ -627,58 +630,170 @@
       "completed_at": null
     },
     {
-      "id": "F007",
-      "name": "交易日志 Journal",
-      "description": "用户可以创建、查看、编辑交易决策记录，每条记录关联股票，包含操作类型（买/卖/加仓/减仓/观望）、价格、仓位大小（数字输入，加仓/减仓在当前仓位基础上调整）、止损位、目标价、买入原因和参考内容",
-      "user_story": "作为美股投资者，我想记录每次交易决策的完整上下文，这样我能复盘和提升交易质量",
+      "id": "F007-a",
+      "name": "交易日志 Journal — 后端 API",
+      "description": "Journal 四端接口（GET/POST/PUT/DELETE /api/journal）+ Repository/Service/Schema + 集成测试",
+      "user_story": "作为前端，我需要一套 Journal CRUD API 以支撑 /journal 页面和 Dashboard 快捷表单",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
-      "dependencies": [
-        "F001"
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-17",
+      "dependencies": ["F001"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/repositories/journal_repository.py",
+        "backend/app/services/journal_service.py",
+        "backend/app/schemas/journal.py",
+        "backend/app/routers/journal.py",
+        "backend/app/main.py",
+        "backend/tests/test_journal_api.py"
       ],
-      "estimated_sessions": 2,
-      "estimated_files_changed": [],
       "scope": {
-        "pages": [
-          "交易日志 /journal",
-          "Dashboard / (Trade Journal 完整表单)"
-        ],
+        "pages": [],
         "api_endpoints": [
           "GET /api/journal",
           "POST /api/journal",
           "PUT /api/journal/:id",
           "DELETE /api/journal/:id"
         ],
-        "db_tables": [
-          "JournalEntry"
-        ],
-        "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=0-1&m=dev"
+        "db_tables": ["JournalEntry"],
+        "design_figma_link": null
       },
       "contract": {
-        "api_refs": [
-          "API-CONTRACT.md#journal"
-        ],
-        "data_model_refs": [
-          "DATA-MODEL.md#journal-entry"
-        ],
+        "api_refs": ["API-CONTRACT.md#journal"],
+        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "用户可以新建交易记录，填写：股票代码、操作类型（买/卖/加仓/减仓/观望）、价格、日期",
-        "用户可以填写仓位大小（数字输入，加仓/减仓时在当前仓位基础上调整）、止损位、目标价",
-        "用户可以填写买入原因（文本）和参考内容（大文本框，支持多行）",
-        "Journal 列表页按日期倒序展示所有记录",
-        "用户可以编辑和删除已有记录",
-        "用户可以在 Dashboard 右侧的 Trade Journal Widget 中填写完整交易记录（全部字段）"
+        "GET /api/journal 按 date 倒序返回 items + total + limit + offset",
+        "GET 支持 ticker / action / limit / offset 过滤与分页",
+        "POST /api/journal 创建成功返回 201 + 完整 entry（含 stockName）",
+        "POST 校验：ticker 必须在 watchlist 中（404 NOT_FOUND），action 非法（422），必填缺失（422）",
+        "PUT /api/journal/:id 支持部分字段更新；id 不存在返回 404",
+        "DELETE /api/journal/:id 成功返回 { id, deleted: true }；id 不存在返回 404",
+        "所有响应 JSON 字段命名符合 API-CONTRACT（camelCase），数据库字段命名符合 DATA-MODEL（snake_case）"
       ],
-      "test_cases": {
-        "unit": [],
-        "integration": [],
-        "e2e": []
-      },
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
-      "notes": "",
+      "notes": "F007 拆分为 a/b/c/d（2026-04-17，因 18+ 文件超出 6 上限）"
+    },
+    {
+      "id": "F007-b",
+      "name": "交易日志 Journal — 前端列表 + 筛选 + 删除",
+      "description": "/journal 页面：类型、API client、列表 Table（含 Row 展开详情）、ActionBadge、FilterCard、删除（AlertDialog）",
+      "user_story": "作为美股投资者，我想在 /journal 查看所有交易记录、按股票/操作过滤、删除不想要的条目",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "ready_to_dev",
+      "dependencies": ["F007-a"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/types/journal.ts",
+        "frontend/src/lib/api/journal.ts",
+        "frontend/src/pages/Journal.tsx",
+        "frontend/src/components/features/journal/JournalTable.tsx",
+        "frontend/src/components/features/journal/ActionBadge.tsx",
+        "frontend/src/components/features/journal/JournalFilterCard.tsx"
+      ],
+      "scope": {
+        "pages": ["交易日志 /journal"],
+        "api_endpoints": ["GET /api/journal", "DELETE /api/journal/:id"],
+        "db_tables": [],
+        "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=0-1&m=dev"
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#journal"],
+        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "/journal 页面替换占位，渲染 TopNav + MarketOverviewBar + HeaderRow(+New Entry 暂不可用) + FilterCard + Table",
+        "Table 按 date 倒序展示全部 entries；空/加载/错误三态均按 design-spec",
+        "JournalRow 可通过 chevron 展开，显示 reason / reference / stopLoss / targetPrice",
+        "ActionBadge 5 枚举色使用 --color-action-* token",
+        "FilterCard：Ticker Select（watchlist 去重） + Action Select（含 All） + Clear Filters（前端过滤）",
+        "Delete：shadcn AlertDialog 二次确认 → DELETE /api/journal/:id → invalidate query",
+        "JournalRow 内联（不单开文件），保持 6 文件上限"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "+ New Entry 按钮渲染但禁用/无响应，F007-c 实现新建/编辑",
+      "completed_at": null
+    },
+    {
+      "id": "F007-c",
+      "name": "交易日志 Journal — 新建/编辑 Dialog",
+      "description": "JournalEntryDialog + JournalEntryForm（react-hook-form + zod 校验），接入 /journal 的 New/Edit 入口",
+      "user_story": "作为美股投资者，我想通过 Dialog 录入完整字段的交易记录（新建和编辑）",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "ready_to_dev",
+      "dependencies": ["F007-b"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/components/features/journal/JournalEntryDialog.tsx",
+        "frontend/src/components/features/journal/JournalEntryForm.tsx",
+        "frontend/src/pages/Journal.tsx",
+        "frontend/src/components/ui/select.tsx",
+        "frontend/src/components/ui/label.tsx"
+      ],
+      "scope": {
+        "pages": ["交易日志 /journal（Dialog）"],
+        "api_endpoints": ["POST /api/journal", "PUT /api/journal/:id"],
+        "db_tables": [],
+        "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=1-382&m=dev"
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#journal"],
+        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "点击 + New Entry 或行 Edit 打开 Dialog；Title 根据 mode 切换",
+        "表单字段：Ticker*/Date*/Action*/Price*/Position/StopLoss/Target/Reason/Reference，校验规则按 design-spec",
+        "提交：mode=new → POST，mode=edit → PUT；成功关闭 Dialog 并 invalidate query",
+        "字段级错误（VALIDATION_ERROR）在字段下方显示红字；表单级错误在 Footer 上方显示",
+        "DatePicker 使用 input[type=date]（避免引入 calendar 组件；与 design-spec 偏离需回写）",
+        "Action=WATCH 时 Position 字段禁用"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "引入新依赖 react-hook-form + zod，需走新依赖流程 + DECISIONS 记录",
+      "completed_at": null
+    },
+    {
+      "id": "F007-d",
+      "name": "交易日志 Journal — Dashboard QuickAdd",
+      "description": "Dashboard 右侧 JournalQuickAddCard（3 字段：ticker / action / price）+ 挂载",
+      "user_story": "作为美股投资者，我想在 Dashboard 直接快捷记录一条最简交易",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "ready_to_dev",
+      "dependencies": ["F007-c"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/components/features/dashboard/JournalQuickAddCard.tsx",
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "scope": {
+        "pages": ["Dashboard /"],
+        "api_endpoints": ["POST /api/journal"],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#journal"],
+        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Dashboard 右侧出现 JournalQuickAddCard（3 字段 + Add Entry 按钮）",
+        "提交调用 POST /api/journal，成功清空表单，失败显示内联错误",
+        "空 ticker/action/price 禁用提交按钮"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "对应 PRD 验收条款『Dashboard Trade Journal Widget』，按 design-spec 简化为 3 字段快捷表单",
       "completed_at": null
     },
     {

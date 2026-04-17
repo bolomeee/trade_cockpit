@@ -849,3 +849,32 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F006 整体 → 触发 acceptance skill
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F007-a 交易日志 Journal — 后端 API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Journal CRUD 四端点：GET/POST/PUT/DELETE /api/journal
+  - Schemas（JournalEntryCreate/Update/Out、JournalListOut、JournalDeleteOut，camelCase 别名）
+  - JournalRepository（ticker/action 过滤、分页、date DESC 排序）
+  - JournalService（watchlist 校验、action 枚举校验、ticker 大小写归一）
+  - 集成测试 19/19 通过（T1–T13 + 5 用例 + 2 extra 用例）
+  - 全量回归 pytest：151/151 通过
+  - phase → done
+
+📊 功能状态：
+  F001/F002/F003/F004/F005/F006：✅ done
+  F007-a 后端 API：✅ done
+  F007-b 前端 /journal 列表：⬜ ready_to_dev（下一步）
+  F007-c 前端 Dialog：⬜ ready_to_dev
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+  F008 系统日志页面：⬜ ready_to_dev
+
+🔧 系统变更：
+  - F007 拆为 F007-a/b/c/d（原 18+ 文件超出 6 文件上限）
+  - docs/开发/sprint-contracts/F007-a-contract.md
+  - features.json 更新 features_snapshot
+
+[下一个 Session]
+  准备开发 F007-b（前端 /journal 列表 + 筛选 + 删除）
