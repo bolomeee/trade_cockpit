@@ -214,3 +214,24 @@ last_modified_by: system-design
 - 搜索/校验路径稳定，不会因 SDK 翻页绕过 rate limit
 - 未来如需跨页查询，需要显式 cursor 控制 + 每页 `_acquire()` 一次
 **根因教训**：封装外部 client 时，"每页 limit" 和 "结果总数 limit" 两个语义不能混用；仅 bucket token 不足以约束 SDK 级翻页
+
+## D017：引入 @tanstack/react-query
+
+**日期**：2026-04-17（F001-b Sprint Contract 协商时用户批准）
+**决策**：前端数据获取统一使用 `@tanstack/react-query` v5
+**版本**：安装时最新版（v5.x）
+**API 参考来源**：Context7 文档（/tanstack/query）
+**原因**：
+- loading/error/success 状态开箱即用，无需在每个组件手写 useState
+- F001-c（添加/删除）和 F003（手动刷新）依赖跨组件 cache invalidation，原生 fetch 无此能力
+- `invalidateQueries` 一行代码替代多组件协调逻辑
+**放弃了什么**：原生 fetch + useEffect（代码量少但扩展性差，后续 sprint 会后悔）
+**影响**：所有数据获取通过 QueryClient；main.tsx 需 QueryClientProvider 包裹
+
+## D018：Vite dev server 添加 /api 代理
+
+**日期**：2026-04-17（F001-b Generator 阶段发现）
+**决策**：`vite.config.ts` 中 `server.proxy['/api']` → `http://localhost:8000`
+**原因**：`pnpm dev` 开发时浏览器在 5173 端口，直接调用 `/api/*` 会 404；需要 Vite 代理转发到后端 8000
+**放弃了什么**：无（Docker 全栈模式通过 nginx 代理，两者互不影响）
+**影响**：仅 dev 环境生效；prod（Docker）走 nginx 代理，配置不变

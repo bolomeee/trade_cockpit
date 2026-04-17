@@ -66,6 +66,7 @@ last_modified_by: system-design
       "exchange": "NASDAQ",
       "addedAt": "2026-04-16T08:00:00Z",
       "lastRefreshedAt": "2026-04-16T06:00:00Z",
+      "dataStatus": "loading",
       "latestSignal": {
         "signalType": "BUY_ZONE",
         "distancePct": 2.3,
@@ -77,7 +78,9 @@ last_modified_by: system-design
 }
 ```
 
-**说明**：`latestSignal` 是聚合字段，取该股票最新一条 Signal 记录。watchlist 为空时返回空数组。
+**说明**：
+- `dataStatus`：枚举 `"loading" | "insufficient" | "ready"`。`loading` = 数据拉取中；`insufficient` = 历史 bar 数不足 150 条；`ready` = 信号可用。
+- `latestSignal`：聚合字段，取该股票最新一条 Signal 记录；`dataStatus` 为 `loading` 或 `insufficient` 时为 `null`。watchlist 为空时返回空数组。
 
 ---
 

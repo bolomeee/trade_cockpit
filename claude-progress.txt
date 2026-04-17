@@ -388,3 +388,36 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
   F001-b Sprint Contract 协商
     范围：Frontend 读取展示（GET /api/watchlist 消费 + empty/error/loading 态 + dataStatus 可视化）
     预计文件：~10 核心（已例外批准）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F001-b Frontend Watchlist 读取展示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - API 层：lib/api/client.ts（fetch 封装）+ lib/api/watchlist.ts（getWatchlist）
+  - 类型：types/watchlist.ts（WatchlistItem / LatestSignal / DataStatus / SignalType）
+  - 组件：SignalBadge / SignalCard / SignalBoard（按信号优先级排序）
+  - 通用状态：EmptyState / ErrorState
+  - Dashboard.tsx：useQuery 接入，loading/empty/error/ready 四态切换
+  - main.tsx：QueryClientProvider 包裹
+  - vite.config.ts：添加 /api → localhost:8000 proxy（dev 环境）
+  - 新依赖：@tanstack/react-query v5（D017）
+  - 修复 API-CONTRACT.md：补充 dataStatus 字段文档（F001-a 遗漏）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D017（react-query）+ D018（Vite proxy）
+  - features.json：F001-b phase → needs_review
+
+⚠️ 已知问题（预先存在，不阻塞）：
+  - button.tsx ESLint react-refresh/only-export-components（F000-b 遗留）
+
+📊 功能状态：
+  F001-a 后端 Watchlist API：✅ done
+  F001-b 前端读取展示：🔍 needs_review
+  F001-c 前端交互（搜索/添加/删除）：⬜ ready_to_dev
+
+[下一步]
+  用户验收 F001-b（触发 acceptance skill）
+  验收通过后进入 F001-c Sprint Contract 协商
