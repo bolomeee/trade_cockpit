@@ -491,8 +491,8 @@
       "description": "Modal 弹窗展示单只股票的 150MA 专项详情：K线图表（价格+150MA均线）、均线斜率、价距%、历史回踩记录（在K线图上标识）、基本面数据（PE/PS/PEG/FCF）。纯前端弹窗，不改变 URL",
       "user_story": "作为美股投资者，我想查看个股的 150MA 详细分析，这样我能判断这次回踩的质量和值不值得买入",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F002",
         "F003"
@@ -544,21 +544,21 @@
       },
       "iteration_history": [],
       "notes": "K线图表使用 TradingView lightweight-charts。Modal 形式，非独立页面",
-      "completed_at": null,
+      "completed_at": "2026-04-17",
       "subtasks": {
         "F005-a": {
           "scope": "Backend stock detail 3 endpoints",
-          "phase": "needs_review",
+          "phase": "done",
           "completed_at": "2026-04-17"
         },
         "F005-b": {
           "scope": "Frontend Header/Pullback/Fundamentals + Modal 改造（移至 stock-detail/）",
-          "phase": "needs_review",
+          "phase": "done",
           "completed_at": "2026-04-17"
         },
         "F005-c": {
           "scope": "PriceChart + lightweight-charts 集成",
-          "phase": "needs_review",
+          "phase": "done",
           "completed_at": "2026-04-17"
         }
       }
