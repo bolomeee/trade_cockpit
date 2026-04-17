@@ -9,11 +9,14 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  getStockChart,
   getStockFundamentals,
   getStockPullbacks,
 } from '@/lib/api/stocks'
-import type { Fundamentals, PullbackEntry } from '@/types/stockDetail'
+import type { ChartData, Fundamentals, PullbackEntry } from '@/types/stockDetail'
+import { ErrorState } from '@/components/common/ErrorState'
 import { StockDetailHeader } from './StockDetailHeader'
+import { PriceChart } from './PriceChart'
 import { PullbackHistoryCard } from './PullbackHistoryCard'
 import { FundamentalsCard } from './FundamentalsCard'
 
@@ -23,7 +26,7 @@ interface StockDetailModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-const CHART_PLACEHOLDER_HEIGHT = 302
+const CHART_HEIGHT = 302
 
 export function StockDetailModal({
   stock,
@@ -35,6 +38,12 @@ export function StockDetailModal({
 
   const results = useQueries({
     queries: [
+      {
+        queryKey: ['chart', ticker],
+        queryFn: () => getStockChart(ticker as string),
+        enabled,
+        staleTime: 5 * 60 * 1000,
+      },
       {
         queryKey: ['pullbacks', ticker],
         queryFn: () => getStockPullbacks(ticker as string),
@@ -50,7 +59,7 @@ export function StockDetailModal({
     ],
   })
 
-  const [pullbacksQ, fundamentalsQ] = results
+  const [chartQ, pullbacksQ, fundamentalsQ] = results
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,28 +88,30 @@ export function StockDetailModal({
               style={{
                 marginTop: 'var(--spacing-4)',
                 borderRadius: 'var(--radius-card)',
-                border: '1px dashed var(--color-border)',
-                backgroundColor: 'var(--color-muted)',
-                color: 'var(--color-text-secondary)',
-                textAlign: 'center',
-                fontSize: 'var(--font-size-caption)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-card)',
+                overflow: 'hidden',
+                minHeight: `${CHART_HEIGHT}px`,
               }}
-              data-testid="price-chart-placeholder"
+              data-testid="price-chart-container"
             >
-              <Skeleton
-                style={{
-                  width: '100%',
-                  height: `${CHART_PLACEHOLDER_HEIGHT}px`,
-                  borderRadius: 'var(--radius-card)',
-                  position: 'relative',
-                }}
-              />
-              <span style={{ position: 'absolute' }}>
-                Price Chart coming in F005-c
-              </span>
+              {chartQ.isLoading && (
+                <Skeleton
+                  style={{
+                    width: '100%',
+                    height: `${CHART_HEIGHT}px`,
+                    borderRadius: 'var(--radius-card)',
+                  }}
+                />
+              )}
+              {chartQ.isError && (
+                <div style={{ padding: 'var(--spacing-6)' }}>
+                  <ErrorState title="图表加载失败" onRetry={() => chartQ.refetch()} />
+                </div>
+              )}
+              {!chartQ.isLoading && !chartQ.isError && chartQ.data && (
+                <PriceChart data={chartQ.data as ChartData} height={CHART_HEIGHT} />
+              )}
             </div>
 
             <div

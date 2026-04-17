@@ -769,3 +769,39 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   F005-b 验收通过后，进入 F005-c Sprint Contract（新依赖 + PriceChart）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 20:00] Sprint：F005-c PriceChart + lightweight-charts 集成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 引入 lightweight-charts@5.1.0（context7 文档验证，非训练数据）
+  - 新建 PriceChart.tsx：Candlestick + MA150 LineSeries + Pullback markers（createSeriesMarkers v5 primitive）
+  - StockDetailModal 增 chart 查询，替换旧 Skeleton 占位；Loading/Error/正常三态
+  - 颜色/尺寸从 tokens.css 运行时读取，无硬编码
+  - useEffect cleanup 调用 chart.remove() + 解绑 resize listener
+  - pnpm build 通过；lint 仅剩 F000-b 遗留 button.tsx 警告（非本 sprint 引入）
+  - 后端 118/118 测试回归通过
+  - 浏览器验证：Modal 打开正常渲染 Candles + MA150 蓝线，ESC 关闭 → 换股重开 chart 正确重建
+  - DECISIONS.md 追加 D025（版本 / API 选型 / 时间格式 / 主题注入 / 生命周期）
+  - features.json F005-c.phase → needs_review
+
+⚠️ 待你决策：
+  - 验收 F005-c；通过后 F005 整体 done
+
+🔧 系统变更：
+  - frontend/package.json + pnpm-lock.yaml（+lightweight-charts）
+  - frontend/src/components/features/stock-detail/PriceChart.tsx（新建）
+  - frontend/src/components/features/stock-detail/StockDetailModal.tsx
+  - docs/系统设计/DECISIONS.md（+D025）
+  - docs/开发/sprint-contracts/F005-c-contract.md（新建）
+
+📊 功能状态：
+  F005-a：🔍 needs_review → 待 F005 整体验收
+  F005-b：🔍 needs_review → 待 F005 整体验收
+  F005-c：🔍 needs_review（本 Sprint）
+
+[下一个 Session]
+  用户验收 F005-c 通过后：
+  - 更新 F005（父）phase = done
+  - 触发 F006 大盘概览 或 F007 Trade Journal

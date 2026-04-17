@@ -352,3 +352,31 @@ last_modified_by: system-design
 **影响**：
 - F003-c 前端刷新按钮只需 poll `GET /api/data/status`；不用也不该自己维护进度。
 - 生产部署必须由 uvicorn 启动 FastAPI（lifespan 触发 `start_scheduler`），而不是 gunicorn 多 worker（会启动多个 scheduler 重复触发）；多 worker 场景需改用 `MA150_DISABLE_SCHEDULER=1` + 独立调度进程。
+
+---
+
+## D025：引入 lightweight-charts v5 + PriceChart 实现细节
+**时间**：2026-04-17（F005-c Sprint 期间）
+**背景**：F005 Modal 需要显示 K 线 + MA150 + Pullback 标记；design-spec、component-plan 已指定 TradingView lightweight-charts。
+
+**决策**：
+- **版本**：`lightweight-charts@5.1.0`（当前稳定版）。
+- **API 选择**（v5 新 API，已通过 context7 `/tradingview/lightweight-charts` 验证）：
+  - 主图：`chart.addSeries(CandlestickSeries, …)`（v5 废弃 `addCandlestickSeries`）。
+  - 均线：`chart.addSeries(LineSeries, …)`，`priceLineVisible=false`、`lastValueVisible=false` 避免污染 Y 轴右缘。
+  - 标记：v5 独立 primitive `createSeriesMarkers(series, markers[])`，而非 v4 的 `series.setMarkers()`。Pullback 在 K 线下方显示 `arrowUp` 指示回踩入场，颜色 `--color-signal-buyzone`。
+- **时间格式**：后端返回 `YYYY-MM-DD` 字符串；前端转成 `UTCTimestamp`（`Date.parse(date + 'T00:00:00Z')/1000`）以避免 lightweight-charts 的 BusinessDay 对象校验歧义。
+- **主题注入**：运行时 `getComputedStyle(document.documentElement).getPropertyValue('--color-xxx')` 读取 tokens.css 变量传给 chart options，避免在组件内硬编码 hex。
+- **React 生命周期**：`useEffect` 依赖 `[data, height]`；cleanup 调用 `chart.remove()` 并移除 window resize 监听器，防止 Modal 切换股票时泄漏。
+- **响应式**：监听 window resize 调 `chart.applyOptions({ width: container.clientWidth })`，不引入 `ResizeObserver`（lightweight-charts `autoSize` 选项实际依赖 ResizeObserver，在 Dialog 初次挂载时宽度读取不稳定，显式 width + resize listener 更可控）。
+
+**放弃了什么**：
+- v4 API（`addCandlestickSeries` / `series.setMarkers`）—— 新项目直接用 v5，不背兼容包袱。
+- Chart 主题切换、多时段切换（1M/3M/6M/1Y）—— 留给后续 feature。
+- Marker hover 展开 Pullback 详情 —— P2，本次只画三角形。
+
+**影响**：
+- Dashboard Modal 打开时并发拉 4 个接口（已有 3 个 + chart）；chart 数据 5 分钟 staleTime 与 pullbacks 对齐。
+- 前端 bundle 增加 ~50KB gzip（lightweight-charts 核心），在 MVP 可接受。
+
+**API 参考来源**：context7 `/tradingview/lightweight-charts`（2026-04-17 查询），非训练数据。
