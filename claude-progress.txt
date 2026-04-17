@@ -471,3 +471,25 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F001-c 后：F001 父级 phase → done，开始 F002 150MA 信号引擎（ready_to_dev）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 验收] Sprint：F001-c + 父 F001 整体完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - F001-c 用户验收合格（含两轮后续修复）
+  - 修复 1：SignalBadge INSUFFICIENT 增加 marginRight，避让 Trash2 图标
+  - 修复 2：SignalCard 删除 onError 区分 NOT_FOUND（404 静默同步）vs 真实错误
+  - 修复 3：Trash2 图标位置调整到与 INSUFFICIENT Badge 同行对齐（top/right 改
+           用 --spacing-card-padding-sm，padding 0；Badge marginRight 15→20px）
+  - commits: 6aa849f（bug fix） + 01d0cc5（对齐调整）
+  - phase：F001-c → done | F001（父）→ done
+
+📊 功能状态：
+  F001-a Backend：✅ done
+  F001-b Frontend 读取：✅ done
+  F001-c Frontend 交互：✅ done
+  F001 Watchlist 管理（父）：✅ done
+
+[下一个 Session]
+  触发 F002 150MA 信号引擎（ready_to_dev）的 Sprint Contract 协商
