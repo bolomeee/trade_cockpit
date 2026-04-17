@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date
 
+from pydantic import Field
+
 from app.schemas.watchlist import CamelModel
 
 
@@ -36,9 +38,9 @@ class PullbackEntry(CamelModel):
     close_price: float
     ma150_value: float
     distance_pct: float
-    return_10d: float | None = None
-    return_20d: float | None = None
-    return_30d: float | None = None
+    return_10d: float | None = Field(default=None, alias="return10d")
+    return_20d: float | None = Field(default=None, alias="return20d")
+    return_30d: float | None = Field(default=None, alias="return30d")
 
 
 class Fundamentals(CamelModel):

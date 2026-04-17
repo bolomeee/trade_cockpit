@@ -553,7 +553,8 @@
         },
         "F005-b": {
           "scope": "Frontend Header/Pullback/Fundamentals + Modal 改造（移至 stock-detail/）",
-          "phase": "planned"
+          "phase": "needs_review",
+          "completed_at": "2026-04-17"
         },
         "F005-c": {
           "scope": "PriceChart + lightweight-charts 集成",

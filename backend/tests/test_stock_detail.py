@@ -111,10 +111,8 @@ def test_pullbacks_sorted_desc_with_nullable_returns(
     client: TestClient, db_session: Session
 ) -> None:
     stock = _seed_stock(db_session, "DDD")
-    # Build bars that transition from uptrend then dip to trigger pullbacks
-    closes = [100.0 + i * 0.2 for i in range(160)]
-    for offset in (-5, -15):
-        closes[offset] = closes[offset - 1] * 0.99
+    # Gentle uptrend (240 bars) — produces BUY_ZONE transitions near the end
+    closes = [100.0 + i * 0.05 for i in range(240)]
     _seed_bars(db_session, stock.id, closes)
     _recompute(db_session, stock.id)
 
@@ -124,18 +122,18 @@ def test_pullbacks_sorted_desc_with_nullable_returns(
 
     dates = [r["date"] for r in rows]
     assert dates == sorted(dates, reverse=True)
-    if rows:
-        row = rows[0]
-        for field in (
-            "date",
-            "closePrice",
-            "ma150Value",
-            "distancePct",
-            "return10d",
-            "return20d",
-            "return30d",
-        ):
-            assert field in row
+    assert rows, "fixture should produce at least one pullback"
+    row = rows[0]
+    for field in (
+        "date",
+        "closePrice",
+        "ma150Value",
+        "distancePct",
+        "return10d",
+        "return20d",
+        "return30d",
+    ):
+        assert field in row, f"missing field {field}; got {list(row.keys())}"
 
 
 def test_fundamentals_returns_mock_payload(

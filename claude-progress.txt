@@ -740,3 +740,32 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   F005-a 验收通过后，进入 F005-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F005-b] Sprint：F005-b 前端 Header/Pullback/Fundamentals
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - StockDetailModal 移至 components/features/stock-detail/
+  - 新组件：StockDetailHeader / PullbackHistoryCard / FundamentalsCard
+  - useQueries 并发拉 pullbacks / fundamentals，独立 loading/error 状态
+  - PriceChart 区域留 Skeleton 占位（F005-c 接入）
+  - 修复 F005-a 遗留 bug：pydantic to_camel 把 return_10d→return10D，
+    与 API-CONTRACT 不符。新增 Field alias 强制 return10d/20d/30d，
+    并强化 F005-a 测试（原 if rows: 短路未触发）
+  - pnpm build 通过；浏览器 preview 验证 Modal 正常打开/关闭/渲染
+  - 全量后端：118/118 通过
+
+🔧 系统变更：
+  - 新：types/stockDetail.ts、4 个 stock-detail 组件
+  - 改：lib/api/stocks.ts（+3 fetch）、pages/Dashboard.tsx（import 路径）、
+        schemas/stock_detail.py（return10d alias）、tests/test_stock_detail.py
+  - 删：components/features/dashboard/StockDetailModal.tsx
+
+📊 功能状态：
+  F005-a：🔍 needs_review（含 schema alias 修复）
+  F005-b：🔍 needs_review
+  F005-c：⬜ planned（PriceChart + lightweight-charts）
+
+[下一个 Session]
+  F005-b 验收通过后，进入 F005-c Sprint Contract（新依赖 + PriceChart）
