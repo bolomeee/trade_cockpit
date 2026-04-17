@@ -1,0 +1,229 @@
+"""Integration tests for F001-a Watchlist + Stock Search API (T1–T17)."""
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models import DailyBar, Stock
+
+
+def _mk_stock(db: Session, ticker: str, is_active: bool = True) -> Stock:
+    stock = Stock(
+        ticker=ticker.upper(),
+        name=f"{ticker.upper()} Inc.",
+        exchange="NASDAQ",
+        is_active=is_active,
+        added_at=datetime.now(timezone.utc),
+    )
+    db.add(stock)
+    db.commit()
+    db.refresh(stock)
+    return stock
+
+
+def _mk_bars(db: Session, stock_id: int, n: int) -> None:
+    start = date(2025, 1, 1)
+    for i in range(n):
+        db.add(
+            DailyBar(
+                stock_id=stock_id,
+                date=start + timedelta(days=i),
+                open=100.0,
+                high=101.0,
+                low=99.0,
+                close=100.0,
+                volume=1_000_000,
+            )
+        )
+    db.commit()
+
+
+def _polygon_hit(ticker: str, name: str = "Apple Inc.", exchange: str = "XNAS", type_: str = "CS"):
+    return {"ticker": ticker, "name": name, "primary_exchange": exchange, "type": type_}
+
+
+# --- T1 ----------------------------------------------------------------------
+
+def test_t1_get_empty_watchlist(client: TestClient) -> None:
+    r = client.get("/api/watchlist")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["data"] == []
+    assert body["message"] == "success"
+
+
+# --- T2 ----------------------------------------------------------------------
+
+def test_t2_post_new_ticker(client: TestClient, mock_polygon, db_session: Session) -> None:
+    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    r = client.post("/api/watchlist", json={"ticker": "AAPL"})
+    assert r.status_code == 201
+    data = r.json()["data"]
+    assert data["ticker"] == "AAPL"
+    assert data["dataStatus"] == "loading"
+
+    stored = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert stored.is_active is True
+
+
+# --- T3 ----------------------------------------------------------------------
+
+def test_t3_post_lowercase_stored_as_upper(client: TestClient, mock_polygon, db_session: Session) -> None:
+    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    r = client.post("/api/watchlist", json={"ticker": "aapl"})
+    assert r.status_code == 201
+    assert r.json()["data"]["ticker"] == "AAPL"
+    assert db_session.query(Stock).filter_by(ticker="AAPL").count() == 1
+
+
+# --- T4 ----------------------------------------------------------------------
+
+def test_t4_post_duplicate_active(client: TestClient, mock_polygon, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    r = client.post("/api/watchlist", json={"ticker": "AAPL"})
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "DUPLICATE"
+
+
+# --- T5 ----------------------------------------------------------------------
+
+def test_t5_post_reactivates_soft_deleted(client: TestClient, mock_polygon, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=False)
+    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    r = client.post("/api/watchlist", json={"ticker": "AAPL"})
+    assert r.status_code == 201
+
+    db_session.expire_all()
+    stored = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert stored.is_active is True
+
+
+# --- T6 ----------------------------------------------------------------------
+
+def test_t6_post_polygon_miss(client: TestClient, mock_polygon) -> None:
+    mock_polygon.search_results = [_polygon_hit("MSFT")]  # wrong ticker
+    r = client.post("/api/watchlist", json={"ticker": "AAPL"})
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+# --- T7 ----------------------------------------------------------------------
+
+def test_t7_post_polygon_raises(client: TestClient, mock_polygon) -> None:
+    mock_polygon.search_exc = RuntimeError("boom")
+    r = client.post("/api/watchlist", json={"ticker": "AAPL"})
+    assert r.status_code == 502
+    assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"
+
+
+# --- T8 ----------------------------------------------------------------------
+
+def test_t8_post_missing_ticker_field(client: TestClient) -> None:
+    r = client.post("/api/watchlist", json={})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- T9 ----------------------------------------------------------------------
+
+def test_t9_get_hides_soft_deleted_and_latest_signal_null(
+    client: TestClient, db_session: Session
+) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    _mk_stock(db_session, "MSFT", is_active=False)
+    r = client.get("/api/watchlist")
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data) == 1
+    assert data[0]["ticker"] == "AAPL"
+    assert data[0]["latestSignal"] is None
+
+
+# --- T10 ---------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "n_bars,expected",
+    [(0, "loading"), (100, "insufficient"), (200, "ready")],
+)
+def test_t10_data_status_derivation(
+    client: TestClient, db_session: Session, n_bars: int, expected: str
+) -> None:
+    stock = _mk_stock(db_session, "AAPL", is_active=True)
+    _mk_bars(db_session, stock.id, n_bars)
+
+    r = client.get("/api/watchlist")
+    assert r.status_code == 200
+    assert r.json()["data"][0]["dataStatus"] == expected
+
+
+# --- T11 ---------------------------------------------------------------------
+
+def test_t11_delete_active_ticker(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.delete("/api/watchlist/AAPL")
+    assert r.status_code == 200
+    assert r.json()["data"] == {"ticker": "AAPL", "removed": True}
+
+    db_session.expire_all()
+    stored = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert stored.is_active is False
+
+
+# --- T12 ---------------------------------------------------------------------
+
+def test_t12_delete_case_insensitive(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.delete("/api/watchlist/aapl")
+    assert r.status_code == 200
+
+
+# --- T13 ---------------------------------------------------------------------
+
+def test_t13_delete_nonexistent(client: TestClient) -> None:
+    r = client.delete("/api/watchlist/XXX")
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+# --- T14 ---------------------------------------------------------------------
+
+def test_t14_search_forwards_results(client: TestClient, mock_polygon) -> None:
+    mock_polygon.search_results = [
+        _polygon_hit("AAPL", "Apple Inc.", "XNAS", "CS"),
+        _polygon_hit("AA", "Alcoa Corp", "XNYS", "CS"),
+    ]
+    r = client.get("/api/stocks/search", params={"q": "AA"})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert [d["ticker"] for d in data] == ["AAPL", "AA"]
+    assert mock_polygon.search_calls[-1][0] == "AA"
+
+
+# --- T15 ---------------------------------------------------------------------
+
+def test_t15_search_missing_q(client: TestClient) -> None:
+    r = client.get("/api/stocks/search")
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- T16 ---------------------------------------------------------------------
+
+def test_t16_search_limit_capped_to_20(client: TestClient, mock_polygon) -> None:
+    mock_polygon.search_results = []
+    r = client.get("/api/stocks/search", params={"q": "AA", "limit": 50})
+    assert r.status_code == 200
+    assert mock_polygon.search_calls[-1][1] == 20
+
+
+# --- T17 ---------------------------------------------------------------------
+
+def test_t17_search_polygon_raises(client: TestClient, mock_polygon) -> None:
+    mock_polygon.search_exc = RuntimeError("boom")
+    r = client.get("/api/stocks/search", params={"q": "AA"})
+    assert r.status_code == 502
+    assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"

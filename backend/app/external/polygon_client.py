@@ -4,6 +4,7 @@ API surface is intentionally thin — only the methods F000-c / F003 / F006 need
 """
 from __future__ import annotations
 
+import itertools
 import threading
 import time
 from datetime import date
@@ -57,15 +58,16 @@ class PolygonClient:
             self._sleep(wait)
 
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
+        # `list_tickers` auto-paginates; `limit` is page size, not result cap.
+        # Slice the iterator so we consume only one page's worth of HTTP calls.
         self._acquire()
-        return list(
-            self._client.list_tickers(
-                search=query,
-                market="stocks",
-                active=True,
-                limit=limit,
-            )
+        iterator = self._client.list_tickers(
+            search=query,
+            market="stocks",
+            active=True,
+            limit=limit,
         )
+        return list(itertools.islice(iterator, limit))
 
     def get_previous_close(self, ticker: str) -> Any:
         self._acquire()
