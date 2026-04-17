@@ -662,3 +662,56 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F003-c → 更新 F003 整体为 done，进入下一 Feature
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 18:45] Sprint：F004 SignalBoard 信号总览
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - SignalBoard 数据源切换到 /api/signals（合约对齐）
+  - SignalCard 补充 closePrice 展示（design-spec §SignalCard）
+  - 点击 SignalCard 打开 StockDetailModal 壳（Header + 4 指标占位）
+  - 新增 types/signal.ts、lib/api/signals.ts
+  - AddStockCard + useRefreshStatus 同步 invalidate ['signals']
+  - 后端回归测试：108/108 通过
+  - TSC build 通过；frontend 无新 lint 错误
+  - Evaluator 自检：10/10 全部通过
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - F004 验收（点击 SignalCard 测试 Modal 打开 + 关闭）
+
+🔧 系统变更：
+  - frontend/src/types/signal.ts 新建
+  - frontend/src/lib/api/signals.ts 新建
+  - frontend/src/components/features/dashboard/StockDetailModal.tsx 新建
+  - 修改：SignalBoard/SignalCard/Dashboard/AddStockCard/useRefreshStatus
+  - docs/开发/sprint-contracts/F004-contract.md 新建
+
+📊 功能状态：
+  F001 Watchlist：✅ done
+  F002 信号引擎：✅ done
+  F003 数据调度：✅ done
+  F004 SignalBoard：🔍 needs_review
+  F005 个股详情 Modal：⬜ ready_to_dev（Modal 壳已就位，待填内容）
+  F006 大盘概览：⬜ ready_to_dev
+  F007 Journal：⬜ ready_to_dev
+  F008 Logs：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F004 → 触发 acceptance skill
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 18:55] F004 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F004 SignalBoard → done
+  - 验收记录：docs/验收/v1.0-acceptance.md
+  - features.json: phase=done, completed_at=2026-04-17
+
+📊 P0 功能状态：
+  F001 ✅ / F002 ✅ / F003 ✅ / F004 ✅
+  F005 ⬜ / F006 ⬜ / F007 ⬜ / F008 ⬜（ready_to_dev）
+
+[下一个 Session]
+  开始开发 F005 / F006 / F007 / F008（任一）

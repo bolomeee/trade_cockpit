@@ -336,11 +336,21 @@
       "description": "在首页展示所有自选股的当前 150MA 信号状态，按信号优先级排序（BREAKOUT/BUY_ZONE 等买入信号在前），信号类型用颜色区分",
       "user_story": "作为美股投资者，我想一眼看到所有股票的信号状态，这样我能快速发现交易机会",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-17",
       "dependencies": ["F001", "F002"],
       "estimated_sessions": 2,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "frontend/src/types/signal.ts",
+        "frontend/src/lib/api/signals.ts",
+        "frontend/src/components/features/dashboard/StockDetailModal.tsx",
+        "frontend/src/components/features/dashboard/SignalBoard.tsx",
+        "frontend/src/components/features/dashboard/SignalCard.tsx",
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/components/features/dashboard/AddStockCard.tsx",
+        "frontend/src/hooks/useRefreshStatus.ts"
+      ],
       "scope": {
         "pages": ["首页 /"],
         "api_endpoints": [
