@@ -260,3 +260,30 @@ last_modified_by: system-design
 - AlertDialog 的焦点陷阱 / ESC 关闭 / 无障碍语义开箱即用
 **放弃了什么**：手写下拉 / 手写 Dialog（ROI 低）
 **影响**：`frontend/src/components/ui/` 新增 7 个文件（shadcn CLI 副产品，业务核心 6 文件未变）
+
+---
+
+## D021：F002 6 文件上限豁免 + 信号引擎纯函数化
+
+**日期**：2026-04-17（F002 Sprint Contract 协商时用户批准）
+**决策**：
+- **豁免 6 文件上限**：F002 实际 9 文件（6 业务 + 3 测试）。拒绝拆分为 F002-a/b。
+  - 业务文件：signal_engine.py / signal_repository.py / signal_service.py / schemas/signal.py / routers/signals.py / main.py（+1 行 include）
+  - 测试文件：test_signal_engine.py / test_signal_service.py / test_signals_api.py
+- **信号引擎纯函数化**：`app/services/signal_engine.py` 不依赖 SQLAlchemy，仅操作 `BarPoint` / `SignalPoint` / `PullbackPoint` dataclass，使得单元测试零 DB 开销
+- **斜率算法**：对最近 20 个有效 MA150 值做最小二乘线性回归 `y = ax + b`，取斜率 a；有效 MA 不足 20 时 slope_positive = None，signal 自动降级 NEUTRAL
+- **upsert 策略**：Signal / Pullback 采用 delete-then-insert（stock_id 维度），放弃 SQLite `ON CONFLICT DO UPDATE`。recompute 天生幂等，Signal.id / Pullback.id 会变但没有下游依赖
+
+**原因**：
+- 拆分后 F002-a 既无 UI 也无 HTTP，只能靠 pytest 验收，无可感知交付；API 层仅 ~30 行不值单独一个 sprint
+- 引擎纯函数化让 `test_signal_engine.py` 完全不碰数据库，运行时间 < 20ms
+- delete-then-insert 比 SQLAlchemy SQLite 方言的 `on_conflict_do_update` 更简单，读者理解成本低；对 stock 级规模（≤ 250 行）写入开销可忽略
+
+**放弃了什么**：
+- 6 文件上限的机械执行（保留了"业务文件 ≤ 6"的精神，因为实际业务文件正好 6 个）
+- 行级 upsert 的 ID 稳定性（F002 下游未用到 Signal.id / Pullback.id）
+- numpy.polyfit（不引入新依赖，手写 20 点线性回归 ~5 行）
+
+**影响**：
+- 测试分层清晰：engine 纯单元、service 集成、api 集成
+- F003 数据刷新完成后需调用 `SignalService.recompute_for_stock(stock_id)` 触发重算（当前未 hook，留给 F003）

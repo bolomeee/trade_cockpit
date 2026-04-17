@@ -232,11 +232,22 @@
       "description": "基于日线数据计算每只股票的 150 日均线信号：BUY_ZONE（斜率正+价距0–5%）、BREAKOUT（斜率正+向上穿越）、NEUTRAL（其余）。使用 20 日线性回归斜率判定均线方向，仅斜率为正时产生买入信号。自动识别历史回踩记录",
       "user_story": "作为美股投资者，我想让系统自动计算 150MA 信号，这样我不用手动逐只检查",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
+      "status": "in_progress",
+      "phase": "needs_review",
       "dependencies": [],
       "estimated_sessions": 2,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/app/services/signal_engine.py",
+        "backend/app/repositories/signal_repository.py",
+        "backend/app/services/signal_service.py",
+        "backend/app/schemas/signal.py",
+        "backend/app/routers/signals.py",
+        "backend/app/main.py",
+        "backend/tests/test_signal_engine.py",
+        "backend/tests/test_signal_service.py",
+        "backend/tests/test_signals_api.py"
+      ],
+      "notes_override": "9 文件，已豁免 6 文件上限（用户同意 2026-04-17），理由见 docs/开发/sprint-contracts/F002-contract.md 和 DECISIONS D015",
       "scope": {
         "pages": [],
         "api_endpoints": [

@@ -493,3 +493,42 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   触发 F002 150MA 信号引擎（ready_to_dev）的 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F002 150MA 信号引擎
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 纯计算 engine：MA150 / 20 日线性回归斜率 / signal_type 判定（BREAKOUT > BUY_ZONE > NEUTRAL > INSUFFICIENT）
+  - 回踩检测与后续 10/20/30 日涨幅
+  - signal_repository：DailyBar 读取、Signal/Pullback delete-then-insert、250 天裁剪、最新信号/历史查询
+  - signal_service：recompute_for_stock / list_board（按优先级排序）/ get_ticker_detail（404 保护）
+  - GET /api/signals + GET /api/signals/:ticker?days=30（默认 30，422 保护）
+  - 单元测试：17/17 通过（test_signal_engine）
+  - 集成测试：9/9 通过（test_signal_service）
+  - API 测试：10/10 通过（test_signals_api）
+  - 全量回归：74/74 通过，F001 未回归
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D021（6 文件豁免 + 引擎纯函数化 + 斜率算法 + upsert 策略）
+  - features.json：F002 phase / estimated_files_changed 更新
+  - 无新 Alembic migration（schema 在 F000-a 已建）
+  - 无新外部依赖
+
+📊 功能状态：
+  F000-a/b/c：✅ done
+  F001：✅ done
+  F002 信号引擎：🔍 needs_review
+  F003 数据获取与调度：⬜ ready_to_dev（F002 的 recompute_for_stock 等待 F003 hook）
+  F004 SignalBoard：⬜ ready_to_dev（依赖 F002）
+  F005 个股详情 Modal：⬜ ready_to_dev
+  F006 大盘概览：⬜ ready_to_dev
+  F007 Journal：⬜ ready_to_dev
+  F008 系统日志：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F002（跑 `uv run pytest backend/tests` 查看结果，或检查新增 endpoint 行为），通过后用 project-commiter 打 tag 或直接进入 F003 开发。

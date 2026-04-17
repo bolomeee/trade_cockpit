@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.routers import stocks, watchlist
+from app.routers import signals, stocks, watchlist
 from app.services.watchlist_service import APIError
 
 app = FastAPI(title="MA150 Tracker API", version="0.1.0")
@@ -39,3 +39,4 @@ def health() -> dict[str, str]:
 
 app.include_router(watchlist.router)
 app.include_router(stocks.router)
+app.include_router(signals.router)
