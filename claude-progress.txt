@@ -142,3 +142,15 @@ _pipeline_status 更新：ui_design → done
 
 [下一个 Session]
   用户验收 F000-a（触发 acceptance skill）→ 进入 F000-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F000-a → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户亲自执行验收清单 A1-A5 全部通过
+✅ /health 返回正确、Swagger UI 正常、11/11 测试通过
+✅ 验收记录：docs/验收/v1.0-acceptance.md
+✅ features.json: F000-a phase → done, completed_at = 2026-04-17
+
+[下一个 Session]
+  进入 F000-b 前端脚手架 Sprint Contract 协商

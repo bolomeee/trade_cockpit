@@ -44,8 +44,8 @@
       "description": "初始化 backend/ 目录：FastAPI 入口、SQLAlchemy engine、所有 ORM models 定义、Alembic 初始化并生成初始 migration、/health 探活接口",
       "user_story": "作为开发者，我需要一个可运行的后端骨架，能启动 FastAPI 服务并连接 SQLite 数据库",
       "priority": "P0",
-      "status": "needs_review",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [],
       "estimated_sessions": 1,
       "estimated_files_changed": [],
@@ -69,8 +69,8 @@
       ],
       "test_cases": { "unit": [], "integration": [], "e2e": [] },
       "iteration_history": [],
-      "notes": "脚手架固有最小文件数超过常规 6 文件上限，需用户批准例外",
-      "completed_at": null
+      "notes": "脚手架固有最小文件数超过常规 6 文件上限，已获用户批准例外（DECISIONS D010）",
+      "completed_at": "2026-04-17"
     },
     {
       "id": "F000-b",
