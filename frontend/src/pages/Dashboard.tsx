@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getWatchlist } from '@/lib/api/watchlist'
+import { getSignals } from '@/lib/api/signals'
+import type { SignalBoardItem } from '@/types/signal'
 import { SignalBoard } from '@/components/features/dashboard/SignalBoard'
 import { AddStockCard } from '@/components/features/dashboard/AddStockCard'
+import { StockDetailModal } from '@/components/features/dashboard/StockDetailModal'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,10 +21,18 @@ function LoadingGrid() {
 
 export default function Dashboard() {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['watchlist'],
-    queryFn: getWatchlist,
+    queryKey: ['signals'],
+    queryFn: getSignals,
     staleTime: 30 * 1000,
   })
+
+  const [selected, setSelected] = useState<SignalBoardItem | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const handleSelect = (stock: SignalBoardItem) => {
+    setSelected(stock)
+    setModalOpen(true)
+  }
 
   return (
     <div style={{ display: 'flex', gap: 'var(--spacing-6)', padding: 'var(--spacing-8) var(--spacing-6)' }}>
@@ -41,13 +52,15 @@ export default function Dashboard() {
         )}
 
         {!isLoading && !isError && data && data.length > 0 && (
-          <SignalBoard stocks={data} onSelectStock={() => {}} />
+          <SignalBoard stocks={data} onSelectStock={handleSelect} />
         )}
       </div>
 
       <div style={{ width: '158px', flexShrink: 0 }}>
         <AddStockCard />
       </div>
+
+      <StockDetailModal stock={selected} open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   )
 }

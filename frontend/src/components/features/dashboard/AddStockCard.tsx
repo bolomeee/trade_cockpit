@@ -35,6 +35,7 @@ export function AddStockCard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      queryClient.invalidateQueries({ queryKey: ['signals'] })
       setInput('')
       setQuery(null)
       setPendingTicker(null)

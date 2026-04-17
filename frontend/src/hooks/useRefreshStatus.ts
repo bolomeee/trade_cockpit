@@ -20,10 +20,11 @@ export function useRefreshStatus() {
 
   const currentStatus = statusQuery.data?.status ?? 'idle'
 
-  // On transition to completed, invalidate watchlist so SignalBoard refetches
+  // On transition to completed, invalidate watchlist + signals so SignalBoard refetches
   useEffect(() => {
     if (prevStatusRef.current === 'in_progress' && currentStatus === 'completed') {
       queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      queryClient.invalidateQueries({ queryKey: ['signals'] })
     }
     prevStatusRef.current = currentStatus
   }, [currentStatus, queryClient])

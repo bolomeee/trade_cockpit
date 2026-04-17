@@ -1,4 +1,4 @@
-import type { WatchlistItem, SignalType } from '@/types/watchlist'
+import type { SignalBoardItem, SignalType } from '@/types/signal'
 import { SignalCard } from './SignalCard'
 
 const SIGNAL_PRIORITY: Record<SignalType, number> = {
@@ -8,26 +8,23 @@ const SIGNAL_PRIORITY: Record<SignalType, number> = {
   INSUFFICIENT: 3,
 }
 
-function getSignalPriority(item: WatchlistItem): number {
-  const type = item.latestSignal?.signalType ?? 'INSUFFICIENT'
-  return SIGNAL_PRIORITY[type] ?? 3
-}
-
 interface SignalBoardProps {
-  stocks: WatchlistItem[]
-  onSelectStock: (ticker: string) => void
+  stocks: SignalBoardItem[]
+  onSelectStock: (stock: SignalBoardItem) => void
 }
 
 export function SignalBoard({ stocks, onSelectStock }: SignalBoardProps) {
-  const sorted = [...stocks].sort((a, b) => getSignalPriority(a) - getSignalPriority(b))
+  const sorted = [...stocks].sort(
+    (a, b) => (SIGNAL_PRIORITY[a.signalType] ?? 3) - (SIGNAL_PRIORITY[b.signalType] ?? 3),
+  )
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {sorted.map(stock => (
         <SignalCard
-          key={stock.id}
+          key={stock.ticker}
           stock={stock}
-          onClick={() => onSelectStock(stock.ticker)}
+          onClick={() => onSelectStock(stock)}
         />
       ))}
     </div>

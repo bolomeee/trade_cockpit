@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Trash2 } from 'lucide-react'
 
-import type { WatchlistItem } from '@/types/watchlist'
+import type { SignalBoardItem } from '@/types/signal'
 import { SignalBadge } from './SignalBadge'
 import { removeStock } from '@/lib/api/watchlist'
 import { ApiError } from '@/lib/api/client'
@@ -19,26 +19,31 @@ import {
 } from '@/components/ui/alert-dialog'
 
 interface SignalCardProps {
-  stock: WatchlistItem
+  stock: SignalBoardItem
   onClick: () => void
 }
 
 export function SignalCard({ stock, onClick }: SignalCardProps) {
-  const { ticker, name, latestSignal } = stock
+  const { ticker, name, signalType, closePrice, distancePct } = stock
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const invalidateAfterDelete = () => {
+    queryClient.invalidateQueries({ queryKey: ['signals'] })
+    queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+  }
+
   const deleteMutation = useMutation({
     mutationFn: () => removeStock(ticker),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      invalidateAfterDelete()
       setDialogOpen(false)
       setDeleteError(null)
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === 'NOT_FOUND') {
-        queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+        invalidateAfterDelete()
         setDialogOpen(false)
         setDeleteError(null)
         return
@@ -47,7 +52,6 @@ export function SignalCard({ stock, onClick }: SignalCardProps) {
     },
   })
 
-  const distancePct = latestSignal?.distancePct ?? null
   const distanceColor =
     distancePct !== null
       ? distancePct >= 0
@@ -87,14 +91,24 @@ export function SignalCard({ stock, onClick }: SignalCardProps) {
         <span style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-subtitle)' }}>
           {ticker}
         </span>
-        <SignalBadge signalType={latestSignal?.signalType ?? null} />
+        <SignalBadge signalType={signalType} />
       </div>
 
       <p style={{ fontSize: 'var(--font-size-body)', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
         {name}
       </p>
 
-      <div style={{ marginTop: '12px' }}>
+      <div style={{ marginTop: '8px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+        <span
+          style={{
+            fontSize: 'var(--font-size-hero)',
+            fontFamily: 'var(--font-family-numeric)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          {closePrice !== null ? `$${closePrice.toFixed(2)}` : '—'}
+        </span>
         {distancePct !== null ? (
           <span style={{ fontSize: 'var(--font-size-caption)', color: distanceColor, fontFamily: 'var(--font-family-numeric)' }}>
             {distancePct >= 0 ? '+' : ''}{distancePct.toFixed(1)}% MA150
