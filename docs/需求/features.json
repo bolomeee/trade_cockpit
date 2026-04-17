@@ -78,8 +78,8 @@
       "description": "初始化 frontend/ 目录：Vite + React 19 + TS 6 + Tailwind v4 + shadcn/ui（radix-nova），三个空页面路由（Dashboard/Journal/Logs），tokens.css 接入（详见 DECISIONS D011/D012）",
       "user_story": "作为开发者，我需要一个可运行的前端骨架，能启动 Vite 开发服务器并渲染三个空页面",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F000-a"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -125,7 +125,7 @@
       "test_cases": { "unit": [], "integration": [], "e2e": [] },
       "iteration_history": [],
       "notes": "",
-      "completed_at": null
+      "completed_at": "2026-04-17"
     },
     {
       "id": "F000-c",
