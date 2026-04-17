@@ -878,3 +878,29 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   准备开发 F007-b（前端 /journal 列表 + 筛选 + 删除）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F007-b Journal — 前端列表 + 筛选 + 删除
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - /journal 页面：Header(+New Entry disabled) + FilterCard + Table + 三态
+  - JournalTable（含 Row 内联，chevron 展开详情，AlertDialog 删除）
+  - ActionBadge 5 枚举色接 --color-action-* token
+  - types/journal.ts + lib/api/journal.ts（getJournal/deleteJournal）
+  - 设计偏离：FilterCard 原生 <select>（回写 design-spec）
+  - preview 验证全部交互通过；pnpm build 通过
+  - phase → done
+
+🔧 系统变更：
+  - design-spec.md：FilterCard 偏离块（原生 select → 待 F007-c 接入 shadcn Select）
+  - AlertDialog Footer border-t 在 journal 场景下移除（内联 className）
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：⬜ ready_to_dev（下一步）
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+
+[下一个 Session]
+  准备开发 F007-c（新建/编辑 Dialog + 引入 react-hook-form + zod + shadcn select/label）

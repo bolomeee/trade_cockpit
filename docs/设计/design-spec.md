@@ -210,6 +210,10 @@ Figma：[trade_journal#0-1](https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/
     │   ├── Select "Ticker"（下拉 = 去重后的 ticker 列表）   [filter.ticker]
     │   ├── Select "Action"（下拉 = BUY/SELL/ADD/REDUCE/WATCH + "All"） [filter.action]
     │   └── Button "Clear Filters"
+    │   > ⚠️ 实现偏离（2026-04-17，F007-b 开发期间）
+    │   > 原始设计：两个 Select 使用 shadcn Select 组件
+    │   > 实际实现：降级为原生 `<select>`，样式用 tokens 对齐（padding / border-radius / font-size）
+    │   > 原因：本 Sprint 6 文件上限，不引入 shadcn select.tsx；F007-c 引入 Dialog 时统一接入 shadcn Select 再替换
     └── TableCard
         └── JournalTable
             ├── Header: Date / Ticker / Action / Price / Position / Actions
