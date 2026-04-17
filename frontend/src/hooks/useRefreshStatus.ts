@@ -25,6 +25,7 @@ export function useRefreshStatus() {
     if (prevStatusRef.current === 'in_progress' && currentStatus === 'completed') {
       queryClient.invalidateQueries({ queryKey: ['watchlist'] })
       queryClient.invalidateQueries({ queryKey: ['signals'] })
+      queryClient.invalidateQueries({ queryKey: ['market', 'overview'] })
     }
     prevStatusRef.current = currentStatus
   }, [currentStatus, queryClient])

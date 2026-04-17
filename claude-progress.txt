@@ -826,3 +826,26 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F006-a → 进入 F006-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F006-b + F006-c 大盘 API + 前端 Bar
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  F006-b 后端 API：
+  - schemas/market.py：MarketIndexOut（camelCase）
+  - routers/market.py：GET /api/market/overview，按 SPX/NDX/TNX 顺序
+  - main.py：include market router
+  - 测试 4/4 通过；全量 132/132 回归通过
+
+  F006-c 前端 Bar：
+  - types/market.ts + lib/api/market.ts + hooks/useMarketOverview.ts
+  - MarketOverviewBar：41.78px 共享条，三组指标，loading/error/empty 态
+  - App.tsx：挂在 TopNav 下方，全路由共享
+  - useRefreshStatus：refresh 完成时失效 market 缓存
+  - tsc 通过；预览验证：数值格式、正负颜色、顺序均正确
+
+  phase F006 → needs_review（b/c 通过测试门禁）
+
+[下一个 Session]
+  用户验收 F006 整体 → 触发 acceptance skill
