@@ -60,7 +60,9 @@ Figma：[stock_portal → frame "Dashboard" (5:4)](https://www.figma.com/design/
 Dashboard (/)
 ├── TopNav（共享）
 ├── MarketOverviewBar（共享，dynamic_spx / dynamic_ndx / dynamic_tnx）
-└── Main (padding 32 × 24)
+└── Main (padding 32 × 24, max-width 1053px, marginInline auto, alignItems flex-start)
+    │  说明：两列整体水平居中；Sidebar 顶部放置一个与 Left 列 Heading2 等高的不可见占位元素，
+    │  使 AddStock 卡片顶边与首行 SignalCard 顶边对齐（而非与 "SignalBoard" 标题文字对齐）。
     ├── Left (flex-1, max-width 871px)
     │   ├── Heading2 "SignalBoard"（静态）
     │   └── SignalBoard (grid, 3–4 cols × N rows, gap 16)
