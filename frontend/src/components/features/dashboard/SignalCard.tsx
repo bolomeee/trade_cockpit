@@ -121,11 +121,11 @@ export function SignalCard({ stock, onClick }: SignalCardProps) {
             className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             style={{
               position: 'absolute',
-              top: '8px',
-              right: '8px',
+              top: 'var(--spacing-card-padding-sm)',
+              right: 'var(--spacing-card-padding-sm)',
               background: 'none',
               border: 'none',
-              padding: '4px',
+              padding: 0,
               cursor: 'pointer',
               color: 'var(--color-text-secondary)',
               transition: 'opacity 150ms ease, color 150ms ease',

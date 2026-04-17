@@ -16,7 +16,7 @@ export function SignalBadge({ signalType, size = 'sm' }: SignalBadgeProps) {
   const type = signalType ?? 'INSUFFICIENT'
   const { label, bg, color } = BADGE_CONFIG[type]
   const fontSize = size === 'sm' ? 'var(--font-size-badge)' : 'var(--font-size-caption)'
-  const marginRight = type === 'INSUFFICIENT' ? '15px' : 0
+  const marginRight = type === 'INSUFFICIENT' ? '20px' : 0
 
   return (
     <span
