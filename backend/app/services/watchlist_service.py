@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import logging
+import traceback
 from typing import Any
 
 from app.external.polygon_client import PolygonClient
 from app.models import Stock
 from app.repositories.stock_repository import StockRepository
+from app.repositories.system_log_repository import SystemLogRepository
 
 READY_BAR_THRESHOLD = 150
 SEARCH_LIMIT_MAX = 20
 SEARCH_LIMIT_DEFAULT = 10
 POLYGON_MATCH_LIMIT = 5
+
+logger = logging.getLogger(__name__)
 
 
 class APIError(Exception):
@@ -88,8 +93,34 @@ class WatchlistService:
         exchange = _extract_field(match, "primary_exchange")
 
         if existing and not existing.is_active:
-            return self.repo.reactivate(existing, name=name, exchange=exchange)
-        return self.repo.create(ticker=ticker, name=name, exchange=exchange)
+            stock = self.repo.reactivate(existing, name=name, exchange=exchange)
+        else:
+            stock = self.repo.create(ticker=ticker, name=name, exchange=exchange)
+
+        self._backfill_silently(stock)
+        return stock
+
+    def _backfill_silently(self, stock: Stock) -> None:
+        """Trigger 250-day backfill; failures are logged but do not fail the POST.
+
+        Deferred import avoids a cycle: DataRefreshService → SignalService →
+        (indirect) WatchlistService.APIError.
+        """
+        from app.services.data_refresh_service import DataRefreshService
+
+        try:
+            DataRefreshService(self.repo.db, self.polygon).backfill_stock(stock.id)
+        except Exception as exc:  # noqa: BLE001 — boundary
+            logger.warning("backfill failed for %s: %s", stock.ticker, exc)
+            try:
+                SystemLogRepository(self.repo.db).create(
+                    level="WARN",
+                    source="watchlist",
+                    message=f"{stock.ticker} backfill failed: {exc}",
+                    detail=traceback.format_exc(),
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
     def remove_stock(self, raw_ticker: str) -> str:
         ticker = raw_ticker.strip().upper()

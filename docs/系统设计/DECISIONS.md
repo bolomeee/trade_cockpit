@@ -326,3 +326,29 @@ last_modified_by: system-design
 **影响**：
 - F003-b 调度器将复用 `purge_old_logs()` 触发 SystemLog 定期清理
 - F003-c 前端如需展示 "保留 7 天" 文案，引用同一常量（通过 API 返回，不在前端硬编码）
+
+---
+
+## D024：F003-b APScheduler 3.x + 线程模型 + add_stock 内联 backfill
+
+**日期**：2026-04-17
+**决策**：
+- **调度器**：选用 APScheduler **3.11**（`apscheduler>=3.10,<4`），而非 4.x。
+  - 4.x（4.0.0a6）仍是 alpha，API 未稳定；3.x 生态成熟、BackgroundScheduler 同步线程模型简单。
+- **Job Store**：默认 MemoryJobStore。进程重启后重新 add_job，cron 配置来自代码常量无需持久化。
+- **刷新任务线程模型**：
+  - `RefreshJobManager` 为模块级单例，`threading.Lock` 保护状态；`start_refresh` 在 in_progress 时幂等返回。
+  - worker 跑在 daemon `Thread`，通过 `session_factory`（`Callable[[], Session]`）打开自己的 Session —— SQLAlchemy Session 非线程安全，绝不跨线程复用请求 Session。
+- **add_stock backfill**：**内联同步**调用（阻塞 POST /api/watchlist ~1–3s）。
+  - MVP 阶段不引入额外异步队列；失败用 WARN 记 SystemLog，不把主流程带挂。
+- **测试隔离**：通过 `MA150_DISABLE_SCHEDULER=1` env 在 conftest 中关闭调度器启动；新增 `get_session_factory` 依赖以便 TestClient 将 worker session 指向内存 SQLite。
+- **Cron 表达式**：`30 21 * * 1-5`（UTC，周一至周五 21:30）—— 美股收盘后 30–90 分钟窗口。
+
+**放弃了什么**：
+- APScheduler 4.x 的 async API（等稳定再评估）
+- Celery/RQ 之类的队列后端（MVP 单实例、单用户，不值得）
+- add_stock 异步 backfill（会引入"股票已添加但还没数据"的 UI 临时态，复杂度不划算）
+
+**影响**：
+- F003-c 前端刷新按钮只需 poll `GET /api/data/status`；不用也不该自己维护进度。
+- 生产部署必须由 uvicorn 启动 FastAPI（lifespan 触发 `start_scheduler`），而不是 gunicorn 多 worker（会启动多个 scheduler 重复触发）；多 worker 场景需改用 `MA150_DISABLE_SCHEDULER=1` + 独立调度进程。

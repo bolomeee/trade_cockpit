@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Generator
 from typing import Any
 
 import pytest
+
+os.environ.setdefault("MA150_DISABLE_SCHEDULER", "1")
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import get_db
-from app.dependencies import get_polygon_client
+from app.dependencies import get_polygon_client, get_session_factory
 from app.main import app
 from app.models import Base
 
@@ -78,6 +81,7 @@ def client(session_engine, mock_polygon) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_polygon_client] = lambda: mock_polygon
+    app.dependency_overrides[get_session_factory] = lambda: TestingSession
 
     try:
         with TestClient(app) as c:
@@ -85,3 +89,4 @@ def client(session_engine, mock_polygon) -> Generator[TestClient, None, None]:
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_polygon_client, None)
+        app.dependency_overrides.pop(get_session_factory, None)

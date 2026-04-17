@@ -1,11 +1,32 @@
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.routers import signals, stocks, watchlist
+from app.database import SessionLocal
+from app.external.polygon_client import PolygonClient
+from app.routers import data, signals, stocks, watchlist
+from app.services.refresh_job import shutdown_scheduler, start_scheduler
 from app.services.watchlist_service import APIError
 
-app = FastAPI(title="MA150 Tracker API", version="0.1.0")
+
+def _polygon_factory() -> PolygonClient:
+    return PolygonClient()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if os.getenv("MA150_DISABLE_SCHEDULER") != "1":
+        start_scheduler(SessionLocal, _polygon_factory)
+    try:
+        yield
+    finally:
+        shutdown_scheduler()
+
+
+app = FastAPI(title="MA150 Tracker API", version="0.1.0", lifespan=lifespan)
 
 
 @app.exception_handler(APIError)
@@ -40,3 +61,4 @@ def health() -> dict[str, str]:
 app.include_router(watchlist.router)
 app.include_router(stocks.router)
 app.include_router(signals.router)
+app.include_router(data.router)

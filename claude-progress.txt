@@ -594,3 +594,38 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F003-a 后 → 开始 F003-b（API + APScheduler）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 续] Sprint：F003-b 刷新 API + 调度器 + add_stock backfill 钩子
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - POST /api/data/refresh（202 + 幂等 in_progress）+ GET /api/data/status（camelCase）
+  - RefreshJobManager：模块级单例 + threading.Lock，worker daemon 线程自建 Session
+  - APScheduler 3.11 BackgroundScheduler，weekday 21:30 UTC cron
+  - WatchlistService.add_stock 新股票后内联 backfill 250d，失败记 WARN SystemLog
+  - get_session_factory 依赖注入，测试 override 到内存 SQLite
+  - MA150_DISABLE_SCHEDULER=1 env 门闸，测试环境不启动调度器
+  - 单元+集成测试：10/10 通过；全量回归 108/108 通过
+  - Evaluator 自检清单全部通过
+  - DECISIONS.md 追加 D024（APScheduler 3.x 选型 + 线程模型 + 内联 backfill 决策）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - backend/pyproject.toml：+ apscheduler>=3.10,<4
+  - 新增：app/services/refresh_job.py, app/schemas/data.py, app/routers/data.py, tests/test_data_api.py
+  - 修改：app/main.py (lifespan + scheduler), app/dependencies.py (+ get_session_factory),
+         app/services/watchlist_service.py (+ _backfill_silently), tests/conftest.py
+
+📊 功能状态：
+  F001 自选股管理：✅ done
+  F002 信号识别：✅ done
+  F003-a 数据刷新核心：✅ done
+  F003-b 刷新 API + 调度：🔍 needs_review
+  F003-c 前端刷新按钮：⬜ ready_to_dev（下一步）
+
+[下一个 Session]
+  用户验收 F003-b → 进入 F003-c：前端 TopNav Refresh Data 按钮 + /api/data/status 轮询
