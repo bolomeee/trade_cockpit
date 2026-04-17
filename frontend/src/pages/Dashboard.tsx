@@ -74,6 +74,18 @@ export default function Dashboard() {
       </div>
 
       <div style={{ width: '158px', flexShrink: 0 }}>
+        <h2
+          aria-hidden
+          style={{
+            fontSize: 'var(--font-size-title)',
+            fontWeight: 'var(--font-weight-bold)',
+            margin: 0,
+            marginBottom: 'var(--spacing-4)',
+            visibility: 'hidden',
+          }}
+        >
+          &nbsp;
+        </h2>
         <AddStockCard />
       </div>
 
