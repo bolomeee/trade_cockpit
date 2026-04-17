@@ -426,3 +426,30 @@ last_modified_by: system-design
 - SPX / NDX 每次刷新消耗 1 个 rate token（共用 5/分钟桶），加上 TNX httpx 1 个 + 每只股票 1 个，整体 refresh 在 10 只 watchlist + 3 市场指标约消耗 13 token，>12s 窗口需要分批，现有 token bucket 已处理。
 
 **API 参考来源**：context7 `/massive-com/client-python` + https://massive.com/docs（2026-04-17），非训练数据。
+
+
+---
+
+## D028：F007-c 引入 react-hook-form + zod + shadcn Select/Label
+**时间**：2026-04-17（F007-c Sprint 期间）
+**背景**：Journal 新建/编辑 Dialog 表单 9 字段，含数字/日期/枚举/文本；需可测试的字段级校验 + 编辑模式预填。
+
+**决策**：
+- 引入 `react-hook-form@^7`、`zod@^3`、`@hookform/resolvers@^5` 三个依赖（pnpm -F frontend add）
+- 用 `zodResolver(schema)` 统一类型推导与运行时校验
+- 引入 shadcn `select` 与 `label` 基础组件（通过 shadcn CLI），用 `Controller` 包 Select 接入 RHF
+- 校验策略：ticker/action/price/date 必填；price/position/stopLoss/targetPrice 数字 > 0；reason/reference 可选文本
+
+**放弃了什么**：
+- 手写 useState + validator：字段多且需 edit 模式 reset + 字段级错误展示，手写成本高且易错
+- yup / joi：Zod 更强的 TS 推导一次到位
+
+**影响**：
+- `frontend/package.json` 新增三个运行时依赖
+- FilterCard（F007-b）暂保留原生 select（见 design-spec 偏离块），本 Sprint **不回退**替换，避免 F007-c 超文件数；留给后续样式统一阶段
+- `+New Entry` / `Edit` 按钮从 F007-b 的 disabled 状态解锁
+
+**API 参考来源**：
+- context7 `/react-hook-form/resolvers`（2026-04-17，zodResolver 用法与 TS 推导）
+- context7 `/shadcn-ui/ui`（2026-04-17，Select+Controller 用法与 Label 规范）
+- 非训练数据。

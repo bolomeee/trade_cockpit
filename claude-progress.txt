@@ -904,3 +904,28 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   准备开发 F007-c（新建/编辑 Dialog + 引入 react-hook-form + zod + shadcn select/label）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 22:30] Sprint：F007-c 交易日志 — 新建/编辑 Dialog
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 引入 react-hook-form 7.72 + zod 4.3 + @hookform/resolvers 5.2；shadcn select/label（CLI 生成）
+  - JournalEntryForm.tsx：9 字段 + zodResolver + Controller 接 shadcn Select；WATCH 禁用 Position；nullable 数值字段 setValueAs → null
+  - JournalEntryDialog.tsx：mode=new/edit 容器；POST/PUT via react-query mutation；成功 invalidate['journal'] 并关闭；失败 ApiError.message 渲染到 Footer
+  - Journal.tsx：解锁 + New Entry，行 Edit 按钮触发 Dialog（mode + entry state）
+  - preview 验证：新建 201、编辑 prefill、422 "ticker not in watchlist" 红字、WATCH disable、字段级 required/positive 校验、Cancel 关闭
+  - pnpm build 通过，无 TS 错误
+
+🔧 系统变更：
+  - DECISIONS.md D028：引入 react-hook-form/zod/@hookform/resolvers（context7 2026-04-17 验证）
+  - frontend/package.json 新增 3 依赖
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：🔍 needs_review
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F007-c；通过后进入 F007-d（Dashboard JournalQuickAddCard）

@@ -2,16 +2,23 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteJournal, getJournal } from '@/lib/api/journal'
 import { getWatchlist } from '@/lib/api/watchlist'
-import type { JournalFilter } from '@/types/journal'
+import type { JournalEntry, JournalFilter } from '@/types/journal'
 import { JournalTable } from '@/components/features/journal/JournalTable'
 import { JournalFilterCard } from '@/components/features/journal/JournalFilterCard'
+import { JournalEntryDialog } from '@/components/features/journal/JournalEntryDialog'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
 
+type DialogState =
+  | { open: false }
+  | { open: true; mode: 'new'; entry: null }
+  | { open: true; mode: 'edit'; entry: JournalEntry }
+
 export default function Journal() {
   const qc = useQueryClient()
   const [filter, setFilter] = useState<JournalFilter>({})
+  const [dialog, setDialog] = useState<DialogState>({ open: false })
 
   const journalQuery = useQuery({
     queryKey: ['journal'],
@@ -68,8 +75,7 @@ export default function Journal() {
         </h1>
         <button
           type="button"
-          disabled
-          title="Coming in F007-c"
+          onClick={() => setDialog({ open: true, mode: 'new', entry: null })}
           style={{
             padding: '8px 16px',
             borderRadius: 'var(--radius-button)',
@@ -77,8 +83,7 @@ export default function Journal() {
             background: 'var(--color-text-primary)',
             color: 'var(--color-text-on-dark)',
             fontSize: 'var(--font-size-body)',
-            cursor: 'not-allowed',
-            opacity: 0.5,
+            cursor: 'pointer',
           }}
         >
           + New Entry
@@ -118,9 +123,19 @@ export default function Journal() {
       {journalQuery.isSuccess && filteredEntries.length > 0 && (
         <JournalTable
           entries={filteredEntries}
+          onEdit={(entry) => setDialog({ open: true, mode: 'edit', entry })}
           onDelete={(id) => deleteMutation.mutate(id)}
         />
       )}
+
+      <JournalEntryDialog
+        open={dialog.open}
+        onOpenChange={(next) => {
+          if (!next) setDialog({ open: false })
+        }}
+        mode={dialog.open ? dialog.mode : 'new'}
+        entry={dialog.open && dialog.mode === 'edit' ? dialog.entry : null}
+      />
     </div>
   )
 }
