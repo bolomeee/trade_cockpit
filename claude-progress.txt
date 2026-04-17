@@ -432,3 +432,42 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一步]
   进入 F001-c Sprint Contract 协商（Frontend AddStock/搜索/删除交互）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F001-c] Sprint：F001-c Frontend AddStock 搜索 + 删除交互
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - AddStockCard：Input + Enter 触发搜索 + Popover 结果下拉 + POST mutation（DUPLICATE/NOT_FOUND 错误内联提示）
+  - SignalCard：hover 显示 Trash2 + AlertDialog 二次确认 + DELETE mutation + stopPropagation
+  - Dashboard sidebar 接入 AddStockCard
+  - lib/api/stocks.ts（新）searchStocks
+  - lib/api/watchlist.ts addStock/removeStock
+  - lib/api/client.ts 扩展 ApiError（code/status）
+  - types/stocks.ts StockSearchItem / WatchlistCreatedItem
+  - shadcn CLI 安装 popover + command + alert-dialog + input（副产品 7 文件）
+  - design-spec.md §Dashboard 交互段追加 F001-c 偏离说明
+  - DECISIONS.md 追加 D019（搜索交互偏离）+ D020（shadcn 依赖引入）
+  - pnpm build 零 TS 错误 | F001-c 文件零 lint 问题 | console 无 error
+  - Evaluator 17 条标准全部手验通过
+  - phase → needs_review
+
+⚠️ 待你验收（以下交互请人工复核）：
+  - 搜索下拉各项：loading 态、错误态、重试按钮（停后端 + 重试）
+  - AlertDialog 取消按钮（点"取消"卡片保留）
+  - Trash2 图标 hover 显示/移出隐藏动画
+
+🔧 系统变更：
+  - 新增 6 业务文件 + 修改 client.ts（ApiError 扩展）
+  - shadcn CLI 安装 7 个 ui/* 文件
+  - docs/设计/design-spec.md 偏离回写
+  - docs/系统设计/DECISIONS.md +D019 +D020
+
+📊 功能状态：
+  F001-a Backend：✅ done
+  F001-b Frontend 读取：✅ done
+  F001-c Frontend 交互：🔍 needs_review（等用户验收）
+  F001（父）：in_progress → 等 c 验收后整体 done
+
+[下一个 Session]
+  用户验收 F001-c 后：F001 父级 phase → done，开始 F002 150MA 信号引擎（ready_to_dev）

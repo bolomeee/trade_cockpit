@@ -235,3 +235,28 @@ last_modified_by: system-design
 **原因**：`pnpm dev` 开发时浏览器在 5173 端口，直接调用 `/api/*` 会 404；需要 Vite 代理转发到后端 8000
 **放弃了什么**：无（Docker 全栈模式通过 nginx 代理，两者互不影响）
 **影响**：仅 dev 环境生效；prod（Docker）走 nginx 代理，配置不变
+
+## D019：Watchlist 搜索统一走下拉（偏离 design-spec）
+
+**日期**：2026-04-17（F001-c Sprint Contract 协商时用户确认）
+**决策**：Add Stock 搜索不做"唯一结果自动 POST"分支，全部走 Popover 下拉选择；搜索由 Enter 键触发，而非 debounce 实时。
+**原因**：
+- 交互一致性：避免"同一 ticker 两次查询得到不同行为"（一次唯一直接添加、一次多条需点击）
+- Enter 触发减少 Polygon API 调用次数（5/min rate limit 下敏感）
+**放弃了什么**：design-spec.md L104-L107 描述的"结果唯一直接 POST"分支；debounce 实时搜索 UX
+**影响**：design-spec.md 相应段落已追加偏离说明；实际实现 = `AddStockCard.tsx`
+
+## D020：引入 shadcn/ui command + popover + alert-dialog
+
+**日期**：2026-04-17（F001-c Sprint Contract 协商时用户批准）
+**决策**：
+- `popover` + 自定义结果列表 → 实现 AddStockCard 搜索下拉（未使用 Command 的内部 filter，因为搜索完全由后端完成）
+- `alert-dialog` → 实现 SignalCard 删除二次确认
+- 配套依赖 `input` / `dialog` / `textarea` / `input-group` / `command` 由 shadcn CLI 连带安装（未全部使用，但不删以保持 shadcn 一致性）
+**版本**：shadcn registry radix-nova style
+**API 参考来源**：Context7 文档（/shadcn-ui/ui）
+**原因**：
+- Popover 的 anchor / portal / 键盘焦点管理由 radix 处理，避免手写
+- AlertDialog 的焦点陷阱 / ESC 关闭 / 无障碍语义开箱即用
+**放弃了什么**：手写下拉 / 手写 Dialog（ROI 低）
+**影响**：`frontend/src/components/ui/` 新增 7 个文件（shadcn CLI 副产品，业务核心 6 文件未变）

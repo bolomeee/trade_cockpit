@@ -105,6 +105,19 @@ Dashboard (/)
   - 如果输入为空：按钮禁用
   - 调用 `GET /api/stocks/search?q=TICKER` → 结果唯一则直接 `POST /api/watchlist`；否则展示搜索结果下拉（`GET /api/stocks/search` 返回数组，UI 沿用同一 Card 扩展）
   - 搜索无匹配：Alert 提示 "未找到匹配的股票"
+
+> ⚠️ 实现偏离（2026-04-17，F001-c 开发期间）
+> 原始设计：输入框后有 "Add to Watchlist" 按钮；结果唯一直接 POST，多个则下拉选择。
+> 实际实现：
+>   - 取消独立按钮，改为 Input + Enter 键触发搜索。
+>   - 全部走 Popover 下拉选择（包括唯一结果），不做"唯一结果自动 POST"分支。
+>   - 搜索无结果时在 Popover 内显示文案，不再弹出独立 Alert。
+>   - SignalCard 增加 hover 显示的 Trash2 删除按钮 + AlertDialog 二次确认（design-spec 未画，MVP 补全）。
+> 原因：
+>   1. Enter 触发减少 Polygon API 调用次数（付费 rate-limited）。
+>   2. 交互一致性优先，避免"同一 ticker 两次查询得到不同行为"。
+>   3. 二次确认防误删，Sidebar 窄，没空间展示独立"确认删除"UI。
+> 决策：D019 / D020（DECISIONS.md）
 - **点击 Trade Journal "+ Add Entry"**：
   - 必填校验 Ticker + Action + Price；成功调用 `POST /api/journal`；成功后清空表单，不弹 toast（MVP 简化）
   - ⚠️ Dashboard Widget 是"快捷表单"，仅含 ticker/action/price。完整字段（止损/目标/原因/参考）需要跳去 `/journal` 的 New Entry Dialog 录入

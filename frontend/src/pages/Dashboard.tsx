@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getWatchlist } from '@/lib/api/watchlist'
 import { SignalBoard } from '@/components/features/dashboard/SignalBoard'
+import { AddStockCard } from '@/components/features/dashboard/AddStockCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -44,8 +45,9 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Sidebar — F001-c / F007 will fill this */}
-      <div style={{ width: '158px', flexShrink: 0 }} />
+      <div style={{ width: '158px', flexShrink: 0 }}>
+        <AddStockCard />
+      </div>
     </div>
   )
 }
