@@ -5,6 +5,7 @@ import { Loader2, Trash2 } from 'lucide-react'
 import type { WatchlistItem } from '@/types/watchlist'
 import { SignalBadge } from './SignalBadge'
 import { removeStock } from '@/lib/api/watchlist'
+import { ApiError } from '@/lib/api/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +36,13 @@ export function SignalCard({ stock, onClick }: SignalCardProps) {
       setDialogOpen(false)
       setDeleteError(null)
     },
-    onError: () => {
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === 'NOT_FOUND') {
+        queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+        setDialogOpen(false)
+        setDeleteError(null)
+        return
+      }
       setDeleteError('删除失败，请重试')
     },
   })
