@@ -805,3 +805,24 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
   用户验收 F005-c 通过后：
   - 更新 F005（父）phase = done
   - 触发 F006 大盘概览 或 F007 Trade Journal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F006-a 后端数据层 + Polygon 扩展
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - PolygonClient：新增 get_index_recent_aggs（I: 前缀，list_aggs）、get_treasury_10y_latest（httpx 直连 /fed/v1/treasury-yields）
+  - MarketIndexRepository：upsert / list_latest_by_symbol / prune_to_window(5)
+  - MarketRefreshService：SPX/NDX/TNX 逐个刷新，per-symbol 失败隔离，OK/ERROR SystemLog
+  - refresh_job：股票刷新完毕后挂接 market refresh，market 异常不标记 job failed
+  - 单元+集成测试：10/10 通过
+  - 全量回归：128/128 通过
+  - DECISIONS：追加 D026（TNX httpx 直连）、D027（指数 I: 前缀）
+
+📊 功能状态：
+  F006-a 后端数据层：🔍 needs_review（testing 通过，待用户验收）
+  F006-b API 路由：⬜ 未开始
+  F006-c 前端 Bar：⬜ 未开始
+
+[下一个 Session]
+  用户验收 F006-a → 进入 F006-b Sprint Contract 协商

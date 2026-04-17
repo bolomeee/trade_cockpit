@@ -380,3 +380,49 @@ last_modified_by: system-design
 - 前端 bundle 增加 ~50KB gzip（lightweight-charts 核心），在 MVP 可接受。
 
 **API 参考来源**：context7 `/tradingview/lightweight-charts`（2026-04-17 查询），非训练数据。
+
+
+---
+
+## D026：TNX 数据源走 httpx 直连 Polygon Treasury Yields 端点
+**时间**：2026-04-17（F006-a Sprint 期间）
+**背景**：MarketIndex.TNX（10 年期美债）数据源。最初 D007 标注"Polygon Economy API (Treasury Yields)"，但 F006-a 开发时发现当前使用的 `massive` Python 客户端（polygon-api-client 的兼容 fork）**未封装** `/fed/v1/treasury-yields` 端点。
+
+**决策**：
+- 在 `PolygonClient` 内增加 `get_treasury_10y_latest()`：用 `httpx.Client` 直接 GET `https://api.polygon.io/fed/v1/treasury-yields?limit=2&sort=date.desc&apiKey=...`，取 `results[0]` 为最新、`results[1]` 为前一日。
+- 响应字段名权威：`date`（YYYY-MM-DD）、`yield_10_year`（number），来源：https://massive.com/docs/rest/economy/treasury-yields。
+- 鉴权走 `apiKey` query param（Polygon 标准），与 SDK 共用 `settings.polygon_api_key`。
+- httpx.Client 作为 `PolygonClient.__init__` 的可选注入参数，测试用 `httpx.MockTransport` 直接 stub，无需第三方 mock 库。
+- 共享同一个令牌桶 `_acquire()`：httpx 调用也计入 5 次/分钟限额，防止混合调用突破 Polygon rate limit。
+
+**放弃了什么**：
+- **FRED API（DGS10）**：免费稳定但需引入第二个外部源 + 新环境变量 + 更新 DATA-MODEL 数据来源脚注。本次选择保持"所有数据走 Polygon 一家"的架构简洁性。
+- **mock TNX**：与 SPX/NDX 真实数据不一致，且 MVP 设计稿就要求显示真实涨跌。
+- 等 massive SDK 官方封装：不可控时间线。
+
+**影响**：
+- `backend/pyproject.toml` httpx>=0.27（已有，F005 引入时已加）。
+- `PolygonClient` 多一个内部 httpx.Client 实例；生命周期与客户端一致。
+- 若 Polygon 订阅不含 Economy API，此端点会 403；已在 `MarketRefreshService._refresh_one` 的 per-symbol try/except 内隔离，SystemLog ERROR 记录但不影响 SPX/NDX。
+
+**API 参考来源**：https://massive.com/docs/rest/economy/treasury-yields（WebFetch 于 2026-04-17 验证），非训练数据。
+
+---
+
+## D027：指数 symbol 用 `I:` 前缀经 aggregates 端点获取
+**时间**：2026-04-17（F006-a Sprint 期间）
+**背景**：SPX / NDX 指数数据。Polygon 的 indices 与 stock aggregates 共用同一端点，通过 symbol 前缀区分：`I:SPX` / `I:NDX` / `I:DJI`。massive SDK 没有专用 `get_index_*` 方法。
+
+**决策**：
+- `PolygonClient.get_index_recent_aggs(symbol, days=10)`：对外暴露裸 symbol（"SPX"），内部拼接 `I:` 前缀传给 `list_aggs`。不选用 `get_previous_close_agg`，因为它只返回 T-1 一天，算不出 change_pct。
+- `days=10` 日历日约覆盖 7 交易日（含 2 周末 + 可能的节假日），确保至少能取到 T-1 和 T-2；取 list 排序后最后两根为 latest/prev。
+- 返回 list 原样，`symbol` 前缀逻辑不泄漏到 service 层。
+
+**放弃了什么**：
+- `get_previous_close_agg`：返回单日，change_pct 需另取一日，多一个 rate-limit token，不如一次 list_aggs 划算。
+- 硬编码两次调用拼接 latest + prev：当 T-1 是节假日时会失败。
+
+**影响**：
+- SPX / NDX 每次刷新消耗 1 个 rate token（共用 5/分钟桶），加上 TNX httpx 1 个 + 每只股票 1 个，整体 refresh 在 10 只 watchlist + 3 市场指标约消耗 13 token，>12s 窗口需要分批，现有 token bucket 已处理。
+
+**API 参考来源**：context7 `/massive-com/client-python` + https://massive.com/docs（2026-04-17），非训练数据。

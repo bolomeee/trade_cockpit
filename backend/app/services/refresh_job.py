@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.external.polygon_client import PolygonClient
 from app.repositories.stock_repository import StockRepository
 from app.services.data_refresh_service import DataRefreshService
+from app.services.market_refresh_service import MarketRefreshService
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +124,16 @@ class RefreshJobManager:
     ) -> None:
         try:
             with _session_scope(session_factory) as db:
-                service = DataRefreshService(db, polygon=polygon_factory())
+                polygon = polygon_factory()
+                service = DataRefreshService(db, polygon=polygon)
                 batch = service.refresh_all(stock_ids)
                 service.purge_old_logs()
+                # F006: refresh market indices after stocks. Isolated: a market
+                # failure must not mark the overall job failed.
+                try:
+                    MarketRefreshService(db, polygon=polygon).refresh_all()
+                except Exception:  # noqa: BLE001
+                    logger.error("market refresh failed\n%s", traceback.format_exc())
 
             with self._lock:
                 self._state.status = "completed"
