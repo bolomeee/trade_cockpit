@@ -35,9 +35,26 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 'var(--spacing-6)', padding: 'var(--spacing-8) var(--spacing-6)' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 'var(--spacing-6)',
+        padding: 'var(--spacing-8) var(--spacing-6)',
+        maxWidth: '1053px',
+        marginInline: 'auto',
+        alignItems: 'flex-start',
+      }}
+    >
       <div style={{ flex: 1, maxWidth: '871px' }}>
-        <h2 style={{ fontSize: 'var(--font-size-title)', fontWeight: 'var(--font-weight-bold)', color: 'var(--color-text-primary)', marginBottom: 'var(--spacing-4)' }}>
+        <h2
+          style={{
+            fontSize: 'var(--font-size-title)',
+            fontWeight: 'var(--font-weight-bold)',
+            color: 'var(--color-text-primary)',
+            margin: 0,
+            marginBottom: 'var(--spacing-4)',
+          }}
+        >
           SignalBoard
         </h2>
 
