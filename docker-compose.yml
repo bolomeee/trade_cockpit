@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=sqlite:////app/data/prod.db
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+    volumes:
+      - ./backend/data:/app/data
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

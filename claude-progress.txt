@@ -189,3 +189,44 @@ _pipeline_status 更新：ui_design → done
 
 [下一个 Session]
   用户亲自验收 F000-b（pnpm dev 启动 + 浏览器访问 3 路由），通过后 → phase: done → 进入 F000-c Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-c Docker Compose + Polygon Client
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend Dockerfile（python:3.12-slim + uv 0.5.11，启动时 alembic upgrade head）
+  - frontend Dockerfile（node:20-alpine 多阶段 → nginx:alpine）
+  - nginx.conf：/api/* 反代到 backend:8000；SPA fallback to index.html；静态资源 30d 缓存
+  - docker-compose.yml：frontend 8080:80，backend 仅内部 expose，volume ./backend/data:/app/data
+  - backend/app/external/polygon_client.py：封装 massive 2.5.0（Polygon.io 官方改名后包）
+    · Token bucket rate limit：容量 5，60s 窗口，12s/token，threading.Lock 并发安全
+    · 依赖注入 time_source + sleep → 单测可用假时钟
+    · 三方法：search_tickers / get_previous_close / get_daily_aggs
+  - tests/test_polygon_client.py：8 用例（missing key×2 + 方法转发×3 + rate limit×3）
+  - Evaluator 通过：
+    · docker compose build ✅
+    · docker compose up -d 两容器 running ✅
+    · curl localhost:8080/ = 200 (SPA) ✅
+    · curl localhost:8080/api/health = 200 {"status":"ok"} ✅
+    · SPA fallback /journal = 200 ✅
+    · alembic 自动迁移 + uvicorn 启动 ✅
+    · volume 持久化：restart backend 后 prod.db 保留 ✅
+    · pytest 19/19（新增 8 polygon + 原 11 回归）✅
+    · .env gitignored（git check-ignore 通过）✅
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D013（massive 包选型）、D014（token bucket rate limit）
+  - backend/pyproject.toml + massive>=2.5.0；uv.lock 自动更新
+  - 新建根目录 .env.example（POLYGON_API_KEY 占位）、.env（真实 key，gitignored）
+  - features.json F000-c phase → needs_review
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：🔍 needs_review
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户亲自验收 F000-c（docker compose up -d 并浏览器访问 localhost:8080 + /api/health），通过后 → phase: done → 脚手架三件套全部收尾，进入 F001 Watchlist 管理 Sprint Contract 协商

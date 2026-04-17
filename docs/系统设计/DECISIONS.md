@@ -154,3 +154,34 @@ last_modified_by: system-design
 - React 19 的 StrictMode / Suspense 行为与 18 有差异，开发时需注意（特别是 useEffect 双调用 + Action hooks）
 - 后续 feature 开发若遇到库不兼容 React 19，单独评估
 **用户批准**：2026-04-17 显式确认（选 A）
+
+## D013：Polygon 客户端采用 `massive` 包（而非 `polygon-api-client`）
+
+**日期**：2026-04-17（F000-c）
+**决策**：后端 Polygon.io 客户端采用 PyPI 包 `massive>=2.5.0`（`from massive import RESTClient`），放弃 `polygon-api-client`
+**原因**：
+- `massive` 2.5.x 是 Polygon.io 官方改名后的包（PyPI summary：“Official Massive (formerly Polygon.io) REST and Websocket client”），版本号已超过 polygon-api-client（2.5.0 vs 1.16.3），新品牌是长期维护方向
+- API 表面与 polygon-api-client 完全一致（`list_tickers` / `get_previous_close_agg` / `list_aggs`），迁移无成本
+- CLAUDE.md 的 Context7 library ID `/massive-com/client-python` 即指该包
+**放弃了什么**：
+- `polygon-api-client` 更成熟的历史讨论生态（Stack Overflow / GitHub issues 命中率更高）
+**影响**：
+- 环境变量仍保留 `POLYGON_API_KEY`（不跟随品牌改名为 `MASSIVE_API_KEY`），`PolygonClient` 手动读取后显式传入 `RESTClient(api_key=...)`，避免跨项目/文档迁移成本
+- 若将来 `polygon-api-client` 彻底停止维护或 `massive` API breaking change，单独评估
+**API 参考来源**：Context7 `/massive-com/client-python` + PyPI 元数据（已验证）
+
+## D014：Polygon Rate Limit 使用线程安全 Token Bucket（5 / 60s）
+
+**日期**：2026-04-17（F000-c）
+**决策**：`PolygonClient._acquire()` 采用 token bucket：容量 5，每 12 秒补 1 个 token，用 `threading.Lock` 保证并发安全，无 token 时 `time.sleep()` 阻塞等待
+**原因**：
+- Polygon Stocks Basic tier 硬限制 5 次/分钟，超限返回 429
+- token bucket 支持突发（瞬时 5 连发）同时长期不超限，比等间隔节流更贴合数据刷新场景（F003 批量拉 watchlist 时）
+- 同步阻塞（非 async）是因为 APScheduler EOD 任务跑在同步线程，FastAPI 请求处理是少量（用户手动刷新），简化实现优先
+- 时间源和 sleep 函数通过构造函数依赖注入（`_time_source` / `_sleep`），单元测试用假时钟精确断言，无 flaky `time.sleep`
+**放弃了什么**：
+- async 版本（`asyncio.sleep`）；异步场景到 F003 再评估
+- 429 响应自动重试（Polygon SDK 自行抛异常，上层 `SystemLog` 记录即可）
+**影响**：
+- `services/data_service.py`（F003）批量调用直接 `polygon_client.get_daily_aggs(...)`，rate limit 透明
+- 若将来升级到高阶 tier（unlimited），把 `RATE_CAPACITY` 改大或去掉 `_acquire()` 即可
