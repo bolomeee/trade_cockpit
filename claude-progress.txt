@@ -250,3 +250,44 @@ _pipeline_status 更新：ui_design → done
 [下一个 Session]
   进入 F001 Watchlist 管理 Sprint Contract 协商
   （首个真正的业务 feature；依赖 Figma + API-CONTRACT + DATA-MODEL）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint Contract 协商：F001 → 拆分为 a/b/c，F001-a Contract 已确认
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 读取 DATA-MODEL/API-CONTRACT/design-spec/component-plan 的 F001 相关段
+  - 扫描代码库：F001 整体 ~22 核心文件，严重超 6 文件上限
+  - 用户批准拆分并授权例外：
+    · F001-a Backend watchlist + search API（7 核心 + 3 bookkeeping）
+    · F001-b Frontend watchlist 读取展示（10 核心 + 3 shadcn）
+    · F001-c Frontend AddStock/search/delete 交互（5-6 文件）
+  - F001-a Contract 起草并用户确认：
+    · 4 REST 端点：GET/POST/DELETE /api/watchlist + GET /api/stocks/search
+    · dataStatus 从 daily_bars 计数派生（0=loading / 1–149=insufficient / ≥150=ready）
+    · latestSignal F001-a 为 null，F002 后填充
+    · POST 用 PolygonClient.search_tickers 精确匹配校验
+    · 软删除恢复：POST 命中 is_active=false → 翻回 true + 更新 added_at
+    · 18 测试用例（T1-T17 集成 + T18 全量回归）
+  - features.json F001 phase → contract_agreed，subtasks 字段登记 a/b/c
+  - Contract 落盘：docs/开发/sprint-contracts/F001-a-contract.md
+
+⚠️ 中断：用户要求切新 session，Generator 尚未开始
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：✅ done
+  F001 Watchlist 管理：📝 contract_agreed（拆分 a/b/c）
+    F001-a Backend API：📝 contract_agreed
+    F001-b Frontend 读取：⬜ ready_to_dev
+    F001-c Frontend 交互：⬜ ready_to_dev
+
+[下一个 Session]
+  进入 F001-a Generator 模式，按开发顺序 Step 3→7：
+    Step 3 数据库迁移：无 schema 变更（Stock/DailyBar 已在 F000-a 创建），跳过
+    Step 4 Repository：stock_repository.py
+    Step 5 Service：watchlist_service.py（含 Polygon 调用）
+    Step 6 Router：watchlist.py + stocks.py + main.py mount
+    Step 7 测试：conftest.py 追加 in-memory DB + mock Polygon，tests/test_watchlist_api.py 18 用例
+    然后 Evaluator → needs_review → 验收

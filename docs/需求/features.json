@@ -180,11 +180,16 @@
       "description": "用户可以管理自选股列表：搜索美股代码/名称添加股票，删除不再关注的股票，查看当前 watchlist",
       "user_story": "作为美股投资者，我想管理我关注的股票列表，这样我只看到我在意的标的",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
-      "dependencies": [],
-      "estimated_sessions": 2,
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "dependencies": ["F000-c"],
+      "estimated_sessions": 3,
       "estimated_files_changed": [],
+      "subtasks": {
+        "F001-a": { "scope": "Backend watchlist + search API", "phase": "contract_agreed" },
+        "F001-b": { "scope": "Frontend watchlist 读取展示 + empty/error", "phase": "ready_to_dev" },
+        "F001-c": { "scope": "Frontend AddStock/search/delete 交互", "phase": "ready_to_dev" }
+      },
       "scope": {
         "pages": ["Dashboard / (Add Stock 快捷表单)"],
         "api_endpoints": [

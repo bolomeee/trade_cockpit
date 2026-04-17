@@ -1,126 +1,178 @@
 # SESSION-HANDOFF.md
 
 > 生成时间：2026-04-17
-> 当前 Skill：feature-dev（空档，待进入 F000-c）
-> 当前 Feature：F000-b 已验收通过，下一个是 **F000-c Docker Compose + Polygon Client**
+> 当前 Skill：feature-dev（F001-a Contract 已确认，尚未进入 Generator）
+> 当前 Feature：**F001-a Backend Watchlist + Stock Search API**（contract_agreed）
 
 ---
 
 ## 本 Session 完成的内容
 
-### F000-b 前端脚手架 + 路由基座（✅ done · completed_at=2026-04-17）
+### F000-c Docker Compose + Polygon Client（✅ done，commit `0764e10` + `93cba6f`）
 
-- Sprint Contract 协商完成并确认（`docs/开发/sprint-contracts/F000-b-contract.md`）
-- Context7 查询 Tailwind v4 + shadcn/ui 最新集成方式
-- Generator：
-  - `pnpm create vite@latest` 脚手架（默认给出 React 19.2 / Vite 8.0 / TS 6.0，与 ARCHITECTURE 原 18/6/5 不符 → 用户选 A 接受升级 → D012）
-  - Tailwind v4 `@tailwindcss/vite` 插件 + CSS `@import "tailwindcss"`（无 tailwind.config.ts → D011）
-  - shadcn/ui `init -b radix -p nova --yes` + `add button`
-  - react-router-dom v7，3 路由（/ · /journal · /logs）空页面
-  - `@/` 路径别名（Vite resolve.alias + tsconfig paths，TS 6 下不再需要 baseUrl）
-  - tokens.css 从项目根 `src/styles/` 移入 `frontend/src/styles/`，项目根 src/ 清理
-- Evaluator 自检全部通过：
-  - `pnpm install` / `pnpm build`（tsc -b + vite build）/ `pnpm dev` HTTP 200 on 三路由
-  - Claude Preview 视觉验证：h1 正确、Tailwind red 生效、`var(--color-signal-breakout)` = rgb(41,98,255)、shadcn Button 黑底白字 rounded-lg、客户端路由切换正确
-  - console 无 warn/error
-- 用户亲自验收通过（本条消息触发）
-- commit：`f745e61 feat(F000-b): 前端脚手架 + 路由基座`
+- Sprint Contract 协商并确认
+- Context7 `/massive-com/client-python` 查询 → PyPI 验证 `massive` 2.5.0 是 Polygon.io 官方改名后包（见 D013）
+- 实施：
+  - `backend/app/external/polygon_client.py`：封装 `massive.RESTClient` + 线程安全 token bucket（5/60s，12s/token）
+  - 三方法：`search_tickers` / `get_previous_close` / `get_daily_aggs`
+  - `backend/tests/test_polygon_client.py`：8 用例（missing key×2 + 方法转发×3 + rate limit×3）
+  - `backend/Dockerfile`：python:3.12-slim + uv 0.5.11，启动时 `alembic upgrade head`
+  - `frontend/Dockerfile`：node:20-alpine 多阶段 → nginx:alpine
+  - `frontend/nginx.conf`：`/api/*` 反代 `backend:8000`，SPA fallback
+  - `docker-compose.yml`：frontend `8080:80`（本机 80 占用），backend 内部 expose
+  - 根 `.env.example` + `.env`（gitignored）
+- Evaluator 全绿：build + up 成功 · nginx 反代生效 · volume 持久化验证 · pytest 19/19 · `.env` 未泄露
+- 用户亲自验收通过，验收记录追加至 `docs/验收/v1.0-acceptance.md`
+- DECISIONS.md 追加 D013（massive 包选型）、D014（token bucket rate limit）
 
-### 流程侧更新
+### F001 Sprint Contract 协商（本 Session 收尾）
 
-- DECISIONS.md 追加 D011（Tailwind v4 集成方式）、D012（React 19 / Vite 8 / TS 6 版本升级）
-- ARCHITECTURE.md 前端版本表同步更新（React 18→19 / Vite 6→8 / TS 5→6），剔除 `tailwind.config.ts`，加 `components.json`
-- .claude/launch.json 配置前端 preview 启动命令
-- features.json F000-b phase → done, completed_at = 2026-04-17
-- claude-progress.txt 已追加 Sprint 日志
+- 读 DATA-MODEL / API-CONTRACT / design-spec / component-plan 的 F001 相关段
+- 扫描代码库：F001 整体 ~22 核心文件 → 严重超 6 文件
+- 用户批准拆分 a/b/c，授权例外：
+  - **F001-a Backend**（7 核心，申请例外 +1）
+  - **F001-b Frontend 读取**（10 核心，申请例外 +4）
+  - **F001-c Frontend 交互**（5-6 文件）
+- F001-a Sprint Contract 起草并用户确认
+- Contract 落盘：`docs/开发/sprint-contracts/F001-a-contract.md`
+- features.json：F001 phase → `contract_agreed`，新增 `subtasks` 字段登记 a/b/c
 
 ---
 
 ## 中断位置
 
-无中断。F000-b 已完全收尾并 commit，phase: done。当前处于 Sprint 之间的空档，等待进入 F000-c Sprint Contract 协商。
+**F001-a Generator 尚未开始**。Contract 已确认，代码未动。
 
 ---
 
-## Sprint Contract 执行状态
+## Sprint Contract 执行状态（F001-a）
 
-- **F000-a**：全部 ✅（commit `ef1b873`）
-- **F000-b**：全部 ✅（commit `f745e61`）
-- **F000-c**：尚未开始，Contract 未起草
+| # | 开发步骤 | 状态 |
+|---|---------|------|
+| 1 | DATA-MODEL 检查 | ✅ 无需变更（Stock 已在 F000-a 建表） |
+| 2 | API-CONTRACT 检查 | ✅ 4 端点均已定义 |
+| 3 | 数据库迁移 | ⏭️ 跳过（无 schema 变更） |
+| 4 | Repository 层 | 🔄 **中断点 / 立即执行** |
+| 5 | Service 层 | ⬜ 未开始 |
+| 6 | Router 层 | ⬜ 未开始 |
+| 7 | 测试 | ⬜ 未开始 |
 
 ---
 
-## 已创建/修改的文件（F000-b）
+## F001-a 关键技术约定（从 Contract 摘要，新 Session 立即可用）
 
-### 新增
-- `frontend/`（完整 Vite 脚手架）
-  - `package.json` · `pnpm-lock.yaml` · `vite.config.ts`
-  - `tsconfig.json` · `tsconfig.app.json` · `tsconfig.node.json`
-  - `index.html` · `components.json` · `.gitignore` · `eslint.config.js` · `README.md`
-  - `public/favicon.svg` · `public/icons.svg`
-  - `src/main.tsx` · `src/App.tsx` · `src/index.css`
-  - `src/pages/{Dashboard,Journal,Logs}.tsx`
-  - `src/components/ui/button.tsx`（shadcn 生成）
-  - `src/lib/utils.ts`（shadcn `cn()`）
-  - `src/styles/tokens.css`（从根迁入）
-- `docs/开发/sprint-contracts/F000-b-contract.md`
-- `.claude/launch.json`
+### 范围
+- 仅后端，4 端点：`GET/POST/DELETE /api/watchlist` + `GET /api/stocks/search`
+
+### 排除
+- ❌ 历史数据拉取（F003）
+- ❌ 信号计算（F002）
+- ❌ 所有前端代码（F001-b/c）
+
+### dataStatus 派生规则（POST 响应 + GET 列表）
+| bar_count | dataStatus |
+|-----------|------------|
+| 0 | `"loading"` |
+| 1–149 | `"insufficient"` |
+| ≥150 | `"ready"` |
+
+### latestSignal（GET list）
+F001-a 始终返回 `null`（F002 后填充）。
+
+### Ticker 规范化
+入参大小写不敏感，DB 存大写，API 返回大写。
+
+### 软删除恢复语义
+- POST 命中 `is_active=true` ticker → 409 DUPLICATE
+- POST 命中 `is_active=false` ticker → 翻回 true + 更新 `added_at` → 201
+- POST 新 ticker → Polygon 精确匹配校验 → 201 或 404/502
+- DELETE → set `is_active=false`，不存在返回 404
+
+### Polygon 校验（POST）
+调用 `PolygonClient().search_tickers(ticker_upper, limit=5)`，找 `ticker == ticker_upper` 精确匹配；未命中 404；抛异常 502。
+
+### 统一响应格式
+- 成功：`{"data": ..., "message": "success"}`
+- 失败：`{"error": {"code": "...", "message": "..."}}`
+- 错误码：`VALIDATION_ERROR` 422 / `DUPLICATE` 409 / `NOT_FOUND` 404 / `EXTERNAL_API_ERROR` 502
+
+### 字段命名
+- DB 蛇形（DATA-MODEL 权威）
+- API JSON 驼峰：`addedAt` / `lastRefreshedAt` / `dataStatus` / `latestSignal`
+- Pydantic `alias_generator=to_camel, populate_by_name=True`
+
+### 测试隔离（conftest.py 追加）
+- `session_engine` fixture：in-memory SQLite + `Base.metadata.create_all()`
+- `app.dependency_overrides[get_db]` → 该 session
+- `mock_polygon` fixture：可编程的 fake PolygonClient，通过 `app.dependency_overrides` 注入
+
+---
+
+## 预计修改文件（F001-a，7 核心 + 3 bookkeeping）
+
+### 新建
+- `backend/app/schemas/__init__.py`（空）
+- `backend/app/schemas/watchlist.py` — Pydantic models
+- `backend/app/repositories/__init__.py`（空）
+- `backend/app/repositories/stock_repository.py`
+- `backend/app/services/__init__.py`（空）
+- `backend/app/services/watchlist_service.py`
+- `backend/app/routers/__init__.py`（空）
+- `backend/app/routers/watchlist.py`
+- `backend/app/routers/stocks.py`
+- `backend/tests/test_watchlist_api.py`
 
 ### 修改
-- `docs/系统设计/ARCHITECTURE.md`（版本表 + 目录结构 + frontmatter）
-- `docs/系统设计/DECISIONS.md`（追加 D011 / D012）
-- `docs/需求/features.json`（F000-b phase done）
-- `claude-progress.txt`
-
-### 删除
-- `src/` 项目根目录（连带 `src/styles/tokens.css` 迁出）
+- `backend/app/main.py` — mount 2 routers
+- `backend/tests/conftest.py` — in-memory DB + dependency overrides + mock Polygon
 
 ---
 
-## 遗留决策（需要用户回答）
+## 测试目标（F001-a 完成标准）
 
-无。所有 F000-b 相关决策已记录到 DECISIONS.md。F000-c 的 Contract 协商将在新 Session 开始时进行。
+18 用例：17 集成 + 1 全量回归（pytest ≥ 36/36，含 F000-a 的 11 + F000-c 的 8 + F001-a 的 17）
 
----
-
-## F000-c 预览（新 Session 第一步）
-
-- **Feature**：F000-c Docker Compose + Polygon Client
-- **依赖**：F000-a ✅ · F000-b ✅
-- **范围**（见 features.json#F000-c 验收标准）：
-  - docker-compose 一键启动前后端
-  - 前后端 Dockerfile
-  - nginx 反向代理（/api/* → backend）
-  - Polygon.io Python 客户端封装（含 5 次/分钟 rate limit）
-  - rate limit 单元测试
-- **超 6 文件可能性**：Dockerfile×2 + compose + nginx + polygon client + test + (.dockerignore×2) ≈ 7-8 文件，仍在 D010 脚手架豁免范围内
-- **必查 Context7**（CLAUDE.md 强制）：
-  - Polygon.io Python Client：`/massive-com/client-python`
-- **环境变量**：`POLYGON_API_KEY` 需你提供（生产可后补，测试用 mock）
+T1–T17 涵盖：空库 / 新增 / 大小写 / 冲突 / 软删除恢复 / Polygon 未命中 / Polygon 异常 / 字段缺失 / 聚合字段 / dataStatus 三档 / 删除 / 大小写删除 / 不存在删除 / 搜索 / 搜索缺 q / 搜索 limit 裁剪 / 搜索异常
 
 ---
 
-## 下一个 Session 继续的指令
+## 遗留决策
+
+无。F001-a Contract 中所有决策已与用户确认：
+- ✅ dataStatus 派生规则（0/1-149/150+）
+- ✅ latestSignal=null（UI 兜底）
+- ✅ 文件例外（7 核心 +1）
+
+---
+
+## 下一个 Session 继续指令
 
 ```
 我回来了，请按顺序读取：
 1. SESSION-HANDOFF.md（本文件）
 2. CLAUDE.md
-3. docs/需求/features.json（确认 F000-b done / F000-c ready_to_dev）
-4. claude-progress.txt（最后 50 行）
-5. docs/系统设计/ARCHITECTURE.md#Docker 部分（若有）
-6. docs/系统设计/DECISIONS.md 最近 3 条（D010-D012）
+3. docs/开发/sprint-contracts/F001-a-contract.md（F001-a 完整合同）
+4. docs/需求/features.json（F001 subtasks 状态）
+5. docs/系统设计/DATA-MODEL.md#stock
+6. docs/系统设计/API-CONTRACT.md#watchlist + #stock-search（48-190 行）
+7. claude-progress.txt 最后 30 行
 
-然后确认项目状态，直接进入"准备开发 F000-c"——
-feature-dev skill 的 Sprint Contract 协商阶段。
+然后直接进入 feature-dev Generator（类型 E2 开发恢复）：
+从 Step 4 Repository 层开始，顺序实现 Repository → Service → Router → main.py mount → conftest 增强 → test_watchlist_api.py 18 用例 → Evaluator → commit。
 ```
 
 ---
 
 ## 环境快照
 
-- git branch：`main` · 最新 commit：`f745e61`（本 handoff commit 之前）
-- 工作树干净，仅差此 handoff 文件和 features.json 的 F000-b phase → done 变更
-- backend/ 可运行：`cd backend && uv run uvicorn app.main:app`
-- frontend/ 可运行：`cd frontend && pnpm dev` (http://localhost:5173)
-- docker-compose、Polygon client 尚不存在，F000-c 新建
+- git branch：`main` · 最新 commit：`93cba6f`（F000-c 验收归档）
+- 工作树状态：
+  - `docs/需求/features.json` 已 modify（F001 subtasks）
+  - `docs/开发/sprint-contracts/F001-a-contract.md` 新文件
+  - `claude-progress.txt` 已 modify
+  - 本 handoff 文件
+  - **以上都将在本 Session 暂停前一并 commit**
+- backend 可运行：`cd backend && uv run uvicorn app.main:app`
+- frontend 可运行：`cd frontend && pnpm dev`（localhost:5173）
+- docker 全栈可运行：`docker compose up -d`（localhost:8080）
+- Polygon API key 已配置于项目根 `.env`（gitignored）
