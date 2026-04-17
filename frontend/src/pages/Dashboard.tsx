@@ -4,6 +4,7 @@ import { getSignals } from '@/lib/api/signals'
 import type { SignalBoardItem } from '@/types/signal'
 import { SignalBoard } from '@/components/features/dashboard/SignalBoard'
 import { AddStockCard } from '@/components/features/dashboard/AddStockCard'
+import { JournalQuickAddCard } from '@/components/features/dashboard/JournalQuickAddCard'
 import { StockDetailModal } from '@/components/features/stock-detail/StockDetailModal'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
@@ -87,6 +88,7 @@ export default function Dashboard() {
           &nbsp;
         </h2>
         <AddStockCard />
+        <JournalQuickAddCard />
       </div>
 
       <StockDetailModal stock={selected} open={modalOpen} onOpenChange={setModalOpen} />

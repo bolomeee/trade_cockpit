@@ -726,8 +726,8 @@
       "description": "JournalEntryDialog + JournalEntryForm（react-hook-form + zod 校验），接入 /journal 的 New/Edit 入口",
       "user_story": "作为美股投资者，我想通过 Dialog 录入完整字段的交易记录（新建和编辑）",
       "priority": "P0",
-      "status": "needs_review",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F007-b"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -759,7 +759,7 @@
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
       "notes": "引入新依赖 react-hook-form + zod，需走新依赖流程 + DECISIONS 记录",
-      "completed_at": "2026-04-17"
+      "completed_at": "2026-04-18"
     },
     {
       "id": "F007-d",
@@ -767,8 +767,8 @@
       "description": "Dashboard 右侧 JournalQuickAddCard（3 字段：ticker / action / price）+ 挂载",
       "user_story": "作为美股投资者，我想在 Dashboard 直接快捷记录一条最简交易",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F007-c"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -794,7 +794,7 @@
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
       "notes": "对应 PRD 验收条款『Dashboard Trade Journal Widget』，按 design-spec 简化为 3 字段快捷表单",
-      "completed_at": null
+      "completed_at": "2026-04-18"
     },
     {
       "id": "F008",

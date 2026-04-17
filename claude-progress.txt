@@ -929,3 +929,102 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F007-c；通过后进入 F007-d（Dashboard JournalQuickAddCard）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] F007-c 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收 F007-c 合格
+  - commit 8373a54（RHF+zod + shadcn select/label + Dialog 新建/编辑）
+  - preview 11/11 交互通过；pnpm build 零 TS 错误
+  - features.json：F007-c phase → done, completed_at = 2026-04-18
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：✅ done
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev（下一步）
+  F007（父）：in_progress（等 d 完成整体归档）
+
+[下一个 Session]
+  起草 F007-d Sprint Contract（JournalQuickAddCard + Dashboard 挂载）
+  协商要点：
+    1. ticker 不在 watchlist 时的行为（一键加入 vs 直接 422）
+    2. 复用 JournalEntryForm 收缩版 vs 独立 3 字段小表单
+    3. Action 默认值（BUY/WATCH/空）
+    4. 是否加 toast（需 shadcn add sonner）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] Sprint：F007-d Dashboard JournalQuickAddCard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 frontend/src/components/features/dashboard/JournalQuickAddCard.tsx
+    · 3 字段（Ticker/Action/Price）useState 受控（sidebar 158px，3 字段不上 RHF）
+    · Action 默认 BUY；其余可选字段固定传 null（positionSize/stopLoss/targetPrice/reason/reference）
+    · date 自动取 today ISO
+    · canSubmit 规则：ticker 非空 + price>0 且为数字 + !mutation.isPending
+    · onSuccess：清空 + action 回 BUY + invalidate ['journal']
+    · onError：ApiError.message 渲染为按钮上方红字（沿用 F007-c 风格）
+  - 修改 Dashboard.tsx：import + 在 AddStockCard 下方挂载
+  - preview 验证：
+    · 初始态 3 字段空 → Submit disabled ✅
+    · 填 AAPL + 180.50 → Submit enabled ✅
+    · 点 Submit → POST /api/journal 201 Created ✅
+    · 自动触发 GET /api/journal?limit=200 refetch（invalidate 生效）✅
+    · Reload 后默认值回到 BUY + disabled 态 ✅
+  - pnpm build 零 TS 错误（703KB gzip 218KB，chunk size 警告为既有）
+  - 协商 4 要点全部落地：
+    · ticker 不在 watchlist → 后端 422 内联错误，不做一键加入
+    · 独立 3 字段 useState 小表单，不复用 9 字段 Form
+    · Action 默认 BUY
+    · 不加 toast（成功清空 + invalidate 即反馈）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新：frontend/src/components/features/dashboard/JournalQuickAddCard.tsx
+  - 改：frontend/src/pages/Dashboard.tsx
+  - 无新依赖；无 DECISIONS 追加（无新技术决策）
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：✅ done
+  F007-d Dashboard QuickAdd：🔍 needs_review
+  F007（父）：in_progress → 等 d 验收整体归档
+
+[下一个 Session]
+  用户验收 F007-d（手测 3 字段交互 + 422 ticker 不在 watchlist 红字）
+  通过后 F007 整体 done，剩 F008 系统日志页面进入 MVP 收官
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] F007-d 验收通过 → F007 父级整体 done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收 F007-d 合格
+  - 截图确认：OXY/ADD/65 提交后正确渲染错误文案（后端 502，ApiError.message 渲染路径工作）
+  - features.json：F007-d phase/status → done, completed_at = 2026-04-18
+  - F007 交易日志（父级 a+b+c+d）：✅ 整体 done
+
+📊 P0 MVP 进度：7/8
+  F001 Watchlist：✅ done
+  F002 信号引擎：✅ done
+  F003 数据调度：✅ done
+  F004 SignalBoard：✅ done
+  F005 个股详情 Modal：✅ done
+  F006 大盘概览：✅ done
+  F007 交易日志 Journal：✅ done（a/b/c/d 全部 done）
+  F008 系统日志页面：⬜ ready_to_dev（MVP 收官）
+
+⚠️ 已知遗留（非阻塞，可后续修）：
+  - QuickAdd 基础设施错误（5xx/网络）直显 "HTTP XXX"，不够友好
+    建议：client.ts 层统一把 5xx/网络错误 message 转成"服务不可用，请重试"
+    业务错误（422/404）保留后端文案
+
+[下一个 Session]
+  进入 F008 系统日志页面 Sprint Contract 协商（MVP 最后一个 feature）
+  范围参考：
+    - 页面 /logs 展示系统运行日志（数据同步/信号/调度）
+    - 按级别 toggle 过滤（ALL/OK/INFO/WARN/ERROR）
+    - 时间倒序
+  后端 API 已具备（F003-b SystemLogRepository.list_recent）
