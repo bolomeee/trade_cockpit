@@ -291,3 +291,100 @@ _pipeline_status 更新：ui_design → done
     Step 6 Router：watchlist.py + stocks.py + main.py mount
     Step 7 测试：conftest.py 追加 in-memory DB + mock Polygon，tests/test_watchlist_api.py 18 用例
     然后 Evaluator → needs_review → 验收
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F001-a Backend Watchlist + Stock Search API — needs_review
+
+实施（Step 4 → Step 7）：
+  Step 4 Repository
+    - backend/app/repositories/stock_repository.py（get_by_ticker / list_active / create / reactivate / soft_delete / count_bars）
+  Step 5 Schemas + Service
+    - backend/app/schemas/watchlist.py（CamelModel + ResponseEnvelope[T] + WatchlistItem/WatchlistCreatedItem/AddStockRequest/DeleteStockResponse/StockSearchItem）
+    - backend/app/services/watchlist_service.py（APIError + derive_data_status + WatchlistService）
+    - 常量抽出：READY_BAR_THRESHOLD=150 / SEARCH_LIMIT_MAX=20 / SEARCH_LIMIT_DEFAULT=10 / POLYGON_MATCH_LIMIT=5
+  Step 6 Router + main.py
+    - backend/app/dependencies.py（get_polygon_client / get_watchlist_service）
+    - backend/app/routers/watchlist.py（GET/POST/DELETE /api/watchlist）
+    - backend/app/routers/stocks.py（GET /api/stocks/search）
+    - backend/app/main.py 挂载 2 router + APIError & RequestValidationError exception handlers → 统一 {"error":{"code","message"}}
+  Step 7 测试
+    - tests/conftest.py：session_engine + db_session + mock_polygon (FakePolygon) + client fixture（dependency_overrides 注入 in-memory SQLite + FakePolygon）
+    - tests/test_watchlist_api.py：T1–T17（T10 parametrize ×3 → 19 test items）
+
+Evaluator 全绿：
+  pytest 38 passed in 0.29s
+    - test_health 1
+    - test_polygon_client 8
+    - test_schema 10
+    - test_watchlist_api 19（T1–T17，T10 含 loading/insufficient/ready 3 组）
+
+自检清单：
+  ✅ T1–T17 全部绿
+  ✅ API 响应驼峰（addedAt / dataStatus / latestSignal）
+  ✅ DB 字段蛇形
+  ✅ 错误响应统一 error.code + HTTP code
+  ✅ 无硬编码 magic value
+  ✅ 函数 ≤ 50 行；无死代码
+
+features.json：F001.subtasks.F001-a.phase → needs_review
+
+[下一步]
+  用户验收 F001-a → phase: done → 进入 F001-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a 手验发现 2 个基础设施 bug
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+用户 curl 手验 → 所有 /api/* 返回 {"detail":"Not Found"}
+
+Bug 1：容器跑旧镜像（F000-c 时构建，只有 /health）
+  修复：docker compose up -d --build backend
+  根因：backend Dockerfile COPY 代码进镜像（非 volume mount），代码改动需重建
+
+Bug 2：nginx proxy_pass 带末尾斜杠 → 剥掉 /api/ 前缀
+  现象：rebuild backend 后仍 404；docker exec 显示后端路由 /api/* 存在
+  根因：proxy_pass http://backend:8000/; 带斜杠 → /api/watchlist 转成 /watchlist
+  修复：frontend/nginx.conf 改为 proxy_pass http://backend:8000;（无斜杠）
+  rebuild frontend 后 GET /api/watchlist → {"data":[],"message":"success"} ✅
+  → DECISIONS D015
+
+Bug 3：Polygon 搜索触发 429 EXTERNAL_API_ERROR
+  现象：GET /api/stocks/search?q=AA → 429 from api.massive.com
+  根因：massive SDK 的 list_tickers(limit=N) 是每页大小，iterator 自动翻页
+        list(...) 消费所有匹配结果，每翻页一次 HTTP，token bucket 失效
+  修复：backend/app/external/polygon_client.py:search_tickers
+        用 itertools.islice(iterator, limit) 截取首页
+  rebuild backend + 等 cooldown → 返回 10 条 Alcoa + ETF ✅
+  → DECISIONS D016
+
+回归：pytest 38 passed（修复无回归）
+手验通过：
+  GET /api/watchlist → []
+  POST /api/watchlist {ticker:AAPL} → 201, Apple Inc./XNAS, dataStatus:loading
+  GET /api/stocks/search?q=AA → 10 条美股结果
+  GET /api/stocks/search (no q) → VALIDATION_ERROR（统一错误格式）
+
+F001-a 仍为 needs_review，等用户最终验收。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收合格
+  - pytest 38/38
+  - 三端点实货 Polygon 手验通过
+  - 统一响应格式 / 驼峰命名验证通过
+  - 2 个基础设施 bug 已修复并落 DECISIONS（D015 nginx、D016 islice）
+
+features.json：F001.subtasks.F001-a.phase → done（completed_at 2026-04-17）
+验收记录：docs/验收/v1.0-acceptance.md 追加 F001-a 段
+
+F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_progress）
+
+[下一步]
+  F001-b Sprint Contract 协商
+    范围：Frontend 读取展示（GET /api/watchlist 消费 + empty/error/loading 态 + dataStatus 可视化）
+    预计文件：~10 核心（已例外批准）
