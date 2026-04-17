@@ -1,0 +1,339 @@
+{
+  "_schema_version": "2.0",
+  "project": "MA150 Tracker",
+  "version": "1.0.0",
+  "last_updated": "2026-04-16",
+  "completion_rate": "0%",
+  "_pipeline_status": {
+    "requirements": "done",
+    "system_design": "done",
+    "ui_design": "not_started",
+    "development": "not_started",
+    "deployment": "not_started",
+    "current_iteration": "v1.0"
+  },
+  "_iteration_log": [
+    {
+      "version": "v1.0",
+      "date": "2026-04-16",
+      "features_snapshot": ["F001", "F002", "F003", "F004", "F005", "F006", "F007"],
+      "status": "in_progress"
+    }
+  ],
+  "_phase_legend": {
+    "design_needed": "等待 Figma 设计",
+    "ready_to_dev": "设计就绪，等待 Sprint Contract 协商",
+    "contract_agreed": "Sprint Contract 已确认，可以开发",
+    "in_progress": "开发中",
+    "testing": "Evaluator 测试门禁中",
+    "needs_review": "测试全通过，等待用户最终验收",
+    "done": "验收通过，归档",
+    "iteration_planned": "迭代已规划，等待评估下游影响",
+    "deprecated": "已废弃，保留审计痕迹"
+  },
+  "_priority_legend": {
+    "P0": "MVP 必须有",
+    "P1": "重要，尽快做",
+    "P2": "有更好，可延后"
+  },
+  "features": [
+    {
+      "id": "F001",
+      "name": "Watchlist 管理",
+      "description": "用户可以管理自选股列表：搜索美股代码/名称添加股票，删除不再关注的股票，查看当前 watchlist",
+      "user_story": "作为美股投资者，我想管理我关注的股票列表，这样我只看到我在意的标的",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": [],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["首页 / Dashboard /"],
+        "api_endpoints": [
+          "GET /api/watchlist",
+          "POST /api/watchlist",
+          "DELETE /api/watchlist/:ticker",
+          "GET /api/stocks/search?q="
+        ],
+        "db_tables": ["Stock"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#watchlist", "API-CONTRACT.md#stock-search"],
+        "data_model_refs": ["DATA-MODEL.md#stock"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "用户可以在搜索框输入股票代码或名称，看到与美股同步的搜索结果",
+        "搜索无结果时弹出 Alert 提示'未找到匹配的股票'",
+        "用户可以从搜索结果中选择并添加股票到 watchlist",
+        "添加后系统自动拉取该股票过去 250 个交易日的历史日线数据并计算 150MA 信号",
+        "数据不足 150 个交易日的股票仍可添加，信号显示'数据不足'",
+        "用户可以从 watchlist 中删除股票",
+        "首页 Dashboard 显示所有已添加的股票及其当前信号状态",
+        "首次使用 watchlist 为空时，首页显示引导提示'添加你的第一只股票'"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "",
+      "completed_at": null
+    },
+    {
+      "id": "F002",
+      "name": "150MA 信号引擎",
+      "description": "基于日线数据计算每只股票的 150 日均线信号：BUY_ZONE（斜率正+价距0–5%）、BREAKOUT（斜率正+向上穿越）、NEUTRAL（其余）。使用 20 日线性回归斜率判定均线方向，仅斜率为正时产生买入信号。自动识别历史回踩记录",
+      "user_story": "作为美股投资者，我想让系统自动计算 150MA 信号，这样我不用手动逐只检查",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": [],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /api/signals",
+          "GET /api/signals/:ticker"
+        ],
+        "db_tables": ["DailyBar", "Signal", "Pullback"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#signals"],
+        "data_model_refs": ["DATA-MODEL.md#daily-bar", "DATA-MODEL.md#signal", "DATA-MODEL.md#pullback"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "系统正确计算 150 日简单移动平均线",
+        "系统对最近 20 个交易日的 MA150 值做线性回归，斜率 > 0 判定为正、≤ 0 判定为负",
+        "均线斜率为正且收盘价在 MA150 上方 0–5% 以内（含等于 MA）时，信号为 BUY_ZONE。价距% = (close - MA150) / MA150 × 100%",
+        "均线斜率为正且收盘价从前一交易日低于 MA150 变为当日高于或等于 MA150 时，信号为 BREAKOUT",
+        "同时满足 BUY_ZONE 和 BREAKOUT 条件时，取 BREAKOUT（穿越事件优先）",
+        "不满足以上条件时信号为 NEUTRAL（包括斜率为负、价格远离 MA、价格在 MA 下方）",
+        "当信号从非 BUY_ZONE 变为 BUY_ZONE 时记录为一次回踩事件，连续 BUY_ZONE 期间不重复记录",
+        "回踩事件记录触及日期、价距、后续 10/20/30 日涨幅"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "信号判定优先级：BREAKOUT > BUY_ZONE > NEUTRAL",
+      "completed_at": null
+    },
+    {
+      "id": "F003",
+      "name": "数据获取与调度",
+      "description": "通过 Polygon.io API 拉取 EOD 日线数据，支持每日自动调度和用户手动触发刷新，遵守 5次/分钟的 rate limit",
+      "user_story": "作为美股投资者，我想让数据每天自动更新，也能手动刷新，这样我总能看到最新信号",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F001"],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["首页 /（刷新按钮）"],
+        "api_endpoints": [
+          "POST /api/data/refresh",
+          "GET /api/data/status"
+        ],
+        "db_tables": ["DailyBar"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#data-refresh", "API-CONTRACT.md#system-logs"],
+        "data_model_refs": ["DATA-MODEL.md#daily-bar", "DATA-MODEL.md#system-log"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "用户点击手动刷新按钮后，系统拉取所有 watchlist 股票的最新 EOD 数据",
+        "刷新过程中显示进度状态，不超过 60s（30只股票）",
+        "API 调用遵守 Polygon.io 5次/分钟的 rate limit",
+        "每日自动调度在美股收盘后执行数据更新",
+        "新添加的股票自动拉取过去 250 个交易日的历史日线数据",
+        "每日增量更新：添加最新交易日数据、删除最早交易日数据，始终保持 250 天窗口",
+        "API 调用失败或异常时，在首页系统日志区域展示错误信息，记录时间和详情"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Polygon.io Stocks Basic tier，需考虑 rate limiting 策略",
+      "completed_at": null
+    },
+    {
+      "id": "F004",
+      "name": "信号总览 SignalBoard",
+      "description": "在首页展示所有自选股的当前 150MA 信号状态，按信号优先级排序（BREAKOUT/BUY_ZONE 等买入信号在前），信号类型用颜色区分",
+      "user_story": "作为美股投资者，我想一眼看到所有股票的信号状态，这样我能快速发现交易机会",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F001", "F002"],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["首页 /"],
+        "api_endpoints": [
+          "GET /api/signals"
+        ],
+        "db_tables": ["Signal"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#signals"],
+        "data_model_refs": ["DATA-MODEL.md#signal"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "首页 SignalBoard 展示所有 watchlist 股票及其当前信号类型",
+        "BREAKOUT / BUY_ZONE 等买入信号排在列表最前面",
+        "每种信号类型用不同的高饱和色彩标识（信号颜色是唯一高饱和色彩）",
+        "点击某只股票可跳转到个股详情页",
+        "移动端响应式布局，手机上可正常浏览"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "",
+      "completed_at": null
+    },
+    {
+      "id": "F005",
+      "name": "个股 150MA 详情页",
+      "description": "展示单只股票的 150MA 专项详情：K线图表（价格+150MA均线）、均线斜率、价距%、历史回踩记录（在K线图上标识）、基本面数据（PE/PS/PEG/FCF）",
+      "user_story": "作为美股投资者，我想查看个股的 150MA 详细分析，这样我能判断这次回踩的质量和值不值得买入",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F002", "F003"],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["个股详情 /stock/:ticker"],
+        "api_endpoints": [
+          "GET /api/signals/:ticker",
+          "GET /api/stocks/:ticker/pullbacks",
+          "GET /api/stocks/:ticker/chart",
+          "GET /api/stocks/:ticker/fundamentals"
+        ],
+        "db_tables": ["Signal", "Pullback", "DailyBar"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#signals", "API-CONTRACT.md#stock-detail"],
+        "data_model_refs": ["DATA-MODEL.md#signal", "DATA-MODEL.md#pullback", "DATA-MODEL.md#daily-bar"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "详情页显示 K 线图表，包含价格走势和 150MA 均线",
+        "K 线图上标识历史回踩事件（价格从上方回落触及 MA150 附近的位置）",
+        "显示当前均线斜率（20 日线性回归斜率值及正/负状态）和价距百分比",
+        "展示历史回踩记录表：触及日期、价距、后续 10/20/30 日涨幅",
+        "展示基本面数据：市盈率(PE)、市销率(PS)、PEG、自由现金流(FCF)",
+        "移动端响应式，图表在手机上可正常查看"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "K线图表为 MVP 核心视觉组件，需选择合适的图表库",
+      "completed_at": null
+    },
+    {
+      "id": "F006",
+      "name": "大盘概览",
+      "description": "在首页展示大盘环境数据：标普500、纳斯达克指数涨跌、10年期美债利率，帮助用户判断市场整体环境",
+      "user_story": "作为美股投资者，我想快速了解大盘环境，这样我能判断当前是否适合操作",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F003"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["首页 /"],
+        "api_endpoints": [
+          "GET /api/market/overview"
+        ],
+        "db_tables": ["MarketIndex"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#market"],
+        "data_model_refs": ["DATA-MODEL.md#market-index"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "首页顶部展示标普500、纳斯达克的当日涨跌幅和收盘价",
+        "展示 10 年期美债利率当前值及涨跌",
+        "数据随 EOD 刷新自动更新"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "数据来源均为 Polygon.io Stocks Basic 订阅，已确认覆盖",
+      "completed_at": null
+    },
+    {
+      "id": "F007",
+      "name": "交易日志 Journal",
+      "description": "用户可以创建、查看、编辑交易决策记录，每条记录关联股票，包含操作类型（买/卖/加仓/减仓/观望）、价格、仓位大小（数字输入，加仓/减仓在当前仓位基础上调整）、止损位、目标价、买入原因和参考内容",
+      "user_story": "作为美股投资者，我想记录每次交易决策的完整上下文，这样我能复盘和提升交易质量",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F001"],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": ["交易日志 /journal"],
+        "api_endpoints": [
+          "GET /api/journal",
+          "POST /api/journal",
+          "PUT /api/journal/:id",
+          "DELETE /api/journal/:id"
+        ],
+        "db_tables": ["JournalEntry"],
+        "design_figma_link": ""
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#journal"],
+        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "用户可以新建交易记录，填写：股票代码、操作类型（买/卖/加仓/减仓/观望）、价格、日期",
+        "用户可以填写仓位大小（数字输入，加仓/减仓时在当前仓位基础上调整）、止损位、目标价",
+        "用户可以填写买入原因（文本）和参考内容（大文本框，支持多行）",
+        "Journal 列表页按日期倒序展示所有记录",
+        "用户可以编辑和删除已有记录"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "",
+      "completed_at": null
+    }
+  ]
+}

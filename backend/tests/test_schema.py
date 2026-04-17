@@ -1,0 +1,104 @@
+"""Verify Alembic migration produces the schema defined in DATA-MODEL.md."""
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, inspect
+
+
+EXPECTED_TABLES = {
+    "stocks",
+    "daily_bars",
+    "signals",
+    "pullbacks",
+    "market_indices",
+    "system_logs",
+    "journal_entries",
+}
+
+EXPECTED_COLUMNS: dict[str, set[str]] = {
+    "stocks": {"id", "ticker", "name", "exchange", "is_active", "added_at", "last_refreshed_at"},
+    "daily_bars": {"id", "stock_id", "date", "open", "high", "low", "close", "volume"},
+    "signals": {
+        "id", "stock_id", "date", "signal_type", "ma150_value",
+        "close_price", "distance_pct", "slope_positive", "slope_value",
+    },
+    "pullbacks": {
+        "id", "stock_id", "date", "close_price", "ma150_value",
+        "distance_pct", "return_10d", "return_20d", "return_30d",
+    },
+    "market_indices": {"id", "symbol", "name", "date", "close", "prev_close", "change_pct"},
+    "system_logs": {"id", "level", "source", "message", "detail", "created_at"},
+    "journal_entries": {
+        "id", "stock_id", "action", "price", "date", "position_size",
+        "stop_loss", "target_price", "reason", "reference", "created_at", "updated_at",
+    },
+}
+
+
+@pytest.fixture
+def migrated_engine():
+    backend_root = Path(__file__).resolve().parent.parent
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "test.db"
+        url = f"sqlite:///{db_path}"
+
+        cfg = Config(str(backend_root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_root / "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+
+        command.upgrade(cfg, "head")
+        engine = create_engine(url)
+        try:
+            yield engine
+        finally:
+            engine.dispose()
+
+
+def test_all_tables_created(migrated_engine) -> None:
+    inspector = inspect(migrated_engine)
+    tables = set(inspector.get_table_names()) - {"alembic_version"}
+    assert tables == EXPECTED_TABLES
+
+
+@pytest.mark.parametrize("table,expected", sorted(EXPECTED_COLUMNS.items()))
+def test_columns_match_data_model(migrated_engine, table: str, expected: set[str]) -> None:
+    inspector = inspect(migrated_engine)
+    actual = {col["name"] for col in inspector.get_columns(table)}
+    assert actual == expected, f"{table}: expected {expected}, got {actual}"
+
+
+def test_unique_constraints(migrated_engine) -> None:
+    inspector = inspect(migrated_engine)
+    # stocks.ticker unique
+    stock_uniques = inspector.get_unique_constraints("stocks")
+    assert any("ticker" in uc["column_names"] for uc in stock_uniques) or any(
+        idx["unique"] and idx["column_names"] == ["ticker"]
+        for idx in inspector.get_indexes("stocks")
+    )
+    # daily_bars composite unique
+    db_uniques = inspector.get_unique_constraints("daily_bars")
+    assert any(set(uc["column_names"]) == {"stock_id", "date"} for uc in db_uniques)
+
+
+def test_downgrade_removes_all_tables() -> None:
+    backend_root = Path(__file__).resolve().parent.parent
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "test.db"
+        url = f"sqlite:///{db_path}"
+        cfg = Config(str(backend_root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_root / "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+        command.upgrade(cfg, "head")
+        command.downgrade(cfg, "base")
+        engine = create_engine(url)
+        try:
+            inspector = inspect(engine)
+            remaining = set(inspector.get_table_names()) - {"alembic_version"}
+            assert remaining == set()
+        finally:
+            engine.dispose()

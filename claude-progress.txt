@@ -1,0 +1,144 @@
+=== PROJECT PROGRESS LOG ===
+项目：MA150 Tracker | 初始化：2026-04-16
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-16] Pipeline 阶段 0：项目初始化完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - 生成 PRD.md（已用户确认）
+  - 生成 features.json（共 7 个 feature）
+  - 生成 CLAUDE.md（40行以内）
+  - 创建项目目录结构
+
+📊 功能状态：
+  F001 Watchlist 管理         — phase: design_needed
+  F002 150MA 信号引擎         — phase: design_needed
+  F003 数据获取与调度          — phase: design_needed
+  F004 信号总览 SignalBoard    — phase: design_needed
+  F005 个股 150MA 详情页       — phase: design_needed
+  F006 大盘概览               — phase: design_needed
+  F007 交易日志 Journal        — phase: design_needed
+
+_pipeline_status 更新：requirements → done
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-16] Pipeline 阶段 1：系统设计完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - ARCHITECTURE.md（技术栈、系统边界、依赖层级、目录结构、Widget 化架构）
+  - DATA-MODEL.md（7 个实体：Stock/DailyBar/Signal/Pullback/MarketIndex/SystemLog/JournalEntry）
+  - API-CONTRACT.md（17 个端点，全局约定 + 标准错误码）
+  - DECISIONS.md（7 条技术决策记录）
+  - features.json contract 引用已填充
+
+📐 关键技术决策：
+  D001 图表库：lightweight-charts (TradingView)
+  D002 基本面数据：MVP 用 mock，后续接入 Massive API
+  D003 部署：前后端分离双容器 (Nginx + FastAPI)
+  D004 ORM：SQLAlchemy 2.0 + Alembic
+  D005 调度：APScheduler（进程内）
+  D006 信号模型：3+1 种 (BREAKOUT/BUY_ZONE/NEUTRAL/INSUFFICIENT)
+  D007 大盘数据：Polygon Indices + Economy API
+
+_pipeline_status 更新：system_design → done
+
+[下一步]
+  可以开始 UI 设计（design-bridge 或 Figma）
+  ⚠️ 设计时图层命名参照 DATA-MODEL.md 字段名
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 设计变更 → 上游文档同步
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  用户完成 Figma UI 设计后，发现 4 处结构性变更需要同步回上游文档：
+
+  变更 1：Stock Detail 改为纯前端 Modal（不改变 URL，无独立路由）
+  变更 2：新增系统日志页面 /logs（独立 Feature F008）
+  变更 3：Dashboard 右侧新增 Add Stock 快捷表单 + Trade Journal 完整表单 Widget
+  变更 4：SystemLog level 枚举新增 OK 级别
+
+  已更新的文档（5 份）：
+  - docs/需求/PRD.md — §3 功能范围、§4 用户旅程、§5 页面清单、§6 数据实体
+  - docs/系统设计/DATA-MODEL.md — SystemLog level 枚举增加 OK
+  - docs/系统设计/API-CONTRACT.md — GET /api/logs 归属 F008，level 参数含 OK
+  - docs/系统设计/ARCHITECTURE.md — 前端目录结构（pages/ widgets/ 调整）
+  - docs/需求/features.json — F001/F004/F005/F007 更新 + 新增 F008
+
+📊 功能状态（8 个 feature）：
+  F001 Watchlist 管理         — phase: design_needed
+  F002 150MA 信号引擎         — phase: design_needed
+  F003 数据获取与调度          — phase: design_needed
+  F004 信号总览 SignalBoard    — phase: design_needed
+  F005 个股 150MA 详情 Modal   — phase: design_needed
+  F006 大盘概览               — phase: design_needed
+  F007 交易日志 Journal        — phase: design_needed
+  F008 系统日志页面            — phase: design_needed (新增)
+
+[下一步]
+  触发 design-bridge skill，需准备：Figma 文件链接 + Tokens/Variables 导出
+  design-bridge 将生成：design-spec.md / component-plan.md / data-mapping.md / tokens.css
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Pipeline 阶段 2：设计衔接完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - docs/设计/figma-links.md — 3 个 Figma 文件索引（stock_portal / trade_journal / system_logs）
+  - src/styles/tokens.css — 从 tokens.json 机械转换，覆盖颜色/字体/间距/圆角/阴影
+    · 语义色：signal-* × 4、action-* × 5、log-* × 4、change-* × 2
+  - docs/设计/design-spec.md — 3 页 × 4 种状态（正常/空/加载/错误），含全局 TopNav + MarketOverviewBar、
+    组件层级树、动态字段前缀标注、响应式断点（md 768 / lg 1024）、Icon 映射
+  - docs/设计/component-plan.md — 已适配 Vite SPA（无 Server Components）：
+    · 第 1 节 3 页区块拆解
+    · 第 2 节 组件清单（ui/ shadcn、features/ 业务、pages/）
+    · 第 3 节 组件边界（21 个业务组件 props 契约）
+    · 第 4 节 数据获取职责划分 + react-query 缓存策略（staleTime 建议）
+  - docs/设计/data-mapping.md — 完整 Figma 图层 → API 字段映射（3 页 + Modal），内嵌：
+    · Step 7a data-mapping ↔ DATA-MODEL（✅ 全量字段 + 枚举通过）
+    · Step 7b data-mapping ↔ API-CONTRACT（✅ 15 个接口全覆盖）
+    · Step 7c tokens.json ↔ DATA-MODEL 枚举色彩（✅ 15 组枚举 100% 对齐）
+  - docs/需求/features.json — 8 个 P0 feature 全部 phase: design_needed → ready_to_dev，
+    design_figma_link 已填充对应 Figma URL
+
+⚠️ 待处理（design-bridge 已记录，不阻塞）：
+  - 部分"空/加载/错误"状态无独立 Figma 设计稿，已在 design-spec.md 标注默认原则
+  - Fundamentals 字段 MVP 仍为 mock（D002），source:"mock" 徽章已在 data-mapping 中描述
+
+📊 功能状态（8 个 feature）：
+  F001–F008 — phase: ready_to_dev（全部设计就绪，等待 Sprint Contract）
+
+_pipeline_status 更新：ui_design → done
+
+[下一步]
+  触发 feature-dev skill，先协商 Sprint Contract（建议按 F001→F003→F002→F006→F004→F005→F007→F008 拆 sprint）
+  开发前务必查阅 component-plan.md 确认组件边界，不得随意新增未规划组件
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-a 后端脚手架 + 数据库基座
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend/ 目录初始化（FastAPI + SQLAlchemy 2.0 + Alembic）
+  - GET /health 探活接口
+  - 7 张表的 ORM models（按实体独立文件）+ 初始 migration
+  - 集成测试：11/11 通过（health ×1、schema ×9、downgrade ×1）
+  - 手工验证 uvicorn 启动 + curl /health 200
+  - Evaluator 自检清单全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新增 DECISIONS.md D008（同步 SQLAlchemy）/ D009（models 分文件）/ D010（脚手架例外）
+  - features.json 追加 F000-a/b/c 三条
+  - 项目级 git init + .gitignore
+
+📊 功能状态：
+  F000-a 后端脚手架：🔍 needs_review
+  F000-b 前端脚手架：⬜ ready_to_dev
+  F000-c Docker + Polygon：⬜ ready_to_dev
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F000-a（触发 acceptance skill）→ 进入 F000-b Sprint Contract 协商
