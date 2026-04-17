@@ -230,3 +230,23 @@ _pipeline_status 更新：ui_design → done
 
 [下一个 Session]
   用户亲自验收 F000-c（docker compose up -d 并浏览器访问 localhost:8080 + /api/health），通过后 → phase: done → 脚手架三件套全部收尾，进入 F001 Watchlist 管理 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F000-c → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户亲自执行验收（docker compose up -d + 浏览器 localhost:8080 + /api/health）
+✅ 10/10 验收项全部通过
+✅ 验收记录追加至 docs/验收/v1.0-acceptance.md
+✅ features.json: F000-c phase → done, completed_at = 2026-04-17
+✅ 脚手架三件套（F000-a/b/c）全部收尾
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：✅ done
+  F001-F008（P0 MVP）：⬜ ready_to_dev
+
+[下一个 Session]
+  进入 F001 Watchlist 管理 Sprint Contract 协商
+  （首个真正的业务 feature；依赖 Figma + API-CONTRACT + DATA-MODEL）

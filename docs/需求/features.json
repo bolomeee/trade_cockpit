@@ -133,8 +133,8 @@
       "description": "docker-compose 一键启动前后端、前后端 Dockerfile、nginx 反向代理配置、Polygon.io 客户端封装（含 5 次/分钟 rate limit）",
       "user_story": "作为开发者，我需要一键启动完整环境并能调用 Polygon.io API",
       "priority": "P0",
-      "status": "needs_review",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F000-a", "F000-b"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -162,6 +162,7 @@
         "data_model_refs": [],
         "acceptance_type": "infrastructure"
       },
+      "completed_at": "2026-04-17",
       "acceptance_criteria": [
         "docker compose up 可同时启动前后端并互相通信",
         "nginx 将 /api/* 正确反向代理到后端",
@@ -171,8 +172,7 @@
       ],
       "test_cases": { "unit": [], "integration": [], "e2e": [] },
       "iteration_history": [],
-      "notes": "Polygon API key 从 .env 读取，测试时可 mock",
-      "completed_at": null
+      "notes": "Polygon API key 从 .env 读取，测试时可 mock。F000-c 验收结论：D013（massive 包选型）+ D014（token bucket rate limit）"
     },
     {
       "id": "F001",
