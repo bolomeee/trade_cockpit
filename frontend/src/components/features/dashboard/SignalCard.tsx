@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 
 import type { SignalBoardItem } from '@/types/signal'
 import { SignalBadge } from './SignalBadge'
@@ -135,22 +135,34 @@ export function SignalCard({ stock, onClick }: SignalCardProps) {
             className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
             style={{
               position: 'absolute',
-              top: 'var(--spacing-card-padding-sm)',
-              right: 'var(--spacing-card-padding-sm)',
-              background: 'none',
-              border: 'none',
+              top: '-8px',
+              right: '-8px',
+              width: '20px',
+              height: '20px',
+              borderRadius: '9999px',
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-card)',
               padding: 0,
               cursor: 'pointer',
               color: 'var(--color-text-secondary)',
-              transition: 'opacity 150ms ease, color 150ms ease',
+              transition: 'opacity 150ms ease, color 150ms ease, background-color 150ms ease',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-error)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-on-dark)'
+              e.currentTarget.style.backgroundColor = 'var(--color-error)'
+              e.currentTarget.style.borderColor = 'var(--color-error)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-secondary)'
+              e.currentTarget.style.backgroundColor = 'var(--color-card)'
+              e.currentTarget.style.borderColor = 'var(--color-border)'
+            }}
           >
-            <Trash2 size={16} />
+            <X size={12} strokeWidth={2.5} />
           </button>
         </AlertDialogTrigger>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
