@@ -287,10 +287,15 @@
       "description": "通过 Polygon.io API 拉取 EOD 日线数据，支持每日自动调度和用户手动触发刷新，遵守 5次/分钟的 rate limit",
       "user_story": "作为美股投资者，我想让数据每天自动更新，也能手动刷新，这样我总能看到最新信号",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
+      "status": "in_progress",
+      "phase": "in_progress",
       "dependencies": ["F001"],
-      "estimated_sessions": 2,
+      "estimated_sessions": 3,
+      "subtasks": {
+        "F003-a": { "scope": "Data refresh core: DailyBar/SystemLog repos + DataRefreshService (backfill/increment/refresh_all)", "phase": "needs_review" },
+        "F003-b": { "scope": "API routes + APScheduler + add_stock backfill hook", "phase": "ready_to_dev" },
+        "F003-c": { "scope": "Frontend TopNav Refresh Data button + status polling", "phase": "ready_to_dev" }
+      },
       "estimated_files_changed": [],
       "scope": {
         "pages": ["首页 /（刷新按钮）"],

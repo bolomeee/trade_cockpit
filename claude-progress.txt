@@ -557,3 +557,40 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
   入场建议：触发 anthropic-skills:feature-dev，参数 F003。
   关键前置：F002 的 SignalService.recompute_for_stock(stock_id) 需要在 F003
   的数据刷新成功后被调用，这一 hook 是 F003 Sprint Contract 的必须项。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F003-a 数据刷新核心
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - DailyBarRepository：get_latest_date / bulk_upsert (on_conflict_do_nothing) / prune_to_window(250) / count_bars
+  - SystemLogRepository：create（level校验+message截断500）/ purge_older_than(7) / list_recent(limit, level)
+  - DataRefreshService：backfill_stock / increment_stock / refresh_all（单只失败隔离 + SystemLog 写入）/ purge_old_logs
+  - Polygon agg → BarDTO 映射（时间戳 ms → UTC date, dict/object 双兼容）
+  - 成功后自动触发 SignalService.recompute_for_stock
+  - 6 个新文件（3 src + 3 test），未超上限
+  - 测试：24/24 全绿，全量回归 98/98 全绿
+  - Evaluator 自检：全部通过
+  - DECISIONS D022（Polygon agg 映射）+ D023（窗口/保留期常量）追加
+  - phase → needs_review（F003-a subtask）
+
+⚠️ 待你决策：
+  - F003-a 验收通过后，继续 F003-b（API 路由 + APScheduler + add_stock 钩子）
+
+🔧 系统变更：
+  - 新增 backend/app/repositories/daily_bar_repository.py
+  - 新增 backend/app/repositories/system_log_repository.py
+  - 新增 backend/app/services/data_refresh_service.py
+  - 新增 3 个测试文件
+  - docs/系统设计/DECISIONS.md 追加 D022/D023
+  - docs/需求/features.json F003 → in_progress，subtasks 拆分
+
+📊 功能状态：
+  F000-a/b/c ✅ done
+  F001 ✅ done
+  F002 ✅ done
+  F003 🔄 in_progress（F003-a needs_review / F003-b ready_to_dev / F003-c ready_to_dev）
+  F004–F008 ⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F003-a 后 → 开始 F003-b（API + APScheduler）

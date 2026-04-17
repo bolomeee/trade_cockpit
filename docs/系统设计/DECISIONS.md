@@ -287,3 +287,42 @@ last_modified_by: system-design
 **影响**：
 - 测试分层清晰：engine 纯单元、service 集成、api 集成
 - F003 数据刷新完成后需调用 `SignalService.recompute_for_stock(stock_id)` 触发重算（当前未 hook，留给 F003）
+
+---
+
+## D022：F003-a Polygon agg 字段映射约定
+
+**日期**：2026-04-17
+**决策**：DataRefreshService 将 Polygon.io daily aggregate 映射为 DailyBar 时，约定：
+- `timestamp`（毫秒，UTC）→ `date`（UTC 日期）
+- `open/high/low/close` 直接 1:1 映射为 float
+- `volume` 强制 int
+- 任一必填字段缺失返回 None（被 DataRefreshService 过滤），不抛异常
+
+**原因**：Polygon SDK（massive-com/client-python）的 Agg 对象字段名与 dict 模式均兼容；通过 `_get(obj, name)` 双分支读取，规避 SDK 版本间对象/字典漂移。
+**放弃了什么**：
+- 严格对 SDK 类型做 isinstance 检查（脆弱，SDK 升级易破坏）
+- 数据库层显式记录时间戳精度（业务语义只需 date，已足够）
+
+**影响**：
+- 如果 Polygon 未来字段重命名，修改点集中在 `_agg_to_bar`
+- 测试通过 SimpleNamespace + dict 双路径验证，确保兼容两种形态
+
+---
+
+## D023：F003-a SystemLog 7 天保留 + DailyBar 250 天窗口常量化
+
+**日期**：2026-04-17
+**决策**：
+- `DAILY_BAR_WINDOW = 250`（daily_bar_repository.py）
+- `SYSTEM_LOG_RETENTION_DAYS = 7`（system_log_repository.py）
+- `BACKFILL_DEFAULT_DAYS = 250`（data_refresh_service.py）
+- `BACKFILL_CALENDAR_MULTIPLIER = 2`：日历日 ≈ 2×交易日（~250 交易日覆盖 ~500 日历日足够）
+
+**原因**：DATA-MODEL.md 明确要求这些阈值，提取为命名常量后修改单点、测试可以直接导入。
+**放弃了什么**：
+- 配置文件化（MVP 规模不需要；修改窗口是产品决策而非运行时参数）
+
+**影响**：
+- F003-b 调度器将复用 `purge_old_logs()` 触发 SystemLog 定期清理
+- F003-c 前端如需展示 "保留 7 天" 文案，引用同一常量（通过 API 返回，不在前端硬编码）
