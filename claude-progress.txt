@@ -154,3 +154,38 @@ _pipeline_status 更新：ui_design → done
 
 [下一个 Session]
   进入 F000-b 前端脚手架 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-b 前端脚手架 + 路由基座
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - frontend/ 初始化：Vite 8 + React 19 + TS 6 + Tailwind v4（@tailwindcss/vite 插件，无 tailwind.config.ts）
+  - shadcn/ui radix-nova preset 初始化 + Button 组件安装
+  - react-router-dom v7：BrowserRouter + 3 路由（/ · /journal · /logs）
+  - tokens.css 从项目根 /src/styles 移至 frontend/src/styles 并在 index.css 中 import
+  - @/ 路径别名在 Vite + tsc 下均工作
+  - Evaluator 自检：
+    · pnpm install ✅
+    · pnpm build（tsc -b + vite build）✅
+    · pnpm dev HTTP 200 on / /journal /logs ✅
+    · Claude Preview 视觉确认：h1=Dashboard、Tailwind red=oklch(0.637 0.237 25.331)、tokens.css rgb(41,98,255) ✅
+    · shadcn Button 渲染黑底白字 ✅
+    · 客户端路由跳转三路由均正确切换 h1 ✅
+    · console 无 warn/error ✅
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D011（Tailwind v4 集成方式）、D012（React 19 / Vite 8 / TS 6 版本升级）
+  - ARCHITECTURE.md 前端版本表更新 + 目录结构剔除 tailwind.config.ts + 加 components.json
+  - features.json F000-b phase → needs_review
+  - 项目根 /src/ 目录已清理
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：🔍 needs_review
+  F000-c Docker + Polygon：⬜ ready_to_dev
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户亲自验收 F000-b（pnpm dev 启动 + 浏览器访问 3 路由），通过后 → phase: done → 进入 F000-c Sprint Contract 协商

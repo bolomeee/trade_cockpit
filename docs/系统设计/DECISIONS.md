@@ -128,3 +128,29 @@ last_modified_by: system-design
 - 严格统一的 Sprint 粒度
 **影响**：仅 F000-a/b/c 三个 Sprint；F001 起回到 6 文件硬规则
 **用户批准**：2026-04-17 会话中显式确认
+
+## D011：Tailwind v4 集成方式（放弃 tailwind.config.ts）
+
+**日期**：2026-04-17（F000-b）
+**决策**：前端采用 `@tailwindcss/vite` 插件 + `@import "tailwindcss"`（CSS 入口），不生成 `tailwind.config.ts`；主题 token 来源为 `src/styles/tokens.css` + shadcn 插入的 `@theme inline` 块
+**原因**：Tailwind v4 官方推荐的 Vite 集成方式即此方案（已通过 context7 `/websites/tailwindcss` 验证），`tailwind.config.ts` 非必需，配置分散反而增加心智负担
+**放弃了什么**：
+- ARCHITECTURE.md 目录结构中原计划的 `frontend/tailwind.config.ts`（已偏离）
+**影响**：未来若需要 tailwind plugin / preset 再按需新建 config 文件；目前 content 扫描由 Vite 插件自动处理
+**API 参考来源**：Context7 文档（已验证）
+
+## D012：前端版本升级到 React 19 / Vite 8 / TypeScript 6
+
+**日期**：2026-04-17（F000-b）
+**决策**：放弃 ARCHITECTURE.md 中"React 18 / Vite 6.x / TS 5.x"的原版本规划，采用 `pnpm create vite@latest` 2026-04 的默认值：React 19.2 / Vite 8.0 / TypeScript 6.0
+**原因**：
+- create-vite 当前默认即为该组合，React 19 已稳定发布，Vite 8 / TS 6 也是 2026 主流
+- 新项目从最新版本起步，减少未来抬版本成本
+- Tailwind v4 + shadcn/ui 均兼容该组合
+**放弃了什么**：
+- 与 ARCHITECTURE.md 原版本表的一致性（已同步更新该表）
+**影响**：
+- TS 6 废弃 `baseUrl`，`paths` 单独存在即可
+- React 19 的 StrictMode / Suspense 行为与 18 有差异，开发时需注意（特别是 useEffect 双调用 + Action hooks）
+- 后续 feature 开发若遇到库不兼容 React 19，单独评估
+**用户批准**：2026-04-17 显式确认（选 A）

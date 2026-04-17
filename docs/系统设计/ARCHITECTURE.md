@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-16
-last_modified_by: system-design
+confirmed_at: 2026-04-17
+last_modified_by: feature-dev (F000-b · D011+D012)
 ---
 
 # ARCHITECTURE.md
@@ -15,8 +15,8 @@ last_modified_by: system-design
 
 | 层 | 技术 | 版本 | 选型原因 |
 |----|------|------|---------|
-| 前端框架 | React + TypeScript | React 18, TS 5.x | 用户指定 |
-| 构建工具 | Vite | 6.x | 用户指定，HMR 快 |
+| 前端框架 | React + TypeScript | React 19.2, TS 6.x | D012（2026-04-17 升级，原 React 18 / TS 5.x） |
+| 构建工具 | Vite | 8.x | D012（2026-04-17 升级，原 Vite 6.x） |
 | 样式 | Tailwind CSS | v4 | 用户指定 |
 | UI 组件 | shadcn/ui | latest | 用户指定，可定制性好 |
 | 图表 | lightweight-charts (TradingView) | 4.x | 专为金融 K 线图设计，~40KB，原生支持 OHLC + MA 叠加 |
@@ -119,8 +119,8 @@ frontend/
 │       └── tokens.css      # Design Tokens（由 design-bridge 生成）
 ├── index.html
 ├── vite.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
+├── tsconfig.json (+ tsconfig.app.json / tsconfig.node.json)
+├── components.json             # shadcn/ui 配置
 ├── package.json
 ├── Dockerfile
 └── nginx.conf
