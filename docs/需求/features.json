@@ -294,7 +294,7 @@
       "subtasks": {
         "F003-a": { "scope": "Data refresh core: DailyBar/SystemLog repos + DataRefreshService (backfill/increment/refresh_all)", "phase": "done", "completed_at": "2026-04-17" },
         "F003-b": { "scope": "API routes + APScheduler + add_stock backfill hook", "phase": "done", "completed_at": "2026-04-17" },
-        "F003-c": { "scope": "Frontend TopNav Refresh Data button + status polling", "phase": "ready_to_dev" }
+        "F003-c": { "scope": "Frontend TopNav Refresh Data button + status polling", "phase": "needs_review" }
       },
       "estimated_files_changed": [],
       "scope": {

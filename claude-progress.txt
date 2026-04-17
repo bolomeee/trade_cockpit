@@ -629,3 +629,36 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F003-b → 进入 F003-c：前端 TopNav Refresh Data 按钮 + /api/data/status 轮询
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 续] Sprint：F003-c 前端 TopNav 刷新按钮 + 状态轮询
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - TopNav 抽出：MA150 Tracker + 导航 + Last refresh + Refresh Data 按钮
+  - RefreshButton：lucide RefreshCw 图标，pill 样式，loading 旋转 + 禁用
+  - useRefreshStatus hook（react-query）：POST 触发 + refetchInterval 2s 条件轮询
+  - 完成时自动 invalidate ['watchlist']，SignalBoard 跟着刷新
+  - 初次加载读 lastRefreshedAt；null 显示 "Last refresh: —"
+  - lint：无新增 error（仅遗留 ui/button.tsx 一处旧 error）
+  - build：tsc + vite build 全绿
+  - Preview 验证：点击 → disabled/旋转 → 完成 → Last refresh 时间刷新 ✅
+  - 导航激活态（nav-active/nav-inactive token）保持不变 ✅
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - 新增：frontend/src/lib/api/data.ts, hooks/useRefreshStatus.ts,
+         components/features/topnav/{TopNav,RefreshButton}.tsx
+  - 修改：frontend/src/App.tsx（用 TopNav 替换内联 nav）
+
+📊 功能状态：
+  F003-a 数据刷新核心：✅ done
+  F003-b 刷新 API + 调度：✅ done
+  F003-c 前端刷新按钮：🔍 needs_review
+  F003（总）：待 c 验收后整体收尾
+
+[下一个 Session]
+  用户验收 F003-c → 更新 F003 整体为 done，进入下一 Feature
