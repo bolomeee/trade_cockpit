@@ -532,3 +532,28 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   用户验收 F002（跑 `uv run pytest backend/tests` 查看结果，或检查新增 endpoint 行为），通过后用 project-commiter 打 tag 或直接进入 F003 开发。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F002 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户确认 F002 验收合格（通过 pytest 全量 74/74 覆盖 8 条 acceptance_criteria）
+✅ features.json：F002 phase needs_review → done，status → done，completed_at = 2026-04-17
+✅ completion_rate 0% → 25%（F001 + F002 / 8 MVP）
+
+📊 功能状态：
+  F000-a/b/c：✅ done
+  F001：✅ done
+  F002 150MA 信号引擎：✅ done
+  F003 数据获取与调度：⬜ ready_to_dev（下个 session）
+  F004 SignalBoard：⬜ ready_to_dev（依赖 F002 ✅ + F001 ✅，已解锁）
+  F005 个股详情 Modal：⬜ ready_to_dev（依赖 F002 ✅ + F003 ⬜）
+  F006 大盘概览：⬜ ready_to_dev（依赖 F003 ⬜）
+  F007 Journal：⬜ ready_to_dev
+  F008 系统日志：⬜ ready_to_dev
+
+[下一个 Session]
+  用户新开 session 做 F003：数据获取与调度。
+  入场建议：触发 anthropic-skills:feature-dev，参数 F003。
+  关键前置：F002 的 SignalService.recompute_for_stock(stock_id) 需要在 F003
+  的数据刷新成功后被调用，这一 hook 是 F003 Sprint Contract 的必须项。

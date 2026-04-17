@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "last_updated": "2026-04-17",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件",
-  "completion_rate": "0%",
+  "completion_rate": "25%",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
@@ -232,8 +232,8 @@
       "description": "基于日线数据计算每只股票的 150 日均线信号：BUY_ZONE（斜率正+价距0–5%）、BREAKOUT（斜率正+向上穿越）、NEUTRAL（其余）。使用 20 日线性回归斜率判定均线方向，仅斜率为正时产生买入信号。自动识别历史回踩记录",
       "user_story": "作为美股投资者，我想让系统自动计算 150MA 信号，这样我不用手动逐只检查",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [],
       "estimated_sessions": 2,
       "estimated_files_changed": [
@@ -279,7 +279,7 @@
       },
       "iteration_history": [],
       "notes": "信号判定优先级：BREAKOUT > BUY_ZONE > NEUTRAL",
-      "completed_at": null
+      "completed_at": "2026-04-17"
     },
     {
       "id": "F003",
