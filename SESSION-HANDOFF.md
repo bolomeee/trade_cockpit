@@ -1,147 +1,139 @@
 # SESSION-HANDOFF.md
 
-> 生成时间：2026-04-17
-> 当前 Skill：feature-dev（F001-a Contract 已确认，尚未进入 Generator）
-> 当前 Feature：**F001-a Backend Watchlist + Stock Search API**（contract_agreed）
+> 生成时间：2026-04-17（覆盖上一版 F001-a Generator 前 handoff）
+> 当前 Skill：无活跃 Skill（F001-a 全流程完成）
+> 下一 Feature：**F001-b Frontend Watchlist 读取展示**（ready_to_dev，等待 Sprint Contract 协商）
 
 ---
 
 ## 本 Session 完成的内容
 
-### F000-c Docker Compose + Polygon Client（✅ done，commit `0764e10` + `93cba6f`）
+### F001-a Backend Watchlist + Stock Search API（✅ done，commit `87c1483` + `befccd0`）
 
-- Sprint Contract 协商并确认
-- Context7 `/massive-com/client-python` 查询 → PyPI 验证 `massive` 2.5.0 是 Polygon.io 官方改名后包（见 D013）
-- 实施：
-  - `backend/app/external/polygon_client.py`：封装 `massive.RESTClient` + 线程安全 token bucket（5/60s，12s/token）
-  - 三方法：`search_tickers` / `get_previous_close` / `get_daily_aggs`
-  - `backend/tests/test_polygon_client.py`：8 用例（missing key×2 + 方法转发×3 + rate limit×3）
-  - `backend/Dockerfile`：python:3.12-slim + uv 0.5.11，启动时 `alembic upgrade head`
-  - `frontend/Dockerfile`：node:20-alpine 多阶段 → nginx:alpine
-  - `frontend/nginx.conf`：`/api/*` 反代 `backend:8000`，SPA fallback
-  - `docker-compose.yml`：frontend `8080:80`（本机 80 占用），backend 内部 expose
-  - 根 `.env.example` + `.env`（gitignored）
-- Evaluator 全绿：build + up 成功 · nginx 反代生效 · volume 持久化验证 · pytest 19/19 · `.env` 未泄露
-- 用户亲自验收通过，验收记录追加至 `docs/验收/v1.0-acceptance.md`
-- DECISIONS.md 追加 D013（massive 包选型）、D014（token bucket rate limit）
+**Generator**：从 Step 4 开始顺序实现 Repository → Service → Router → conftest → tests
 
-### F001 Sprint Contract 协商（本 Session 收尾）
+新建（10 文件）：
+- `backend/app/repositories/stock_repository.py` — `StockRepository`（get_by_ticker / list_active / create / reactivate / soft_delete / count_bars）
+- `backend/app/schemas/watchlist.py` — `CamelModel` / `ResponseEnvelope[T]` / `WatchlistItem` / `WatchlistCreatedItem` / `AddStockRequest` / `DeleteStockResponse` / `StockSearchItem`
+- `backend/app/services/watchlist_service.py` — `APIError` + `WatchlistService`（常量 `READY_BAR_THRESHOLD=150` / `SEARCH_LIMIT_MAX=20` / `POLYGON_MATCH_LIMIT=5`）
+- `backend/app/dependencies.py` — `get_polygon_client` / `get_watchlist_service`
+- `backend/app/routers/watchlist.py` + `backend/app/routers/stocks.py`
+- `backend/tests/test_watchlist_api.py` — T1–T17（T10 parametrize → 19 items）
+- 3 个 `__init__.py`
 
-- 读 DATA-MODEL / API-CONTRACT / design-spec / component-plan 的 F001 相关段
-- 扫描代码库：F001 整体 ~22 核心文件 → 严重超 6 文件
-- 用户批准拆分 a/b/c，授权例外：
-  - **F001-a Backend**（7 核心，申请例外 +1）
-  - **F001-b Frontend 读取**（10 核心，申请例外 +4）
-  - **F001-c Frontend 交互**（5-6 文件）
-- F001-a Sprint Contract 起草并用户确认
-- Contract 落盘：`docs/开发/sprint-contracts/F001-a-contract.md`
-- features.json：F001 phase → `contract_agreed`，新增 `subtasks` 字段登记 a/b/c
+修改：
+- `backend/app/main.py` — mount 2 routers + `APIError` 和 `RequestValidationError` 统一异常 handler
+- `backend/tests/conftest.py` — `session_engine` + `db_session` + `mock_polygon` (FakePolygon) + `client` fixture 注入 dependency_overrides
+
+**Evaluator**：`pytest` 38 passed（health 1 + polygon 8 + schema 10 + watchlist 19）
+
+**验收**：用户实货手验通过
+- `GET /api/watchlist` → `{"data":[],"message":"success"}`
+- `POST /api/watchlist {ticker:AAPL}` → 201 + Apple Inc./XNAS + `dataStatus: "loading"`
+- `GET /api/stocks/search?q=AA` → 10 条美股结果（Alcoa + ETF）
+- `GET /api/stocks/search` 缺 q → 统一错误 `VALIDATION_ERROR`
+
+验收记录：`docs/验收/v1.0-acceptance.md` 追加 F001-a 段
+
+### 手验暴露的 2 个基础设施 bug（已修复并落 DECISIONS）
+
+**D015 nginx `proxy_pass` 不带末尾斜杠**
+- 现象：所有 `/api/*` 返回 `{"detail":"Not Found"}`
+- 根因：`proxy_pass http://backend:8000/;` 带斜杠会剥掉 `/api/` 前缀，`/api/watchlist` → `/watchlist` 发给后端
+- 修复：`frontend/nginx.conf:9` 去掉末尾斜杠 → 保留完整 URI
+- F000-c 未暴露是因为当时后端只有 `/health`
+
+**D016 Polygon `list_tickers` 用 `itertools.islice` 截取首页**
+- 现象：`GET /api/stocks/search?q=AA` 返回 502 EXTERNAL_API_ERROR（Polygon 429）
+- 根因：`massive` SDK 的 `limit=N` 是每页大小，iterator 自动翻页，`list(...)` 会吃光所有匹配结果，每翻页一次 HTTP 绕过 token bucket
+- 修复：`backend/app/external/polygon_client.py:search_tickers` 用 `itertools.islice(iterator, limit)` 截取首页
+- **根因教训**：封装外部 client 时，"每页 limit" 与 "总数 limit" 不能混用；仅 token bucket 不足以约束 SDK 级翻页
+
+### 运维教训（非代码）
+
+- backend Dockerfile 是 `COPY` 代码进镜像（非 volume mount），代码改动必须 `docker compose up -d --build backend` 重建；仅 `restart` 无效
+- frontend 同理；改 `nginx.conf` 后需要 `--build frontend`
 
 ---
 
 ## 中断位置
 
-**F001-a Generator 尚未开始**。Contract 已确认，代码未动。
+无中断。F001-a 全流程完整收尾（Contract → Generator → Evaluator → 验收 → commit）。
 
 ---
 
-## Sprint Contract 执行状态（F001-a）
+## Sprint Contract 执行状态
 
-| # | 开发步骤 | 状态 |
-|---|---------|------|
-| 1 | DATA-MODEL 检查 | ✅ 无需变更（Stock 已在 F000-a 建表） |
-| 2 | API-CONTRACT 检查 | ✅ 4 端点均已定义 |
-| 3 | 数据库迁移 | ⏭️ 跳过（无 schema 变更） |
-| 4 | Repository 层 | 🔄 **中断点 / 立即执行** |
-| 5 | Service 层 | ⬜ 未开始 |
-| 6 | Router 层 | ⬜ 未开始 |
-| 7 | 测试 | ⬜ 未开始 |
+| Sprint | Phase | 备注 |
+|--------|-------|------|
+| F001-a Backend | ✅ done | 两 commit 落盘：feat `87c1483` + chore `befccd0` |
+| F001-b Frontend 读取展示 | ⬜ ready_to_dev | **下一 Sprint**，未起草 Contract |
+| F001-c Frontend 交互 | ⬜ ready_to_dev | 依赖 F001-b 基础 |
+
+F001（父级）：`in_progress`（等 b/c 完成再整体归档）
 
 ---
 
-## F001-a 关键技术约定（从 Contract 摘要，新 Session 立即可用）
+## F001-b 进场前已知条件
 
-### 范围
-- 仅后端，4 端点：`GET/POST/DELETE /api/watchlist` + `GET /api/stocks/search`
+### 范围（从 F001-a Contract 拆分段落继承）
 
-### 排除
-- ❌ 历史数据拉取（F003）
-- ❌ 信号计算（F002）
-- ❌ 所有前端代码（F001-b/c）
+- 页面：Dashboard `/` 的 Watchlist 展示区
+- 数据源：`GET /api/watchlist`（F001-a 已提供，返回 `WatchlistItem[]`）
+- 字段消费：`ticker` / `name` / `exchange` / `addedAt` / `dataStatus` / `latestSignal`（F001-a 始终 null）
+- 态：empty / loading / error / ready
+- **明确不包含**：搜索框、AddStock 表单、删除交互（F001-c）；信号颜色（F004）；K 线（F005）
 
-### dataStatus 派生规则（POST 响应 + GET 列表）
-| bar_count | dataStatus |
-|-----------|------------|
-| 0 | `"loading"` |
-| 1–149 | `"insufficient"` |
-| ≥150 | `"ready"` |
+### 预计文件（F001-a Contract 协商时用户批准 10 核心例外）
 
-### latestSignal（GET list）
-F001-a 始终返回 `null`（F002 后填充）。
+候选（待协商时确认）：
+- `frontend/src/api/client.ts` — axios/fetch 封装 + error normalization
+- `frontend/src/api/watchlist.ts` — `getWatchlist()` 类型安全包装
+- `frontend/src/types/watchlist.ts` — 共享 TS 类型（和 API-CONTRACT 对齐的驼峰）
+- `frontend/src/hooks/useWatchlist.ts` — React Query hook（或自研 hook）
+- `frontend/src/components/watchlist/WatchlistBoard.tsx` — 列表容器
+- `frontend/src/components/watchlist/WatchlistItem.tsx` — 单行
+- `frontend/src/components/watchlist/EmptyState.tsx` — "添加你的第一只股票"
+- `frontend/src/components/watchlist/ErrorState.tsx`
+- `frontend/src/components/watchlist/LoadingState.tsx`
+- `frontend/src/pages/Dashboard.tsx` — 接入 WatchlistBoard
 
-### Ticker 规范化
-入参大小写不敏感，DB 存大写，API 返回大写。
+### 协商时要确认的关键决策
 
-### 软删除恢复语义
-- POST 命中 `is_active=true` ticker → 409 DUPLICATE
-- POST 命中 `is_active=false` ticker → 翻回 true + 更新 `added_at` → 201
-- POST 新 ticker → Polygon 精确匹配校验 → 201 或 404/502
-- DELETE → set `is_active=false`，不存在返回 404
-
-### Polygon 校验（POST）
-调用 `PolygonClient().search_tickers(ticker_upper, limit=5)`，找 `ticker == ticker_upper` 精确匹配；未命中 404；抛异常 502。
-
-### 统一响应格式
-- 成功：`{"data": ..., "message": "success"}`
-- 失败：`{"error": {"code": "...", "message": "..."}}`
-- 错误码：`VALIDATION_ERROR` 422 / `DUPLICATE` 409 / `NOT_FOUND` 404 / `EXTERNAL_API_ERROR` 502
-
-### 字段命名
-- DB 蛇形（DATA-MODEL 权威）
-- API JSON 驼峰：`addedAt` / `lastRefreshedAt` / `dataStatus` / `latestSignal`
-- Pydantic `alias_generator=to_camel, populate_by_name=True`
-
-### 测试隔离（conftest.py 追加）
-- `session_engine` fixture：in-memory SQLite + `Base.metadata.create_all()`
-- `app.dependency_overrides[get_db]` → 该 session
-- `mock_polygon` fixture：可编程的 fake PolygonClient，通过 `app.dependency_overrides` 注入
+1. **数据获取方案**：React Query（TanStack Query）还是原生 fetch + useEffect？
+2. **dataStatus 可视化**：loading/insufficient/ready 分别如何展示（占位符/徽章/灰态？）
+3. **latestSignal = null 的处理**：统一显示"数据收集中"还是按 dataStatus 分支
+4. **design-spec.md 是否已覆盖 Watchlist 空态/错误态/骨架屏**（需重读）
+5. **是否引入新依赖**（React Query 算新依赖，需用户明确批准）
+6. **测试策略**：F001-b 是纯前端展示，是否写 Vitest + React Testing Library？还是手验 Playwright？
 
 ---
 
-## 预计修改文件（F001-a，7 核心 + 3 bookkeeping）
+## 必读文档清单（下一 Session）
 
-### 新建
-- `backend/app/schemas/__init__.py`（空）
-- `backend/app/schemas/watchlist.py` — Pydantic models
-- `backend/app/repositories/__init__.py`（空）
-- `backend/app/repositories/stock_repository.py`
-- `backend/app/services/__init__.py`（空）
-- `backend/app/services/watchlist_service.py`
-- `backend/app/routers/__init__.py`（空）
-- `backend/app/routers/watchlist.py`
-- `backend/app/routers/stocks.py`
-- `backend/tests/test_watchlist_api.py`
-
-### 修改
-- `backend/app/main.py` — mount 2 routers
-- `backend/tests/conftest.py` — in-memory DB + dependency overrides + mock Polygon
+| 顺序 | 文档 | 重点 |
+|------|------|------|
+| 1 | SESSION-HANDOFF.md | 本文件 |
+| 2 | CLAUDE.md | 全局约束 |
+| 3 | docs/设计/design-spec.md | Watchlist / Dashboard 视觉规格（读全文） |
+| 4 | docs/系统设计/API-CONTRACT.md#watchlist §48-82 | 响应字段权威 |
+| 5 | frontend/src/pages/Dashboard.tsx | F000-b 空壳现状 |
+| 6 | frontend/package.json | 现有依赖（React 19 / Vite 8 / TS 6 / Tailwind v4 / shadcn） |
+| 7 | docs/系统设计/DECISIONS.md#D011-D016 | 前端技术决策上下文 |
+| 8 | docs/开发/sprint-contracts/F001-a-contract.md | 字段命名规范参照 |
+| 9 | claude-progress.txt 最后 60 行 | 本 Session 全流程 |
 
 ---
 
-## 测试目标（F001-a 完成标准）
+## 环境快照
 
-18 用例：17 集成 + 1 全量回归（pytest ≥ 36/36，含 F000-a 的 11 + F000-c 的 8 + F001-a 的 17）
-
-T1–T17 涵盖：空库 / 新增 / 大小写 / 冲突 / 软删除恢复 / Polygon 未命中 / Polygon 异常 / 字段缺失 / 聚合字段 / dataStatus 三档 / 删除 / 大小写删除 / 不存在删除 / 搜索 / 搜索缺 q / 搜索 limit 裁剪 / 搜索异常
-
----
-
-## 遗留决策
-
-无。F001-a Contract 中所有决策已与用户确认：
-- ✅ dataStatus 派生规则（0/1-149/150+）
-- ✅ latestSignal=null（UI 兜底）
-- ✅ 文件例外（7 核心 +1）
+- git branch：`main` · 最新 commit：`befccd0`（F001-a 验收归档）
+- 工作树：clean
+- 后端可运行：`cd backend && uv run uvicorn app.main:app --reload`
+- 前端可运行：`cd frontend && pnpm dev`（localhost:5173）
+- docker 全栈：`docker compose up -d`（localhost:8080；改代码必须 `--build`）
+- Polygon API key：项目根 `.env`（gitignored）
+- pytest 基线：38 通过
 
 ---
 
@@ -151,28 +143,17 @@ T1–T17 涵盖：空库 / 新增 / 大小写 / 冲突 / 软删除恢复 / Polyg
 我回来了，请按顺序读取：
 1. SESSION-HANDOFF.md（本文件）
 2. CLAUDE.md
-3. docs/开发/sprint-contracts/F001-a-contract.md（F001-a 完整合同）
-4. docs/需求/features.json（F001 subtasks 状态）
-5. docs/系统设计/DATA-MODEL.md#stock
-6. docs/系统设计/API-CONTRACT.md#watchlist + #stock-search（48-190 行）
-7. claude-progress.txt 最后 30 行
+3. docs/设计/design-spec.md（全文 — 重点 Watchlist 区域）
+4. docs/系统设计/API-CONTRACT.md §Watchlist（第 48-82 行）
+5. frontend/src/pages/Dashboard.tsx（F000-b 空壳）
+6. frontend/package.json（现有依赖清单）
+7. claude-progress.txt 最后 60 行
 
-然后直接进入 feature-dev Generator（类型 E2 开发恢复）：
-从 Step 4 Repository 层开始，顺序实现 Repository → Service → Router → main.py mount → conftest 增强 → test_watchlist_api.py 18 用例 → Evaluator → commit。
+然后触发 feature-dev skill，起草 F001-b Sprint Contract：
+  - 明确范围/排除/预计文件
+  - 协商数据获取方案（React Query vs 原生）
+  - 协商 dataStatus 可视化规则
+  - 确认是否引入新依赖
+  - 10 核心文件例外已批准（F001-a Contract 协商时确认）
+Contract 用户确认后进 Generator。
 ```
-
----
-
-## 环境快照
-
-- git branch：`main` · 最新 commit：`93cba6f`（F000-c 验收归档）
-- 工作树状态：
-  - `docs/需求/features.json` 已 modify（F001 subtasks）
-  - `docs/开发/sprint-contracts/F001-a-contract.md` 新文件
-  - `claude-progress.txt` 已 modify
-  - 本 handoff 文件
-  - **以上都将在本 Session 暂停前一并 commit**
-- backend 可运行：`cd backend && uv run uvicorn app.main:app`
-- frontend 可运行：`cd frontend && pnpm dev`（localhost:5173）
-- docker 全栈可运行：`docker compose up -d`（localhost:8080）
-- Polygon API key 已配置于项目根 `.env`（gitignored）
