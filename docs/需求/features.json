@@ -187,7 +187,7 @@
       "estimated_files_changed": [],
       "subtasks": {
         "F001-a": { "scope": "Backend watchlist + search API", "phase": "done", "completed_at": "2026-04-17" },
-        "F001-b": { "scope": "Frontend watchlist 读取展示 + empty/error", "phase": "needs_review" },
+        "F001-b": { "scope": "Frontend watchlist 读取展示 + empty/error", "phase": "done", "completed_at": "2026-04-17" },
         "F001-c": { "scope": "Frontend AddStock/search/delete 交互", "phase": "ready_to_dev" }
       },
       "scope": {

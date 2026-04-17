@@ -421,3 +421,14 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 [下一步]
   用户验收 F001-b（触发 acceptance skill）
   验收通过后进入 F001-c Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F001-b → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收全部通过（4 种状态：ready/empty/error/loading）
+✅ 验收记录：docs/验收/v1.0-acceptance.md 追加 F001-b 段
+✅ features.json: F001-b phase → done, completed_at = 2026-04-17
+
+[下一步]
+  进入 F001-c Sprint Contract 协商（Frontend AddStock/搜索/删除交互）
