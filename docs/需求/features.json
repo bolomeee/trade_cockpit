@@ -17,7 +17,16 @@
     {
       "version": "v1.0",
       "date": "2026-04-16",
-      "features_snapshot": ["F001", "F002", "F003", "F004", "F005", "F006", "F007", "F008"],
+      "features_snapshot": [
+        "F001",
+        "F002",
+        "F003",
+        "F004",
+        "F005",
+        "F006",
+        "F007",
+        "F008"
+      ],
       "status": "in_progress"
     }
   ],
@@ -51,13 +60,25 @@
       "estimated_files_changed": [],
       "scope": {
         "pages": [],
-        "api_endpoints": ["GET /health"],
-        "db_tables": ["stocks", "daily_bars", "signals", "pullbacks", "market_indices", "system_logs", "journal_entries"],
+        "api_endpoints": [
+          "GET /health"
+        ],
+        "db_tables": [
+          "stocks",
+          "daily_bars",
+          "signals",
+          "pullbacks",
+          "market_indices",
+          "system_logs",
+          "journal_entries"
+        ],
         "design_figma_link": null
       },
       "contract": {
         "api_refs": [],
-        "data_model_refs": ["DATA-MODEL.md#orm-schema"],
+        "data_model_refs": [
+          "DATA-MODEL.md#orm-schema"
+        ],
         "acceptance_type": "infrastructure"
       },
       "acceptance_criteria": [
@@ -67,7 +88,11 @@
         "ORM 字段命名与 DATA-MODEL.md 完全一致",
         "pytest 通过 /health 集成测试"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "脚手架固有最小文件数超过常规 6 文件上限，已获用户批准例外（DECISIONS D010）",
       "completed_at": "2026-04-17"
@@ -80,7 +105,9 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F000-a"],
+      "dependencies": [
+        "F000-a"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/package.json",
@@ -105,7 +132,11 @@
         "claude-progress.txt"
       ],
       "scope": {
-        "pages": ["/", "/journal", "/logs"],
+        "pages": [
+          "/",
+          "/journal",
+          "/logs"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -122,7 +153,11 @@
         "tokens.css 中的 CSS 变量可在页面中引用",
         "shadcn/ui 可正常引入组件（Button 演示）"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "",
       "completed_at": "2026-04-17"
@@ -135,7 +170,10 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F000-a", "F000-b"],
+      "dependencies": [
+        "F000-a",
+        "F000-b"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "docker-compose.yml",
@@ -170,7 +208,11 @@
         "PolygonClient 在短时间内超过 5 次调用时自动等待（rate limit 合规）",
         "单元测试覆盖 rate limit 逻辑"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "Polygon API key 从 .env 读取，测试时可 mock。F000-c 验收结论：D013（massive 包选型）+ D014（token bucket rate limit）"
     },
@@ -182,29 +224,52 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "completed_at": "2026-04-17",
-      "dependencies": ["F000-c"],
+      "completed_at": null,
+      "dependencies": [
+        "F000-c"
+      ],
       "estimated_sessions": 3,
       "estimated_files_changed": [],
       "subtasks": {
-        "F001-a": { "scope": "Backend watchlist + search API", "phase": "done", "completed_at": "2026-04-17" },
-        "F001-b": { "scope": "Frontend watchlist 读取展示 + empty/error", "phase": "done", "completed_at": "2026-04-17" },
-        "F001-c": { "scope": "Frontend AddStock/search/delete 交互", "phase": "done", "completed_at": "2026-04-17" }
+        "F001-a": {
+          "scope": "Backend watchlist + search API",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F001-b": {
+          "scope": "Frontend watchlist 读取展示 + empty/error",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F001-c": {
+          "scope": "Frontend AddStock/search/delete 交互",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        }
       },
       "scope": {
-        "pages": ["Dashboard / (Add Stock 快捷表单)"],
+        "pages": [
+          "Dashboard / (Add Stock 快捷表单)"
+        ],
         "api_endpoints": [
           "GET /api/watchlist",
           "POST /api/watchlist",
           "DELETE /api/watchlist/:ticker",
           "GET /api/stocks/search?q="
         ],
-        "db_tables": ["Stock"],
+        "db_tables": [
+          "Stock"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#watchlist", "API-CONTRACT.md#stock-search"],
-        "data_model_refs": ["DATA-MODEL.md#stock"],
+        "api_refs": [
+          "API-CONTRACT.md#watchlist",
+          "API-CONTRACT.md#stock-search"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#stock"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -223,8 +288,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "",
-      "completed_at": null
+      "notes": ""
     },
     {
       "id": "F002",
@@ -254,12 +318,22 @@
           "GET /api/signals",
           "GET /api/signals/:ticker"
         ],
-        "db_tables": ["DailyBar", "Signal", "Pullback"],
+        "db_tables": [
+          "DailyBar",
+          "Signal",
+          "Pullback"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals"],
-        "data_model_refs": ["DATA-MODEL.md#daily-bar", "DATA-MODEL.md#signal", "DATA-MODEL.md#pullback"],
+        "api_refs": [
+          "API-CONTRACT.md#signals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#daily-bar",
+          "DATA-MODEL.md#signal",
+          "DATA-MODEL.md#pullback"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -289,27 +363,49 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "completed_at": "2026-04-17",
-      "dependencies": ["F001"],
+      "completed_at": null,
+      "dependencies": [
+        "F001"
+      ],
       "estimated_sessions": 3,
       "subtasks": {
-        "F003-a": { "scope": "Data refresh core: DailyBar/SystemLog repos + DataRefreshService (backfill/increment/refresh_all)", "phase": "done", "completed_at": "2026-04-17" },
-        "F003-b": { "scope": "API routes + APScheduler + add_stock backfill hook", "phase": "done", "completed_at": "2026-04-17" },
-        "F003-c": { "scope": "Frontend TopNav Refresh Data button + status polling", "phase": "done", "completed_at": "2026-04-17" }
+        "F003-a": {
+          "scope": "Data refresh core: DailyBar/SystemLog repos + DataRefreshService (backfill/increment/refresh_all)",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F003-b": {
+          "scope": "API routes + APScheduler + add_stock backfill hook",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F003-c": {
+          "scope": "Frontend TopNav Refresh Data button + status polling",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        }
       },
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["首页 /（刷新按钮）"],
+        "pages": [
+          "首页 /（刷新按钮）"
+        ],
         "api_endpoints": [
           "POST /api/data/refresh",
           "GET /api/data/status"
         ],
-        "db_tables": ["DailyBar"],
+        "db_tables": [
+          "DailyBar"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#data-refresh"],
-        "data_model_refs": ["DATA-MODEL.md#daily-bar"],
+        "api_refs": [
+          "API-CONTRACT.md#data-refresh"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#daily-bar"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -327,8 +423,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "Polygon.io Stocks Basic tier，需考虑 rate limiting 策略",
-      "completed_at": null
+      "notes": "Polygon.io Stocks Basic tier，需考虑 rate limiting 策略"
     },
     {
       "id": "F004",
@@ -338,8 +433,11 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "completed_at": "2026-04-17",
-      "dependencies": ["F001", "F002"],
+      "completed_at": null,
+      "dependencies": [
+        "F001",
+        "F002"
+      ],
       "estimated_sessions": 2,
       "estimated_files_changed": [
         "frontend/src/types/signal.ts",
@@ -352,16 +450,24 @@
         "frontend/src/hooks/useRefreshStatus.ts"
       ],
       "scope": {
-        "pages": ["首页 /"],
+        "pages": [
+          "首页 /"
+        ],
         "api_endpoints": [
           "GET /api/signals"
         ],
-        "db_tables": ["Signal"],
+        "db_tables": [
+          "Signal"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals"],
-        "data_model_refs": ["DATA-MODEL.md#signal"],
+        "api_refs": [
+          "API-CONTRACT.md#signals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#signal"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -377,8 +483,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "",
-      "completed_at": null
+      "notes": ""
     },
     {
       "id": "F005",
@@ -387,24 +492,40 @@
       "user_story": "作为美股投资者，我想查看个股的 150MA 详细分析，这样我能判断这次回踩的质量和值不值得买入",
       "priority": "P0",
       "status": "not_started",
-      "phase": "ready_to_dev",
-      "dependencies": ["F002", "F003"],
+      "phase": "in_progress",
+      "dependencies": [
+        "F002",
+        "F003"
+      ],
       "estimated_sessions": 3,
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["个股详情 Modal (Dashboard 弹窗，无独立路由)"],
+        "pages": [
+          "个股详情 Modal (Dashboard 弹窗，无独立路由)"
+        ],
         "api_endpoints": [
           "GET /api/signals/:ticker",
           "GET /api/stocks/:ticker/pullbacks",
           "GET /api/stocks/:ticker/chart",
           "GET /api/stocks/:ticker/fundamentals"
         ],
-        "db_tables": ["Signal", "Pullback", "DailyBar"],
+        "db_tables": [
+          "Signal",
+          "Pullback",
+          "DailyBar"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals", "API-CONTRACT.md#stock-detail"],
-        "data_model_refs": ["DATA-MODEL.md#signal", "DATA-MODEL.md#pullback", "DATA-MODEL.md#daily-bar"],
+        "api_refs": [
+          "API-CONTRACT.md#signals",
+          "API-CONTRACT.md#stock-detail"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#signal",
+          "DATA-MODEL.md#pullback",
+          "DATA-MODEL.md#daily-bar"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -423,7 +544,22 @@
       },
       "iteration_history": [],
       "notes": "K线图表使用 TradingView lightweight-charts。Modal 形式，非独立页面",
-      "completed_at": null
+      "completed_at": null,
+      "subtasks": {
+        "F005-a": {
+          "scope": "Backend stock detail 3 endpoints",
+          "phase": "needs_review",
+          "completed_at": "2026-04-17"
+        },
+        "F005-b": {
+          "scope": "Frontend Header/Pullback/Fundamentals + Modal 改造（移至 stock-detail/）",
+          "phase": "planned"
+        },
+        "F005-c": {
+          "scope": "PriceChart + lightweight-charts 集成",
+          "phase": "planned"
+        }
+      }
     },
     {
       "id": "F006",
@@ -433,20 +569,30 @@
       "priority": "P0",
       "status": "not_started",
       "phase": "ready_to_dev",
-      "dependencies": ["F003"],
+      "dependencies": [
+        "F003"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["首页 /"],
+        "pages": [
+          "首页 /"
+        ],
         "api_endpoints": [
           "GET /api/market/overview"
         ],
-        "db_tables": ["MarketIndex"],
+        "db_tables": [
+          "MarketIndex"
+        ],
         "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#market"],
-        "data_model_refs": ["DATA-MODEL.md#market-index"],
+        "api_refs": [
+          "API-CONTRACT.md#market"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#market-index"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -471,23 +617,34 @@
       "priority": "P0",
       "status": "not_started",
       "phase": "ready_to_dev",
-      "dependencies": ["F001"],
+      "dependencies": [
+        "F001"
+      ],
       "estimated_sessions": 2,
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["交易日志 /journal", "Dashboard / (Trade Journal 完整表单)"],
+        "pages": [
+          "交易日志 /journal",
+          "Dashboard / (Trade Journal 完整表单)"
+        ],
         "api_endpoints": [
           "GET /api/journal",
           "POST /api/journal",
           "PUT /api/journal/:id",
           "DELETE /api/journal/:id"
         ],
-        "db_tables": ["JournalEntry"],
+        "db_tables": [
+          "JournalEntry"
+        ],
         "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -515,20 +672,30 @@
       "priority": "P0",
       "status": "not_started",
       "phase": "ready_to_dev",
-      "dependencies": ["F003"],
+      "dependencies": [
+        "F003"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["系统日志 /logs"],
+        "pages": [
+          "系统日志 /logs"
+        ],
         "api_endpoints": [
           "GET /api/logs"
         ],
-        "db_tables": ["SystemLog"],
+        "db_tables": [
+          "SystemLog"
+        ],
         "design_figma_link": "https://www.figma.com/design/ReibtcedQZ2Zynr5goIUGG/system_logs?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#system-logs"],
-        "data_model_refs": ["DATA-MODEL.md#system-log"],
+        "api_refs": [
+          "API-CONTRACT.md#system-logs"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#system-log"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [

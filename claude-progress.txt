@@ -715,3 +715,28 @@ F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_p
 
 [下一个 Session]
   开始开发 F005 / F006 / F007 / F008（任一）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F005-a] Sprint：F005-a 后端 stock detail 接口
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新增 3 个端点：/api/stocks/{ticker}/chart | /pullbacks | /fundamentals
+  - PullbackRepository + StockDetailService + stock_detail schema
+  - Fundamentals 为 mock（source="mock"，ticker-hash 派生确定值）
+  - 集成+单元测试：10/10 通过
+  - 全量回归：118/118 通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新文件：schemas/stock_detail.py, repositories/pullback_repository.py,
+    services/stock_detail_service.py, tests/test_stock_detail.py
+  - 修改：routers/stocks.py（+3 路由 + service 依赖）
+
+📊 功能状态：
+  F005-a：🔍 needs_review
+  F005-b：⬜ planned（前端 Header/Pullback/Fundamentals，移入 stock-detail/）
+  F005-c：⬜ planned（PriceChart + lightweight-charts）
+
+[下一个 Session]
+  F005-a 验收通过后，进入 F005-b Sprint Contract 协商
