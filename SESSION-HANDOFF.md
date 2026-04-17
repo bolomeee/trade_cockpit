@@ -1,64 +1,61 @@
 # SESSION-HANDOFF.md
 
-> 生成时间：2026-04-17（覆盖上一版 F001-a Generator 前 handoff）
-> 当前 Skill：无活跃 Skill（F001-a 全流程完成）
-> 下一 Feature：**F001-b Frontend Watchlist 读取展示**（ready_to_dev，等待 Sprint Contract 协商）
+> 生成时间：2026-04-17（覆盖上一版 F001-b Generator 前 handoff）
+> 当前 Skill：无活跃 Skill（F001-b 全流程完成）
+> 下一 Feature：**F001-c Frontend AddStock/搜索/删除交互**（ready_to_dev，等待 Sprint Contract 协商）
 
 ---
 
 ## 本 Session 完成的内容
 
-### F001-a Backend Watchlist + Stock Search API（✅ done，commit `87c1483` + `befccd0`）
+### F001-b Frontend Watchlist 读取展示（✅ done，commit `c49b2ba` + `49c8e16` + `8f79ec4`）
 
-**Generator**：从 Step 4 开始顺序实现 Repository → Service → Router → conftest → tests
+**Generator**：10 文件实现数据层 + SignalBoard 组件 + Dashboard 四态
 
 新建（10 文件）：
-- `backend/app/repositories/stock_repository.py` — `StockRepository`（get_by_ticker / list_active / create / reactivate / soft_delete / count_bars）
-- `backend/app/schemas/watchlist.py` — `CamelModel` / `ResponseEnvelope[T]` / `WatchlistItem` / `WatchlistCreatedItem` / `AddStockRequest` / `DeleteStockResponse` / `StockSearchItem`
-- `backend/app/services/watchlist_service.py` — `APIError` + `WatchlistService`（常量 `READY_BAR_THRESHOLD=150` / `SEARCH_LIMIT_MAX=20` / `POLYGON_MATCH_LIMIT=5`）
-- `backend/app/dependencies.py` — `get_polygon_client` / `get_watchlist_service`
-- `backend/app/routers/watchlist.py` + `backend/app/routers/stocks.py`
-- `backend/tests/test_watchlist_api.py` — T1–T17（T10 parametrize → 19 items）
-- 3 个 `__init__.py`
+- `frontend/src/types/watchlist.ts` — WatchlistItem / LatestSignal / DataStatus / SignalType
+- `frontend/src/lib/api/client.ts` — fetch 封装，解析 `{ data, error }` 信封
+- `frontend/src/lib/api/watchlist.ts` — `getWatchlist()` 类型安全包装
+- `frontend/src/components/features/dashboard/SignalBadge.tsx` — 5 状态 badge，只用 token 变量
+- `frontend/src/components/features/dashboard/SignalCard.tsx` — 单卡片（ticker/name/distance/badge）
+- `frontend/src/components/features/dashboard/SignalBoard.tsx` — grid 3/2/1 列，信号优先级排序
+- `frontend/src/components/common/EmptyState.tsx` — 全局通用空态
+- `frontend/src/components/common/ErrorState.tsx` — 全局通用错误态（含重试）
+- `frontend/src/components/ui/skeleton.tsx` — shadcn Skeleton（shadcn add skeleton 安装）
+- `frontend/.claude/launch.json` — preview 服务器配置
 
-修改：
-- `backend/app/main.py` — mount 2 routers + `APIError` 和 `RequestValidationError` 统一异常 handler
-- `backend/tests/conftest.py` — `session_engine` + `db_session` + `mock_polygon` (FakePolygon) + `client` fixture 注入 dependency_overrides
+修改（3 文件）：
+- `frontend/src/pages/Dashboard.tsx` — useQuery 接入，loading/empty/error/ready 四态
+- `frontend/src/main.tsx` — QueryClientProvider 包裹
+- `frontend/vite.config.ts` — 添加 dev proxy `/api` → `localhost:8000`
 
-**Evaluator**：`pytest` 38 passed（health 1 + polygon 8 + schema 10 + watchlist 19）
+新增依赖：
+- `@tanstack/react-query` v5（D017，用户 2026-04-17 批准）
 
-**验收**：用户实货手验通过
-- `GET /api/watchlist` → `{"data":[],"message":"success"}`
-- `POST /api/watchlist {ticker:AAPL}` → 201 + Apple Inc./XNAS + `dataStatus: "loading"`
-- `GET /api/stocks/search?q=AA` → 10 条美股结果（Alcoa + ETF）
-- `GET /api/stocks/search` 缺 q → 统一错误 `VALIDATION_ERROR`
+**Evaluator**：pnpm build 零 TS 错误，F001-b 文件 lint 零问题，4 种状态 preview 验证通过
 
-验收记录：`docs/验收/v1.0-acceptance.md` 追加 F001-a 段
+**验收**：用户手验 4 种状态全部通过
 
-### 手验暴露的 2 个基础设施 bug（已修复并落 DECISIONS）
+### 顺带修复的 Bug
 
-**D015 nginx `proxy_pass` 不带末尾斜杠**
-- 现象：所有 `/api/*` 返回 `{"detail":"Not Found"}`
-- 根因：`proxy_pass http://backend:8000/;` 带斜杠会剥掉 `/api/` 前缀，`/api/watchlist` → `/watchlist` 发给后端
-- 修复：`frontend/nginx.conf:9` 去掉末尾斜杠 → 保留完整 URI
-- F000-c 未暴露是因为当时后端只有 `/health`
+**config.py .env 路径问题**（commit `49c8e16`）
+- 现象：`cd backend && uv run uvicorn app.main:app --reload` 启动后 API 返回 500（POLYGON_API_KEY not set）
+- 根因：`SettingsConfigDict(env_file=".env")` 从 CWD 查找，但 `.env` 在项目根目录而非 `backend/`
+- 修复：改用 `Path(__file__).parent.parent.parent / ".env"` 绝对路径定位
+- 影响：现在可以从任意目录启动后端，不受 CWD 影响
 
-**D016 Polygon `list_tickers` 用 `itertools.islice` 截取首页**
-- 现象：`GET /api/stocks/search?q=AA` 返回 502 EXTERNAL_API_ERROR（Polygon 429）
-- 根因：`massive` SDK 的 `limit=N` 是每页大小，iterator 自动翻页，`list(...)` 会吃光所有匹配结果，每翻页一次 HTTP 绕过 token bucket
-- 修复：`backend/app/external/polygon_client.py:search_tickers` 用 `itertools.islice(iterator, limit)` 截取首页
-- **根因教训**：封装外部 client 时，"每页 limit" 与 "总数 limit" 不能混用；仅 token bucket 不足以约束 SDK 级翻页
+### 文档更新
 
-### 运维教训（非代码）
-
-- backend Dockerfile 是 `COPY` 代码进镜像（非 volume mount），代码改动必须 `docker compose up -d --build backend` 重建；仅 `restart` 无效
-- frontend 同理；改 `nginx.conf` 后需要 `--build frontend`
+- `docs/系统设计/API-CONTRACT.md` — 补充 GET /api/watchlist 响应中的 `dataStatus` 字段（F001-a 遗漏）
+- `docs/系统设计/DECISIONS.md` — 追加 D017（@tanstack/react-query）+ D018（Vite dev proxy）
+- `docs/开发/sprint-contracts/F001-b-contract.md` — Sprint Contract 存档
+- `docs/验收/v1.0-acceptance.md` — 追加 F001-b 验收记录
 
 ---
 
 ## 中断位置
 
-无中断。F001-a 全流程完整收尾（Contract → Generator → Evaluator → 验收 → commit）。
+无中断。F001-b 全流程完整收尾（Contract → Generator → Evaluator → 验收 → commit）。
 
 ---
 
@@ -66,46 +63,49 @@
 
 | Sprint | Phase | 备注 |
 |--------|-------|------|
-| F001-a Backend | ✅ done | 两 commit 落盘：feat `87c1483` + chore `befccd0` |
-| F001-b Frontend 读取展示 | ⬜ ready_to_dev | **下一 Sprint**，未起草 Contract |
-| F001-c Frontend 交互 | ⬜ ready_to_dev | 依赖 F001-b 基础 |
+| F001-a Backend | ✅ done | commit `87c1483` + `befccd0` |
+| F001-b Frontend 读取展示 | ✅ done | commit `c49b2ba` + `49c8e16` + `8f79ec4` |
+| F001-c Frontend 交互 | ⬜ ready_to_dev | **下一 Sprint**，未起草 Contract |
 
-F001（父级）：`in_progress`（等 b/c 完成再整体归档）
+F001（父级）：`in_progress`（等 c 完成再整体归档）
 
 ---
 
-## F001-b 进场前已知条件
+## F001-c 进场前已知条件
 
-### 范围（从 F001-a Contract 拆分段落继承）
+### 范围（从 component-plan.md + design-spec.md 继承）
 
-- 页面：Dashboard `/` 的 Watchlist 展示区
-- 数据源：`GET /api/watchlist`（F001-a 已提供，返回 `WatchlistItem[]`）
-- 字段消费：`ticker` / `name` / `exchange` / `addedAt` / `dataStatus` / `latestSignal`（F001-a 始终 null）
-- 态：empty / loading / error / ready
-- **明确不包含**：搜索框、AddStock 表单、删除交互（F001-c）；信号颜色（F004）；K 线（F005）
+- **AddStockCard**（`src/components/features/dashboard/AddStockCard.tsx`）
+  - Input（受控）+ 搜索结果 Combobox 下拉（GET /api/stocks/search，debounce 300ms）
+  - 搜索无结果：Alert 提示"未找到匹配的股票"
+  - 选中后调 POST /api/watchlist，成功后 `invalidateQueries(['watchlist'])`
+  - 添加成功后清空 Input
 
-### 预计文件（F001-a Contract 协商时用户批准 10 核心例外）
+- **删除功能**（在现有 SignalCard 上加 Delete 按钮）
+  - 悬停时显示删除图标（lucide `Trash2`）
+  - 点击调 DELETE /api/watchlist/:ticker，成功后 `invalidateQueries(['watchlist'])`
+  - 无二次确认（MVP 简化，design-spec 未画）
 
-候选（待协商时确认）：
-- `frontend/src/api/client.ts` — axios/fetch 封装 + error normalization
-- `frontend/src/api/watchlist.ts` — `getWatchlist()` 类型安全包装
-- `frontend/src/types/watchlist.ts` — 共享 TS 类型（和 API-CONTRACT 对齐的驼峰）
-- `frontend/src/hooks/useWatchlist.ts` — React Query hook（或自研 hook）
-- `frontend/src/components/watchlist/WatchlistBoard.tsx` — 列表容器
-- `frontend/src/components/watchlist/WatchlistItem.tsx` — 单行
-- `frontend/src/components/watchlist/EmptyState.tsx` — "添加你的第一只股票"
-- `frontend/src/components/watchlist/ErrorState.tsx`
-- `frontend/src/components/watchlist/LoadingState.tsx`
-- `frontend/src/pages/Dashboard.tsx` — 接入 WatchlistBoard
+- **Dashboard.tsx 侧边栏**：接入 AddStockCard（现在是空 `<div style={{width:'158px'}}`）
+
+### 已知的 shadcn 组件需求
+
+- `Combobox`（或 `Command` 组件）— 尚未安装，F001-c 需要 `npx shadcn add combobox`
+- design-spec 建议用 shadcn Combobox 实现搜索下拉
 
 ### 协商时要确认的关键决策
 
-1. **数据获取方案**：React Query（TanStack Query）还是原生 fetch + useEffect？
-2. **dataStatus 可视化**：loading/insufficient/ready 分别如何展示（占位符/徽章/灰态？）
-3. **latestSignal = null 的处理**：统一显示"数据收集中"还是按 dataStatus 分支
-4. **design-spec.md 是否已覆盖 Watchlist 空态/错误态/骨架屏**（需重读）
-5. **是否引入新依赖**（React Query 算新依赖，需用户明确批准）
-6. **测试策略**：F001-b 是纯前端展示，是否写 Vitest + React Testing Library？还是手验 Playwright？
+1. **搜索触发时机**：debounce 300ms + 最少 1 字符？还是 2 字符起搜？
+2. **搜索结果唯一时**：直接添加还是仍需用户确认？（design-spec 说唯一则直接 POST，多个则下拉选择）
+3. **删除确认**：无二次确认直接删（MVP 简化），还是加 shadcn AlertDialog？
+4. **loading 态**：AddStock 按钮提交中 spinner？删除中卡片 disabled 态？
+5. **测试策略**：F001-c 有实际 mutation，是否引入 msw mock 写 Vitest 集成测试？
+
+### API 接口（F001-a 已实现，可直接使用）
+
+- `GET /api/stocks/search?q={query}` — 返回 `StockSearchItem[]`（ticker/name/exchange/type）
+- `POST /api/watchlist { ticker }` — 201 + WatchlistCreatedItem
+- `DELETE /api/watchlist/{ticker}` — 200 + `{ ticker, removed: true }`
 
 ---
 
@@ -114,26 +114,23 @@ F001（父级）：`in_progress`（等 b/c 完成再整体归档）
 | 顺序 | 文档 | 重点 |
 |------|------|------|
 | 1 | SESSION-HANDOFF.md | 本文件 |
-| 2 | CLAUDE.md | 全局约束 |
-| 3 | docs/设计/design-spec.md | Watchlist / Dashboard 视觉规格（读全文） |
-| 4 | docs/系统设计/API-CONTRACT.md#watchlist §48-82 | 响应字段权威 |
-| 5 | frontend/src/pages/Dashboard.tsx | F000-b 空壳现状 |
-| 6 | frontend/package.json | 现有依赖（React 19 / Vite 8 / TS 6 / Tailwind v4 / shadcn） |
-| 7 | docs/系统设计/DECISIONS.md#D011-D016 | 前端技术决策上下文 |
-| 8 | docs/开发/sprint-contracts/F001-a-contract.md | 字段命名规范参照 |
-| 9 | claude-progress.txt 最后 60 行 | 本 Session 全流程 |
+| 2 | docs/设计/design-spec.md §Dashboard AddStockCard 交互 | 搜索下拉、唯一结果处理 |
+| 3 | docs/系统设计/API-CONTRACT.md §stock-search + §watchlist POST/DELETE | 请求/响应格式 |
+| 4 | docs/设计/component-plan.md §AddStockCard | props 契约、职责边界 |
+| 5 | frontend/src/pages/Dashboard.tsx | 当前 Sidebar 空位置 |
+| 6 | frontend/src/components/features/dashboard/SignalCard.tsx | 删除按钮加在这里 |
 
 ---
 
 ## 环境快照
 
-- git branch：`main` · 最新 commit：`befccd0`（F001-a 验收归档）
+- git branch：`main` · 最新 commit：`8f79ec4`（F001-b 验收归档）
 - 工作树：clean
-- 后端可运行：`cd backend && uv run uvicorn app.main:app --reload`
-- 前端可运行：`cd frontend && pnpm dev`（localhost:5173）
+- 后端启动：`cd backend && uv run uvicorn app.main:app --reload`（现在从任意目录均可）
+- 前端启动：`cd frontend && pnpm dev`（localhost:5173，/api 自动代理到 localhost:8000）
 - docker 全栈：`docker compose up -d`（localhost:8080；改代码必须 `--build`）
-- Polygon API key：项目根 `.env`（gitignored）
 - pytest 基线：38 通过
+- 已安装前端依赖：@tanstack/react-query v5、shadcn skeleton
 
 ---
 
@@ -142,18 +139,15 @@ F001（父级）：`in_progress`（等 b/c 完成再整体归档）
 ```
 我回来了，请按顺序读取：
 1. SESSION-HANDOFF.md（本文件）
-2. CLAUDE.md
-3. docs/设计/design-spec.md（全文 — 重点 Watchlist 区域）
-4. docs/系统设计/API-CONTRACT.md §Watchlist（第 48-82 行）
-5. frontend/src/pages/Dashboard.tsx（F000-b 空壳）
-6. frontend/package.json（现有依赖清单）
-7. claude-progress.txt 最后 60 行
+2. docs/设计/design-spec.md（Dashboard AddStockCard 交互段落）
+3. docs/系统设计/API-CONTRACT.md §stocks-search + §watchlist（POST/DELETE）
+4. docs/设计/component-plan.md §AddStockCard
+5. frontend/src/pages/Dashboard.tsx（当前 Sidebar 空位）
+6. frontend/src/components/features/dashboard/SignalCard.tsx
 
-然后触发 feature-dev skill，起草 F001-b Sprint Contract：
-  - 明确范围/排除/预计文件
-  - 协商数据获取方案（React Query vs 原生）
-  - 协商 dataStatus 可视化规则
-  - 确认是否引入新依赖
-  - 10 核心文件例外已批准（F001-a Contract 协商时确认）
+然后触发 feature-dev skill，起草 F001-c Sprint Contract：
+  - 范围：AddStockCard（搜索 + 添加）+ SignalCard 删除按钮
+  - 协商：搜索最少字符数、唯一结果是否直接添加、删除二次确认
+  - 确认是否引入 shadcn Combobox（新依赖需批准）
 Contract 用户确认后进 Generator。
 ```
