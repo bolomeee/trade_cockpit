@@ -1,116 +1,115 @@
 # SESSION-HANDOFF.md
 
 > 生成时间：2026-04-18
-> 当前 Skill：无活跃 Skill（v1.0.0 MVP 发布完成）
-> 下一步：本地 Docker 部署 或 开始 P1 feature
+> 当前分支：`feat/workbench-refactor`
+> 刚完成：**Phase 1（Widget 框架脚手架）**
+> 下一步：Phase 2（迁移 StockDetailModal 拆解为 3 个独立 widget）
 
 ---
 
 ## 本 Session 完成的内容
 
-### F008-a Backend `/api/logs` API（✅ done）
-- `backend/app/schemas/log.py` LogLevel Literal + LogEntryOut
-- `backend/app/routers/logs.py` GET `/api/logs?level=&limit=`，default=50 max=500
-- `backend/app/dependencies.py` + `get_system_log_repository`
-- `backend/app/main.py` include_router(logs.router)
-- `backend/tests/test_logs_api.py` 11 用例
-- pytest 162/162（基线 151 + 11 新）
+### Phase 0（commit `681a988`）：文档对齐
+- `CLAUDE.md`：阶段 → v1.0.0 ✅ → v1.1.0 Workbench 重构；新增"加新 widget 标准流程"
+- `docs/需求/PRD.md`：前置 v1.1 Workbench vision 章节（widget 类别、新增用户旅程 D/E、明确不做清单）
+- `docs/系统设计/ARCHITECTURE.md`：技术栈表加 react-grid-layout + zustand；新增 Workbench Widget Framework 章节（manifest 契约、层级、原则）
+- `docs/系统设计/DECISIONS.md`：D029（框架选型）、D030（zustand 跨 widget store）、D031（拆解 StockDetailModal）
+- `docs/设计/design-spec.md`：前置 v1.1 Workbench section（全局结构、网格规格、WidgetShell 契约、默认布局表、响应式）
+- `docs/需求/features.json`：version 1.1.0-dev；v1.1 iteration_log；F100/F101/F102 三个新 feature
 
-### F008-b Frontend `/logs` 页面（✅ done）
-- `frontend/src/types/log.ts` LogLevel / LogLevelFilterValue / LogEntry
-- `frontend/src/lib/api/logs.ts` getLogs({ level?, limit? })
-- `frontend/src/components/features/logs/LogBadge.tsx` 4 色徽章（OK/INFO/ERROR solid，WARN outline）
-- `frontend/src/components/features/logs/LogLevelFilter.tsx` 5 chip 原生 button toggle
-- `frontend/src/components/features/logs/LogsTable.tsx` Timestamp(mono)/Level/Source/Message ellipsis + title tooltip
-- `frontend/src/pages/Logs.tsx` useQuery(['logs', filter]) + 4 态（ready/empty/loading/error）
-- preview 验证：ALL/OK filter 实数据渲染、INFO/WARN 空态文案、Badge 配色匹配
-
-### UI 打磨（4 项用户要求）
-- `frontend/src/pages/Dashboard.tsx` 删除 "SignalBoard" h2 + sidebar 顶部占位 h2
-- `frontend/src/pages/Journal.tsx` 删除 "Trade Journal" h1，+ New Entry 按钮右对齐
-- `frontend/src/pages/Logs.tsx` 删除 "System Logs" h1，filter chips 右对齐
-- `frontend/src/components/features/market-overview/MarketOverviewBar.tsx` 去掉 `if (isError) return null`，bar 不再消失
-- `frontend/src/components/features/topnav/TopNav.tsx` 改 `alignItems: baseline` 让 nav 链接与 "MA150 Tracker" 底部基线对齐
-
-### v1.0.0 发布（commit `eee4e78` + tag `v1.0.0`）
-- `CHANGELOG.md` 新建，写入 v1.0.0 条目（F000–F008 完整 MVP）
-- `frontend/package.json` 0.0.0 → 1.0.0
-- `backend/pyproject.toml` 0.1.0 → 1.0.0
-- 🔧 顺手修复 `frontend/.gitignore` 里 `logs` 规则误伤 `components/features/logs/` 目录
-- 📦 progress 归档至 `archive/v1.0.0-progress.txt`，`claude-progress.txt` 重置为空
-- 24 文件变更（+1698 / −1183），**尚未 push**
+### Phase 1（commit 待打）：Widget 框架脚手架
+- **技术选型验证（Spike）**：react-grid-layout 2.2.3 兼容 React 19（peerDep 为 React 18+）；v2 是 TS 重写版，API 从 flat props 变为 `gridConfig` / `dragConfig` 配置对象 + `useContainerWidth()` hook；`@types/react-grid-layout` deprecated，v2 自带类型；`react-resizable` 不再是依赖
+- **新依赖**：`react-grid-layout@2.2.3` + `zustand@5.0.12`（已入 `package.json`）
+- **新代码**：
+  - `src/workbench/WidgetRegistry.ts`：manifest 类型 + `WIDGET_REGISTRY` 映射 + `getDefaultLayout()`；当前注册 3 个 demo widget 占位
+  - `src/workbench/WidgetShell.tsx`：标准外壳（标题栏 36px 作 drag handle + 内容区 overflow-auto）
+  - `src/workbench/Workbench.tsx`：`useContainerWidth` 测宽 + `ReactGridLayout` 渲染 + 从 registry 查组件渲染到 Shell 内
+  - `src/workbench/useLayoutStore.ts`：zustand + persist 中间件，key `ma150.workbench.layouts.v1`，版本号 1
+  - `src/workbench/widgets/DemoWidget.tsx`：读写 `useAppStore.selectedSymbol` 的占位 widget，验证跨 widget 联动
+  - `src/store/useAppStore.ts`：zustand 全局 client state，`selectedSymbol` + `setSelectedSymbol`
+- **路由**：`src/App.tsx` 新增 `/workbench` 临时路由，老路由 `/` `/journal` `/logs` **不动**
+- **验收**：
+  - `pnpm build` 零 TS 错误；bundle 768KB raw / 238KB gzip（超 500KB 阈值，Phase 5 前做 code-splitting）
+  - 浏览器实测通过：3 个 demo widget 渲染、拖拽 + resize 工作、刷新页面位置保留、重置布局按钮生效
 
 ---
 
 ## 当前状态
 
-### MVP 进度：8/8 ✅ 全部完成
-| Feature | 状态 |
-|---------|------|
-| F001 Watchlist 管理 | ✅ done |
-| F002 150MA 信号引擎 | ✅ done |
-| F003 数据刷新与调度 | ✅ done |
-| F004 SignalBoard | ✅ done |
-| F005 个股详情 Modal | ✅ done |
-| F006 大盘概览 Bar | ✅ done |
-| F007 交易日志 Journal | ✅ done |
-| F008 系统日志页面 | ✅ done |
-
-### Pipeline 状态
+### Pipeline
 | 阶段 | 状态 |
 |------|------|
-| 需求 / 系统设计 / UI 设计 / 开发 | ✅ 完成 |
-| 本地部署（Docker Compose） | ⬜ 未执行 |
-| 远端 push | ⬜ 未执行 |
+| Phase 0 文档对齐 | ✅ done（`681a988`） |
+| Phase 1 框架脚手架 | ✅ done（待 commit） |
+| Phase 2 拆 StockDetailModal | ⬜ next |
+| Phase 3 迁移列表 widget | ⬜ |
+| Phase 4 路由切换 + 清理 | ⬜ |
+| Phase 5 验收 + 发 v1.1.0 | ⬜ |
+
+### features.json 状态
+| Feature | phase |
+|---------|-------|
+| F100 Workbench 框架 | `in_progress`（Phase 1 完成即等价 F100 核心完成，Phase 2 起属 F101） |
+| F101 SMA150 widget 迁移 | `design_needed` |
+| F102 路由切换 + 清理 | `design_needed` |
+
+### 环境快照
+- git branch：`feat/workbench-refactor` · HEAD（待打）：Phase 1 commit · main 合入需等 Phase 5
+- 后端：未改动，v1.0.0 所有 endpoint 继续工作；pytest 162/162 基线
+- 前端：`cd frontend && pnpm dev` → localhost:5173；新路由 `/workbench` 可访问；老路由 `/` `/journal` `/logs` 不受影响
+- localStorage key：`ma150.workbench.layouts.v1`（zustand persist，schema version 1）
+- 已知非阻塞问题：
+  - `pnpm lint` 有 2 个 pre-existing 问题（`button.tsx` fast-refresh、`JournalEntryForm.tsx` watch() compiler 警告），v1.0.0 就有，不是 Phase 1 引入
+  - bundle 超 500KB 阈值，Phase 5 前需用 `React.lazy(Workbench)` code-split
 
 ---
 
-## 中断位置
+## 下一步 Phase 2 任务
 
-v1.0.0 已在本地打 commit + tag，但：
-1. **未 push 到远端**：`git push && git push --tags`
-2. **未执行本地 Docker 部署**：acceptance skill Step 5 已就绪，可触发
+**目标**：把 StockDetailModal 拆成 3 个独立 widget（`ChartWidget` / `FundamentalsWidget` / `PullbackWidget`），从 `useAppStore.selectedSymbol` 读 ticker，各自 fetch 数据。WatchlistWidget 点击 → `setSelectedSymbol` → 3 widget 同步刷新。
+
+### 需要做的事
+
+1. **改造 `PriceChart`**（关键风险点）：
+   - 去掉硬编码 `height: 302px`（在 `components/features/stock-detail/PriceChart.tsx`）
+   - 用 `ResizeObserver` 监听父容器尺寸，调 `chart.applyOptions({ width, height })` 让 lightweight-charts 自适应
+   - 验证：在 widget 被 resize 时 K 线图不截断、不溢出
+2. **创建 3 个 widget**（`src/workbench/widgets/`）：
+   - `ChartWidget.tsx`：从 `useAppStore` 读 selectedSymbol → 调现有 `useStockChart` hook（如有）或 `useQuery(['chart', symbol])` → 渲染改造后的 PriceChart
+   - `FundamentalsWidget.tsx`：包 `FundamentalsCard`
+   - `PullbackWidget.tsx`：包 `PullbackHistoryCard`
+   - 各自处理 `selectedSymbol === null` 的空态："请在 Watchlist 中选择一只股票"
+3. **注册到 `WidgetRegistry.ts`**，替换掉 demo.a/b/c
+4. **验证**：
+   - 在 `/workbench` 页面看到 3 个 widget 分别渲染
+   - 手动调 `setSelectedSymbol('AAPL')`（临时加个按钮或通过 DemoWidget）→ 3 widget 同步拉数据
+   - resize widget → K 线图正确重排
+
+### 关键文件路径
+- 改造：`frontend/src/components/features/stock-detail/PriceChart.tsx`
+- 新增：`frontend/src/workbench/widgets/{ChartWidget,FundamentalsWidget,PullbackWidget}.tsx`
+- 修改：`frontend/src/workbench/WidgetRegistry.ts`（删 demo、加 3 个 SMA150 widget）
+- 保留：`components/features/stock-detail/{FundamentalsCard,PullbackHistoryCard}.tsx`（widget 直接包裹复用）
+
+### 相关参考
+- 计划文档：`~/.claude/plans/tranquil-mixing-lollipop.md` 的 Phase 2 章节
+- Phase 0 定下的设计契约：`docs/系统设计/DECISIONS.md` D031（拆解理由）
+- 现有 Modal 数据流：`frontend/src/components/features/stock-detail/StockDetailModal.tsx`（作为迁移来源参考，不删除）
 
 ---
 
-## 环境快照
+## 未决事项 / 风险
 
-- git branch：`main` · HEAD：`eee4e78`（v1.0.0）
-- 工作树：clean（除了 SESSION-HANDOFF.md 本文件变更）
-- 后端：`cd backend && MA150_DISABLE_SCHEDULER=1 uv run uvicorn app.main:app --port 8000`
-- 前端：`cd frontend && pnpm dev`（localhost:5173，/api 代理 :8000）
-- pytest 基线：162/162 通过
-- docker-compose：`docker compose up -d`（frontend 8080:80 + backend 8000 内部）
-- Polygon 实货：SPX/部分股票 NOT_AUTHORIZED（免费档限制，不影响 MVP 核心）
+1. **WatchlistWidget 联动尚未做**：Phase 2 暂只支持通过 DemoWidget 手动触发 `setSelectedSymbol`，真正把 SignalBoard 的 onClick 接到 store 要到 Phase 3 做 `WatchlistWidget` 时
+2. **PriceChart 响应式改造的内部细节**：lightweight-charts 在 Dialog 里用 window resize listener（D025）；widget 里改成 ResizeObserver 时需重新验证；Phase 2 做完要在多种 widget 尺寸下测一轮
+3. **bundle size**：248KB gzip 可接受但已超阈值，Phase 5 前必须做 code-split
+4. **是否开 Phase 2**：可以立即开，也可以在 main 上先 cherry-pick 合并 F100 核心（当前 workbench 框架），然后再回 feat 分支做 F101/F102。默认继续留在 feat 分支一气呵成
 
 ---
 
-## 下一个 Session 可选路径
+## 下一个 Session 继续指令
 
-### 路径 A：远端 push + 本地 Docker 部署（推荐）
 ```
-我回来了，推送 v1.0.0 到远端然后本地 Docker 部署。
+继续 workbench 重构 Phase 2：改造 PriceChart 响应式 + 拆 StockDetailModal 为 3 个 widget。
+先读 SESSION-HANDOFF.md，然后按"Phase 2 任务"逐条执行。
 ```
-
-Claude Code 将：
-1. `git push origin main && git push --tags`
-2. 触发 acceptance skill Step 5（`docker compose build` → `up -d` → 冒烟测试）
-
-### 路径 B：开始 P1 feature
-查 `docs/需求/features.json` 优先级 P1 未开始项，进入 feature-dev 新 Sprint Contract 协商。
-
-### 路径 C：修复已知遗留（非阻塞）
-- QuickAdd / 通用 ApiError 基础设施错误文案（5xx/网络 → "HTTP XXX" 不够友好）
-  建议：`frontend/src/lib/api/client.ts` 层统一把 5xx/网络错误 message 转成"服务不可用，请重试"，业务错误（422/404）保留后端文案
-
----
-
-## 必读文档清单（下一 Session）
-
-| 顺序 | 文档 | 重点 |
-|------|------|------|
-| 1 | SESSION-HANDOFF.md | 本文件 |
-| 2 | CHANGELOG.md | v1.0.0 变更记录 |
-| 3 | docs/需求/features.json | 确认 MVP 8/8 done，P1 待做清单 |
-| 4 | docs/系统设计/ARCHITECTURE.md | 部署环境要求（如要 Docker 部署） |
-| 5 | docker-compose.yml | 本地部署配置 |

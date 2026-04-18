@@ -57,5 +57,10 @@ in_progress → testing → needs_review，不得跳过 testing 阶段
 ## 歧义优先级
 DATA-MODEL > API-CONTRACT > design-spec > 写"待决策"通知用户
 
+## Phase 结束
+每个开发阶段（phase）完成后，必须：
+1. 生成 `SESSION-HANDOFF.md`，不简化，不跳步，包含：已完成内容、当前状态、下一步任务、未决事项
+2. 告知用户："**Phase 已完成，SESSION-HANDOFF.md 已更新，建议开启新 session 继续下一阶段。**"
+
 ## Context 不足
 立即生成 SESSION-HANDOFF.md，不简化，不跳步
