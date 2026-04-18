@@ -91,7 +91,7 @@ export function StockDetailModal({
                 border: '1px solid var(--color-border)',
                 backgroundColor: 'var(--color-card)',
                 overflow: 'hidden',
-                minHeight: `${CHART_HEIGHT}px`,
+                height: `${CHART_HEIGHT}px`,
               }}
               data-testid="price-chart-container"
             >
@@ -110,7 +110,7 @@ export function StockDetailModal({
                 </div>
               )}
               {!chartQ.isLoading && !chartQ.isError && chartQ.data && (
-                <PriceChart data={chartQ.data as ChartData} height={CHART_HEIGHT} />
+                <PriceChart data={chartQ.data as ChartData} />
               )}
             </div>
 

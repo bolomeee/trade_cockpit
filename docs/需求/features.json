@@ -869,8 +869,9 @@
       "description": "引入 react-grid-layout + zustand，搭建 Workbench 单页面 widget 容器、WidgetRegistry、WidgetShell 标准外壳、跨 widget AppStore。临时挂 /workbench 路由，老路由不动",
       "user_story": "作为用户，我想在单一页面上看到所有 widget 并可以拖拽重排",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-18",
       "dependencies": [],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -910,8 +911,8 @@
       "description": "把 v1.0.0 的 SignalBoard / StockDetailModal 内容 / Journal / Logs / MarketOverview / QuickAdd 迁移为 widget 包装。StockDetailModal 拆成 3 个独立 widget（Chart/Fundamentals/Pullback），共享 AppStore.selectedSymbol。PriceChart 改造为响应式高度",
       "user_story": "作为用户，我想继续使用 v1.0.0 所有功能，但以可拖拽 widget 的形式",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
+      "status": "in_progress",
+      "phase": "in_progress",
       "dependencies": ["F100"],
       "estimated_sessions": 3,
       "estimated_files_changed": [
