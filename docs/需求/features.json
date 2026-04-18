@@ -1,17 +1,17 @@
 {
   "_schema_version": "2.0",
-  "project": "MA150 Tracker",
-  "version": "1.0.0",
-  "last_updated": "2026-04-17",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件",
-  "completion_rate": "25%",
+  "project": "MA150 Tracker → Workbench",
+  "version": "1.1.0-dev",
+  "last_updated": "2026-04-18",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式",
+  "completion_rate": "v1.0.0 全部 done；v1.1.0 Workbench 重构进行中",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
     "ui_design": "done",
-    "development": "not_started",
+    "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v1.0"
+    "current_iteration": "v1.1"
   },
   "_iteration_log": [
     {
@@ -30,7 +30,20 @@
         "F007-d",
         "F008"
       ],
-      "status": "in_progress"
+      "status": "done",
+      "released_at": "2026-04-18",
+      "released_tag": "v1.0.0"
+    },
+    {
+      "version": "v1.1",
+      "date": "2026-04-18",
+      "features_snapshot": [
+        "F100",
+        "F101",
+        "F102"
+      ],
+      "status": "in_progress",
+      "description": "Workbench 重构：Dashboard/Journal/Logs 三页合并为单页 widget 工作台。F001-F008 作为首批 widget 保留，不重新开发"
     }
   ],
   "_phase_legend": {
@@ -849,6 +862,135 @@
       "iteration_history": [],
       "notes": "",
       "completed_at": "2026-04-18"
+    },
+    {
+      "id": "F100",
+      "name": "Workbench 框架",
+      "description": "引入 react-grid-layout + zustand，搭建 Workbench 单页面 widget 容器、WidgetRegistry、WidgetShell 标准外壳、跨 widget AppStore。临时挂 /workbench 路由，老路由不动",
+      "user_story": "作为用户，我想在单一页面上看到所有 widget 并可以拖拽重排",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "ready_to_dev",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/package.json",
+        "frontend/src/workbench/WidgetRegistry.ts",
+        "frontend/src/workbench/WidgetShell.tsx",
+        "frontend/src/workbench/Workbench.tsx",
+        "frontend/src/workbench/useLayoutStore.ts",
+        "frontend/src/store/useAppStore.ts",
+        "frontend/src/App.tsx"
+      ],
+      "scope": {
+        "pages": ["/workbench（临时路由，Phase 4 收敛到 /）"],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "pnpm add react-grid-layout zustand 成功，build 零 TS 错误",
+        "/workbench 路由加载，显示至少一个 demo widget（占位）",
+        "demo widget 可拖拽 + resize，布局变更自动写入 localStorage key `ma150.workbench.layouts.v1`",
+        "刷新浏览器后 demo widget 位置保留",
+        "老路由 / /journal /logs 不受影响"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 1；风险：react-grid-layout 与 React 19 兼容性，demo 阶段验证"
+    },
+    {
+      "id": "F101",
+      "name": "SMA150 widget 迁移",
+      "description": "把 v1.0.0 的 SignalBoard / StockDetailModal 内容 / Journal / Logs / MarketOverview / QuickAdd 迁移为 widget 包装。StockDetailModal 拆成 3 个独立 widget（Chart/Fundamentals/Pullback），共享 AppStore.selectedSymbol。PriceChart 改造为响应式高度",
+      "user_story": "作为用户，我想继续使用 v1.0.0 所有功能，但以可拖拽 widget 的形式",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F100"],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "frontend/src/workbench/widgets/WatchlistWidget.tsx",
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "frontend/src/workbench/widgets/FundamentalsWidget.tsx",
+        "frontend/src/workbench/widgets/PullbackWidget.tsx",
+        "frontend/src/workbench/widgets/JournalWidget.tsx",
+        "frontend/src/workbench/widgets/LogsWidget.tsx",
+        "frontend/src/workbench/widgets/MarketOverviewWidget.tsx",
+        "frontend/src/workbench/widgets/QuickAddWidget.tsx",
+        "frontend/src/components/features/stock-detail/PriceChart.tsx",
+        "frontend/src/components/features/dashboard/SignalCard.tsx"
+      ],
+      "scope": {
+        "pages": ["Workbench /workbench → / (Phase 4)"],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Workbench 可同时显示 Watchlist / Chart / Fundamentals / Pullback / Journal / Logs / MarketOverview / QuickAdd 8 种 widget",
+        "点 WatchlistWidget 中某股票 → Chart/Fundamentals/Pullback widget 同步拉该股票数据",
+        "ChartWidget 自适应容器尺寸，lightweight-charts 在 resize 后正确 relayout",
+        "Journal/Logs widget 在窄宽度下内容可滚动不溢出 Shell",
+        "所有 widget 功能与 v1.0.0 等价（数据 fetch、新建/编辑、筛选、删除均正常）",
+        "v1.0.0 的 StockDetailModal.tsx 不再被引用"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 2-3；PriceChart 响应式改造是关键风险点"
+    },
+    {
+      "id": "F102",
+      "name": "路由切换 + 清理 + 默认布局预设",
+      "description": "Workbench 接管根路由 /，删除 v1.0.0 pages 目录下 Dashboard/Journal/Logs 和 StockDetailModal；/journal、/logs 路由 redirect 到 /。TopNav 简化：移除路由链接，保留 refresh。提供合理默认 Workbench 布局",
+      "user_story": "作为用户，我打开首页就看到完整 Workbench 默认布局；老书签 /journal /logs 不 404",
+      "priority": "P0",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F101"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/Dashboard.tsx (delete)",
+        "frontend/src/pages/Journal.tsx (delete)",
+        "frontend/src/pages/Logs.tsx (delete)",
+        "frontend/src/components/features/stock-detail/StockDetailModal.tsx (delete)",
+        "frontend/src/components/features/topnav/TopNav.tsx",
+        "frontend/src/workbench/WidgetRegistry.ts"
+      ],
+      "scope": {
+        "pages": ["/（Workbench 主入口）"],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "/ 直接渲染 Workbench，非 /workbench",
+        "访问 /journal /logs 自动 redirect 到 /（不 404）",
+        "TopNav 不再显示 Dashboard / Journal / Logs 路由链接",
+        "首次访问（无 localStorage）时 Workbench 渲染默认布局，5+ widget 可见",
+        "重置布局按钮：清 localStorage → 回到默认布局",
+        "pnpm build 零 TS 错误；backend 零改动，所有既有 API 调用不变",
+        "CHANGELOG 准备 v1.1.0 条目"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 4-5；完成后发 v1.1.0 tag"
     }
   ]
 }

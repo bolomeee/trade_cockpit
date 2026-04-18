@@ -1,12 +1,87 @@
 # design-spec.md
 
-> 最后更新：2026-04-17 | 维护者：design-bridge skill
+> 最后更新：2026-04-18（v1.1.0 Workbench 重构 Phase 0）
 > ⚠️ 本文档是开发时视觉 & 交互规格的权威来源。Token 用法见 `tokens.json` / `src/styles/tokens.css`。字段名见 `data-mapping.md`（API-CONTRACT.md 为权威）。
 > Figma 文件清单见 `figma-links.md`。
 
 ---
 
-## 页面清单
+## v1.1 · Workbench（当前主视觉）
+
+v1.0.0 的 Dashboard / Journal / Logs 三页合并为单页 Workbench，widget 化渲染。下方"页面 1/2/3"章节仍为各 widget 内部的视觉契约（**作为 widget 内部规格继续生效**），但页面级别的"路由切换 / TopNav 高亮"不再适用。
+
+### 全局结构
+
+```
+┌─ TopNav（64px，保留）──────────────────────────┐
+│  MA150 Tracker · Last refresh · Refresh Data  │
+├─ MarketOverview 条（41px，可选 widget 化）─────┤
+├─ Workbench 网格（剩余高度） ───────────────────┤
+│                                                │
+│   [widget A] [widget B] [widget C]             │
+│   [widget D]            [widget E]             │
+│                                                │
+│  右下：重置布局按钮                             │
+└────────────────────────────────────────────────┘
+```
+
+### Workbench 网格规格
+
+- **引擎**：react-grid-layout
+- **列数**：12（桌面），手机断点降为 4 列（见"响应式"）
+- **行高（rowHeight）**：40 px
+- **容器 padding**：`[16, 16]`；widget 间 margin：`[12, 12]`
+- **背景**：`--color-background`（白）
+- **拖拽 handle**：widget 的 WidgetShell 标题栏（整栏可拖），光标 `grab` → `grabbing`
+- **resize handle**：widget 右下角（react-grid-layout 默认），12×12px，`--color-border` 淡色三角
+
+### WidgetShell 标准外壳
+
+所有 widget 必须通过 WidgetShell 包装：
+
+```
+┌─ Shell（--radius-card 圆角 + --shadow-card）──┐
+│ ┌─ 标题栏（36px，拖拽 handle）─────────────┐ │
+│ │ Widget 标题（14px semibold）             │ │
+│ │                          [⋯ 可选菜单]    │ │
+│ └──────────────────────────────────────────┘ │
+│ ┌─ 内容区（overflow-auto）─────────────────┐ │
+│ │ 具体 widget 内容（即 v1.0.0 的业务组件） │ │
+│ └──────────────────────────────────────────┘ │
+└──────────────────────────────────────────────┘
+```
+
+- 标题栏背景 `--color-surface-muted`，下分隔线 `--color-border`
+- 内容区 padding `16 px`；溢出 overflow-auto（widget 被缩窄时出滚动条，不溢出 Shell）
+- Shell 背景 `--color-surface`（白或浅灰），hover 时 `--shadow-card-hover`
+
+### 默认布局（首次访问）
+
+| Widget | x | y | w | h |
+|--------|---|---|---|---|
+| WatchlistWidget | 0 | 0 | 4 | 8 |
+| ChartWidget | 4 | 0 | 5 | 6 |
+| FundamentalsWidget | 9 | 0 | 3 | 4 |
+| PullbackWidget | 9 | 4 | 3 | 4 |
+| JournalWidget | 4 | 6 | 5 | 4 |
+| LogsWidget | 0 | 8 | 4 | 3 |
+| QuickAddWidget | 9 | 8 | 3 | 3 |
+
+> 具体默认布局在 Phase 1/2 实现时可微调；最终以 `WidgetRegistry.ts.defaultLayout` 为准。
+
+### 响应式
+
+- **≥ 1024 px**：12 列完整布局
+- **< 1024 px**：react-grid-layout 响应式降为 4 列单列堆叠，widget 按 y 顺序纵向排列
+- **widget 内部**：继承 v1.0.0 响应式规则（见下方各 widget 章节）
+
+### Widget 内部视觉规格
+
+下方"页面 1 / 1a / 2 / 2a / 3"章节描述各 widget **内容区**的视觉与交互规格（不含顶栏 / MarketOverview）。Dashboard 页面级的布局编排不再适用，改为 Workbench 网格统一管理。
+
+---
+
+## 页面清单（v1.0 · 作为 widget 内部规格参考）
 
 | # | 页面 | 路由 | Figma 链接 | 关联 Feature |
 |---|------|------|-----------|-------------|

@@ -453,3 +453,67 @@ last_modified_by: system-design
 - context7 `/react-hook-form/resolvers`（2026-04-17，zodResolver 用法与 TS 推导）
 - context7 `/shadcn-ui/ui`（2026-04-17，Select+Controller 用法与 Label 规范）
 - 非训练数据。
+
+---
+
+## D029：Workbench widget 框架技术选型
+**时间**：2026-04-18（v1.1.0 Workbench 重构 Phase 0）
+**背景**：v1.0.0 的 Dashboard/Journal/Logs 三个固定页面要演化为 Grafana 风格的单页面 widget 工作台。选型需要支持拖拽重排、自由缩放、布局持久化。
+
+**决策**：
+- **布局引擎**：`react-grid-layout@1.x` —— 成熟度高、支持拖拽 + resize + 响应式断点、API 稳定
+- **跨 widget 状态**：`zustand` + `persist` 中间件，替代 React Query 解决不了的"选中 ticker 跨 widget 联动"等 client state
+- **布局持久化**：浏览器 `localStorage`，key `ma150.workbench.layouts.v1`（带版本号方便未来 schema 迁移），**不进数据库**
+
+**放弃了什么**：
+- **DB 持久化 widget 布局**（新增 Widget / WidgetInstance 表）：个人单用户场景无跨设备同步需求，localStorage 足够；架构简洁性优先
+- **micro-frontend / iframe / Module Federation**：同 React app 内的组件复用即可，隔离成本远大于收益
+- **`@dnd-kit` 自实现 grid**：react-grid-layout 开箱即用，风险更低（若与 React 19 有兼容问题，Phase 1 demo 阶段暴露时再评估切换）
+
+**影响**：
+- 新增前端依赖 `react-grid-layout`、`zustand`
+- 后端零改动（ARCHITECTURE 已声明"每个前端 widget 自包含、独立取数"）
+- 未来若要多 dashboard 预设切换、跨设备同步，再迁移到 DB
+
+---
+
+## D030：Widget 间通信 = zustand 全局 store
+**时间**：2026-04-18（v1.1.0 Workbench 重构 Phase 0）
+**背景**：WatchlistWidget 点击股票需要让 ChartWidget / FundamentalsWidget / PullbackWidget 同步刷新。v1.0.0 通过 `Dashboard.tsx` 的 `useState` + props drilling 实现。widget 化后没有共同父组件。
+
+**决策**：
+- 新建 `src/store/useAppStore.ts`（zustand），暴露 `selectedSymbol` / `setSelectedSymbol` 等跨 widget client state
+- Widget 通过 hook 独立读写 store，彼此无直接依赖
+- Server state 仍由 React Query 管理，zustand 只管跨 widget 的 client state
+
+**放弃了什么**：
+- **props drilling**：widget 无共同父组件，不可行
+- **URL state（search params）**：`selectedSymbol` 改变不应 push history，也不应在刷新后保留（布局保留足够）
+- **Context**：rerender 范围不可控，多 widget 监听会性能退化
+- **复杂消息总线（RxJS 等）**：现有联动需求只是"一个选中态"，zustand 足够
+
+**影响**：
+- StockDetailModal 将删除，替代为 3 个独立 widget 共同订阅 `selectedSymbol`
+- 未来跨 widget 联动新增字段（如 `watchlistFilter`、`dateRange`）继续扩展 AppStore
+
+---
+
+## D031：StockDetailModal 拆解为 3 个独立 widget
+**时间**：2026-04-18（v1.1.0 Workbench 重构 Phase 0）
+**背景**：v1.0.0 的 `StockDetailModal` 是 Dialog，点击 SignalCard 弹出 K线 + 基本面 + 回踩历史。widget 化后 Dialog 模式与拖拽网格冲突。
+
+**决策**：
+- 删除 `StockDetailModal.tsx`
+- 拆成 3 个独立 widget：`ChartWidget` / `FundamentalsWidget` / `PullbackWidget`，全部从 `useAppStore.selectedSymbol` 读 ticker
+- 点 WatchlistWidget 中的股票 → `setSelectedSymbol("AAPL")` → 3 个 widget 同步 rerender 拉新数据
+- `PriceChart` 需要改造：去掉硬编码 `height: 302px`，用 ResizeObserver 让图表填满 widget 容器
+
+**放弃了什么**：
+- **保留 Modal 同时也有 widget**：两套入口同一份数据容易行为漂移，维护成本高
+- **内嵌 Modal 到 widget 内部**：widget 本应"永久可见"、"可 resize"，Modal 语义冲突
+
+**影响**：
+- 用户可在 Workbench 同时并排看多个股票（切换 selectedSymbol），或只开 Chart 不开 Fundamentals，灵活度大幅提升
+- 失去 "Modal 弹出感" UX —— 可接受，因为 widget 本身就是"聚焦显示"
+- `PriceChart` 响应式改造需同步解决 lightweight-charts 在窄宽度下的标签遮挡问题
+
