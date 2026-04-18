@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<title>Dashboard Widget Demo</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/react-grid-layout@1.4.4/dist/react-grid-layout.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/react-grid-layout@1.4.4/css/styles.css" />
+<link rel="stylesheet" href="https://unpkg.com/react-resizable@3/css/styles.css" />
+<style>
+  body { margin: 0; font-family: -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .header { padding: 16px 24px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { margin: 0; font-size: 18px; }
+  .header .actions button { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 8px; }
+  .header .actions button:hover { background: #334155; }
+  .widget { background: #1e293b; border: 1px solid #334155; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .widget-header { padding: 10px 14px; border-bottom: 1px solid #334155; font-weight: 600; font-size: 13px; color: #94a3b8; cursor: move; display: flex; justify-content: space-between; align-items: center; background: #0f172a; }
+  .widget-body { padding: 12px 14px; overflow: auto; flex: 1; font-size: 13px; }
+  .stock-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; cursor: pointer; }
+  .stock-row:hover { background: #334155; margin: 0 -14px; padding-left: 14px; padding-right: 14px; }
+  .stock-row.active { color: #38bdf8; font-weight: 600; }
+  .price-up { color: #4ade80; }
+  .price-down { color: #f87171; }
+  .news-item { padding: 8px 0; border-bottom: 1px solid #334155; }
+  .news-time { color: #64748b; font-size: 11px; }
+  .chart-placeholder { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); border-radius: 6px; color: #64748b; font-size: 12px; }
+  .symbol-big { font-size: 32px; font-weight: 700; color: #38bdf8; }
+  .react-grid-item.react-grid-placeholder { background: #38bdf8; opacity: 0.2; border-radius: 10px; }
+  .empty { color: #64748b; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, createContext, useContext } = React;
+const GridLayout = ReactGridLayout.WidthProvider(ReactGridLayout.Responsive);
+
+// ==================== 全局状态（跨 widget 联动） ====================
+const StoreContext = createContext();
+const useStore = () => useContext(StoreContext);
+
+// ==================== 模拟数据源（真实场景就是 fetch FastAPI） ====================
+const mockData = {
+  scanner: [
+    { symbol: "NVDA", name: "Nvidia", price: 892.5, change: 3.2 },
+    { symbol: "AAPL", name: "Apple", price: 178.3, change: 1.8 },
+    { symbol: "TSLA", name: "Tesla", price: 245.1, change: -2.1 },
+    { symbol: "MSFT", name: "Microsoft", price: 412.8, change: 0.9 },
+  ],
+  watchlist: [
+    { symbol: "GOOG", name: "Alphabet", price: 152.6, change: 1.1 },
+    { symbol: "META", name: "Meta", price: 488.2, change: 2.4 },
+    { symbol: "AMZN", name: "Amazon", price: 178.9, change: -0.5 },
+  ],
+  news: {
+    NVDA: [
+      { time: "10:30", title: "Nvidia 发布新一代 AI 芯片，性能提升 2 倍" },
+      { time: "09:15", title: "分析师上调 NVDA 目标价至 1000 美元" },
+    ],
+    AAPL: [
+      { time: "11:00", title: "苹果 Vision Pro 销量超预期" },
+      { time: "08:45", title: "苹果服务业务 Q1 收入创新高" },
+    ],
+    TSLA: [{ time: "10:00", title: "特斯拉宣布新一轮降价" }],
+    DEFAULT: [{ time: "—", title: "选择左侧股票查看相关新闻" }],
+  },
+};
+
+// ==================== Widget 注册表 ====================
+const WidgetRegistry = {};
+const registerWidget = (type, config) => { WidgetRegistry[type] = config; };
+
+// ---- Widget 1：扫描结果列表 ----
+registerWidget("scanner", {
+  title: "🔍 全市场扫描 - 突破 150MA",
+  component: () => {
+    const { selected, setSelected } = useStore();
+    return (
+      <div>
+        {mockData.scanner.map(s => (
+          <div key={s.symbol}
+               className={`stock-row ${selected === s.symbol ? "active" : ""}`}
+               onClick={() => setSelected(s.symbol)}>
+            <span><b>{s.symbol}</b> <span style={{color:"#64748b"}}>{s.name}</span></span>
+            <span className={s.change > 0 ? "price-up" : "price-down"}>
+              ${s.price} ({s.change > 0 ? "+" : ""}{s.change}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  },
+});
+
+// ---- Widget 2：自选股 ----
+registerWidget("watchlist", {
+  title: "⭐ 我的自选",
+  component: () => {
+    const { selected, setSelected } = useStore();
+    return (
+      <div>
+        {mockData.watchlist.map(s => (
+          <div key={s.symbol}
+               className={`stock-row ${selected === s.symbol ? "active" : ""}`}
+               onClick={() => setSelected(s.symbol)}>
+            <span><b>{s.symbol}</b> <span style={{color:"#64748b"}}>{s.name}</span></span>
+            <span className={s.change > 0 ? "price-up" : "price-down"}>
+              ${s.price} ({s.change > 0 ? "+" : ""}{s.change}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  },
+});
+
+// ---- Widget 3：K 线图（联动 selected） ----
+registerWidget("chart", {
+  title: "📈 K 线图",
+  component: () => {
+    const { selected } = useStore();
+    return (
+      <div className="chart-placeholder">
+        <div style={{textAlign:"center"}}>
+          <div className="symbol-big">{selected || "—"}</div>
+          <div style={{marginTop:8, color:"#64748b"}}>
+            {selected ? "（这里接 lightweight-charts 渲染真实 K 线）" : "点左侧股票查看"}
+          </div>
+        </div>
+      </div>
+    );
+  },
+});
+
+// ---- Widget 4：新闻（联动 selected） ----
+registerWidget("news", {
+  title: "📰 相关新闻",
+  component: () => {
+    const { selected } = useStore();
+    const items = mockData.news[selected] || mockData.news.DEFAULT;
+    return (
+      <div>
+        {items.map((n, i) => (
+          <div key={i} className="news-item">
+            <div className="news-time">{n.time}</div>
+            <div>{n.title}</div>
+          </div>
+        ))}
+      </div>
+    );
+  },
+});
+
+// ---- Widget 5：AI 摘要（占位） ----
+registerWidget("ai-thesis", {
+  title: "🤖 AI 投资观点",
+  component: () => {
+    const { selected } = useStore();
+    if (!selected) return <div className="empty">选择股票查看 AI 分析</div>;
+    return (
+      <div style={{lineHeight:1.6}}>
+        <p><b>{selected}</b> 当前处于 150MA 上方，趋势向上。</p>
+        <p style={{color:"#94a3b8", fontSize:12}}>
+          （这里调 Claude API，输入：基本面 + 新闻 + 技术指标，输出结构化观点）
+        </p>
+      </div>
+    );
+  },
+});
+
+// ==================== Dashboard ====================
+const defaultLayout = [
+  { i: "scanner",   x: 0, y: 0, w: 4, h: 6 },
+  { i: "watchlist", x: 0, y: 6, w: 4, h: 5 },
+  { i: "chart",     x: 4, y: 0, w: 8, h: 6 },
+  { i: "news",      x: 4, y: 6, w: 4, h: 5 },
+  { i: "ai-thesis", x: 8, y: 6, w: 4, h: 5 },
+];
+
+function Dashboard() {
+  const [selected, setSelected] = useState("NVDA");
+  const [layout, setLayout] = useState(() => {
+    const saved = localStorage.getItem("dashboard-layout");
+    return saved ? JSON.parse(saved) : defaultLayout;
+  });
+
+  const onLayoutChange = (newLayout) => {
+    setLayout(newLayout);
+    localStorage.setItem("dashboard-layout", JSON.stringify(newLayout));
+  };
+
+  const reset = () => {
+    localStorage.removeItem("dashboard-layout");
+    setLayout(defaultLayout);
+  };
+
+  return (
+    <StoreContext.Provider value={{ selected, setSelected }}>
+      <div className="header">
+        <h1>📊 我的股票 Dashboard <span style={{color:"#64748b", fontSize:13, marginLeft:12}}>当前关注：{selected}</span></h1>
+        <div className="actions">
+          <button onClick={reset}>重置布局</button>
+        </div>
+      </div>
+      <GridLayout
+        className="layout"
+        layouts={{ lg: layout }}
+        breakpoints={{ lg: 1200 }}
+        cols={{ lg: 12 }}
+        rowHeight={50}
+        onLayoutChange={onLayoutChange}
+        draggableHandle=".widget-header"
+        margin={[12, 12]}
+        containerPadding={[16, 16]}
+      >
+        {layout.map(item => {
+          const w = WidgetRegistry[item.i];
+          if (!w) return null;
+          const Comp = w.component;
+          return (
+            <div key={item.i} className="widget">
+              <div className="widget-header">
+                <span>{w.title}</span>
+                <span style={{fontSize:11, color:"#64748b"}}>⠿ 拖动</span>
+              </div>
+              <div className="widget-body"><Comp /></div>
+            </div>
+          );
+        })}
+      </GridLayout>
+    </StoreContext.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Dashboard />);
+</script>
+</body>
+</html>
