@@ -802,8 +802,12 @@
       "description": "独立页面展示系统运行日志（数据同步、信号计算、调度等），支持按级别 toggle 过滤（ALL/OK/INFO/WARN/ERROR），按时间倒序排列",
       "user_story": "作为用户，我想查看系统运行日志，这样我能了解数据同步和信号计算的执行情况",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "ready_to_dev",
+      "status": "done",
+      "phase": "done",
+      "subtasks": {
+        "F008-a": {"name": "后端 /api/logs API", "phase": "done", "completed_at": "2026-04-18"},
+        "F008-b": {"name": "前端 /logs 页面", "phase": "done", "completed_at": "2026-04-18"}
+      },
       "dependencies": [
         "F003"
       ],
@@ -844,7 +848,7 @@
       },
       "iteration_history": [],
       "notes": "",
-      "completed_at": null
+      "completed_at": "2026-04-18"
     }
   ]
 }

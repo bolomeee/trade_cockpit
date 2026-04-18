@@ -32,9 +32,7 @@ function bySymbol(items: MarketIndexItem[] | undefined): Partial<Record<MarketSy
 }
 
 export function MarketOverviewBar() {
-  const { data, isError } = useMarketOverview()
-
-  if (isError) return null
+  const { data } = useMarketOverview()
 
   const map = bySymbol(data)
 

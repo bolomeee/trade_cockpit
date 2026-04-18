@@ -38,7 +38,7 @@ export function TopNav() {
         borderBottom: '1px solid var(--color-border)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-6)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-6)' }}>
         <span
           style={{
             fontSize: 'var(--font-size-title)',
@@ -48,7 +48,7 @@ export function TopNav() {
         >
           MA150 Tracker
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-4)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-4)' }}>
           {NAV_LINKS.map((link) => (
             <NavLink
               key={link.to}

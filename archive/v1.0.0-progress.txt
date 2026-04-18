@@ -1,0 +1,1135 @@
+=== PROJECT PROGRESS LOG ===
+项目：MA150 Tracker | 初始化：2026-04-16
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-16] Pipeline 阶段 0：项目初始化完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - 生成 PRD.md（已用户确认）
+  - 生成 features.json（共 7 个 feature）
+  - 生成 CLAUDE.md（40行以内）
+  - 创建项目目录结构
+
+📊 功能状态：
+  F001 Watchlist 管理         — phase: design_needed
+  F002 150MA 信号引擎         — phase: design_needed
+  F003 数据获取与调度          — phase: design_needed
+  F004 信号总览 SignalBoard    — phase: design_needed
+  F005 个股 150MA 详情页       — phase: design_needed
+  F006 大盘概览               — phase: design_needed
+  F007 交易日志 Journal        — phase: design_needed
+
+_pipeline_status 更新：requirements → done
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-16] Pipeline 阶段 1：系统设计完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - ARCHITECTURE.md（技术栈、系统边界、依赖层级、目录结构、Widget 化架构）
+  - DATA-MODEL.md（7 个实体：Stock/DailyBar/Signal/Pullback/MarketIndex/SystemLog/JournalEntry）
+  - API-CONTRACT.md（17 个端点，全局约定 + 标准错误码）
+  - DECISIONS.md（7 条技术决策记录）
+  - features.json contract 引用已填充
+
+📐 关键技术决策：
+  D001 图表库：lightweight-charts (TradingView)
+  D002 基本面数据：MVP 用 mock，后续接入 Massive API
+  D003 部署：前后端分离双容器 (Nginx + FastAPI)
+  D004 ORM：SQLAlchemy 2.0 + Alembic
+  D005 调度：APScheduler（进程内）
+  D006 信号模型：3+1 种 (BREAKOUT/BUY_ZONE/NEUTRAL/INSUFFICIENT)
+  D007 大盘数据：Polygon Indices + Economy API
+
+_pipeline_status 更新：system_design → done
+
+[下一步]
+  可以开始 UI 设计（design-bridge 或 Figma）
+  ⚠️ 设计时图层命名参照 DATA-MODEL.md 字段名
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 设计变更 → 上游文档同步
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  用户完成 Figma UI 设计后，发现 4 处结构性变更需要同步回上游文档：
+
+  变更 1：Stock Detail 改为纯前端 Modal（不改变 URL，无独立路由）
+  变更 2：新增系统日志页面 /logs（独立 Feature F008）
+  变更 3：Dashboard 右侧新增 Add Stock 快捷表单 + Trade Journal 完整表单 Widget
+  变更 4：SystemLog level 枚举新增 OK 级别
+
+  已更新的文档（5 份）：
+  - docs/需求/PRD.md — §3 功能范围、§4 用户旅程、§5 页面清单、§6 数据实体
+  - docs/系统设计/DATA-MODEL.md — SystemLog level 枚举增加 OK
+  - docs/系统设计/API-CONTRACT.md — GET /api/logs 归属 F008，level 参数含 OK
+  - docs/系统设计/ARCHITECTURE.md — 前端目录结构（pages/ widgets/ 调整）
+  - docs/需求/features.json — F001/F004/F005/F007 更新 + 新增 F008
+
+📊 功能状态（8 个 feature）：
+  F001 Watchlist 管理         — phase: design_needed
+  F002 150MA 信号引擎         — phase: design_needed
+  F003 数据获取与调度          — phase: design_needed
+  F004 信号总览 SignalBoard    — phase: design_needed
+  F005 个股 150MA 详情 Modal   — phase: design_needed
+  F006 大盘概览               — phase: design_needed
+  F007 交易日志 Journal        — phase: design_needed
+  F008 系统日志页面            — phase: design_needed (新增)
+
+[下一步]
+  触发 design-bridge skill，需准备：Figma 文件链接 + Tokens/Variables 导出
+  design-bridge 将生成：design-spec.md / component-plan.md / data-mapping.md / tokens.css
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Pipeline 阶段 2：设计衔接完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - docs/设计/figma-links.md — 3 个 Figma 文件索引（stock_portal / trade_journal / system_logs）
+  - src/styles/tokens.css — 从 tokens.json 机械转换，覆盖颜色/字体/间距/圆角/阴影
+    · 语义色：signal-* × 4、action-* × 5、log-* × 4、change-* × 2
+  - docs/设计/design-spec.md — 3 页 × 4 种状态（正常/空/加载/错误），含全局 TopNav + MarketOverviewBar、
+    组件层级树、动态字段前缀标注、响应式断点（md 768 / lg 1024）、Icon 映射
+  - docs/设计/component-plan.md — 已适配 Vite SPA（无 Server Components）：
+    · 第 1 节 3 页区块拆解
+    · 第 2 节 组件清单（ui/ shadcn、features/ 业务、pages/）
+    · 第 3 节 组件边界（21 个业务组件 props 契约）
+    · 第 4 节 数据获取职责划分 + react-query 缓存策略（staleTime 建议）
+  - docs/设计/data-mapping.md — 完整 Figma 图层 → API 字段映射（3 页 + Modal），内嵌：
+    · Step 7a data-mapping ↔ DATA-MODEL（✅ 全量字段 + 枚举通过）
+    · Step 7b data-mapping ↔ API-CONTRACT（✅ 15 个接口全覆盖）
+    · Step 7c tokens.json ↔ DATA-MODEL 枚举色彩（✅ 15 组枚举 100% 对齐）
+  - docs/需求/features.json — 8 个 P0 feature 全部 phase: design_needed → ready_to_dev，
+    design_figma_link 已填充对应 Figma URL
+
+⚠️ 待处理（design-bridge 已记录，不阻塞）：
+  - 部分"空/加载/错误"状态无独立 Figma 设计稿，已在 design-spec.md 标注默认原则
+  - Fundamentals 字段 MVP 仍为 mock（D002），source:"mock" 徽章已在 data-mapping 中描述
+
+📊 功能状态（8 个 feature）：
+  F001–F008 — phase: ready_to_dev（全部设计就绪，等待 Sprint Contract）
+
+_pipeline_status 更新：ui_design → done
+
+[下一步]
+  触发 feature-dev skill，先协商 Sprint Contract（建议按 F001→F003→F002→F006→F004→F005→F007→F008 拆 sprint）
+  开发前务必查阅 component-plan.md 确认组件边界，不得随意新增未规划组件
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-a 后端脚手架 + 数据库基座
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend/ 目录初始化（FastAPI + SQLAlchemy 2.0 + Alembic）
+  - GET /health 探活接口
+  - 7 张表的 ORM models（按实体独立文件）+ 初始 migration
+  - 集成测试：11/11 通过（health ×1、schema ×9、downgrade ×1）
+  - 手工验证 uvicorn 启动 + curl /health 200
+  - Evaluator 自检清单全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新增 DECISIONS.md D008（同步 SQLAlchemy）/ D009（models 分文件）/ D010（脚手架例外）
+  - features.json 追加 F000-a/b/c 三条
+  - 项目级 git init + .gitignore
+
+📊 功能状态：
+  F000-a 后端脚手架：🔍 needs_review
+  F000-b 前端脚手架：⬜ ready_to_dev
+  F000-c Docker + Polygon：⬜ ready_to_dev
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F000-a（触发 acceptance skill）→ 进入 F000-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F000-a → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户亲自执行验收清单 A1-A5 全部通过
+✅ /health 返回正确、Swagger UI 正常、11/11 测试通过
+✅ 验收记录：docs/验收/v1.0-acceptance.md
+✅ features.json: F000-a phase → done, completed_at = 2026-04-17
+
+[下一个 Session]
+  进入 F000-b 前端脚手架 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-b 前端脚手架 + 路由基座
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - frontend/ 初始化：Vite 8 + React 19 + TS 6 + Tailwind v4（@tailwindcss/vite 插件，无 tailwind.config.ts）
+  - shadcn/ui radix-nova preset 初始化 + Button 组件安装
+  - react-router-dom v7：BrowserRouter + 3 路由（/ · /journal · /logs）
+  - tokens.css 从项目根 /src/styles 移至 frontend/src/styles 并在 index.css 中 import
+  - @/ 路径别名在 Vite + tsc 下均工作
+  - Evaluator 自检：
+    · pnpm install ✅
+    · pnpm build（tsc -b + vite build）✅
+    · pnpm dev HTTP 200 on / /journal /logs ✅
+    · Claude Preview 视觉确认：h1=Dashboard、Tailwind red=oklch(0.637 0.237 25.331)、tokens.css rgb(41,98,255) ✅
+    · shadcn Button 渲染黑底白字 ✅
+    · 客户端路由跳转三路由均正确切换 h1 ✅
+    · console 无 warn/error ✅
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D011（Tailwind v4 集成方式）、D012（React 19 / Vite 8 / TS 6 版本升级）
+  - ARCHITECTURE.md 前端版本表更新 + 目录结构剔除 tailwind.config.ts + 加 components.json
+  - features.json F000-b phase → needs_review
+  - 项目根 /src/ 目录已清理
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：🔍 needs_review
+  F000-c Docker + Polygon：⬜ ready_to_dev
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户亲自验收 F000-b（pnpm dev 启动 + 浏览器访问 3 路由），通过后 → phase: done → 进入 F000-c Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F000-c Docker Compose + Polygon Client
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend Dockerfile（python:3.12-slim + uv 0.5.11，启动时 alembic upgrade head）
+  - frontend Dockerfile（node:20-alpine 多阶段 → nginx:alpine）
+  - nginx.conf：/api/* 反代到 backend:8000；SPA fallback to index.html；静态资源 30d 缓存
+  - docker-compose.yml：frontend 8080:80，backend 仅内部 expose，volume ./backend/data:/app/data
+  - backend/app/external/polygon_client.py：封装 massive 2.5.0（Polygon.io 官方改名后包）
+    · Token bucket rate limit：容量 5，60s 窗口，12s/token，threading.Lock 并发安全
+    · 依赖注入 time_source + sleep → 单测可用假时钟
+    · 三方法：search_tickers / get_previous_close / get_daily_aggs
+  - tests/test_polygon_client.py：8 用例（missing key×2 + 方法转发×3 + rate limit×3）
+  - Evaluator 通过：
+    · docker compose build ✅
+    · docker compose up -d 两容器 running ✅
+    · curl localhost:8080/ = 200 (SPA) ✅
+    · curl localhost:8080/api/health = 200 {"status":"ok"} ✅
+    · SPA fallback /journal = 200 ✅
+    · alembic 自动迁移 + uvicorn 启动 ✅
+    · volume 持久化：restart backend 后 prod.db 保留 ✅
+    · pytest 19/19（新增 8 polygon + 原 11 回归）✅
+    · .env gitignored（git check-ignore 通过）✅
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D013（massive 包选型）、D014（token bucket rate limit）
+  - backend/pyproject.toml + massive>=2.5.0；uv.lock 自动更新
+  - 新建根目录 .env.example（POLYGON_API_KEY 占位）、.env（真实 key，gitignored）
+  - features.json F000-c phase → needs_review
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：🔍 needs_review
+  F001-F008：⬜ ready_to_dev
+
+[下一个 Session]
+  用户亲自验收 F000-c（docker compose up -d 并浏览器访问 localhost:8080 + /api/health），通过后 → phase: done → 脚手架三件套全部收尾，进入 F001 Watchlist 管理 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F000-c → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户亲自执行验收（docker compose up -d + 浏览器 localhost:8080 + /api/health）
+✅ 10/10 验收项全部通过
+✅ 验收记录追加至 docs/验收/v1.0-acceptance.md
+✅ features.json: F000-c phase → done, completed_at = 2026-04-17
+✅ 脚手架三件套（F000-a/b/c）全部收尾
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：✅ done
+  F001-F008（P0 MVP）：⬜ ready_to_dev
+
+[下一个 Session]
+  进入 F001 Watchlist 管理 Sprint Contract 协商
+  （首个真正的业务 feature；依赖 Figma + API-CONTRACT + DATA-MODEL）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint Contract 协商：F001 → 拆分为 a/b/c，F001-a Contract 已确认
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 读取 DATA-MODEL/API-CONTRACT/design-spec/component-plan 的 F001 相关段
+  - 扫描代码库：F001 整体 ~22 核心文件，严重超 6 文件上限
+  - 用户批准拆分并授权例外：
+    · F001-a Backend watchlist + search API（7 核心 + 3 bookkeeping）
+    · F001-b Frontend watchlist 读取展示（10 核心 + 3 shadcn）
+    · F001-c Frontend AddStock/search/delete 交互（5-6 文件）
+  - F001-a Contract 起草并用户确认：
+    · 4 REST 端点：GET/POST/DELETE /api/watchlist + GET /api/stocks/search
+    · dataStatus 从 daily_bars 计数派生（0=loading / 1–149=insufficient / ≥150=ready）
+    · latestSignal F001-a 为 null，F002 后填充
+    · POST 用 PolygonClient.search_tickers 精确匹配校验
+    · 软删除恢复：POST 命中 is_active=false → 翻回 true + 更新 added_at
+    · 18 测试用例（T1-T17 集成 + T18 全量回归）
+  - features.json F001 phase → contract_agreed，subtasks 字段登记 a/b/c
+  - Contract 落盘：docs/开发/sprint-contracts/F001-a-contract.md
+
+⚠️ 中断：用户要求切新 session，Generator 尚未开始
+
+📊 功能状态：
+  F000-a 后端脚手架：✅ done
+  F000-b 前端脚手架：✅ done
+  F000-c Docker + Polygon：✅ done
+  F001 Watchlist 管理：📝 contract_agreed（拆分 a/b/c）
+    F001-a Backend API：📝 contract_agreed
+    F001-b Frontend 读取：⬜ ready_to_dev
+    F001-c Frontend 交互：⬜ ready_to_dev
+
+[下一个 Session]
+  进入 F001-a Generator 模式，按开发顺序 Step 3→7：
+    Step 3 数据库迁移：无 schema 变更（Stock/DailyBar 已在 F000-a 创建），跳过
+    Step 4 Repository：stock_repository.py
+    Step 5 Service：watchlist_service.py（含 Polygon 调用）
+    Step 6 Router：watchlist.py + stocks.py + main.py mount
+    Step 7 测试：conftest.py 追加 in-memory DB + mock Polygon，tests/test_watchlist_api.py 18 用例
+    然后 Evaluator → needs_review → 验收
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F001-a Backend Watchlist + Stock Search API — needs_review
+
+实施（Step 4 → Step 7）：
+  Step 4 Repository
+    - backend/app/repositories/stock_repository.py（get_by_ticker / list_active / create / reactivate / soft_delete / count_bars）
+  Step 5 Schemas + Service
+    - backend/app/schemas/watchlist.py（CamelModel + ResponseEnvelope[T] + WatchlistItem/WatchlistCreatedItem/AddStockRequest/DeleteStockResponse/StockSearchItem）
+    - backend/app/services/watchlist_service.py（APIError + derive_data_status + WatchlistService）
+    - 常量抽出：READY_BAR_THRESHOLD=150 / SEARCH_LIMIT_MAX=20 / SEARCH_LIMIT_DEFAULT=10 / POLYGON_MATCH_LIMIT=5
+  Step 6 Router + main.py
+    - backend/app/dependencies.py（get_polygon_client / get_watchlist_service）
+    - backend/app/routers/watchlist.py（GET/POST/DELETE /api/watchlist）
+    - backend/app/routers/stocks.py（GET /api/stocks/search）
+    - backend/app/main.py 挂载 2 router + APIError & RequestValidationError exception handlers → 统一 {"error":{"code","message"}}
+  Step 7 测试
+    - tests/conftest.py：session_engine + db_session + mock_polygon (FakePolygon) + client fixture（dependency_overrides 注入 in-memory SQLite + FakePolygon）
+    - tests/test_watchlist_api.py：T1–T17（T10 parametrize ×3 → 19 test items）
+
+Evaluator 全绿：
+  pytest 38 passed in 0.29s
+    - test_health 1
+    - test_polygon_client 8
+    - test_schema 10
+    - test_watchlist_api 19（T1–T17，T10 含 loading/insufficient/ready 3 组）
+
+自检清单：
+  ✅ T1–T17 全部绿
+  ✅ API 响应驼峰（addedAt / dataStatus / latestSignal）
+  ✅ DB 字段蛇形
+  ✅ 错误响应统一 error.code + HTTP code
+  ✅ 无硬编码 magic value
+  ✅ 函数 ≤ 50 行；无死代码
+
+features.json：F001.subtasks.F001-a.phase → needs_review
+
+[下一步]
+  用户验收 F001-a → phase: done → 进入 F001-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a 手验发现 2 个基础设施 bug
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+用户 curl 手验 → 所有 /api/* 返回 {"detail":"Not Found"}
+
+Bug 1：容器跑旧镜像（F000-c 时构建，只有 /health）
+  修复：docker compose up -d --build backend
+  根因：backend Dockerfile COPY 代码进镜像（非 volume mount），代码改动需重建
+
+Bug 2：nginx proxy_pass 带末尾斜杠 → 剥掉 /api/ 前缀
+  现象：rebuild backend 后仍 404；docker exec 显示后端路由 /api/* 存在
+  根因：proxy_pass http://backend:8000/; 带斜杠 → /api/watchlist 转成 /watchlist
+  修复：frontend/nginx.conf 改为 proxy_pass http://backend:8000;（无斜杠）
+  rebuild frontend 后 GET /api/watchlist → {"data":[],"message":"success"} ✅
+  → DECISIONS D015
+
+Bug 3：Polygon 搜索触发 429 EXTERNAL_API_ERROR
+  现象：GET /api/stocks/search?q=AA → 429 from api.massive.com
+  根因：massive SDK 的 list_tickers(limit=N) 是每页大小，iterator 自动翻页
+        list(...) 消费所有匹配结果，每翻页一次 HTTP，token bucket 失效
+  修复：backend/app/external/polygon_client.py:search_tickers
+        用 itertools.islice(iterator, limit) 截取首页
+  rebuild backend + 等 cooldown → 返回 10 条 Alcoa + ETF ✅
+  → DECISIONS D016
+
+回归：pytest 38 passed（修复无回归）
+手验通过：
+  GET /api/watchlist → []
+  POST /api/watchlist {ticker:AAPL} → 201, Apple Inc./XNAS, dataStatus:loading
+  GET /api/stocks/search?q=AA → 10 条美股结果
+  GET /api/stocks/search (no q) → VALIDATION_ERROR（统一错误格式）
+
+F001-a 仍为 needs_review，等用户最终验收。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F001-a 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收合格
+  - pytest 38/38
+  - 三端点实货 Polygon 手验通过
+  - 统一响应格式 / 驼峰命名验证通过
+  - 2 个基础设施 bug 已修复并落 DECISIONS（D015 nginx、D016 islice）
+
+features.json：F001.subtasks.F001-a.phase → done（completed_at 2026-04-17）
+验收记录：docs/验收/v1.0-acceptance.md 追加 F001-a 段
+
+F001 整体状态：a=done, b=ready_to_dev, c=ready_to_dev（F001.phase 仍 in_progress）
+
+[下一步]
+  F001-b Sprint Contract 协商
+    范围：Frontend 读取展示（GET /api/watchlist 消费 + empty/error/loading 态 + dataStatus 可视化）
+    预计文件：~10 核心（已例外批准）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F001-b Frontend Watchlist 读取展示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - API 层：lib/api/client.ts（fetch 封装）+ lib/api/watchlist.ts（getWatchlist）
+  - 类型：types/watchlist.ts（WatchlistItem / LatestSignal / DataStatus / SignalType）
+  - 组件：SignalBadge / SignalCard / SignalBoard（按信号优先级排序）
+  - 通用状态：EmptyState / ErrorState
+  - Dashboard.tsx：useQuery 接入，loading/empty/error/ready 四态切换
+  - main.tsx：QueryClientProvider 包裹
+  - vite.config.ts：添加 /api → localhost:8000 proxy（dev 环境）
+  - 新依赖：@tanstack/react-query v5（D017）
+  - 修复 API-CONTRACT.md：补充 dataStatus 字段文档（F001-a 遗漏）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D017（react-query）+ D018（Vite proxy）
+  - features.json：F001-b phase → needs_review
+
+⚠️ 已知问题（预先存在，不阻塞）：
+  - button.tsx ESLint react-refresh/only-export-components（F000-b 遗留）
+
+📊 功能状态：
+  F001-a 后端 Watchlist API：✅ done
+  F001-b 前端读取展示：🔍 needs_review
+  F001-c 前端交互（搜索/添加/删除）：⬜ ready_to_dev
+
+[下一步]
+  用户验收 F001-b（触发 acceptance skill）
+  验收通过后进入 F001-c Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] 验收：F001-b → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收全部通过（4 种状态：ready/empty/error/loading）
+✅ 验收记录：docs/验收/v1.0-acceptance.md 追加 F001-b 段
+✅ features.json: F001-b phase → done, completed_at = 2026-04-17
+
+[下一步]
+  进入 F001-c Sprint Contract 协商（Frontend AddStock/搜索/删除交互）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F001-c] Sprint：F001-c Frontend AddStock 搜索 + 删除交互
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - AddStockCard：Input + Enter 触发搜索 + Popover 结果下拉 + POST mutation（DUPLICATE/NOT_FOUND 错误内联提示）
+  - SignalCard：hover 显示 Trash2 + AlertDialog 二次确认 + DELETE mutation + stopPropagation
+  - Dashboard sidebar 接入 AddStockCard
+  - lib/api/stocks.ts（新）searchStocks
+  - lib/api/watchlist.ts addStock/removeStock
+  - lib/api/client.ts 扩展 ApiError（code/status）
+  - types/stocks.ts StockSearchItem / WatchlistCreatedItem
+  - shadcn CLI 安装 popover + command + alert-dialog + input（副产品 7 文件）
+  - design-spec.md §Dashboard 交互段追加 F001-c 偏离说明
+  - DECISIONS.md 追加 D019（搜索交互偏离）+ D020（shadcn 依赖引入）
+  - pnpm build 零 TS 错误 | F001-c 文件零 lint 问题 | console 无 error
+  - Evaluator 17 条标准全部手验通过
+  - phase → needs_review
+
+⚠️ 待你验收（以下交互请人工复核）：
+  - 搜索下拉各项：loading 态、错误态、重试按钮（停后端 + 重试）
+  - AlertDialog 取消按钮（点"取消"卡片保留）
+  - Trash2 图标 hover 显示/移出隐藏动画
+
+🔧 系统变更：
+  - 新增 6 业务文件 + 修改 client.ts（ApiError 扩展）
+  - shadcn CLI 安装 7 个 ui/* 文件
+  - docs/设计/design-spec.md 偏离回写
+  - docs/系统设计/DECISIONS.md +D019 +D020
+
+📊 功能状态：
+  F001-a Backend：✅ done
+  F001-b Frontend 读取：✅ done
+  F001-c Frontend 交互：🔍 needs_review（等用户验收）
+  F001（父）：in_progress → 等 c 验收后整体 done
+
+[下一个 Session]
+  用户验收 F001-c 后：F001 父级 phase → done，开始 F002 150MA 信号引擎（ready_to_dev）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 验收] Sprint：F001-c + 父 F001 整体完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - F001-c 用户验收合格（含两轮后续修复）
+  - 修复 1：SignalBadge INSUFFICIENT 增加 marginRight，避让 Trash2 图标
+  - 修复 2：SignalCard 删除 onError 区分 NOT_FOUND（404 静默同步）vs 真实错误
+  - 修复 3：Trash2 图标位置调整到与 INSUFFICIENT Badge 同行对齐（top/right 改
+           用 --spacing-card-padding-sm，padding 0；Badge marginRight 15→20px）
+  - commits: 6aa849f（bug fix） + 01d0cc5（对齐调整）
+  - phase：F001-c → done | F001（父）→ done
+
+📊 功能状态：
+  F001-a Backend：✅ done
+  F001-b Frontend 读取：✅ done
+  F001-c Frontend 交互：✅ done
+  F001 Watchlist 管理（父）：✅ done
+
+[下一个 Session]
+  触发 F002 150MA 信号引擎（ready_to_dev）的 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F002 150MA 信号引擎
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 纯计算 engine：MA150 / 20 日线性回归斜率 / signal_type 判定（BREAKOUT > BUY_ZONE > NEUTRAL > INSUFFICIENT）
+  - 回踩检测与后续 10/20/30 日涨幅
+  - signal_repository：DailyBar 读取、Signal/Pullback delete-then-insert、250 天裁剪、最新信号/历史查询
+  - signal_service：recompute_for_stock / list_board（按优先级排序）/ get_ticker_detail（404 保护）
+  - GET /api/signals + GET /api/signals/:ticker?days=30（默认 30，422 保护）
+  - 单元测试：17/17 通过（test_signal_engine）
+  - 集成测试：9/9 通过（test_signal_service）
+  - API 测试：10/10 通过（test_signals_api）
+  - 全量回归：74/74 通过，F001 未回归
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - DECISIONS.md 追加 D021（6 文件豁免 + 引擎纯函数化 + 斜率算法 + upsert 策略）
+  - features.json：F002 phase / estimated_files_changed 更新
+  - 无新 Alembic migration（schema 在 F000-a 已建）
+  - 无新外部依赖
+
+📊 功能状态：
+  F000-a/b/c：✅ done
+  F001：✅ done
+  F002 信号引擎：🔍 needs_review
+  F003 数据获取与调度：⬜ ready_to_dev（F002 的 recompute_for_stock 等待 F003 hook）
+  F004 SignalBoard：⬜ ready_to_dev（依赖 F002）
+  F005 个股详情 Modal：⬜ ready_to_dev
+  F006 大盘概览：⬜ ready_to_dev
+  F007 Journal：⬜ ready_to_dev
+  F008 系统日志：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F002（跑 `uv run pytest backend/tests` 查看结果，或检查新增 endpoint 行为），通过后用 project-commiter 打 tag 或直接进入 F003 开发。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] F002 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户确认 F002 验收合格（通过 pytest 全量 74/74 覆盖 8 条 acceptance_criteria）
+✅ features.json：F002 phase needs_review → done，status → done，completed_at = 2026-04-17
+✅ completion_rate 0% → 25%（F001 + F002 / 8 MVP）
+
+📊 功能状态：
+  F000-a/b/c：✅ done
+  F001：✅ done
+  F002 150MA 信号引擎：✅ done
+  F003 数据获取与调度：⬜ ready_to_dev（下个 session）
+  F004 SignalBoard：⬜ ready_to_dev（依赖 F002 ✅ + F001 ✅，已解锁）
+  F005 个股详情 Modal：⬜ ready_to_dev（依赖 F002 ✅ + F003 ⬜）
+  F006 大盘概览：⬜ ready_to_dev（依赖 F003 ⬜）
+  F007 Journal：⬜ ready_to_dev
+  F008 系统日志：⬜ ready_to_dev
+
+[下一个 Session]
+  用户新开 session 做 F003：数据获取与调度。
+  入场建议：触发 anthropic-skills:feature-dev，参数 F003。
+  关键前置：F002 的 SignalService.recompute_for_stock(stock_id) 需要在 F003
+  的数据刷新成功后被调用，这一 hook 是 F003 Sprint Contract 的必须项。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F003-a 数据刷新核心
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - DailyBarRepository：get_latest_date / bulk_upsert (on_conflict_do_nothing) / prune_to_window(250) / count_bars
+  - SystemLogRepository：create（level校验+message截断500）/ purge_older_than(7) / list_recent(limit, level)
+  - DataRefreshService：backfill_stock / increment_stock / refresh_all（单只失败隔离 + SystemLog 写入）/ purge_old_logs
+  - Polygon agg → BarDTO 映射（时间戳 ms → UTC date, dict/object 双兼容）
+  - 成功后自动触发 SignalService.recompute_for_stock
+  - 6 个新文件（3 src + 3 test），未超上限
+  - 测试：24/24 全绿，全量回归 98/98 全绿
+  - Evaluator 自检：全部通过
+  - DECISIONS D022（Polygon agg 映射）+ D023（窗口/保留期常量）追加
+  - phase → needs_review（F003-a subtask）
+
+⚠️ 待你决策：
+  - F003-a 验收通过后，继续 F003-b（API 路由 + APScheduler + add_stock 钩子）
+
+🔧 系统变更：
+  - 新增 backend/app/repositories/daily_bar_repository.py
+  - 新增 backend/app/repositories/system_log_repository.py
+  - 新增 backend/app/services/data_refresh_service.py
+  - 新增 3 个测试文件
+  - docs/系统设计/DECISIONS.md 追加 D022/D023
+  - docs/需求/features.json F003 → in_progress，subtasks 拆分
+
+📊 功能状态：
+  F000-a/b/c ✅ done
+  F001 ✅ done
+  F002 ✅ done
+  F003 🔄 in_progress（F003-a needs_review / F003-b ready_to_dev / F003-c ready_to_dev）
+  F004–F008 ⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F003-a 后 → 开始 F003-b（API + APScheduler）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 续] Sprint：F003-b 刷新 API + 调度器 + add_stock backfill 钩子
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - POST /api/data/refresh（202 + 幂等 in_progress）+ GET /api/data/status（camelCase）
+  - RefreshJobManager：模块级单例 + threading.Lock，worker daemon 线程自建 Session
+  - APScheduler 3.11 BackgroundScheduler，weekday 21:30 UTC cron
+  - WatchlistService.add_stock 新股票后内联 backfill 250d，失败记 WARN SystemLog
+  - get_session_factory 依赖注入，测试 override 到内存 SQLite
+  - MA150_DISABLE_SCHEDULER=1 env 门闸，测试环境不启动调度器
+  - 单元+集成测试：10/10 通过；全量回归 108/108 通过
+  - Evaluator 自检清单全部通过
+  - DECISIONS.md 追加 D024（APScheduler 3.x 选型 + 线程模型 + 内联 backfill 决策）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - backend/pyproject.toml：+ apscheduler>=3.10,<4
+  - 新增：app/services/refresh_job.py, app/schemas/data.py, app/routers/data.py, tests/test_data_api.py
+  - 修改：app/main.py (lifespan + scheduler), app/dependencies.py (+ get_session_factory),
+         app/services/watchlist_service.py (+ _backfill_silently), tests/conftest.py
+
+📊 功能状态：
+  F001 自选股管理：✅ done
+  F002 信号识别：✅ done
+  F003-a 数据刷新核心：✅ done
+  F003-b 刷新 API + 调度：🔍 needs_review
+  F003-c 前端刷新按钮：⬜ ready_to_dev（下一步）
+
+[下一个 Session]
+  用户验收 F003-b → 进入 F003-c：前端 TopNav Refresh Data 按钮 + /api/data/status 轮询
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 续] Sprint：F003-c 前端 TopNav 刷新按钮 + 状态轮询
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - TopNav 抽出：MA150 Tracker + 导航 + Last refresh + Refresh Data 按钮
+  - RefreshButton：lucide RefreshCw 图标，pill 样式，loading 旋转 + 禁用
+  - useRefreshStatus hook（react-query）：POST 触发 + refetchInterval 2s 条件轮询
+  - 完成时自动 invalidate ['watchlist']，SignalBoard 跟着刷新
+  - 初次加载读 lastRefreshedAt；null 显示 "Last refresh: —"
+  - lint：无新增 error（仅遗留 ui/button.tsx 一处旧 error）
+  - build：tsc + vite build 全绿
+  - Preview 验证：点击 → disabled/旋转 → 完成 → Last refresh 时间刷新 ✅
+  - 导航激活态（nav-active/nav-inactive token）保持不变 ✅
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - 新增：frontend/src/lib/api/data.ts, hooks/useRefreshStatus.ts,
+         components/features/topnav/{TopNav,RefreshButton}.tsx
+  - 修改：frontend/src/App.tsx（用 TopNav 替换内联 nav）
+
+📊 功能状态：
+  F003-a 数据刷新核心：✅ done
+  F003-b 刷新 API + 调度：✅ done
+  F003-c 前端刷新按钮：🔍 needs_review
+  F003（总）：待 c 验收后整体收尾
+
+[下一个 Session]
+  用户验收 F003-c → 更新 F003 整体为 done，进入下一 Feature
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 18:45] Sprint：F004 SignalBoard 信号总览
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - SignalBoard 数据源切换到 /api/signals（合约对齐）
+  - SignalCard 补充 closePrice 展示（design-spec §SignalCard）
+  - 点击 SignalCard 打开 StockDetailModal 壳（Header + 4 指标占位）
+  - 新增 types/signal.ts、lib/api/signals.ts
+  - AddStockCard + useRefreshStatus 同步 invalidate ['signals']
+  - 后端回归测试：108/108 通过
+  - TSC build 通过；frontend 无新 lint 错误
+  - Evaluator 自检：10/10 全部通过
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - F004 验收（点击 SignalCard 测试 Modal 打开 + 关闭）
+
+🔧 系统变更：
+  - frontend/src/types/signal.ts 新建
+  - frontend/src/lib/api/signals.ts 新建
+  - frontend/src/components/features/dashboard/StockDetailModal.tsx 新建
+  - 修改：SignalBoard/SignalCard/Dashboard/AddStockCard/useRefreshStatus
+  - docs/开发/sprint-contracts/F004-contract.md 新建
+
+📊 功能状态：
+  F001 Watchlist：✅ done
+  F002 信号引擎：✅ done
+  F003 数据调度：✅ done
+  F004 SignalBoard：🔍 needs_review
+  F005 个股详情 Modal：⬜ ready_to_dev（Modal 壳已就位，待填内容）
+  F006 大盘概览：⬜ ready_to_dev
+  F007 Journal：⬜ ready_to_dev
+  F008 Logs：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F004 → 触发 acceptance skill
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 18:55] F004 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F004 SignalBoard → done
+  - 验收记录：docs/验收/v1.0-acceptance.md
+  - features.json: phase=done, completed_at=2026-04-17
+
+📊 P0 功能状态：
+  F001 ✅ / F002 ✅ / F003 ✅ / F004 ✅
+  F005 ⬜ / F006 ⬜ / F007 ⬜ / F008 ⬜（ready_to_dev）
+
+[下一个 Session]
+  开始开发 F005 / F006 / F007 / F008（任一）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F005-a] Sprint：F005-a 后端 stock detail 接口
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新增 3 个端点：/api/stocks/{ticker}/chart | /pullbacks | /fundamentals
+  - PullbackRepository + StockDetailService + stock_detail schema
+  - Fundamentals 为 mock（source="mock"，ticker-hash 派生确定值）
+  - 集成+单元测试：10/10 通过
+  - 全量回归：118/118 通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新文件：schemas/stock_detail.py, repositories/pullback_repository.py,
+    services/stock_detail_service.py, tests/test_stock_detail.py
+  - 修改：routers/stocks.py（+3 路由 + service 依赖）
+
+📊 功能状态：
+  F005-a：🔍 needs_review
+  F005-b：⬜ planned（前端 Header/Pullback/Fundamentals，移入 stock-detail/）
+  F005-c：⬜ planned（PriceChart + lightweight-charts）
+
+[下一个 Session]
+  F005-a 验收通过后，进入 F005-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 F005-b] Sprint：F005-b 前端 Header/Pullback/Fundamentals
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - StockDetailModal 移至 components/features/stock-detail/
+  - 新组件：StockDetailHeader / PullbackHistoryCard / FundamentalsCard
+  - useQueries 并发拉 pullbacks / fundamentals，独立 loading/error 状态
+  - PriceChart 区域留 Skeleton 占位（F005-c 接入）
+  - 修复 F005-a 遗留 bug：pydantic to_camel 把 return_10d→return10D，
+    与 API-CONTRACT 不符。新增 Field alias 强制 return10d/20d/30d，
+    并强化 F005-a 测试（原 if rows: 短路未触发）
+  - pnpm build 通过；浏览器 preview 验证 Modal 正常打开/关闭/渲染
+  - 全量后端：118/118 通过
+
+🔧 系统变更：
+  - 新：types/stockDetail.ts、4 个 stock-detail 组件
+  - 改：lib/api/stocks.ts（+3 fetch）、pages/Dashboard.tsx（import 路径）、
+        schemas/stock_detail.py（return10d alias）、tests/test_stock_detail.py
+  - 删：components/features/dashboard/StockDetailModal.tsx
+
+📊 功能状态：
+  F005-a：🔍 needs_review（含 schema alias 修复）
+  F005-b：🔍 needs_review
+  F005-c：⬜ planned（PriceChart + lightweight-charts）
+
+[下一个 Session]
+  F005-b 验收通过后，进入 F005-c Sprint Contract（新依赖 + PriceChart）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 20:00] Sprint：F005-c PriceChart + lightweight-charts 集成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 引入 lightweight-charts@5.1.0（context7 文档验证，非训练数据）
+  - 新建 PriceChart.tsx：Candlestick + MA150 LineSeries + Pullback markers（createSeriesMarkers v5 primitive）
+  - StockDetailModal 增 chart 查询，替换旧 Skeleton 占位；Loading/Error/正常三态
+  - 颜色/尺寸从 tokens.css 运行时读取，无硬编码
+  - useEffect cleanup 调用 chart.remove() + 解绑 resize listener
+  - pnpm build 通过；lint 仅剩 F000-b 遗留 button.tsx 警告（非本 sprint 引入）
+  - 后端 118/118 测试回归通过
+  - 浏览器验证：Modal 打开正常渲染 Candles + MA150 蓝线，ESC 关闭 → 换股重开 chart 正确重建
+  - DECISIONS.md 追加 D025（版本 / API 选型 / 时间格式 / 主题注入 / 生命周期）
+  - features.json F005-c.phase → needs_review
+
+⚠️ 待你决策：
+  - 验收 F005-c；通过后 F005 整体 done
+
+🔧 系统变更：
+  - frontend/package.json + pnpm-lock.yaml（+lightweight-charts）
+  - frontend/src/components/features/stock-detail/PriceChart.tsx（新建）
+  - frontend/src/components/features/stock-detail/StockDetailModal.tsx
+  - docs/系统设计/DECISIONS.md（+D025）
+  - docs/开发/sprint-contracts/F005-c-contract.md（新建）
+
+📊 功能状态：
+  F005-a：🔍 needs_review → 待 F005 整体验收
+  F005-b：🔍 needs_review → 待 F005 整体验收
+  F005-c：🔍 needs_review（本 Sprint）
+
+[下一个 Session]
+  用户验收 F005-c 通过后：
+  - 更新 F005（父）phase = done
+  - 触发 F006 大盘概览 或 F007 Trade Journal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F006-a 后端数据层 + Polygon 扩展
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - PolygonClient：新增 get_index_recent_aggs（I: 前缀，list_aggs）、get_treasury_10y_latest（httpx 直连 /fed/v1/treasury-yields）
+  - MarketIndexRepository：upsert / list_latest_by_symbol / prune_to_window(5)
+  - MarketRefreshService：SPX/NDX/TNX 逐个刷新，per-symbol 失败隔离，OK/ERROR SystemLog
+  - refresh_job：股票刷新完毕后挂接 market refresh，market 异常不标记 job failed
+  - 单元+集成测试：10/10 通过
+  - 全量回归：128/128 通过
+  - DECISIONS：追加 D026（TNX httpx 直连）、D027（指数 I: 前缀）
+
+📊 功能状态：
+  F006-a 后端数据层：🔍 needs_review（testing 通过，待用户验收）
+  F006-b API 路由：⬜ 未开始
+  F006-c 前端 Bar：⬜ 未开始
+
+[下一个 Session]
+  用户验收 F006-a → 进入 F006-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F006-b + F006-c 大盘 API + 前端 Bar
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  F006-b 后端 API：
+  - schemas/market.py：MarketIndexOut（camelCase）
+  - routers/market.py：GET /api/market/overview，按 SPX/NDX/TNX 顺序
+  - main.py：include market router
+  - 测试 4/4 通过；全量 132/132 回归通过
+
+  F006-c 前端 Bar：
+  - types/market.ts + lib/api/market.ts + hooks/useMarketOverview.ts
+  - MarketOverviewBar：41.78px 共享条，三组指标，loading/error/empty 态
+  - App.tsx：挂在 TopNav 下方，全路由共享
+  - useRefreshStatus：refresh 完成时失效 market 缓存
+  - tsc 通过；预览验证：数值格式、正负颜色、顺序均正确
+
+  phase F006 → needs_review（b/c 通过测试门禁）
+
+[下一个 Session]
+  用户验收 F006 整体 → 触发 acceptance skill
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F007-a 交易日志 Journal — 后端 API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Journal CRUD 四端点：GET/POST/PUT/DELETE /api/journal
+  - Schemas（JournalEntryCreate/Update/Out、JournalListOut、JournalDeleteOut，camelCase 别名）
+  - JournalRepository（ticker/action 过滤、分页、date DESC 排序）
+  - JournalService（watchlist 校验、action 枚举校验、ticker 大小写归一）
+  - 集成测试 19/19 通过（T1–T13 + 5 用例 + 2 extra 用例）
+  - 全量回归 pytest：151/151 通过
+  - phase → done
+
+📊 功能状态：
+  F001/F002/F003/F004/F005/F006：✅ done
+  F007-a 后端 API：✅ done
+  F007-b 前端 /journal 列表：⬜ ready_to_dev（下一步）
+  F007-c 前端 Dialog：⬜ ready_to_dev
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+  F008 系统日志页面：⬜ ready_to_dev
+
+🔧 系统变更：
+  - F007 拆为 F007-a/b/c/d（原 18+ 文件超出 6 文件上限）
+  - docs/开发/sprint-contracts/F007-a-contract.md
+  - features.json 更新 features_snapshot
+
+[下一个 Session]
+  准备开发 F007-b（前端 /journal 列表 + 筛选 + 删除）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17] Sprint：F007-b Journal — 前端列表 + 筛选 + 删除
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - /journal 页面：Header(+New Entry disabled) + FilterCard + Table + 三态
+  - JournalTable（含 Row 内联，chevron 展开详情，AlertDialog 删除）
+  - ActionBadge 5 枚举色接 --color-action-* token
+  - types/journal.ts + lib/api/journal.ts（getJournal/deleteJournal）
+  - 设计偏离：FilterCard 原生 <select>（回写 design-spec）
+  - preview 验证全部交互通过；pnpm build 通过
+  - phase → done
+
+🔧 系统变更：
+  - design-spec.md：FilterCard 偏离块（原生 select → 待 F007-c 接入 shadcn Select）
+  - AlertDialog Footer border-t 在 journal 场景下移除（内联 className）
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：⬜ ready_to_dev（下一步）
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+
+[下一个 Session]
+  准备开发 F007-c（新建/编辑 Dialog + 引入 react-hook-form + zod + shadcn select/label）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-17 22:30] Sprint：F007-c 交易日志 — 新建/编辑 Dialog
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 引入 react-hook-form 7.72 + zod 4.3 + @hookform/resolvers 5.2；shadcn select/label（CLI 生成）
+  - JournalEntryForm.tsx：9 字段 + zodResolver + Controller 接 shadcn Select；WATCH 禁用 Position；nullable 数值字段 setValueAs → null
+  - JournalEntryDialog.tsx：mode=new/edit 容器；POST/PUT via react-query mutation；成功 invalidate['journal'] 并关闭；失败 ApiError.message 渲染到 Footer
+  - Journal.tsx：解锁 + New Entry，行 Edit 按钮触发 Dialog（mode + entry state）
+  - preview 验证：新建 201、编辑 prefill、422 "ticker not in watchlist" 红字、WATCH disable、字段级 required/positive 校验、Cancel 关闭
+  - pnpm build 通过，无 TS 错误
+
+🔧 系统变更：
+  - DECISIONS.md D028：引入 react-hook-form/zod/@hookform/resolvers（context7 2026-04-17 验证）
+  - frontend/package.json 新增 3 依赖
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：🔍 needs_review
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F007-c；通过后进入 F007-d（Dashboard JournalQuickAddCard）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] F007-c 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收 F007-c 合格
+  - commit 8373a54（RHF+zod + shadcn select/label + Dialog 新建/编辑）
+  - preview 11/11 交互通过；pnpm build 零 TS 错误
+  - features.json：F007-c phase → done, completed_at = 2026-04-18
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：✅ done
+  F007-d Dashboard QuickAdd：⬜ ready_to_dev（下一步）
+  F007（父）：in_progress（等 d 完成整体归档）
+
+[下一个 Session]
+  起草 F007-d Sprint Contract（JournalQuickAddCard + Dashboard 挂载）
+  协商要点：
+    1. ticker 不在 watchlist 时的行为（一键加入 vs 直接 422）
+    2. 复用 JournalEntryForm 收缩版 vs 独立 3 字段小表单
+    3. Action 默认值（BUY/WATCH/空）
+    4. 是否加 toast（需 shadcn add sonner）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] Sprint：F007-d Dashboard JournalQuickAddCard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 frontend/src/components/features/dashboard/JournalQuickAddCard.tsx
+    · 3 字段（Ticker/Action/Price）useState 受控（sidebar 158px，3 字段不上 RHF）
+    · Action 默认 BUY；其余可选字段固定传 null（positionSize/stopLoss/targetPrice/reason/reference）
+    · date 自动取 today ISO
+    · canSubmit 规则：ticker 非空 + price>0 且为数字 + !mutation.isPending
+    · onSuccess：清空 + action 回 BUY + invalidate ['journal']
+    · onError：ApiError.message 渲染为按钮上方红字（沿用 F007-c 风格）
+  - 修改 Dashboard.tsx：import + 在 AddStockCard 下方挂载
+  - preview 验证：
+    · 初始态 3 字段空 → Submit disabled ✅
+    · 填 AAPL + 180.50 → Submit enabled ✅
+    · 点 Submit → POST /api/journal 201 Created ✅
+    · 自动触发 GET /api/journal?limit=200 refetch（invalidate 生效）✅
+    · Reload 后默认值回到 BUY + disabled 态 ✅
+  - pnpm build 零 TS 错误（703KB gzip 218KB，chunk size 警告为既有）
+  - 协商 4 要点全部落地：
+    · ticker 不在 watchlist → 后端 422 内联错误，不做一键加入
+    · 独立 3 字段 useState 小表单，不复用 9 字段 Form
+    · Action 默认 BUY
+    · 不加 toast（成功清空 + invalidate 即反馈）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新：frontend/src/components/features/dashboard/JournalQuickAddCard.tsx
+  - 改：frontend/src/pages/Dashboard.tsx
+  - 无新依赖；无 DECISIONS 追加（无新技术决策）
+
+📊 功能状态：
+  F007-a 后端 API：✅ done
+  F007-b 前端列表：✅ done
+  F007-c Dialog 新建/编辑：✅ done
+  F007-d Dashboard QuickAdd：🔍 needs_review
+  F007（父）：in_progress → 等 d 验收整体归档
+
+[下一个 Session]
+  用户验收 F007-d（手测 3 字段交互 + 422 ticker 不在 watchlist 红字）
+  通过后 F007 整体 done，剩 F008 系统日志页面进入 MVP 收官
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] F007-d 验收通过 → F007 父级整体 done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收 F007-d 合格
+  - 截图确认：OXY/ADD/65 提交后正确渲染错误文案（后端 502，ApiError.message 渲染路径工作）
+  - features.json：F007-d phase/status → done, completed_at = 2026-04-18
+  - F007 交易日志（父级 a+b+c+d）：✅ 整体 done
+
+📊 P0 MVP 进度：7/8
+  F001 Watchlist：✅ done
+  F002 信号引擎：✅ done
+  F003 数据调度：✅ done
+  F004 SignalBoard：✅ done
+  F005 个股详情 Modal：✅ done
+  F006 大盘概览：✅ done
+  F007 交易日志 Journal：✅ done（a/b/c/d 全部 done）
+  F008 系统日志页面：⬜ ready_to_dev（MVP 收官）
+
+⚠️ 已知遗留（非阻塞，可后续修）：
+  - QuickAdd 基础设施错误（5xx/网络）直显 "HTTP XXX"，不够友好
+    建议：client.ts 层统一把 5xx/网络错误 message 转成"服务不可用，请重试"
+    业务错误（422/404）保留后端文案
+
+[下一个 Session]
+  进入 F008 系统日志页面 Sprint Contract 协商（MVP 最后一个 feature）
+  范围参考：
+    - 页面 /logs 展示系统运行日志（数据同步/信号/调度）
+    - 按级别 toggle 过滤（ALL/OK/INFO/WARN/ERROR）
+    - 时间倒序
+  后端 API 已具备（F003-b SystemLogRepository.list_recent）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] Sprint：F008-a 后端 /api/logs API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend/app/schemas/log.py：LogLevel Literal + LogEntryOut（CamelModel）
+  - backend/app/routers/logs.py：GET /api/logs?level=&limit= （default=50, max=500）
+    · level 用 Literal["OK","INFO","WARN","ERROR"] → 无效值触发统一 VALIDATION_ERROR
+  - backend/app/dependencies.py：+ get_system_log_repository
+  - backend/app/main.py：include_router(logs.router)
+  - backend/tests/test_logs_api.py：11 用例
+    · 空表返回 []
+    · 4 级别 parametrize 过滤
+    · limit 限制 + 边界（0/501 → 422）
+    · 无效 level → 422 + error.code=VALIDATION_ERROR
+    · camelCase createdAt + detail 字段露出
+    · 倒序（ERROR/WARN/INFO/OK）
+  - 全量回归：162/162（基线 151 + 11 新）
+  - phase → needs_review（F008-a subtask）
+
+🔧 系统变更：
+  - 4 新文件 + 2 修改（dependencies.py / main.py）
+  - 无新依赖；无 DECISIONS 追加
+  - Sprint Contract 协商 6 要点全部落地：拆 a/b / 原生 button chip / 原生 title / 不轮询 / 不展 detail / level=ALL 不传参
+
+📊 功能状态：
+  F001–F007：✅ done
+  F008-a 后端 API：🔍 needs_review
+  F008-b 前端 /logs 页面：⬜ ready_to_dev
+
+[下一个 Session]
+  用户验收 F008-a（pytest 11/11 + 手测 /api/logs endpoint）
+  通过后进入 F008-b 前端页面 Generator
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] Sprint：F008-b 前端 /logs 页面
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - frontend/src/types/log.ts：LogLevel + LogLevelFilterValue + LogEntry
+  - frontend/src/lib/api/logs.ts：getLogs({ level?, limit? })，level=ALL 不传参
+  - frontend/src/components/features/logs/LogBadge.tsx：4 级徽章
+    · OK/INFO/ERROR solid 彩底白字，WARN outline（白底 amber 边+字）
+  - frontend/src/components/features/logs/LogLevelFilter.tsx：5 chip 原生 button toggle group
+  - frontend/src/components/features/logs/LogsTable.tsx：Timestamp(mono)/Level/Source/Message
+    · Message 单行 ellipsis + 原生 title 属性 tooltip
+    · Timestamp 列 200px + whiteSpace:nowrap（避免换行）
+  - frontend/src/pages/Logs.tsx：useQuery(['logs', filter]) + 4 态（ready/empty/loading/error）
+    · staleTime: 0；filter=ALL 不传 level
+  - pnpm build 零 TS 错误（708KB，gzip 219KB）
+  - preview 验证：
+    · ALL → 50 行实际日志渲染（OK 绿/ERROR 红 badge）
+    · OK → 4 行过滤结果（chip 黑底白字）
+    · INFO → EmptyState "No logs match this filter"（无 INFO 日志）
+    · WARN → EmptyState（无 WARN 日志）
+    · Timestamp mono 单行，Message 长文本 ellipsis 截断
+  - Sprint Contract 6 要点全部落地
+
+🔧 系统变更：
+  - 新增 6 前端文件；无新依赖；无 DECISIONS 追加
+  - features.json：F008-b phase → needs_review
+
+📊 功能状态：
+  F001–F007：✅ done
+  F008-a 后端 API：🔍 needs_review（未 commit）
+  F008-b 前端页面：🔍 needs_review（未 commit，和 F008-a 一起打包）
+
+[下一个 Session]
+  用户验收 F008-b（手测 5 chip toggle + Message ellipsis + tooltip）
+  通过后 F008 父级 done → MVP 8/8 完成 → 触发 project-commiter 打 v1.0 tag
+  （F008-a + F008-b 一起 commit）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-18] F008-a + F008-b 一并验收通过 → F008 父级 done → MVP 8/8 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收：
+  - F008-a 后端 /api/logs API
+  - F008-b 前端 /logs 页面（5-chip toggle + 4 态 + Badge + ellipsis/tooltip）
+  - features.json：F008/F008-a/F008-b phase → done, completed_at = 2026-04-18
+  - 验收记录：docs/验收/v1.0-acceptance.md 追加 F008 段
+
+📊 P0 MVP 进度：8/8 ✅ 全部完成
+  F001 Watchlist ✅ / F002 信号引擎 ✅ / F003 数据调度 ✅ / F004 SignalBoard ✅
+  F005 个股详情 Modal ✅ / F006 大盘概览 ✅ / F007 Journal ✅ / F008 系统日志 ✅
+
+⚠️ 工作树状态：F008-a + F008-b 所有文件仍未 commit，等 project-commiter 打包
+  M backend/app/dependencies.py
+  M backend/app/main.py
+  M claude-progress.txt
+  M docs/需求/features.json
+  M docs/验收/v1.0-acceptance.md
+  M SESSION-HANDOFF.md（待刷新）
+  ?? backend/app/routers/logs.py
+  ?? backend/app/schemas/log.py
+  ?? backend/tests/test_logs_api.py
+  ?? frontend/src/types/log.ts
+  ?? frontend/src/lib/api/logs.ts
+  ?? frontend/src/components/features/logs/{LogBadge,LogLevelFilter,LogsTable}.tsx
+  M frontend/src/pages/Logs.tsx
+
+[下一个 Session]
+  触发 project-commiter skill 打 v1.0.0 tag（整体 F008 commit + CHANGELOG.md 生成）
+  然后进入本地 Docker 部署流程（acceptance Step 5）

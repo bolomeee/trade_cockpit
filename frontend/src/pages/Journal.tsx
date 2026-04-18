@@ -62,17 +62,7 @@ export default function Journal() {
         gap: 'var(--spacing-6)',
       }}
     >
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1
-          style={{
-            fontSize: 'var(--font-size-hero)',
-            fontWeight: 'var(--font-weight-bold)',
-            color: 'var(--color-text-primary)',
-            margin: 0,
-          }}
-        >
-          Trade Journal
-        </h1>
+      <header style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <button
           type="button"
           onClick={() => setDialog({ open: true, mode: 'new', entry: null })}

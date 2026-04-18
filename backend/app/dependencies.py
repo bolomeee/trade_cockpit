@@ -9,6 +9,7 @@ from app.database import SessionLocal, get_db
 from app.external.polygon_client import PolygonClient
 from app.repositories.journal_repository import JournalRepository
 from app.repositories.stock_repository import StockRepository
+from app.repositories.system_log_repository import SystemLogRepository
 from app.services.journal_service import JournalService
 from app.services.watchlist_service import WatchlistService
 
@@ -38,3 +39,7 @@ def get_journal_service(db: Session = Depends(get_db)) -> JournalService:
         journal_repo=JournalRepository(db),
         stock_repo=StockRepository(db),
     )
+
+
+def get_system_log_repository(db: Session = Depends(get_db)) -> SystemLogRepository:
+    return SystemLogRepository(db)
