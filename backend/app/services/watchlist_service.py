@@ -4,7 +4,7 @@ import logging
 import traceback
 from typing import Any
 
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.models import Stock
 from app.repositories.stock_repository import StockRepository
 from app.repositories.system_log_repository import SystemLogRepository
@@ -12,7 +12,7 @@ from app.repositories.system_log_repository import SystemLogRepository
 READY_BAR_THRESHOLD = 150
 SEARCH_LIMIT_MAX = 20
 SEARCH_LIMIT_DEFAULT = 10
-POLYGON_MATCH_LIMIT = 5
+FMP_MATCH_LIMIT = 5
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +40,25 @@ def _extract_field(obj: Any, name: str) -> Any:
 
 
 def _extract_ticker(obj: Any) -> str | None:
-    value = _extract_field(obj, "ticker")
+    # FMP search endpoints return `symbol`; fall back to `ticker` for resilience.
+    value = _extract_field(obj, "symbol") or _extract_field(obj, "ticker")
     return value.upper() if isinstance(value, str) else None
 
 
+def _extract_exchange(obj: Any) -> Any:
+    # FMP: exchangeShortName (e.g. "NASDAQ"); fall back to legacy `primary_exchange`.
+    return _extract_field(obj, "exchangeShortName") or _extract_field(obj, "primary_exchange")
+
+
+def _extract_type(obj: Any) -> Any:
+    # FMP `search-symbol` returns `type` (e.g. "stock"/"etf"); pass through.
+    return _extract_field(obj, "type")
+
+
 class WatchlistService:
-    def __init__(self, repo: StockRepository, polygon: PolygonClient) -> None:
+    def __init__(self, repo: StockRepository, fmp: FmpClient) -> None:
         self.repo = repo
-        self.polygon = polygon
+        self.fmp = fmp
 
     def list_watchlist(self) -> list[dict[str, Any]]:
         stocks = self.repo.list_active()
@@ -78,19 +89,19 @@ class WatchlistService:
             raise APIError("DUPLICATE", f"{ticker} already in watchlist", 409)
 
         try:
-            results = self.polygon.search_tickers(ticker, limit=POLYGON_MATCH_LIMIT)
+            results = self.fmp.search_tickers(ticker, limit=FMP_MATCH_LIMIT)
         except Exception as exc:
-            raise APIError("EXTERNAL_API_ERROR", f"Polygon lookup failed: {exc}", 502) from exc
+            raise APIError("EXTERNAL_API_ERROR", f"FMP lookup failed: {exc}", 502) from exc
 
         match = next(
             (r for r in results if _extract_ticker(r) == ticker),
             None,
         )
         if match is None:
-            raise APIError("NOT_FOUND", f"ticker {ticker} not found on Polygon", 404)
+            raise APIError("NOT_FOUND", f"ticker {ticker} not found on FMP", 404)
 
         name = _extract_field(match, "name") or ticker
-        exchange = _extract_field(match, "primary_exchange")
+        exchange = _extract_exchange(match)
 
         if existing and not existing.is_active:
             stock = self.repo.reactivate(existing, name=name, exchange=exchange)
@@ -109,7 +120,7 @@ class WatchlistService:
         from app.services.data_refresh_service import DataRefreshService
 
         try:
-            DataRefreshService(self.repo.db, self.polygon).backfill_stock(stock.id)
+            DataRefreshService(self.repo.db, self.fmp).backfill_stock(stock.id)
         except Exception as exc:  # noqa: BLE001 — boundary
             logger.warning("backfill failed for %s: %s", stock.ticker, exc)
             try:
@@ -133,9 +144,9 @@ class WatchlistService:
     def search(self, q: str, limit: int) -> list[dict[str, Any]]:
         capped = min(max(1, limit), SEARCH_LIMIT_MAX)
         try:
-            results = self.polygon.search_tickers(q, limit=capped)
+            results = self.fmp.search_tickers(q, limit=capped)
         except Exception as exc:
-            raise APIError("EXTERNAL_API_ERROR", f"Polygon search failed: {exc}", 502) from exc
+            raise APIError("EXTERNAL_API_ERROR", f"FMP search failed: {exc}", 502) from exc
 
         items: list[dict[str, Any]] = []
         for r in results:
@@ -146,8 +157,8 @@ class WatchlistService:
                 {
                     "ticker": t,
                     "name": _extract_field(r, "name") or "",
-                    "exchange": _extract_field(r, "primary_exchange"),
-                    "type": _extract_field(r, "type"),
+                    "exchange": _extract_exchange(r),
+                    "type": _extract_type(r),
                 }
             )
         return items

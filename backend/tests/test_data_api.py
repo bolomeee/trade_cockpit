@@ -3,7 +3,6 @@ from __future__ import annotations
 import threading
 import time
 from datetime import date, datetime, timezone
-from types import SimpleNamespace
 
 import pytest
 
@@ -27,11 +26,15 @@ def _reset_refresh_state():
     shutdown_scheduler()
 
 
-def _agg(d: date, close: float = 100.0) -> SimpleNamespace:
-    ts_ms = int(datetime(d.year, d.month, d.day, tzinfo=timezone.utc).timestamp() * 1000)
-    return SimpleNamespace(
-        timestamp=ts_ms, open=close, high=close + 1, low=close - 1, close=close, volume=10_000
-    )
+def _fmp_bar(d: date, close: float = 100.0) -> dict:
+    return {
+        "date": d.isoformat(),
+        "open": close,
+        "high": close + 1,
+        "low": close - 1,
+        "close": close,
+        "volume": 10_000,
+    }
 
 
 def _seed_stock(db_session, ticker: str = "AAPL") -> Stock:
@@ -42,12 +45,12 @@ def _seed_stock(db_session, ticker: str = "AAPL") -> Stock:
     return s
 
 
-def _attach_aggs(mock_polygon, ticker: str, n: int):
-    """Give FakePolygon a get_daily_aggs method returning n fake aggs for ticker."""
+def _attach_bars(fake_fmp, ticker: str, n: int):
+    """Give FakeFMP a get_daily_bars method returning n fake bars for ticker."""
     today = datetime.now(timezone.utc).date()
-    mock_polygon.get_daily_aggs = lambda t, f, to_, _aggs=[
-        _agg(today, close=100.0) for _ in range(n)
-    ]: _aggs if t.upper() == ticker.upper() else []
+    fake_fmp.get_daily_bars = lambda t, f, to_, _bars=[
+        _fmp_bar(today, close=100.0) for _ in range(n)
+    ]: _bars if t.upper() == ticker.upper() else []
 
 
 class TestRefreshStatusIdle:
@@ -63,10 +66,10 @@ class TestRefreshStatusIdle:
 
 
 class TestTriggerRefresh:
-    def test_post_refresh_returns_202(self, client, db_session, mock_polygon):
+    def test_post_refresh_returns_202(self, client, db_session, fake_fmp):
         _seed_stock(db_session, "AAPL")
         _seed_stock(db_session, "MSFT")
-        _attach_aggs(mock_polygon, "AAPL", 3)
+        _attach_bars(fake_fmp, "AAPL", 3)
 
         resp = client.post("/api/data/refresh")
         assert resp.status_code == 202
@@ -77,16 +80,16 @@ class TestTriggerRefresh:
 
         _wait_for_completion()
 
-    def test_second_refresh_while_running_returns_in_progress(self, client, db_session, mock_polygon):
+    def test_second_refresh_while_running_returns_in_progress(self, client, db_session, fake_fmp):
         _seed_stock(db_session, "AAPL")
-        # Block first refresh by making polygon slow
+        # Block first refresh by making FMP slow
         gate = threading.Event()
 
-        def slow_aggs(t, f, to_):
+        def slow_bars(t, f, to_):
             gate.wait(timeout=2)
             return []
 
-        mock_polygon.get_daily_aggs = slow_aggs
+        fake_fmp.get_daily_bars = slow_bars
 
         resp1 = client.post("/api/data/refresh")
         assert resp1.status_code == 202
@@ -102,9 +105,9 @@ class TestTriggerRefresh:
         gate.set()
         _wait_for_completion()
 
-    def test_status_reflects_completed(self, client, db_session, mock_polygon):
+    def test_status_reflects_completed(self, client, db_session, fake_fmp):
         _seed_stock(db_session, "AAPL")
-        _attach_aggs(mock_polygon, "AAPL", 3)
+        _attach_bars(fake_fmp, "AAPL", 3)
 
         client.post("/api/data/refresh")
         _wait_for_completion()
@@ -127,12 +130,12 @@ class TestCamelCaseResponse:
 
 
 class TestAddStockBackfillHook:
-    def test_add_stock_triggers_backfill_and_creates_bars(self, client, mock_polygon):
+    def test_add_stock_triggers_backfill_and_creates_bars(self, client, fake_fmp):
         ticker = "AAPL"
-        mock_polygon.search_results = [
-            SimpleNamespace(ticker=ticker, name="Apple", primary_exchange="XNAS", type="CS")
+        fake_fmp.search_results = [
+            {"symbol": ticker, "name": "Apple", "exchangeShortName": "NASDAQ", "type": "stock"}
         ]
-        _attach_aggs(mock_polygon, ticker, 10)
+        _attach_bars(fake_fmp, ticker, 10)
 
         resp = client.post("/api/watchlist", json={"ticker": ticker})
         assert resp.status_code == 201
@@ -144,16 +147,16 @@ class TestAddStockBackfillHook:
         # 10 bars < 150 threshold → "insufficient"
         assert item["dataStatus"] == "insufficient"
 
-    def test_add_stock_logs_warn_when_backfill_fails(self, client, mock_polygon, db_session):
+    def test_add_stock_logs_warn_when_backfill_fails(self, client, fake_fmp, db_session):
         ticker = "BBBB"
-        mock_polygon.search_results = [
-            SimpleNamespace(ticker=ticker, name="Broken", primary_exchange="XNAS", type="CS")
+        fake_fmp.search_results = [
+            {"symbol": ticker, "name": "Broken", "exchangeShortName": "NASDAQ", "type": "stock"}
         ]
 
         def boom(t, f, to_):
-            raise RuntimeError("polygon unreachable")
+            raise RuntimeError("fmp unreachable")
 
-        mock_polygon.get_daily_aggs = boom
+        fake_fmp.get_daily_bars = boom
 
         resp = client.post("/api/watchlist", json={"ticker": ticker})
         assert resp.status_code == 201
@@ -166,7 +169,7 @@ class TestScheduler:
     def test_start_scheduler_registers_cron_job(self):
         sched = start_scheduler(
             session_factory=lambda: None,
-            polygon_factory=lambda: None,
+            fmp_factory=lambda: None,
             autostart=False,
         )
         jobs = sched.get_jobs()
@@ -181,9 +184,9 @@ class TestScheduler:
 
 
 class TestConcurrentStart:
-    def test_concurrent_start_creates_single_job(self, db_session, mock_polygon):
+    def test_concurrent_start_creates_single_job(self, db_session, fake_fmp):
         _seed_stock(db_session, "AAPL")
-        _attach_aggs(mock_polygon, "AAPL", 3)
+        _attach_bars(fake_fmp, "AAPL", 3)
 
         mgr = RefreshJobManager()
 
@@ -200,7 +203,7 @@ class TestConcurrentStart:
         threads = [
             threading.Thread(
                 target=lambda: results.append(
-                    mgr.start_refresh(session_factory, lambda: mock_polygon)
+                    mgr.start_refresh(session_factory=session_factory, fmp_factory=lambda: fake_fmp)
                 )
             )
             for _ in range(10)

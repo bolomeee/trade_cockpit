@@ -6,20 +6,20 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.database import SessionLocal
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.routers import data, journal, logs, market, signals, stocks, watchlist
 from app.services.refresh_job import shutdown_scheduler, start_scheduler
 from app.services.watchlist_service import APIError
 
 
-def _polygon_factory() -> PolygonClient:
-    return PolygonClient()
+def _fmp_factory() -> FmpClient:
+    return FmpClient()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if os.getenv("MA150_DISABLE_SCHEDULER") != "1":
-        start_scheduler(SessionLocal, _polygon_factory)
+        start_scheduler(SessionLocal, _fmp_factory)
     try:
         yield
     finally:

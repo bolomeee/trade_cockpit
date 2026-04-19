@@ -1,4 +1,8 @@
-"""Refresh SPX / NDX / TNX latest values via Polygon and persist into market_indices.
+"""Refresh SPX / NDX / TNX latest values via FMP /stable/ and persist into market_indices.
+
+D034: SPX/NDX use `/stable/historical-price-eod/full` with FMP index symbols
+`^GSPC` / `^NDX`; TNX uses `/stable/treasury-rates` `year10`. DB-layer
+`market_indices.symbol` stays SPX/NDX/TNX (DATA-MODEL unchanged).
 
 Each symbol is fetched independently; failure of one does not abort the others.
 Writes OK / ERROR SystemLog entries so the logs page surfaces status.
@@ -7,12 +11,12 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.repositories.market_index_repository import (
     MARKET_INDEX_SYMBOLS,
     MARKET_INDEX_WINDOW,
@@ -26,6 +30,12 @@ SYMBOL_NAMES: dict[str, str] = {
     "SPX": "S&P 500",
     "NDX": "NASDAQ 100",
     "TNX": "10-Year Treasury Yield",
+}
+
+# DB symbol → FMP index symbol (D034). TNX uses treasury-rates, not this map.
+_DB_TO_FMP_INDEX: dict[str, str] = {
+    "SPX": "^GSPC",
+    "NDX": "^NDX",
 }
 
 
@@ -44,9 +54,9 @@ class MarketBatchResult:
 
 
 class MarketRefreshService:
-    def __init__(self, db: Session, polygon: PolygonClient) -> None:
+    def __init__(self, db: Session, fmp: FmpClient) -> None:
         self.db = db
-        self.polygon = polygon
+        self.fmp = fmp
         self.repo = MarketIndexRepository(db)
         self.log_repo = SystemLogRepository(db)
 
@@ -98,21 +108,25 @@ class MarketRefreshService:
         self.repo.prune_to_window(symbol, MARKET_INDEX_WINDOW)
 
     def _fetch_index(self, symbol: str) -> tuple[date, float, float | None]:
-        aggs = self.polygon.get_index_recent_aggs(symbol)
-        if not aggs:
-            raise RuntimeError(f"{symbol}: empty aggregate response")
+        fmp_symbol = _DB_TO_FMP_INDEX.get(symbol)
+        if fmp_symbol is None:
+            raise RuntimeError(f"{symbol}: no FMP mapping configured")
 
-        # list_aggs returns ascending by date; take last two for latest + prev.
-        bars = sorted(aggs, key=lambda b: _get(b, "timestamp") or 0)
-        latest = bars[-1]
-        prev = bars[-2] if len(bars) >= 2 else None
+        bars = self.fmp.get_index_recent_bars(fmp_symbol)
+        if not bars:
+            raise RuntimeError(f"{symbol}: empty FMP historical response")
+
+        # FMP returns descending by date; sort ascending for latest/prev access.
+        sorted_bars = sorted(bars, key=lambda b: str(_get(b, "date") or ""))
+        latest = sorted_bars[-1]
+        prev = sorted_bars[-2] if len(sorted_bars) >= 2 else None
 
         close = _get(latest, "close")
-        ts_ms = _get(latest, "timestamp")
-        if close is None or ts_ms is None:
-            raise RuntimeError(f"{symbol}: missing close/timestamp")
+        raw_date = _get(latest, "date")
+        if close is None or raw_date is None:
+            raise RuntimeError(f"{symbol}: missing close/date")
 
-        row_date = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).date()
+        row_date = _parse_iso_date(str(raw_date)[:10])
         prev_close = _get(prev, "close") if prev is not None else None
         return (
             row_date,
@@ -121,13 +135,13 @@ class MarketRefreshService:
         )
 
     def _fetch_treasury(self) -> tuple[date, float, float | None]:
-        data = self.polygon.get_treasury_10y_latest()
-        latest_close = data.get("yield_10_year")
+        data = self.fmp.get_treasury_10y_latest()
+        latest_close = data.get("year10")
         latest_date = data.get("date")
         if latest_close is None or latest_date is None:
-            raise RuntimeError("TNX: missing yield_10_year/date")
-        prev_close = data.get("prev_yield_10_year")
-        row_date = _parse_iso_date(latest_date)
+            raise RuntimeError("TNX: missing year10/date")
+        prev_close = data.get("prev_year10")
+        row_date = _parse_iso_date(str(latest_date)[:10])
         return (
             row_date,
             float(latest_close),

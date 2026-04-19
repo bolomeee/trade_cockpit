@@ -5,8 +5,8 @@ from typing import Callable
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_polygon_client, get_session_factory
-from app.external.polygon_client import PolygonClient
+from app.dependencies import get_fmp_client, get_session_factory
+from app.external.fmp_client import FmpClient
 from app.schemas.data import (
     RefreshProgress,
     RefreshStartedPayload,
@@ -18,10 +18,10 @@ from app.services import refresh_job
 router = APIRouter(prefix="/api/data", tags=["data"])
 
 
-def _polygon_factory_dep(
-    polygon: PolygonClient = Depends(get_polygon_client),
+def _fmp_factory_dep(
+    fmp: FmpClient = Depends(get_fmp_client),
 ):
-    return lambda _client=polygon: _client
+    return lambda _client=fmp: _client
 
 
 @router.post(
@@ -32,11 +32,11 @@ def _polygon_factory_dep(
 def trigger_refresh(
     response: Response,
     session_factory: Callable[[], Session] = Depends(get_session_factory),
-    polygon_factory=Depends(_polygon_factory_dep),
+    fmp_factory=Depends(_fmp_factory_dep),
 ) -> ResponseEnvelope[RefreshStartedPayload]:
     result = refresh_job.manager.start_refresh(
         session_factory=session_factory,
-        polygon_factory=polygon_factory,
+        fmp_factory=fmp_factory,
     )
     # Per API-CONTRACT: 202 on start and on "already running" — client polls /status.
     response.status_code = status.HTTP_202_ACCEPTED

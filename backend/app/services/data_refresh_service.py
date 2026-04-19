@@ -1,8 +1,8 @@
 """Data refresh core: backfill, incremental update, and batch orchestration.
 
-Pulls EOD daily bars from Polygon.io, persists via DailyBarRepository,
-prunes to the 250-day window, triggers signal recomputation, and writes
-SystemLog entries for success/failure.
+Pulls EOD daily bars from FMP /stable/historical-price-eod/full (D034),
+persists via DailyBarRepository, prunes to the 250-day window, triggers
+signal recomputation, and writes SystemLog entries for success/failure.
 
 Does NOT expose HTTP, does NOT schedule. F003-b wires those.
 """
@@ -14,7 +14,7 @@ from typing import Any, TypedDict
 
 from sqlalchemy.orm import Session
 
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.models import Stock
 from app.repositories.daily_bar_repository import (
     DAILY_BAR_WINDOW,
@@ -49,11 +49,11 @@ class DataRefreshService:
     def __init__(
         self,
         db: Session,
-        polygon: PolygonClient,
+        fmp: FmpClient,
         signal_service: SignalService | None = None,
     ) -> None:
         self.db = db
-        self.polygon = polygon
+        self.fmp = fmp
         self.bar_repo = DailyBarRepository(db)
         self.stock_repo = StockRepository(db)
         self.log_repo = SystemLogRepository(db)
@@ -156,8 +156,8 @@ class DataRefreshService:
         *,
         prune: bool,
     ) -> RefreshResult:
-        aggs = self.polygon.get_daily_aggs(stock.ticker, from_date, to_date)
-        bars = [b for b in (_agg_to_bar(a) for a in aggs) if b is not None]
+        raw = self.fmp.get_daily_bars(stock.ticker, from_date, to_date)
+        bars = [b for b in (_fmp_bar_to_dto(item) for item in raw) if b is not None]
         added = self.bar_repo.bulk_upsert(stock.id, bars)
         if prune:
             self.bar_repo.prune_to_window(stock.id, DAILY_BAR_WINDOW)
@@ -181,26 +181,25 @@ def _touch_last_refreshed(db: Session, stock: Stock) -> None:
     db.commit()
 
 
-def _agg_to_bar(agg: Any) -> BarDTO | None:
-    """Convert a polygon Agg (either dict or object) to a BarDTO.
+def _fmp_bar_to_dto(item: Any) -> BarDTO | None:
+    """Convert an FMP historical-price-eod row to a BarDTO.
 
-    Polygon returns `timestamp` in ms (UTC). We map:
-      t (ms) → date, o/h/l/c → open/high/low/close, v → volume.
-    Returns None when any required field is missing (defensive against SDK drift).
+    FMP row shape: `{date: "YYYY-MM-DD", open, high, low, close, volume, ...}`.
+    Returns None when any required field is missing (defensive against shape drift).
     """
-    ts_ms = _get(agg, "timestamp")
-    if ts_ms is None:
+    raw_date = _get(item, "date")
+    if raw_date is None:
         return None
     try:
-        d = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).date()
-    except (TypeError, ValueError, OSError):
+        d = datetime.strptime(str(raw_date)[:10], "%Y-%m-%d").date()
+    except (TypeError, ValueError):
         return None
 
-    o = _get(agg, "open")
-    h = _get(agg, "high")
-    low_v = _get(agg, "low")
-    c = _get(agg, "close")
-    v = _get(agg, "volume")
+    o = _get(item, "open")
+    h = _get(item, "high")
+    low_v = _get(item, "low")
+    c = _get(item, "close")
+    v = _get(item, "volume")
     if None in (o, h, low_v, c, v):
         return None
 

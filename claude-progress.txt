@@ -16,5 +16,29 @@
 📊 功能状态：
   F104 数据源迁移：🔄 in_progress（S1 done，S2 待开始）
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-19] Sprint：F104-S2 服务层 + 既有测试全量迁移至 FMP（方案 B，合并 S2a+S2b=13 文件）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 后端生产代码：dependencies / main / routers/data / external/__init__ 全部切到 FmpClient；
+    get_polygon_client→get_fmp_client、_polygon_factory→_fmp_factory、PolygonFactory→FmpFactory
+  - WatchlistService：polygon→fmp；_extract_ticker 兼容 FMP `symbol`；新增 _extract_exchange 映射
+    FMP `exchangeShortName`；POLYGON_MATCH_LIMIT→FMP_MATCH_LIMIT
+  - DataRefreshService：get_daily_aggs→get_daily_bars；_agg_to_bar→_fmp_bar_to_dto
+    （按 ISO 日期字符串 + OHLCV 取字段，无 fromtimestamp 遗留）
+  - MarketRefreshService：新增 _DB_TO_FMP_INDEX（SPX→^GSPC, NDX→^NDX）；
+    _fetch_index 显式按 FMP 降序 bar 排序；_fetch_treasury 读 year10/prev_year10
+  - 测试：conftest 删 FakePolygon/mock_polygon，client fixture override get_fmp_client；
+    test_watchlist_api / test_data_api / test_data_refresh_service / test_market_refresh 全量切 fake_fmp；
+    test_market_refresh 删除 2 个 PolygonClient HTTP 层 unit test（已被 test_fmp_client 覆盖）；
+    test_logs_api 文案 polygon→fmp
+  - polygon_client.py 保留（D034 回滚锚点，仅 external/__init__.py 以 deprecated re-export）
+  - 全量回归：172/172 ✅（基线 174 - 2 删除 = 172）
+  - phase: F104 in_progress / S1 done / S2 done
+
+📊 功能状态：
+  F104 数据源迁移：🔄 in_progress（S1+S2 done，S2c 待开始：@live smoke + 前端 Mock banner 清理）
+
 [下一个 Session]
-  开发 F104 Sprint 2：services/routers 全量迁移 + 162 既有 pytest 切到 fake_fmp + ≥5 个 @live smoke test
+  F104 Sprint 2c：≥5 个 @live smoke test（tests/test_fmp_live_smoke.py）+ 前端 Fundamentals Mock Data banner 清理（S3 若用户想合并）

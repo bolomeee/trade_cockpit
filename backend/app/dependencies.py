@@ -6,7 +6,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.repositories.journal_repository import JournalRepository
 from app.repositories.stock_repository import StockRepository
 from app.repositories.system_log_repository import SystemLogRepository
@@ -14,8 +14,8 @@ from app.services.journal_service import JournalService
 from app.services.watchlist_service import WatchlistService
 
 
-def get_polygon_client() -> PolygonClient:
-    return PolygonClient()
+def get_fmp_client() -> FmpClient:
+    return FmpClient()
 
 
 def get_session_factory() -> Callable[[], Session]:
@@ -29,9 +29,9 @@ def get_session_factory() -> Callable[[], Session]:
 
 def get_watchlist_service(
     db: Session = Depends(get_db),
-    polygon: PolygonClient = Depends(get_polygon_client),
+    fmp: FmpClient = Depends(get_fmp_client),
 ) -> WatchlistService:
-    return WatchlistService(repo=StockRepository(db), polygon=polygon)
+    return WatchlistService(repo=StockRepository(db), fmp=fmp)
 
 
 def get_journal_service(db: Session = Depends(get_db)) -> JournalService:

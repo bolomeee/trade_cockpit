@@ -41,8 +41,15 @@ def _mk_bars(db: Session, stock_id: int, n: int) -> None:
     db.commit()
 
 
-def _polygon_hit(ticker: str, name: str = "Apple Inc.", exchange: str = "XNAS", type_: str = "CS"):
-    return {"ticker": ticker, "name": name, "primary_exchange": exchange, "type": type_}
+def _fmp_hit(ticker: str, name: str = "Apple Inc.", exchange: str = "NASDAQ", type_: str = "stock"):
+    return {
+        "symbol": ticker,
+        "name": name,
+        "exchangeShortName": exchange,
+        "exchangeFullName": f"{exchange} Stock Exchange",
+        "currency": "USD",
+        "type": type_,
+    }
 
 
 # --- T1 ----------------------------------------------------------------------
@@ -57,8 +64,8 @@ def test_t1_get_empty_watchlist(client: TestClient) -> None:
 
 # --- T2 ----------------------------------------------------------------------
 
-def test_t2_post_new_ticker(client: TestClient, mock_polygon, db_session: Session) -> None:
-    mock_polygon.search_results = [_polygon_hit("AAPL")]
+def test_t2_post_new_ticker(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
     r = client.post("/api/watchlist", json={"ticker": "AAPL"})
     assert r.status_code == 201
     data = r.json()["data"]
@@ -71,8 +78,8 @@ def test_t2_post_new_ticker(client: TestClient, mock_polygon, db_session: Sessio
 
 # --- T3 ----------------------------------------------------------------------
 
-def test_t3_post_lowercase_stored_as_upper(client: TestClient, mock_polygon, db_session: Session) -> None:
-    mock_polygon.search_results = [_polygon_hit("AAPL")]
+def test_t3_post_lowercase_stored_as_upper(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
     r = client.post("/api/watchlist", json={"ticker": "aapl"})
     assert r.status_code == 201
     assert r.json()["data"]["ticker"] == "AAPL"
@@ -81,9 +88,9 @@ def test_t3_post_lowercase_stored_as_upper(client: TestClient, mock_polygon, db_
 
 # --- T4 ----------------------------------------------------------------------
 
-def test_t4_post_duplicate_active(client: TestClient, mock_polygon, db_session: Session) -> None:
+def test_t4_post_duplicate_active(client: TestClient, fake_fmp, db_session: Session) -> None:
     _mk_stock(db_session, "AAPL", is_active=True)
-    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
     r = client.post("/api/watchlist", json={"ticker": "AAPL"})
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "DUPLICATE"
@@ -91,9 +98,9 @@ def test_t4_post_duplicate_active(client: TestClient, mock_polygon, db_session: 
 
 # --- T5 ----------------------------------------------------------------------
 
-def test_t5_post_reactivates_soft_deleted(client: TestClient, mock_polygon, db_session: Session) -> None:
+def test_t5_post_reactivates_soft_deleted(client: TestClient, fake_fmp, db_session: Session) -> None:
     _mk_stock(db_session, "AAPL", is_active=False)
-    mock_polygon.search_results = [_polygon_hit("AAPL")]
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
     r = client.post("/api/watchlist", json={"ticker": "AAPL"})
     assert r.status_code == 201
 
@@ -104,8 +111,8 @@ def test_t5_post_reactivates_soft_deleted(client: TestClient, mock_polygon, db_s
 
 # --- T6 ----------------------------------------------------------------------
 
-def test_t6_post_polygon_miss(client: TestClient, mock_polygon) -> None:
-    mock_polygon.search_results = [_polygon_hit("MSFT")]  # wrong ticker
+def test_t6_post_fmp_miss(client: TestClient, fake_fmp) -> None:
+    fake_fmp.search_results = [_fmp_hit("MSFT")]  # wrong ticker
     r = client.post("/api/watchlist", json={"ticker": "AAPL"})
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "NOT_FOUND"
@@ -113,8 +120,8 @@ def test_t6_post_polygon_miss(client: TestClient, mock_polygon) -> None:
 
 # --- T7 ----------------------------------------------------------------------
 
-def test_t7_post_polygon_raises(client: TestClient, mock_polygon) -> None:
-    mock_polygon.search_exc = RuntimeError("boom")
+def test_t7_post_fmp_raises(client: TestClient, fake_fmp) -> None:
+    fake_fmp.search_exc = RuntimeError("boom")
     r = client.post("/api/watchlist", json={"ticker": "AAPL"})
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"
@@ -191,16 +198,16 @@ def test_t13_delete_nonexistent(client: TestClient) -> None:
 
 # --- T14 ---------------------------------------------------------------------
 
-def test_t14_search_forwards_results(client: TestClient, mock_polygon) -> None:
-    mock_polygon.search_results = [
-        _polygon_hit("AAPL", "Apple Inc.", "XNAS", "CS"),
-        _polygon_hit("AA", "Alcoa Corp", "XNYS", "CS"),
+def test_t14_search_forwards_results(client: TestClient, fake_fmp) -> None:
+    fake_fmp.search_results = [
+        _fmp_hit("AAPL", "Apple Inc.", "XNAS", "CS"),
+        _fmp_hit("AA", "Alcoa Corp", "XNYS", "CS"),
     ]
     r = client.get("/api/stocks/search", params={"q": "AA"})
     assert r.status_code == 200
     data = r.json()["data"]
     assert [d["ticker"] for d in data] == ["AAPL", "AA"]
-    assert mock_polygon.search_calls[-1][0] == "AA"
+    assert fake_fmp.search_calls[-1][0] == "AA"
 
 
 # --- T15 ---------------------------------------------------------------------
@@ -213,17 +220,17 @@ def test_t15_search_missing_q(client: TestClient) -> None:
 
 # --- T16 ---------------------------------------------------------------------
 
-def test_t16_search_limit_capped_to_20(client: TestClient, mock_polygon) -> None:
-    mock_polygon.search_results = []
+def test_t16_search_limit_capped_to_20(client: TestClient, fake_fmp) -> None:
+    fake_fmp.search_results = []
     r = client.get("/api/stocks/search", params={"q": "AA", "limit": 50})
     assert r.status_code == 200
-    assert mock_polygon.search_calls[-1][1] == 20
+    assert fake_fmp.search_calls[-1][1] == 20
 
 
 # --- T17 ---------------------------------------------------------------------
 
-def test_t17_search_polygon_raises(client: TestClient, mock_polygon) -> None:
-    mock_polygon.search_exc = RuntimeError("boom")
+def test_t17_search_fmp_raises(client: TestClient, fake_fmp) -> None:
+    fake_fmp.search_exc = RuntimeError("boom")
     r = client.get("/api/stocks/search", params={"q": "AA"})
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"

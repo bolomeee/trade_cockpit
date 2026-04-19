@@ -24,7 +24,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
-from app.external.polygon_client import PolygonClient
+from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
@@ -38,7 +38,7 @@ DAILY_REFRESH_CRON = "30 21 * * 1-5"
 SCHEDULER_JOB_ID = "ma150_daily_refresh"
 
 SessionFactory = Callable[[], Session]
-PolygonFactory = Callable[[], PolygonClient]
+FmpFactory = Callable[[], FmpClient]
 
 
 @dataclass
@@ -71,7 +71,7 @@ class RefreshJobManager:
     def start_refresh(
         self,
         session_factory: SessionFactory,
-        polygon_factory: PolygonFactory,
+        fmp_factory: FmpFactory,
     ) -> StartResult:
         with self._lock:
             if self._state.status == "in_progress":
@@ -102,7 +102,7 @@ class RefreshJobManager:
 
             thread = threading.Thread(
                 target=self._run,
-                args=(job_id, stock_ids, session_factory, polygon_factory),
+                args=(job_id, stock_ids, session_factory, fmp_factory),
                 name=f"ma150-refresh-{job_id}",
                 daemon=True,
             )
@@ -120,18 +120,18 @@ class RefreshJobManager:
         job_id: str,
         stock_ids: list[int],
         session_factory: SessionFactory,
-        polygon_factory: PolygonFactory,
+        fmp_factory: FmpFactory,
     ) -> None:
         try:
             with _session_scope(session_factory) as db:
-                polygon = polygon_factory()
-                service = DataRefreshService(db, polygon=polygon)
+                fmp = fmp_factory()
+                service = DataRefreshService(db, fmp=fmp)
                 batch = service.refresh_all(stock_ids)
                 service.purge_old_logs()
                 # F006: refresh market indices after stocks. Isolated: a market
                 # failure must not mark the overall job failed.
                 try:
-                    MarketRefreshService(db, polygon=polygon).refresh_all()
+                    MarketRefreshService(db, fmp=fmp).refresh_all()
                 except Exception:  # noqa: BLE001
                     logger.error("market refresh failed\n%s", traceback.format_exc())
 
@@ -159,7 +159,7 @@ _scheduler_lock = threading.Lock()
 
 def start_scheduler(
     session_factory: SessionFactory,
-    polygon_factory: PolygonFactory,
+    fmp_factory: FmpFactory,
     *,
     autostart: bool = True,
 ) -> BackgroundScheduler:
@@ -178,7 +178,7 @@ def start_scheduler(
             _scheduler_tick,
             trigger=CronTrigger.from_crontab(DAILY_REFRESH_CRON, timezone="UTC"),
             id=SCHEDULER_JOB_ID,
-            args=[session_factory, polygon_factory],
+            args=[session_factory, fmp_factory],
             replace_existing=True,
         )
         if autostart:
@@ -201,10 +201,10 @@ def shutdown_scheduler() -> None:
 
 def _scheduler_tick(
     session_factory: SessionFactory,
-    polygon_factory: PolygonFactory,
+    fmp_factory: FmpFactory,
 ) -> None:
     try:
-        manager.start_refresh(session_factory, polygon_factory)
+        manager.start_refresh(session_factory, fmp_factory)
     except Exception:  # noqa: BLE001
         logger.error("scheduled refresh tick failed\n%s", traceback.format_exc())
 

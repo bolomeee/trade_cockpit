@@ -12,8 +12,8 @@ def _seed_logs(db_session) -> list[SystemLog]:
     rows = [
         SystemLog(level="OK", source="scheduler", message="refresh ok", created_at=now - timedelta(minutes=3)),
         SystemLog(level="INFO", source="watchlist", message="added AAPL", created_at=now - timedelta(minutes=2)),
-        SystemLog(level="WARN", source="polygon", message="rate limited", created_at=now - timedelta(minutes=1)),
-        SystemLog(level="ERROR", source="polygon", message="429 too many requests", detail="HTTP 429", created_at=now),
+        SystemLog(level="WARN", source="fmp", message="rate limited", created_at=now - timedelta(minutes=1)),
+        SystemLog(level="ERROR", source="fmp", message="429 too many requests", detail="HTTP 429", created_at=now),
     ]
     for r in rows:
         db_session.add(r)
