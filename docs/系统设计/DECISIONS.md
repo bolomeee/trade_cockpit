@@ -654,3 +654,29 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - **前端类型定义无变化**：`Fundamentals` / `ChartPoint` / `MarketIndex` 类型不动
 - **MarketOverviewBar 行为无变化**：SPX/NDX/TNX 仍按既有逻辑渲染
 
+---
+
+## D035：fundamentals 估值指标改走 `/stable/key-metrics-ttm`（D034 补充）
+**时间**：2026-04-19（F104-S2c 联网 smoke 发现）
+
+**背景**：
+- D034 在 2026-04-19 早些时候确认后，F104-S1 封装 `FmpClient.get_ratios_ttm` 对接 `/stable/ratios-ttm`，期望一把拉到 PE/PS/PEG/ROCE/FCF（D034 决策第 580 行）。
+- F104-S2c 跑真实联网 smoke（AAPL）发现 `/stable/ratios-ttm` **实际响应只含 margin/turnover 系列**（`grossProfitMarginTTM / netProfitMarginTTM / receivablesTurnoverTTM …`），**不包含 P/E / P/S / PEG / ROCE / FCF**。
+- FMP 在 D034 调研与 S2c 执行之间似乎调整了 `/stable/` 端点职责划分：估值类 TTM 指标迁到 `/stable/key-metrics-ttm`，`/stable/ratios-ttm` 专注盈利能力/运营效率比率。
+
+**决策**：
+1. **S3 fundamentals 真实接入改走 `/stable/key-metrics-ttm`** 作为估值指标主源，`/stable/ratios-ttm` 作为盈利能力指标补充源
+2. **FmpClient 扩展**：S3 新增 `get_key_metrics_ttm(symbol)`，与 `get_ratios_ttm` 并列；顶部新增 `FMP_EP_KEY_METRICS_TTM = "/key-metrics-ttm"` 常量
+3. **现有 `get_ratios_ttm` 保留**：不回滚 S1 产出，S3 将其定位为盈利能力数据源而非估值数据源；API-CONTRACT.md 的 `fundamentals` 响应在 service 层合并两个端点的字段
+4. **ARCHITECTURE.md 端点映射表更新**：在 D034 映射表新增一行 `估值 TTM → /stable/key-metrics-ttm`
+5. **不影响 F104-S1/S2/S2c**：这三个 sprint 的范围里没有消费 ratios-ttm 的业务代码，只有契约封装 + smoke test
+
+**放弃的方案**：
+- **手工从 income/balance 三表组装 P/E**：FMP Starter 有直出端点就走直出，不重造组合逻辑
+- **推迟到 S3 再发现**：S2c smoke test 就是这类契约漂移的早期预警机制，在封装层抓住比在 feature 开发中后期抓住廉价得多
+
+**影响**：
+- **F104-S3 范围扩大**：原计划单纯 wire `get_ratios_ttm` → fundamentals router，现需要先在 FmpClient 扩展 `get_key_metrics_ttm` 并在 service 层合并两端点响应
+- **API-CONTRACT.md 的 `fundamentals` 字段映射**：S3 启动时需要具体写明哪些字段来自 ratios-ttm、哪些来自 key-metrics-ttm
+- **Rate 预算**：每支股票的 fundamentals 刷新由 1 次 FMP 调用变为 2 次；300/min 下仍宽裕，暂不引入缓存
+

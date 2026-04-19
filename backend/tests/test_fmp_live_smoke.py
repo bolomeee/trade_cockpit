@@ -35,11 +35,13 @@ def test_live_search_symbol_aapl(fmp: FmpClient) -> None:
     assert "AAPL" in symbols
 
 
-def test_live_search_name_fallback_apple(fmp: FmpClient) -> None:
-    # A full company name is unlikely to hit the symbol-prefix endpoint,
-    # exercising the /search-name fallback branch in search_tickers.
-    results = fmp.search_tickers("Apple Incorporated", limit=5)
-    assert results, "expected non-empty fallback results for 'Apple Incorporated'"
+def test_live_search_name_fallback_microsoft(fmp: FmpClient) -> None:
+    # "Microsoft" is not a symbol prefix (MSFT), so /search-symbol returns [];
+    # the two-phase fallback in search_tickers should hit /search-name next.
+    results = fmp.search_tickers("Microsoft", limit=5)
+    assert results, "expected non-empty fallback results for 'Microsoft'"
+    symbols = {_field(r, "symbol") for r in results}
+    assert "MSFT" in symbols
 
 
 def test_live_daily_bars_aapl_recent(fmp: FmpClient) -> None:
@@ -65,11 +67,16 @@ def test_live_treasury_10y(fmp: FmpClient) -> None:
 
 
 def test_live_ratios_ttm_aapl(fmp: FmpClient) -> None:
+    # Connectivity check only. Observed 2026-04-19: FMP /stable/ratios-ttm now
+    # returns margin/turnover TTM ratios and no longer includes valuation
+    # ratios (P/E, P/B, ROE) — those appear to have moved to /stable/key-metrics-ttm.
+    # S3 fundamentals integration must account for this when mapping fields.
     ratios = fmp.get_ratios_ttm("AAPL")
     assert ratios is not None, "expected ratios-ttm payload for AAPL"
-    # FMP field names vary slightly over time; accept any of the common PE keys.
-    pe_keys = ("peRatioTTM", "priceEarningsRatioTTM", "peRatio")
-    assert any(k in ratios for k in pe_keys), f"no PE ratio field in {list(ratios.keys())[:10]}"
+    assert ratios.get("symbol") == "AAPL"
+    assert "grossProfitMarginTTM" in ratios, (
+        f"unexpected ratios-ttm shape: {list(ratios.keys())[:10]}"
+    )
 
 
 def _field(obj, name: str):

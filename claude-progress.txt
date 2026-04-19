@@ -50,11 +50,20 @@
   - 无 FMP_API_KEY 时模块级 skipif 自动 skip
   - 默认 pytest：172 passed + 6 deselected ✅
   - pytest -m live 无 key：6 skipped ✅
+  - 真实联网 6/6 ✅（用户在本地 FMP_API_KEY 环境下验证）
+  - 📌 D035 决策：smoke 发现 `/stable/ratios-ttm` 实际不含 P/E/PS/PEG/ROCE/FCF，
+    估值指标需改走 `/stable/key-metrics-ttm`；不影响 S1/S2/S2c，S3 范围需扩展
+    （FmpClient 新增 get_key_metrics_ttm + service 层合并两端点响应）
+  - 两个 smoke 断言小修：search fallback query 改 "Microsoft"；ratios-ttm 改断言 margin 字段
   - phase: F104 in_progress / S1+S2+S2c done
 
 📊 功能状态：
   F104 数据源迁移：🔄 in_progress（S1+S2+S2c done，S3 待开始：fundamentals 真实接入 + 前端 Mock banner 清理）
 
 [下一个 Session]
-  F104 Sprint 3：fundamentals 真实接入（routers/service 调 get_ratios_ttm）+ 前端 Fundamentals Mock Data banner 清理；
-  运行一次 `FMP_API_KEY=... uv run pytest -m live` 验证真实端点联通
+  F104 Sprint 3（范围已按 D035 扩展）：
+  1. FmpClient 新增 get_key_metrics_ttm + 单元测试
+  2. fundamentals service 层合并 ratios-ttm（盈利能力）+ key-metrics-ttm（估值）两端点响应
+  3. routers/stocks 接 fundamentals 真实端点
+  4. 前端 Fundamentals Mock Data banner 清理
+  5. 按需追加 smoke test 覆盖 key-metrics-ttm 端点
