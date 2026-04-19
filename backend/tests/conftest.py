@@ -44,6 +44,9 @@ class FakeFMP:
         self.ratios_results: dict[str, dict[str, Any] | None] = {}
         self.ratios_calls: list[str] = []
 
+        self.key_metrics_results: dict[str, dict[str, Any] | None] = {}
+        self.key_metrics_calls: list[str] = []
+
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
         self.search_calls.append((query, limit))
         if self.search_exc is not None:
@@ -69,6 +72,10 @@ class FakeFMP:
     def get_ratios_ttm(self, symbol: str) -> dict[str, Any] | None:
         self.ratios_calls.append(symbol)
         return self.ratios_results.get(symbol)
+
+    def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
+        self.key_metrics_calls.append(symbol)
+        return self.key_metrics_results.get(symbol)
 
 
 @pytest.fixture

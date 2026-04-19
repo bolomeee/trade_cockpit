@@ -653,7 +653,9 @@
       "status": "done",
       "phase": "done",
       "completed_at": "2026-04-17",
-      "dependencies": ["F001"],
+      "dependencies": [
+        "F001"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "backend/app/repositories/journal_repository.py",
@@ -671,12 +673,18 @@
           "PUT /api/journal/:id",
           "DELETE /api/journal/:id"
         ],
-        "db_tables": ["JournalEntry"],
+        "db_tables": [
+          "JournalEntry"
+        ],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -688,7 +696,11 @@
         "DELETE /api/journal/:id 成功返回 { id, deleted: true }；id 不存在返回 404",
         "所有响应 JSON 字段命名符合 API-CONTRACT（camelCase），数据库字段命名符合 DATA-MODEL（snake_case）"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "F007 拆分为 a/b/c/d（2026-04-17，因 18+ 文件超出 6 上限）"
     },
@@ -701,7 +713,9 @@
       "status": "done",
       "phase": "done",
       "completed_at": "2026-04-17",
-      "dependencies": ["F007-a"],
+      "dependencies": [
+        "F007-a"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/types/journal.ts",
@@ -712,14 +726,23 @@
         "frontend/src/components/features/journal/JournalFilterCard.tsx"
       ],
       "scope": {
-        "pages": ["交易日志 /journal"],
-        "api_endpoints": ["GET /api/journal", "DELETE /api/journal/:id"],
+        "pages": [
+          "交易日志 /journal"
+        ],
+        "api_endpoints": [
+          "GET /api/journal",
+          "DELETE /api/journal/:id"
+        ],
         "db_tables": [],
         "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -731,7 +754,11 @@
         "Delete：shadcn AlertDialog 二次确认 → DELETE /api/journal/:id → invalidate query",
         "JournalRow 内联（不单开文件），保持 6 文件上限"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "+ New Entry 按钮渲染但禁用/无响应，F007-c 实现新建/编辑"
     },
@@ -743,7 +770,9 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F007-b"],
+      "dependencies": [
+        "F007-b"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/components/features/journal/JournalEntryDialog.tsx",
@@ -753,14 +782,23 @@
         "frontend/src/components/ui/label.tsx"
       ],
       "scope": {
-        "pages": ["交易日志 /journal（Dialog）"],
-        "api_endpoints": ["POST /api/journal", "PUT /api/journal/:id"],
+        "pages": [
+          "交易日志 /journal（Dialog）"
+        ],
+        "api_endpoints": [
+          "POST /api/journal",
+          "PUT /api/journal/:id"
+        ],
         "db_tables": [],
         "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=1-382&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -771,7 +809,11 @@
         "DatePicker 使用 input[type=date]（避免引入 calendar 组件；与 design-spec 偏离需回写）",
         "Action=WATCH 时 Position 字段禁用"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "引入新依赖 react-hook-form + zod，需走新依赖流程 + DECISIONS 记录",
       "completed_at": "2026-04-18"
@@ -784,21 +826,31 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F007-c"],
+      "dependencies": [
+        "F007-c"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/components/features/dashboard/JournalQuickAddCard.tsx",
         "frontend/src/pages/Dashboard.tsx"
       ],
       "scope": {
-        "pages": ["Dashboard /"],
-        "api_endpoints": ["POST /api/journal"],
+        "pages": [
+          "Dashboard /"
+        ],
+        "api_endpoints": [
+          "POST /api/journal"
+        ],
         "db_tables": [],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -806,7 +858,11 @@
         "提交调用 POST /api/journal，成功清空表单，失败显示内联错误",
         "空 ticker/action/price 禁用提交按钮"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "对应 PRD 验收条款『Dashboard Trade Journal Widget』，按 design-spec 简化为 3 字段快捷表单",
       "completed_at": "2026-04-18"
@@ -820,8 +876,16 @@
       "status": "done",
       "phase": "done",
       "subtasks": {
-        "F008-a": {"name": "后端 /api/logs API", "phase": "done", "completed_at": "2026-04-18"},
-        "F008-b": {"name": "前端 /logs 页面", "phase": "done", "completed_at": "2026-04-18"}
+        "F008-a": {
+          "name": "后端 /api/logs API",
+          "phase": "done",
+          "completed_at": "2026-04-18"
+        },
+        "F008-b": {
+          "name": "前端 /logs 页面",
+          "phase": "done",
+          "completed_at": "2026-04-18"
+        }
       },
       "dependencies": [
         "F003"
@@ -886,7 +950,9 @@
         "frontend/src/App.tsx"
       ],
       "scope": {
-        "pages": ["/workbench（临时路由，Phase 4 收敛到 /）"],
+        "pages": [
+          "/workbench（临时路由，Phase 4 收敛到 /）"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -903,7 +969,11 @@
         "刷新浏览器后 demo widget 位置保留",
         "老路由 / /journal /logs 不受影响"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "对应重构计划 Phase 1；风险：react-grid-layout 与 React 19 兼容性，demo 阶段验证"
     },
@@ -916,7 +986,9 @@
       "status": "done",
       "phase": "done",
       "completed_at": "2026-04-19",
-      "dependencies": ["F100"],
+      "dependencies": [
+        "F100"
+      ],
       "estimated_sessions": 3,
       "estimated_files_changed": [
         "frontend/src/workbench/widgets/WatchlistWidget.tsx",
@@ -931,7 +1003,9 @@
         "frontend/src/components/features/dashboard/SignalCard.tsx"
       ],
       "scope": {
-        "pages": ["Workbench /workbench → / (Phase 4)"],
+        "pages": [
+          "Workbench /workbench → / (Phase 4)"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -949,7 +1023,11 @@
         "所有 widget 功能与 v1.0.0 等价（数据 fetch、新建/编辑、筛选、删除均正常）",
         "v1.0.0 的 StockDetailModal.tsx 不再被引用"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "对应重构计划 Phase 2-3；PriceChart 响应式改造是关键风险点"
     },
@@ -961,7 +1039,9 @@
       "priority": "P0",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F101"],
+      "dependencies": [
+        "F101"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/App.tsx",
@@ -973,7 +1053,9 @@
         "frontend/src/workbench/WidgetRegistry.ts"
       ],
       "scope": {
-        "pages": ["/（Workbench 主入口）"],
+        "pages": [
+          "/（Workbench 主入口）"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -992,7 +1074,11 @@
         "pnpm build 零 TS 错误；backend 零改动，所有既有 API 调用不变",
         "CHANGELOG 准备 v1.1.0 条目（Phase 5）"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "对应重构计划 Phase 4-5；完成后发 v1.1.0 tag"
     },
@@ -1007,7 +1093,9 @@
       "superseded_by": "F104",
       "deprecated_at": "2026-04-19",
       "deprecated_reason": "Polygon Stocks Starter 缺 CapEx 无法真算 FCF；D034 决定整体切换至 FMP /stable/ratios-ttm，F103 目标被 F104 吸收",
-      "dependencies": ["F102"],
+      "dependencies": [
+        "F102"
+      ],
       "estimated_sessions": 2,
       "estimated_files_changed": [
         "backend/app/external/polygon_client.py",
@@ -1019,13 +1107,21 @@
       ],
       "scope": {
         "pages": [],
-        "api_endpoints": ["GET /api/stocks/:ticker/fundamentals"],
-        "db_tables": ["StockFundamentals (TBD)"],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/fundamentals"
+        ],
+        "db_tables": [
+          "StockFundamentals (TBD)"
+        ],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#stock-detail"],
-        "data_model_refs": ["DATA-MODEL.md#fundamentals (TBD)"],
+        "api_refs": [
+          "API-CONTRACT.md#stock-detail"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#fundamentals (TBD)"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -1035,9 +1131,16 @@
         "Polygon rate limit 合规（季度级缓存命中率 ≥ 95%）",
         "财报缺失 / 异常时字段返回 null，UI 显示 '—'"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [
-        {"date": "2026-04-19", "change": "deprecated; superseded by F104 (D034)"}
+        {
+          "date": "2026-04-19",
+          "change": "deprecated; superseded by F104 (D034)"
+        }
       ],
       "notes": "决策见 DECISIONS D032（原立项）和 D034（废弃原因）。保留审计痕迹，不删除。"
     },
@@ -1047,10 +1150,12 @@
       "description": "整体替换 Polygon (massive) Stocks Starter → FMP Starter /stable/ 端点。新增 fmp_client.py（httpx REST + 300/min token bucket）；watchlist 搜索、EOD 日线、大盘指数、10Y 国债、基本面全部走 FMP；polygon_client.py 标 deprecated 保留作回滚；fundamentals 从 mock 切到真实 ratios-ttm，source 字段从 'mock' 改 'fmp'；前端类型不动，后端在 service 层做字段适配。F103 目标在此并入",
       "user_story": "作为维护者，我想只用一个外部数据源覆盖所有需求，降低订阅成本+代码复杂度，并拿到真实的 5 项基本面指标",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "needs_review",
+      "phase": "needs_review",
       "current_sprint": "S2",
-      "dependencies": ["F102"],
+      "dependencies": [
+        "F102"
+      ],
       "estimated_sessions": 3,
       "estimated_files_changed": [
         "backend/app/external/fmp_client.py (new)",
@@ -1073,7 +1178,9 @@
         ".env (FMP_API_KEY, POLYGON_API_KEY 标 legacy)"
       ],
       "scope": {
-        "pages": ["Fundamentals widget（仅清理 Mock banner）"],
+        "pages": [
+          "Fundamentals widget（仅清理 Mock banner）"
+        ],
         "api_endpoints": [
           "GET /api/stocks/search",
           "GET /api/stocks/:ticker/chart",
@@ -1111,7 +1218,11 @@
         ".env.example 含 FMP_API_KEY；POLYGON_API_KEY 注释 legacy 但保留字段以便回滚",
         "pnpm build + pytest 全绿；无 TS / mypy 错误"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调"
     }

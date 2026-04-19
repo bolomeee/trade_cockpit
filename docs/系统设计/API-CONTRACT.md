@@ -397,30 +397,31 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 }
 ```
 
-**字段语义（D034 / F104）**：
+**字段语义（D034 / D036 / F104-S3）**：
 
 | 字段 | 类型 | 来源 / 计算 | null 语义 |
 |------|------|------------|----------|
-| priceToEarnings | number \| null | FMP `ratios-ttm.priceEarningsRatioTTM` | 亏损股（PE 负）或字段缺失 → null |
+| priceToEarnings | number \| null | FMP `ratios-ttm.priceToEarningsRatioTTM` | 亏损股（PE 负）或字段缺失 → null |
 | priceToSales | number \| null | FMP `ratios-ttm.priceToSalesRatioTTM` | 缺失 → null |
-| peg | number \| null | FMP `ratios-ttm.priceEarningsToGrowthRatioTTM`（基于 FMP 5 年增长率推算） | 增长率 ≤ 0 或缺失 → null |
-| roce | number \| null | FMP `ratios-ttm.returnOnCapitalEmployedTTM`，比例（0.65 表示 65%） | 资本分母 ≤ 0 或缺失 → null |
-| freeCashFlow | number \| null | FMP `ratios-ttm.freeCashFlowPerShareTTM × sharesOutstanding`（后者取自 `/stable/quote` 或 `/stable/profile`，TTM 口径） | 分量缺失 → null |
-| marketCap | number \| null | FMP `ratios-ttm.marketCapTTM` | 缺失 → null |
+| peg | number \| null | FMP `ratios-ttm.priceToEarningsGrowthRatioTTM` | 增长率 ≤ 0 或缺失 → null |
+| roce | number \| null | FMP `key-metrics-ttm.returnOnCapitalEmployedTTM`，比例（0.65 表示 65%） | 资本分母 ≤ 0 或缺失 → null |
+| freeCashFlow | number \| null | FMP `key-metrics-ttm.marketCap × key-metrics-ttm.freeCashFlowYieldTTM` | 任一分量缺失 → null |
+| marketCap | number \| null | FMP `key-metrics-ttm.marketCap`（无 TTM 后缀） | 缺失 → null |
 | source | string | 取值 `"fmp"`（D034 前为 `"mock"`） | — |
 | updatedAt | string (YYYY-MM-DD) | 后端拉取日期 | — |
 
 **说明**：
 - 负数语义由**字段意义决定**：ROCE 可以为负（亏损公司），`priceToEarnings` 当 EPS < 0 时业界惯例返回 null 而非负 PE；前端不做二次过滤
-- FMP `ratios-ttm` 单次调用覆盖全部 5 项指标 + 市值，不再需要组合多张财报
-- 前端 `Fundamentals` 类型保持不变（D034 约束：不改前端类型）；`source === "fmp"` 时删除"Mock Data"提示条（F104 的前端清理）
+- **D036（2026-04-19）**：fundamentals 由 `ratios-ttm`（估值）+ `key-metrics-ttm`（ROCE / marketCap / FCF 推导）合并组装。D035 的"只走 key-metrics-ttm"因 smoke 观察偏差被作废
+- FCF 计算：FMP `/stable/` 系列无直出 absolute FCF 字段，按 `FCF = marketCap × freeCashFlowYieldTTM` 反推（精度对齐到 B 级）
+- 前端 `Fundamentals` 类型保持不变（D034 约束：不改前端类型）；`FundamentalsCard` 已对 null 字段容错显示 `—`
 
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
 | ticker 不在 watchlist 中 | NOT_FOUND | 404 |
-| FMP ratios-ttm 接口失败 | EXTERNAL_API_ERROR | 502 |
+| FMP 接口失败（ratios-ttm 或 key-metrics-ttm 任一） | EXTERNAL_API_ERROR | 502 |
 
 ---
 

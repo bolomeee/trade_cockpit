@@ -680,3 +680,44 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - **API-CONTRACT.md 的 `fundamentals` 字段映射**：S3 启动时需要具体写明哪些字段来自 ratios-ttm、哪些来自 key-metrics-ttm
 - **Rate 预算**：每支股票的 fundamentals 刷新由 1 次 FMP 调用变为 2 次；300/min 下仍宽裕，暂不引入缓存
 
+
+---
+
+## D036：fundamentals 字段真实映射（修订 D035）
+**时间**：2026-04-19（F104-S3 执行期间 live smoke 发现）
+
+**背景**：
+- D035 基于 S2c smoke 的一条断言（`grossProfitMarginTTM` 存在）推断"`/stable/ratios-ttm` 只含 margin/turnover"，进而决定估值 TTM 迁到 `/stable/key-metrics-ttm`。这是**假阴性误判**。
+- S3 执行时 live smoke `test_live_key_metrics_ttm_aapl` 失败（`peRatioTTM` 不在 key-metrics-ttm 响应里），遂用真实 API key 对四个候选端点 (`ratios-ttm / key-metrics-ttm / quote / profile`) 做字段 dump，得到权威答案。
+
+**观察到的真实字段分布（AAPL，2026-04-19）**：
+- `/stable/ratios-ttm`：**含** `priceToEarningsRatioTTM` / `priceToSalesRatioTTM` / `priceToEarningsGrowthRatioTTM` / `freeCashFlowPerShareTTM`；**不含** ROCE / marketCap
+- `/stable/key-metrics-ttm`：**含** `marketCap`（无 TTM 后缀）/ `returnOnCapitalEmployedTTM` / `freeCashFlowYieldTTM`；**不含** PE/PS/PEG
+- `/stable/quote`：含 `marketCap` / `price`，无 PE 比率
+- `/stable/profile`：含 `marketCap` / `price` / `beta`，无 PE 比率
+
+**决策**：
+1. fundamentals service 层**合并调用** `ratios-ttm` + `key-metrics-ttm`（每次 2 次 FMP 调用，与 D035 "Rate 预算" 段落一致）
+2. **最终字段映射**：
+   | API | FMP 字段 |
+   |---|---|
+   | priceToEarnings | `ratios-ttm.priceToEarningsRatioTTM` |
+   | priceToSales | `ratios-ttm.priceToSalesRatioTTM` |
+   | peg | `ratios-ttm.priceToEarningsGrowthRatioTTM` |
+   | roce | `key-metrics-ttm.returnOnCapitalEmployedTTM` |
+   | freeCashFlow | `key-metrics-ttm.marketCap × key-metrics-ttm.freeCashFlowYieldTTM` |
+   | marketCap | `key-metrics-ttm.marketCap` |
+3. **FCF 推导路径**：FMP `/stable/` 系无直接 "absolute FCF" 字段；`freeCashFlowYieldTTM = FCF / marketCap`，逆推即可，精度够前端展示（与 AAPL TTM 公开口径对齐到 B 级）
+4. **保留 `get_key_metrics_ttm` 和 `get_ratios_ttm` 两个客户端方法**：S1/S3 的产物不回滚
+5. **Smoke test 加强**：`test_live_ratios_ttm_aapl` 改断言 `priceToEarningsRatioTTM` 存在（比 margin 字段更切题 S3 真实消费路径）；`test_live_key_metrics_ttm_aapl` 改断言 `marketCap` 与 `freeCashFlowYieldTTM` 存在（而非 `peRatioTTM`）
+
+**放弃的方案**：
+- **引入第 3 端点 quote/profile 取 sharesOutstanding**：`freeCashFlowYieldTTM` 已在 key-metrics-ttm 直出，不需要三端点组合
+- **接受 FCF 为 null**：损失产品信息价值；AAPL/MSFT 这类主仓位股 FCF 是核心基本面指标，不能放掉
+- **保留 D035 的"只走 key-metrics-ttm"**：live smoke 已证伪，留着是错的契约
+
+**影响**：
+- **API-CONTRACT.md**：S3 第一次修订（只改 endpoint 名）作废，按 D036 再次修订字段映射表
+- **Service 实现**：`StockDetailService.get_fundamentals` 从"调 1 个端点 + 6 字段映射"改为"并发/串行调 2 个端点 + FCF 推导"
+- **Rate 预算**：与 D035 一致，2 次/symbol，无新影响
+- **S2c 经验教训**：smoke test 只断言"存在"不够，关键字段需要**正向命名断言**（`priceToEarningsRatioTTM in response`），否则契约漂移可能被漏网

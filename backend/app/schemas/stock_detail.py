@@ -45,11 +45,11 @@ class PullbackEntry(CamelModel):
 
 class Fundamentals(CamelModel):
     ticker: str
-    price_to_earnings: float
-    price_to_sales: float
-    peg: float
+    price_to_earnings: float | None = None
+    price_to_sales: float | None = None
+    peg: float | None = None
     roce: float | None = None
-    free_cash_flow: float
-    market_cap: float
+    free_cash_flow: float | None = None
+    market_cap: float | None = None
     source: str
     updated_at: date

@@ -22,6 +22,7 @@ from app.config import settings
 
 FMP_BASE = "https://financialmodelingprep.com/stable"
 FMP_EP_RATIOS_TTM = "/ratios-ttm"
+FMP_EP_KEY_METRICS_TTM = "/key-metrics-ttm"
 FMP_EP_HIST_EOD = "/historical-price-eod/full"
 FMP_EP_TREASURY = "/treasury-rates"
 FMP_EP_SEARCH_SYMBOL = "/search-symbol"
@@ -162,6 +163,14 @@ class FmpClient:
     def get_ratios_ttm(self, symbol: str) -> dict[str, Any] | None:
         """TTM financial ratios for a single symbol. Returns first record, or None if empty."""
         body = self._request(FMP_EP_RATIOS_TTM, {"symbol": symbol})
+        results = list(body or [])
+        if not results:
+            return None
+        return results[0]
+
+    def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
+        """TTM key metrics (valuation) for a single symbol. Source for PE/PS/PEG/ROCE/FCF/marketCap (D035)."""
+        body = self._request(FMP_EP_KEY_METRICS_TTM, {"symbol": symbol})
         results = list(body or [])
         if not results:
             return None

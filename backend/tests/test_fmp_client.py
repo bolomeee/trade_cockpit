@@ -17,6 +17,7 @@ import pytest
 from app.external.fmp_client import (
     FMP_BASE,
     FMP_EP_HIST_EOD,
+    FMP_EP_KEY_METRICS_TTM,
     FMP_EP_RATIOS_TTM,
     FMP_EP_SEARCH_NAME,
     FMP_EP_SEARCH_SYMBOL,
@@ -220,6 +221,51 @@ def test_get_ratios_ttm_empty_returns_none(clock):
 
     client, _ = make_client(handler, clock)
     assert client.get_ratios_ttm("ZZZZ") is None
+
+
+def test_get_key_metrics_ttm(clock):
+    payload = [
+        {
+            "symbol": "AAPL",
+            "peRatioTTM": 33.84,
+            "priceToSalesRatioTTM": 9.12,
+            "pegRatioTTM": 5.75,
+            "returnOnCapitalEmployedTTM": 0.6503,
+            "freeCashFlowTTM": 104_000_000_000,
+            "marketCapTTM": 3_200_000_000_000,
+        }
+    ]
+
+    def handler(req):
+        return ok(payload)
+
+    client, calls = make_client(handler, clock)
+    result = client.get_key_metrics_ttm("AAPL")
+
+    assert result == payload[0]
+    assert calls[0].url.path.endswith(FMP_EP_KEY_METRICS_TTM)
+    assert calls[0].url.params["symbol"] == "AAPL"
+    assert calls[0].url.params["apikey"] == "test-key"
+
+
+def test_get_key_metrics_ttm_empty_returns_none(clock):
+    def handler(req):
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    assert client.get_key_metrics_ttm("ZZZZ") is None
+
+
+def test_key_metrics_and_ratios_hit_distinct_paths(clock):
+    def handler(req):
+        return ok([{"symbol": "AAPL"}])
+
+    client, calls = make_client(handler, clock)
+    client.get_ratios_ttm("AAPL")
+    client.get_key_metrics_ttm("AAPL")
+
+    assert calls[0].url.path.endswith(FMP_EP_RATIOS_TTM)
+    assert calls[1].url.path.endswith(FMP_EP_KEY_METRICS_TTM)
 
 
 # --- rate limit ----------------------------------------------------------

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_watchlist_service
+from app.dependencies import get_fmp_client, get_watchlist_service
+from app.external.fmp_client import FmpClient
 from app.schemas.stock_detail import (
     ChartData,
     Fundamentals,
@@ -17,8 +18,11 @@ from app.services.watchlist_service import SEARCH_LIMIT_DEFAULT, WatchlistServic
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
 
-def get_stock_detail_service(db: Session = Depends(get_db)) -> StockDetailService:
-    return StockDetailService(db)
+def get_stock_detail_service(
+    db: Session = Depends(get_db),
+    fmp: FmpClient = Depends(get_fmp_client),
+) -> StockDetailService:
+    return StockDetailService(db, fmp)
 
 
 @router.get("/search", response_model=ResponseEnvelope[list[StockSearchItem]])

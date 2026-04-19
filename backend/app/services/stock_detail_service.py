@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import hashlib
 from datetime import date
 from typing import Any
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.external.fmp_client import FmpClient
 from app.models import DailyBar, Signal
 from app.repositories.pullback_repository import PullbackRepository
 from app.repositories.stock_repository import StockRepository
@@ -14,12 +15,13 @@ from app.services.watchlist_service import APIError
 
 CHART_WINDOW_DAYS = 250
 MA150_PERIOD = 150
-FUNDAMENTALS_MOCK_SOURCE = "mock"
+FUNDAMENTALS_SOURCE_FMP = "fmp"
 
 
 class StockDetailService:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, fmp: FmpClient) -> None:
         self.db = db
+        self.fmp = fmp
         self.stocks = StockRepository(db)
         self.pullbacks = PullbackRepository(db)
 
@@ -102,32 +104,41 @@ class StockDetailService:
 
     def get_fundamentals(self, raw_ticker: str) -> dict[str, Any]:
         stock = self._resolve_active_stock(raw_ticker)
-        return _mock_fundamentals(stock.ticker)
+        try:
+            ratios = self.fmp.get_ratios_ttm(stock.ticker) or {}
+            km = self.fmp.get_key_metrics_ttm(stock.ticker) or {}
+        except httpx.HTTPError as exc:
+            raise APIError(
+                "EXTERNAL_API_ERROR",
+                f"FMP fundamentals fetch failed: {exc}",
+                502,
+            ) from exc
+
+        market_cap = _as_float(km.get("marketCap"))
+        fcf_yield = _as_float(km.get("freeCashFlowYieldTTM"))
+        free_cash_flow = (
+            market_cap * fcf_yield
+            if market_cap is not None and fcf_yield is not None
+            else None
+        )
+
+        return {
+            "ticker": stock.ticker,
+            "priceToEarnings": _as_float(ratios.get("priceToEarningsRatioTTM")),
+            "priceToSales": _as_float(ratios.get("priceToSalesRatioTTM")),
+            "peg": _as_float(ratios.get("priceToEarningsGrowthRatioTTM")),
+            "roce": _as_float(km.get("returnOnCapitalEmployedTTM")),
+            "freeCashFlow": free_cash_flow,
+            "marketCap": market_cap,
+            "source": FUNDAMENTALS_SOURCE_FMP,
+            "updatedAt": date.today(),
+        }
 
 
-def _mock_fundamentals(ticker: str) -> dict[str, Any]:
-    digest = hashlib.sha1(ticker.encode("utf-8")).digest()
-
-    def pick(offset: int, modulus: int, scale: float, floor: float) -> float:
-        return round(floor + (digest[offset] % modulus) * scale, 2)
-
-    pe = pick(0, 60, 0.5, 10.0)
-    ps = pick(1, 30, 0.2, 1.0)
-    peg = pick(2, 30, 0.1, 0.5)
-    # ROCE range 0.05–0.40 (5%–40%). Real calc (EBIT / (Total Assets - Total Current Liabilities))
-    # deferred to F103; see DECISIONS D032.
-    roce = round(0.05 + (digest[12] % 36) * 0.01, 4)
-    fcf = float((int.from_bytes(digest[3:7], "big") % 95_000 + 5_000) * 1_000_000)
-    market_cap = float((int.from_bytes(digest[7:12], "big") % 2_500 + 50) * 1_000_000_000)
-
-    return {
-        "ticker": ticker,
-        "priceToEarnings": pe,
-        "priceToSales": ps,
-        "peg": peg,
-        "roce": roce,
-        "freeCashFlow": fcf,
-        "marketCap": market_cap,
-        "source": FUNDAMENTALS_MOCK_SOURCE,
-        "updatedAt": date.today(),
-    }
+def _as_float(v: Any) -> float | None:
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None

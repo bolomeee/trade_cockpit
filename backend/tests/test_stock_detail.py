@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -136,36 +137,92 @@ def test_pullbacks_sorted_desc_with_nullable_returns(
         assert field in row, f"missing field {field}; got {list(row.keys())}"
 
 
-def test_fundamentals_returns_mock_payload(
-    client: TestClient, db_session: Session
+def test_fundamentals_merges_ratios_and_key_metrics(
+    client: TestClient, db_session: Session, fake_fmp
 ) -> None:
     _seed_stock(db_session, "EEE")
+    fake_fmp.ratios_results["EEE"] = {
+        "symbol": "EEE",
+        "priceToEarningsRatioTTM": 33.84,
+        "priceToSalesRatioTTM": 9.12,
+        "priceToEarningsGrowthRatioTTM": 5.75,
+        "freeCashFlowPerShareTTM": 8.36,
+    }
+    fake_fmp.key_metrics_results["EEE"] = {
+        "symbol": "EEE",
+        "marketCap": 3_200_000_000_000,
+        "returnOnCapitalEmployedTTM": 0.6503,
+        "freeCashFlowYieldTTM": 0.031,  # FCF = 3.2T × 0.031 = 99.2B
+    }
 
     resp = client.get("/api/stocks/EEE/fundamentals")
     assert resp.status_code == 200
     data = resp.json()["data"]
+
     assert data["ticker"] == "EEE"
-    assert data["source"] == "mock"
-    for field in (
-        "priceToEarnings",
-        "priceToSales",
-        "peg",
-        "freeCashFlow",
-        "marketCap",
-        "updatedAt",
-    ):
-        assert field in data
-    assert isinstance(data["priceToEarnings"], (int, float))
+    assert data["source"] == "fmp"
+    assert data["priceToEarnings"] == 33.84
+    assert data["priceToSales"] == 9.12
+    assert data["peg"] == 5.75
+    assert data["roce"] == 0.6503
+    assert data["marketCap"] == 3_200_000_000_000
+    assert data["freeCashFlow"] == pytest.approx(3_200_000_000_000 * 0.031)
+    assert data["updatedAt"]
+    assert fake_fmp.ratios_calls == ["EEE"]
+    assert fake_fmp.key_metrics_calls == ["EEE"]
 
 
-def test_fundamentals_deterministic_per_ticker(
-    client: TestClient, db_session: Session
+def test_fundamentals_nullifies_missing_fields(
+    client: TestClient, db_session: Session, fake_fmp
 ) -> None:
     _seed_stock(db_session, "FFF")
-    r1 = client.get("/api/stocks/FFF/fundamentals").json()["data"]
-    r2 = client.get("/api/stocks/FFF/fundamentals").json()["data"]
-    assert r1["priceToEarnings"] == r2["priceToEarnings"]
-    assert r1["marketCap"] == r2["marketCap"]
+    # Only marketCap present; ratios missing entirely; no FCF yield
+    fake_fmp.key_metrics_results["FFF"] = {
+        "symbol": "FFF",
+        "marketCap": 50_000_000,
+    }
+
+    resp = client.get("/api/stocks/FFF/fundamentals")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+
+    assert data["priceToEarnings"] is None
+    assert data["priceToSales"] is None
+    assert data["peg"] is None
+    assert data["roce"] is None
+    assert data["freeCashFlow"] is None  # marketCap present but yield missing
+    assert data["marketCap"] == 50_000_000
+    assert data["source"] == "fmp"
+
+
+def test_fundamentals_nullifies_all_when_fmp_empty(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    _seed_stock(db_session, "GGH")
+    # Both endpoints return no record
+    resp = client.get("/api/stocks/GGH/fundamentals")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["source"] == "fmp"
+    for field in ("priceToEarnings", "priceToSales", "peg", "roce", "freeCashFlow", "marketCap"):
+        assert data[field] is None
+
+
+def test_fundamentals_502_when_fmp_http_error(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    import httpx as _httpx
+
+    _seed_stock(db_session, "HHE")
+
+    def _boom(symbol):
+        raise _httpx.ConnectError("network down")
+
+    fake_fmp.get_ratios_ttm = _boom  # type: ignore[assignment]
+
+    resp = client.get("/api/stocks/HHE/fundamentals")
+    assert resp.status_code == 502
+    assert resp.json()["error"]["code"] == "EXTERNAL_API_ERROR"
 
 
 def test_detail_endpoints_404_when_ticker_missing(client: TestClient) -> None:

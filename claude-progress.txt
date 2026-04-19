@@ -67,3 +67,39 @@
   3. routers/stocks 接 fundamentals 真实端点
   4. 前端 Fundamentals Mock Data banner 清理
   5. 按需追加 smoke test 覆盖 key-metrics-ttm 端点
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-19] Sprint：F104-S3 Fundamentals 真实接入（D036 修订 D035）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - FmpClient 新增 get_key_metrics_ttm + FMP_EP_KEY_METRICS_TTM
+  - StockDetailService 去 _mock_fundamentals，注入 FmpClient
+  - fundamentals 双端点合并：ratios-ttm（PE/PS/PEG）+ key-metrics-ttm（marketCap/ROCE/FCF yield）
+  - FCF 推导：marketCap × freeCashFlowYieldTTM（FMP /stable/ 系列无直出 FCF 字段）
+  - schemas/stock_detail.py 六个数值字段改 float | None
+  - routers/stocks DI 注入 FmpClient
+  - conftest FakeFMP 新增 key_metrics_results + get_key_metrics_ttm
+  - test_fmp_client +3 cases；test_stock_detail fundamentals 4 cases 重写
+  - live smoke：新增 key-metrics-ttm；修正 ratios-ttm 断言改查 priceToEarningsRatioTTM
+  - 全量回归 177/177 ✅（基线 172 + 5 新增）
+  - live smoke 7/7 ✅（本地 FMP_API_KEY 实跑通过）
+  - API-CONTRACT.md fundamentals 字段映射表按 D036 修订
+  - DECISIONS.md 追加 D036（修订 D035 假阴性观察）
+  - phase: F104 → needs_review（S1+S2+S2c+S3 全部 done）
+
+📊 功能状态：
+  F104 数据源迁移：🔍 needs_review（全部 Sprint done，等最终验收）
+
+📌 D036 核心结论：
+  - /stable/ratios-ttm 实际包含 PE/PS/PEG/freeCashFlowPerShareTTM（S2c smoke 只断言 margin 字段导致 D035 误判）
+  - /stable/key-metrics-ttm 实际包含 marketCap（无 TTM 后缀）/ROCE/freeCashFlowYieldTTM
+  - 两端点合并才是正确答案；smoke test 教训：要做正向命名断言，不能只查"某字段存在"
+
+⚠️ 遗留观察（非阻塞，建议 S4/F105 跟进）：
+  - 前端 Fundamentals TS 类型仍为 number 非空；后端已 nullable；TS 侧 FundamentalsCard 运行时容错够，但类型严格性欠
+  - 前端 FCF 为 null 时显示 $0.00 而非 —（formatCurrency 未 null-check）
+
+[下一个 Session]
+  - 触发 acceptance skill 做 F104 最终验收
+  - 或进入 v1.2 Sprint 规划

@@ -67,16 +67,31 @@ def test_live_treasury_10y(fmp: FmpClient) -> None:
 
 
 def test_live_ratios_ttm_aapl(fmp: FmpClient) -> None:
-    # Connectivity check only. Observed 2026-04-19: FMP /stable/ratios-ttm now
-    # returns margin/turnover TTM ratios and no longer includes valuation
-    # ratios (P/E, P/B, ROE) — those appear to have moved to /stable/key-metrics-ttm.
-    # S3 fundamentals integration must account for this when mapping fields.
+    # D036: /stable/ratios-ttm is the source of PE / PS / PEG. Also carries
+    # margin/turnover ratios. Assert the valuation fields S3 actually consumes.
     ratios = fmp.get_ratios_ttm("AAPL")
     assert ratios is not None, "expected ratios-ttm payload for AAPL"
     assert ratios.get("symbol") == "AAPL"
-    assert "grossProfitMarginTTM" in ratios, (
-        f"unexpected ratios-ttm shape: {list(ratios.keys())[:10]}"
-    )
+    for field in (
+        "priceToEarningsRatioTTM",
+        "priceToSalesRatioTTM",
+        "priceToEarningsGrowthRatioTTM",
+    ):
+        assert field in ratios, (
+            f"ratios-ttm missing {field}; keys sample: {list(ratios.keys())[:15]}"
+        )
+
+
+def test_live_key_metrics_ttm_aapl(fmp: FmpClient) -> None:
+    # D036: /stable/key-metrics-ttm is the source of marketCap / ROCE / FCF yield.
+    # FCF absolute = marketCap * freeCashFlowYieldTTM (no direct FCF field exists).
+    metrics = fmp.get_key_metrics_ttm("AAPL")
+    assert metrics is not None, "expected key-metrics-ttm payload for AAPL"
+    assert metrics.get("symbol") == "AAPL"
+    for field in ("marketCap", "returnOnCapitalEmployedTTM", "freeCashFlowYieldTTM"):
+        assert field in metrics, (
+            f"key-metrics-ttm missing {field}; keys sample: {list(metrics.keys())[:15]}"
+        )
 
 
 def _field(obj, name: str):
