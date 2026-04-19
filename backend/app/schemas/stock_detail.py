@@ -48,6 +48,7 @@ class Fundamentals(CamelModel):
     price_to_earnings: float
     price_to_sales: float
     peg: float
+    roce: float | None = None
     free_cash_flow: float
     market_cap: float
     source: str
