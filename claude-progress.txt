@@ -1,0 +1,20 @@
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-19] Sprint：F104-S1 FMP 客户端 + 测试替身
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 backend/app/external/fmp_client.py（5 方法 + 300/min token bucket burst 50 + 429 重试一次）
+  - config.py 新增 fmp_api_key；polygon_api_key 注释 legacy
+  - .env.example 新增 FMP_API_KEY
+  - polygon_client.py 顶部加 DEPRECATED (D034) 注释（行为不动，service 层仍引用）
+  - test_polygon_client.py → test_fmp_client.py（重写 20 cases，覆盖 13 条 Contract 标准）
+  - conftest.py 新增 FakeFMP + fake_fmp fixture（与 FakePolygon 并存，待 S2 迁移消费方）
+  - 单元测试：20/20 ✅；全量回归：174/174 ✅
+  - phase: F104 in_progress / S1 done
+
+📊 功能状态：
+  F104 数据源迁移：🔄 in_progress（S1 done，S2 待开始）
+
+[下一个 Session]
+  开发 F104 Sprint 2：services/routers 全量迁移 + 162 既有 pytest 切到 fake_fmp + ≥5 个 @live smoke test

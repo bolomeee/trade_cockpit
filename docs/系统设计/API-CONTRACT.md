@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-16
-last_modified_by: system-design
+confirmed_at: 2026-04-19
+last_modified_by: system-design (D034 polygon→fmp migration)
 ---
 
 # API-CONTRACT.md
 
-> 最后更新：2026-04-16 | 状态：已确认
+> 最后更新：2026-04-19 | 状态：已确认
 > ⚠️ 新增 API 必须先在此文档定义，经用户确认后才能实现。
 > ⚠️ 修改已有接口必须同步更新此文档，并评估前端影响。
 
@@ -39,7 +39,7 @@ last_modified_by: system-design
 | NOT_FOUND | 404 | 资源不存在 |
 | VALIDATION_ERROR | 422 | 请求参数错误 |
 | DUPLICATE | 409 | 资源已存在 |
-| EXTERNAL_API_ERROR | 502 | 外部 API（Polygon.io）调用失败 |
+| EXTERNAL_API_ERROR | 502 | 外部 API（FMP `/stable/`；D034 前为 Polygon.io）调用失败 |
 | RATE_LIMITED | 429 | 请求频率超限 |
 | INTERNAL_ERROR | 500 | 服务器内部错误 |
 
@@ -156,7 +156,7 @@ last_modified_by: system-design
 ### GET /api/stocks/search
 > Feature：F001 Watchlist 管理
 
-**用途**：搜索美股代码/名称（代理 Polygon.io Tickers API）
+**用途**：搜索美股代码/名称（D034 起代理 FMP `/stable/search-symbol` 前缀匹配 + `/stable/search-name` fallback；D034 前为 Polygon Tickers API）
 **认证**：不需要
 
 **查询参数**：
@@ -181,14 +181,17 @@ last_modified_by: system-design
 }
 ```
 
-**说明**：`type` 字段值——CS（普通股）、ETF（交易所交易基金）等。搜索结果为空时返回空数组。
+**说明**：
+- `type` 字段值——CS（普通股）、ETF（交易所交易基金）等。搜索结果为空时返回空数组。
+- D034 起 `type` 由 FMP `search-symbol` 返回的 `exchangeShortName` + `type` 组合映射（FMP 直接区分 `stock`/`etf`），contract 不变
+- 两阶段搜索：`search-symbol`（ticker 严格前缀匹配）→ 空则 fallback `search-name`（公司名子串匹配），排序规则保持"前缀命中优先"（D028）
 
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
 | q 参数缺失 | VALIDATION_ERROR | 422 |
-| Polygon API 调用失败 | EXTERNAL_API_ERROR | 502 |
+| FMP API 调用失败 | EXTERNAL_API_ERROR | 502 |
 
 ---
 
@@ -282,7 +285,7 @@ last_modified_by: system-design
 ### GET /api/stocks/:ticker/chart
 > Feature：F005 个股详情
 
-**用途**：获取 K 线图表数据（OHLCV + MA150 值）
+**用途**：获取 K 线图表数据（OHLCV + MA150 值）。数据来源 D034 起为 FMP `/stable/historical-price-eod/full`，后端在 service 层将 FMP 响应（`date / open / high / low / close / volume`）转成本契约；响应 schema 保持不变
 **认证**：不需要
 
 **路径参数**：`ticker` — 股票代码
@@ -369,9 +372,9 @@ last_modified_by: system-design
 ---
 
 ### GET /api/stocks/:ticker/fundamentals
-> Feature：F005 个股详情
+> Feature：F005 个股详情；F104 数据源迁移至 FMP
 
-**用途**：获取基本面数据（MVP 阶段返回 mock 数据）
+**用途**：获取基本面 TTM 数据（D034 起代理 FMP `/stable/ratios-ttm`）
 **认证**：不需要
 
 **路径参数**：`ticker` — 股票代码
@@ -381,28 +384,43 @@ last_modified_by: system-design
 {
   "data": {
     "ticker": "AAPL",
-    "priceToEarnings": 28.5,
-    "priceToSales": 7.2,
-    "peg": 1.8,
-    "freeCashFlow": 95000000000,
-    "marketCap": 2800000000000,
-    "source": "mock",
-    "updatedAt": "2026-04-15"
+    "priceToEarnings": 33.84,
+    "priceToSales": 9.12,
+    "peg": 5.75,
+    "roce": 0.6503,
+    "freeCashFlow": 104000000000,
+    "marketCap": 3200000000000,
+    "source": "fmp",
+    "updatedAt": "2026-04-18"
   },
   "message": "success"
 }
 ```
 
+**字段语义（D034 / F104）**：
+
+| 字段 | 类型 | 来源 / 计算 | null 语义 |
+|------|------|------------|----------|
+| priceToEarnings | number \| null | FMP `ratios-ttm.priceEarningsRatioTTM` | 亏损股（PE 负）或字段缺失 → null |
+| priceToSales | number \| null | FMP `ratios-ttm.priceToSalesRatioTTM` | 缺失 → null |
+| peg | number \| null | FMP `ratios-ttm.priceEarningsToGrowthRatioTTM`（基于 FMP 5 年增长率推算） | 增长率 ≤ 0 或缺失 → null |
+| roce | number \| null | FMP `ratios-ttm.returnOnCapitalEmployedTTM`，比例（0.65 表示 65%） | 资本分母 ≤ 0 或缺失 → null |
+| freeCashFlow | number \| null | FMP `ratios-ttm.freeCashFlowPerShareTTM × sharesOutstanding`（后者取自 `/stable/quote` 或 `/stable/profile`，TTM 口径） | 分量缺失 → null |
+| marketCap | number \| null | FMP `ratios-ttm.marketCapTTM` | 缺失 → null |
+| source | string | 取值 `"fmp"`（D034 前为 `"mock"`） | — |
+| updatedAt | string (YYYY-MM-DD) | 后端拉取日期 | — |
+
 **说明**：
-- MVP 阶段 `source: "mock"`，字段值为占位数据
-- 后续接入 Massive API `/stocks/financials/v1/ratios` 后，`source` 改为 `"massive"`
-- 字段命名与 Massive API 对齐：`priceToEarnings`、`priceToSales`、`freeCashFlow`
+- 负数语义由**字段意义决定**：ROCE 可以为负（亏损公司），`priceToEarnings` 当 EPS < 0 时业界惯例返回 null 而非负 PE；前端不做二次过滤
+- FMP `ratios-ttm` 单次调用覆盖全部 5 项指标 + 市值，不再需要组合多张财报
+- 前端 `Fundamentals` 类型保持不变（D034 约束：不改前端类型）；`source === "fmp"` 时删除"Mock Data"提示条（F104 的前端清理）
 
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
 | ticker 不在 watchlist 中 | NOT_FOUND | 404 |
+| FMP ratios-ttm 接口失败 | EXTERNAL_API_ERROR | 502 |
 
 ---
 
@@ -437,7 +455,7 @@ last_modified_by: system-design
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
-| Polygon API Key 未配置 | VALIDATION_ERROR | 422 |
+| FMP API Key 未配置 | VALIDATION_ERROR | 422 |
 
 ---
 
@@ -476,7 +494,7 @@ last_modified_by: system-design
 ### GET /api/market/overview
 > Feature：F006 大盘概览
 
-**用途**：获取大盘指标（标普500、纳斯达克、10年美债利率）
+**用途**：获取大盘指标（标普500、纳斯达克、10年美债利率）。数据来源 D034 起：SPX/NDX 走 FMP `/stable/historical-price-eod/full?symbol=^GSPC|^NDX`，TNX 走 FMP `/stable/treasury-rates.year10`。DB 层 `market_indices.symbol` 仍保留 `SPX/NDX/TNX`（DATA-MODEL 未变），响应 schema 保持不变
 **认证**：不需要
 
 **成功响应（200）**：
@@ -696,9 +714,9 @@ last_modified_by: system-design
     {
       "id": 1,
       "level": "ERROR",
-      "source": "polygon_client",
+      "source": "fmp_client",
       "message": "Failed to fetch AAPL daily bars: rate limited",
-      "detail": "HTTP 429 from api.polygon.io/v2/aggs/...",
+      "detail": "HTTP 429 from financialmodelingprep.com/stable/historical-price-eod/full...",
       "createdAt": "2026-04-16T06:02:15Z"
     }
   ],

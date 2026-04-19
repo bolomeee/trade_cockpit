@@ -3,8 +3,8 @@
   "project": "MA150 Tracker → Workbench",
   "version": "1.1.0",
   "last_updated": "2026-04-19",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式",
-  "completion_rate": "v1.0.0 + v1.1.0 全部 done；F103 排期至后续迭代",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。",
+  "completion_rate": "v1.0.0 + v1.1.0 全部 done；F103 已被 F104 取代（D034）；F104 待开发",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
@@ -998,12 +998,15 @@
     },
     {
       "id": "F103",
-      "name": "Fundamentals 真实财报接入",
-      "description": "替换 _mock_fundamentals：接 Polygon vX/reference/financials，拉 EBIT / Total Assets / Total Current Liabilities 计算 ROCE，同时替换 PE/PS/PEG/FCF 为 trailing price + 财报字段真实计算。季度级缓存，新增 StockFundamentals 存储",
+      "name": "Fundamentals 真实财报接入（已废弃，被 F104 取代）",
+      "description": "原计划基于 Polygon vX/reference/financials 接入真实财报。D034（2026-04-19）迁移到 FMP 后，ratios-ttm 单次调用直出 PE/PS/PEG/ROCE/FCF/marketCap 全部 5 项指标；本 feature 的目标整体并入 F104 数据源迁移",
       "user_story": "作为投资者，我想看到真实的 ROCE / PE / PS / PEG / FCF，不是占位 mock",
       "priority": "P1",
-      "status": "not_started",
-      "phase": "design_needed",
+      "status": "deprecated",
+      "phase": "deprecated",
+      "superseded_by": "F104",
+      "deprecated_at": "2026-04-19",
+      "deprecated_reason": "Polygon Stocks Starter 缺 CapEx 无法真算 FCF；D034 决定整体切换至 FMP /stable/ratios-ttm，F103 目标被 F104 吸收",
       "dependencies": ["F102"],
       "estimated_sessions": 2,
       "estimated_files_changed": [
@@ -1033,8 +1036,84 @@
         "财报缺失 / 异常时字段返回 null，UI 显示 '—'"
       ],
       "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [
+        {"date": "2026-04-19", "change": "deprecated; superseded by F104 (D034)"}
+      ],
+      "notes": "决策见 DECISIONS D032（原立项）和 D034（废弃原因）。保留审计痕迹，不删除。"
+    },
+    {
+      "id": "F104",
+      "name": "数据源迁移到 FMP（工程 feature）",
+      "description": "整体替换 Polygon (massive) Stocks Starter → FMP Starter /stable/ 端点。新增 fmp_client.py（httpx REST + 300/min token bucket）；watchlist 搜索、EOD 日线、大盘指数、10Y 国债、基本面全部走 FMP；polygon_client.py 标 deprecated 保留作回滚；fundamentals 从 mock 切到真实 ratios-ttm，source 字段从 'mock' 改 'fmp'；前端类型不动，后端在 service 层做字段适配。F103 目标在此并入",
+      "user_story": "作为维护者，我想只用一个外部数据源覆盖所有需求，降低订阅成本+代码复杂度，并拿到真实的 5 项基本面指标",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "current_sprint": "S2",
+      "dependencies": ["F102"],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "backend/app/external/fmp_client.py (new)",
+        "backend/app/external/polygon_client.py (mark deprecated)",
+        "backend/app/external/__init__.py",
+        "backend/app/config.py",
+        "backend/app/dependencies.py",
+        "backend/app/main.py",
+        "backend/app/routers/data.py",
+        "backend/app/services/watchlist_service.py",
+        "backend/app/services/data_refresh_service.py",
+        "backend/app/services/market_refresh_service.py",
+        "backend/app/services/stock_detail_service.py",
+        "backend/app/services/refresh_job.py",
+        "backend/tests/conftest.py (fake_fmp fixture)",
+        "backend/tests/test_polygon_client.py → test_fmp_client.py (rename + rewrite)",
+        "backend/tests/test_*.py (fixtures 迁移，契约回归)",
+        "frontend/src/workbench/widgets/FundamentalsWidget.tsx (remove Mock Data banner)",
+        ".env.example",
+        ".env (FMP_API_KEY, POLYGON_API_KEY 标 legacy)"
+      ],
+      "scope": {
+        "pages": ["Fundamentals widget（仅清理 Mock banner）"],
+        "api_endpoints": [
+          "GET /api/stocks/search",
+          "GET /api/stocks/:ticker/chart",
+          "GET /api/stocks/:ticker/fundamentals",
+          "GET /api/market/overview",
+          "POST /api/data/refresh",
+          "GET /api/data/status"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#stock-search",
+          "API-CONTRACT.md#stock-detail",
+          "API-CONTRACT.md#market",
+          "API-CONTRACT.md#data-refresh"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#stock",
+          "DATA-MODEL.md#daily-bar",
+          "DATA-MODEL.md#market-index"
+        ],
+        "acceptance_type": "engineering"
+      },
+      "acceptance_criteria": [
+        "所有后端代码路径不再 import PolygonClient；polygon_client.py 顶部标 DEPRECATED 但文件保留",
+        "GET /api/stocks/search 返回结果排序与 D028 两阶段搜索一致（ticker 前缀优先，公司名 fallback）",
+        "GET /api/stocks/:ticker/chart 响应 schema 零变化，bars/ma150/pullbackMarkers 前端无需改动",
+        "GET /api/stocks/:ticker/fundamentals 返回 source: 'fmp'，PE/PS/PEG/ROCE/FCF/MarketCap 来自 /stable/ratios-ttm 真实值；失败字段返回 null",
+        "GET /api/market/overview SPX/NDX/TNX 正常刷新，DB 层 symbol 仍为 SPX/NDX/TNX",
+        "POST /api/data/refresh 在 30 只 watchlist 下 <60s 完成；300/min token bucket 不触发阻塞",
+        "既有 162 个 pytest 全部迁移到 fake_fmp fixture 并通过；新增 ≥5 个 live smoke test（@pytest.mark.live，默认 skip）",
+        "FundamentalsWidget 前端不再显示 'Mock Data' 提示条",
+        ".env.example 含 FMP_API_KEY；POLYGON_API_KEY 注释 legacy 但保留字段以便回滚",
+        "pnpm build + pytest 全绿；无 TS / mypy 错误"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
-      "notes": "决策见 DECISIONS D032。v1.1.0 发版后评估优先级；接入前 ROCE 在 UI 上显示 mock 值"
+      "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调"
     }
   ]
 }

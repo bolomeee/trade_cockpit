@@ -9,7 +9,8 @@ _ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./dev.db"
-    polygon_api_key: str = ""
+    fmp_api_key: str = ""  # D034: primary external data source
+    polygon_api_key: str = ""  # legacy, kept as D034 rollback anchor
     app_env: str = "development"
 
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")

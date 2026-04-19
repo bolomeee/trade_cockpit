@@ -1,6 +1,12 @@
 """Polygon.io (massive) client wrapper with 5-calls-per-minute token-bucket rate limiter.
 
 API surface is intentionally thin — only the methods F000-c / F003 / F006 need.
+
+DEPRECATED (D034, 2026-04-19):
+    Primary external data source migrated to FMP (see app/external/fmp_client.py).
+    This module is retained as a rollback anchor — do NOT add new call sites.
+    Service-layer imports are removed in F104 Sprint 2; once Sprint 2 lands the
+    only remaining references should be tests of this file (removed) and history.
 """
 from __future__ import annotations
 

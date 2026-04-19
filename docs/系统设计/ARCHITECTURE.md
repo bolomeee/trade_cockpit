@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-18
-last_modified_by: workbench refactor phase 0 (v1.1.0)
+confirmed_at: 2026-04-19
+last_modified_by: system-design (D034 polygon→fmp migration)
 ---
 
 # ARCHITECTURE.md
 
-> 最后更新：2026-04-18 | 状态：已确认
+> 最后更新：2026-04-19 | 状态：已确认
 > ⚠️ 技术栈变更必须先更新此文档并征得用户同意，不得擅自更改
 
 ---
@@ -55,9 +55,17 @@ last_modified_by: workbench refactor phase 0 (v1.1.0)
 └──────────────────────────────────┘
     ↓ HTTPS (外部)
 ┌──────────────────────────────────┐
-│  Polygon.io API                  │
-│  └── EOD 日线数据、指数数据       │
+│  Financial Modeling Prep (FMP)   │
+│  /stable/ REST 端点              │
+│  ├── EOD 日线 (historical-price-eod/full) │
+│  ├── 指数 / 大盘 (quote, EOD) ^GSPC ^NDX  │
+│  ├── 10Y 国债 (treasury-rates)   │
+│  ├── 搜索 (search-symbol / search-name)    │
+│  └── 基本面 TTM (ratios-ttm)     │
 └──────────────────────────────────┘
+
+> 数据源自 D034（2026-04-19）起从 Polygon (massive) Stocks Starter 迁移至 FMP Starter /stable/ 端点。
+> `polygon_client.py` 保留作为 deprecated 回滚参考，不再被导入。
 ```
 
 ---
@@ -85,7 +93,7 @@ lib/                    → 纯工具函数，无副作用，任何层可用
 routers/        → 只能调用 services/
 services/       → 只能调用 repositories/ 和 external/
 repositories/   → 只能访问数据库（SQLAlchemy models）
-external/       → 只能调用外部 API（Polygon.io）
+external/       → 只能调用外部 API（FMP /stable/；polygon_client.py 为 deprecated 回滚参考，不再被导入）
 models/         → SQLAlchemy ORM 定义，无业务逻辑
 schemas/        → Pydantic 请求/响应模型
 ```
@@ -158,7 +166,8 @@ backend/
 │   │   └── market_service.py   # 大盘数据
 │   ├── repositories/       # 数据访问层
 │   └── external/           # 外部 API 客户端
-│       └── polygon_client.py
+│       ├── fmp_client.py         # FMP /stable/ REST 客户端（D034 后的主数据源）
+│       └── polygon_client.py     # DEPRECATED（D034），保留作为回滚参考，不被导入
 ├── alembic/                # 数据迁移
 ├── alembic.ini
 ├── pyproject.toml
@@ -189,16 +198,17 @@ stock_portal/
 
 ## 环境配置
 
-| 环境 | 用途 | 数据库 | Polygon API |
-|------|------|-------|-------------|
-| development | 本地开发 | backend/dev.db | 真实 API（.env 配置） |
-| production | Docker 容器 | backend/data/prod.db (volume 挂载) | 真实 API（.env 配置） |
+| 环境 | 用途 | 数据库 | FMP API |
+|------|------|-------|---------|
+| development | 本地开发 | backend/dev.db | 真实 API（.env 配置 `FMP_API_KEY`） |
+| production | Docker 容器 | backend/data/prod.db (volume 挂载) | 真实 API（.env 配置 `FMP_API_KEY`） |
 
 **两个环境的数据库必须严格分离，不得共用。**
 
 环境变量（.env）：
 ```
-POLYGON_API_KEY=your_key_here
+FMP_API_KEY=your_fmp_key_here           # D034 起主数据源
+POLYGON_API_KEY=                         # LEGACY（D034 后不再使用，保留仅供回滚；默认留空不阻塞启动）
 DATABASE_URL=sqlite+aiosqlite:///./data/prod.db
 REFRESH_CRON_HOUR=6    # 北京时间早6点 = 美东下午6点（收盘后）
 REFRESH_CRON_MINUTE=0
@@ -260,3 +270,47 @@ type WidgetManifest = {
 - 所有数据字段命名见 `docs/系统设计/DATA-MODEL.md`
 - 所有颜色/间距/字体见 `frontend/src/styles/tokens.css`
 - 数据库变更必须通过 Alembic 迁移脚本，不得直接修改表结构
+
+---
+
+## 外部数据源：FMP /stable/ 端点映射（D034）
+
+| 后端职责 | FMP 端点 | 参数 | 替代的 Polygon 调用 |
+|---------|---------|------|--------------------|
+| 股票搜索（ticker 前缀优先） | `/stable/search-symbol` | `query`, `apikey` | `list_tickers(ticker_gte, ticker_lt)` |
+| 股票搜索（公司名 fallback） | `/stable/search-name` | `query`, `apikey` | `list_tickers(search=...)` |
+| 股票 EOD 日线 | `/stable/historical-price-eod/full` | `symbol=AAPL`, `apikey` | `list_aggs(ticker, "day", from, to)` |
+| 大盘指数 SPX | `/stable/historical-price-eod/full` 或 `/stable/quote` | `symbol=^GSPC` | `list_aggs("I:SPX", ...)` |
+| 大盘指数 NDX | 同上 | `symbol=^NDX` | `list_aggs("I:NDX", ...)` |
+| 10Y 国债 TNX | `/stable/treasury-rates` | 无（取最新一条），读 `year10` 字段 | 直连 `/fed/v1/treasury-yields` |
+| 基本面 TTM（F104） | `/stable/ratios-ttm` | `symbol=AAPL`, `apikey` | 无（Polygon Starter 不覆盖 CapEx，D002/D032 走 mock） |
+
+> DB 层 `market_indices.symbol` 仍保留 `SPX/NDX/TNX`（DATA-MODEL 未变），FMP 的 `^GSPC / ^NDX` 在 service/repo 边界做映射；数据库字段命名不变。
+
+### Rate Limit 策略
+
+| 数据源 | 文档限速 | 本项目策略 |
+|--------|---------|-----------|
+| Polygon Stocks Starter（历史） | 5 req/min | Token bucket 5/min, burst 5，阻塞等待（D014） |
+| **FMP Starter（D034 起）** | 300 req/min | Token bucket 300/min, burst 50，阻塞等待；超限退避 1s 后重试一次 |
+
+理由：300/min 在单用户 + 30 只 watchlist 的场景下极难触达（满 refresh 约 30 次调用，耗时 <10s），token bucket 作为防御层防止 bug 导致误刷；burst 50 允许单次 refresh 一口气打完 30 只股票无人工节流。
+
+### 实时性边界（FMP 能力限制）
+
+- **本项目只使用 EOD 数据 + 盘后自动刷新**，不需要 intraday / WebSocket / 分钟级 aggs
+- 如果未来引入需要实时报价或 Level-2 的 widget（期权、盘中扫描等），需要重新评估 FMP Starter 能力，或在该 feature 内单独引入额外订阅（D034 风险 6）
+
+### Endpoint 常量集中管理
+
+所有 `/stable/` 路径常量集中在 `backend/app/external/fmp_client.py` 顶部声明，例如：
+```python
+FMP_BASE = "https://financialmodelingprep.com/stable"
+FMP_EP_RATIOS_TTM = "/ratios-ttm"
+FMP_EP_HIST_EOD = "/historical-price-eod/full"
+FMP_EP_TREASURY = "/treasury-rates"
+FMP_EP_SEARCH_SYMBOL = "/search-symbol"
+FMP_EP_SEARCH_NAME = "/search-name"
+FMP_EP_QUOTE = "/quote"
+```
+未来 FMP 若改路径，只改一处。

@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-16
-last_modified_by: system-design
+confirmed_at: 2026-04-19
+last_modified_by: system-design (D034 polygon→fmp migration)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -567,3 +567,90 @@ last_modified_by: system-design
 - `StockDetailService._resolve_active_stock` 的 404 行为保留，不动
 - 新 widget 开发者要记住：如果 widget 会显示外部 ticker 且计划联动 chart，需要先立 feature 决 preview 策略，不要直接硬接
 - Polygon rate limit（5/min）在 preview 方案 A 下可能触发，缓存命中率是那个 feature 的验收指标之一
+
+---
+
+## D034：数据源从 Polygon Stocks Starter 迁移至 FMP Starter（/stable/ 端点）
+**时间**：2026-04-19（v1.1.0 发版后）
+
+**背景**：
+- v1.0.0/v1.1.0 以 Polygon.io (massive) Stocks Starter 订阅为唯一外部数据源。信号引擎、刷新调度、图表、搜索、大盘指数、10Y 国债全部走 Polygon。
+- F103（Fundamentals 真实财报接入）在排期时发现：Polygon Stocks Starter **不含 cash flow 细项**，`vX/reference/financials` 返回的 cash-flow-statement 不包含 CapEx 字段。没有 CapEx 就无法按 `OCF − CapEx` 算真实 FCF，PE/PS/PEG 还可以从 price + income/balance 组装，但 FCF 缺口是硬伤。
+- 用户对比后发现 Financial Modeling Prep (FMP) Starter 订阅同价位：
+  - `/stable/ratios-ttm` 一把拉到 PE / PS / PEG / ROCE（`returnOnCapitalEmployedTTM`）/ `freeCashFlowPerShareTTM` + `marketCapTTM`，**5/5 指标全覆盖且 TTM 直出**，不需要自己组合三表
+  - `/stable/historical-price-eod/full` 覆盖日线 + adjClose，replace `get_daily_aggs`
+  - `/stable/search-symbol` + `/stable/search-name` 取代 Polygon `list_tickers` 前缀/名称两套
+  - `/stable/treasury-rates` 直出 10Y，不需要 fallback 到 `/fed/v1/treasury-yields` 直连
+  - 指数 `^GSPC` / `^NDX` 在 `/stable/quote` 和 EOD 端点都可查，不再需要 `I:SPX` 前缀那套 hack
+- 实测 AAPL：P/E 33.84 / P/S 9.12 / PEG 5.75 / ROCE 65.03% / FCF $104B；20 并发 profile 调用 20/20 成功 avg 1.2s
+- 价格相同、覆盖更广、一个 REST 客户端替代"SDK + 直连 HTTP 两套"，决定整体替换。
+
+**决策**：
+1. **整体替换**：所有 Polygon 调用迁移到 FMP REST（httpx 直连 `/stable/` 端点），不保留双数据源并行
+2. **保留 `polygon_client.py` 作为 deprecated 参考**：不删除文件，只在模块头 docstring 标注 `DEPRECATED as of 2026-04-19 — see fmp_client.py; kept for rollback reference`。任何代码路径不再导入
+3. **env 变量**：新增 `FMP_API_KEY`；`POLYGON_API_KEY` 保留读取但 `config.py` 注释为 legacy，默认为空不阻塞启动
+4. **Rate limit**：FMP Starter 300 req/min，不再需要 5/min token bucket。保留一个 **宽松 token bucket（300/min，burst 50）作为防御层**，避免误用爆 quota；不做 1/s 的苛刻节流
+5. **Frontend 零改动**：后端 `/api/stocks/:ticker/fundamentals` 和 `/chart` 的响应 schema 保持不变，FMP 响应在 service 层适配成既有 `Fundamentals` / `ChartPoint` 契约
+6. **指数端点**：SPX → `^GSPC`、NDX → `^NDX`、TNX → `/stable/treasury-rates` 的 `year10` 字段
+7. **数据契约变化**：`fundamentals.source` 取值从 `"mock"` 改为 `"fmp"`；前端 "Mock Data" 提示条在此次迁移后删除
+
+**备选方案对比**：
+
+| 方案 | 范围 | 优点 | 缺点 | 结论 |
+|------|------|------|------|------|
+| **A. 整体替换（本决策）** | Polygon → FMP 全量 | 单数据源，少一层抽象；ratios-ttm 直出 5 指标省去组合计算；rate limit 宽松；订阅同价 | 一次性改动面广（~6 文件核心 + 测试回归）；SDK 换 REST 略增手写负担；短期 dual-read 成本高故不做 | **采用** |
+| B. 保留 Polygon 日线/指数，仅为 Fundamentals 新增 FMP | 日线/搜索继续 Polygon，fundamentals 走 FMP | 改动面小，F103 能按期交付 | 双数据源长期维护，两套 rate limit / 错误处理；Polygon 5/min 的束缚仍然压着刷新任务；搜索/指数仍是两套 hack | 放弃：避免长期债务 |
+| C. 维持 Polygon 升级更高档位 | 升级到 Polygon Stocks Advanced 才含 CapEx | 不改代码 | 月费上浮约 2–3 倍；ROCE 仍需自组合；单用户项目不值 | 放弃：性价比差 |
+| D. 换 Financial Datasets / 其他 | 第三方 | 覆盖类似 | 无实测数据，切换风险高 | 放弃：没有实测背书 |
+
+**风险**：
+1. **实时性差异**：Polygon 支持 `get_previous_close` 和分钟级 aggs；FMP Starter 的 intraday 精度与 WebSocket 支持需在实装前二次确认。**本项目只用 EOD + 盘后刷新，无 intraday 需求**，风险可控，但写入 ARCHITECTURE 作为边界条件
+2. **搜索语义差异**：Polygon `list_tickers` 支持 `ticker_gte/lt` 的严格前缀范围；FMP `search-symbol` 按子串匹配。需要在 service 层重做"前缀优先"排序逻辑（D028 两阶段搜索策略要重现）
+3. **指数前缀变更**：所有已存 `market_indices` 记录以 `SPX/NDX/TNX` 为 symbol 存储（DATA-MODEL 未变），FMP `^GSPC` 在 repo 层映射为 `SPX` 保存，不破坏库
+4. **/stable/ 端点稳定性**：Legacy `/api/v3/` 对此 key 已关闭，只能用 `/stable/`。如果 FMP 将来 `/stable/` 端点重命名，需有 version pin 机制——约定在 `fmp_client.py` 集中所有 endpoint path 常量
+5. **Starter 条款中的限速实测**：文档 300/min 未在本地确认；若打高并发触发 429，需退回 token bucket
+6. **不覆盖的 FMP 能力**：期权链、level-2 quote、historic split-adjusted factor 具体化程度弱于 Polygon——**本项目不依赖这些**，但未来做期权 widget 前必须重新评估
+
+**回滚路径**：
+- `polygon_client.py` 保留完整，dependencies.py / main.py / services 里只是"不再注入"；回滚 = revert 一个 commit 即可
+- DB schema 无变化（`market_indices.symbol` / `stocks.ticker` 字段不变），无数据迁移问题
+- env 变量 `POLYGON_API_KEY` 仍支持读取，回滚后不需要改 .env
+
+**迁移影响清单（按优先级）**：
+
+| 优先级 | 文件/模块 | 改动 | 说明 |
+|--------|----------|------|------|
+| P0 | `backend/app/external/fmp_client.py` | **新建** | httpx 直连 `/stable/`；封装 `search_tickers` / `get_daily_bars` / `get_index_recent_bars` / `get_treasury_10y_latest` / `get_ratios_ttm`；内置 token bucket（300/min, burst 50） |
+| P0 | `backend/app/external/polygon_client.py` | 顶部 docstring 加 `DEPRECATED` 标记，不删 | 保底回滚 |
+| P0 | `backend/app/external/__init__.py` | 改导出 `FMPClient` | `PolygonClient` 保留导出，标 deprecated |
+| P0 | `backend/app/config.py` | 新增 `fmp_api_key`，`polygon_api_key` 注释 legacy | |
+| P0 | `backend/app/dependencies.py` | `get_polygon_client` → `get_fmp_client` | WatchlistService / DataRefreshService / MarketRefreshService / RefreshJob 全部改注入 |
+| P0 | `backend/app/services/watchlist_service.py` | `polygon.search_tickers` → `fmp.search_tickers`；重现两阶段搜索（symbol 前缀 → name fallback）| 见风险 2 |
+| P0 | `backend/app/services/data_refresh_service.py` | `polygon.get_daily_aggs` → `fmp.get_daily_bars`；bar 映射器从 `Agg.timestamp(ms UTC)` 改成 FMP `date(YYYY-MM-DD)` + OHLCV + volume | |
+| P0 | `backend/app/services/market_refresh_service.py` | 指数拉 `^GSPC`/`^NDX` EOD；10Y 走 `/stable/treasury-rates`；`SPX/NDX/TNX` 仍作为 DB symbol 保留 | |
+| P0 | `backend/app/services/stock_detail_service.py` | `_fundamentals_payload` 从 `_mock_fundamentals` 改为调用 `fmp.get_ratios_ttm`；字段映射：priceEarningsRatioTTM→priceToEarnings, priceToSalesRatioTTM→priceToSales, priceEarningsToGrowthRatioTTM→peg, freeCashFlowPerShareTTM × sharesOutstanding(来自 quote 或 profile)→freeCashFlow, returnOnCapitalEmployedTTM→roce, marketCapTTM→marketCap；负值/null 直接返回 null | 替代 F103 |
+| P0 | `backend/app/services/refresh_job.py` | `PolygonFactory` 改名 `FMPFactory`，类型别名更新 | |
+| P0 | `backend/app/main.py` | `_polygon_factory` 重命名；scheduler 入参同步 | |
+| P0 | `backend/app/routers/data.py` | 入参类型 `PolygonClient` → `FMPClient` | |
+| P0 | `.env` / `.env.example` | 新增 `FMP_API_KEY`；`POLYGON_API_KEY` 保留但注释 legacy | |
+| P0 | `backend/tests/conftest.py` | fake polygon fixture 改 fake_fmp（相同接口签名） | |
+| P0 | `backend/tests/test_polygon_client.py` | **重命名** `test_fmp_client.py`，新 case 覆盖 FMP 端点/rate limit/错误处理 | |
+| P0 | 既有 pytest 162 个 | 使用 fake_fmp fixture 替代 fake_polygon；contract 层回归而非真打 API；增 3–5 个 live smoke test 打真实 FMP（标 `@pytest.mark.live`，CI 跳过） | 回归策略 |
+| P1 | `backend/app/services/stock_detail_service.py` Fundamentals 季度缓存 | FMP Starter rate limit 宽松，短期可直查；后续仍建议 24h in-process cache | 非阻塞 |
+| P1 | `frontend/src/workbench/widgets/FundamentalsWidget.tsx` | 删除 "Mock Data" 提示条；`source === 'fmp'` 无 banner | UI 清理 |
+| P1 | `docs/系统设计/ARCHITECTURE.md` | 外部依赖章节、rate limit 策略、指数端点 | 本次一并 |
+| P1 | `docs/系统设计/API-CONTRACT.md` | fundamentals source 语义 + 字段定义 | 本次一并 |
+| P1 | `docs/需求/features.json` | F103 标 `deprecated` + `superseded_by: F104`；新增 F104 | 本次一并 |
+
+**放弃了什么**：
+- **双数据源并行过渡期**：一次性切换比长期维护"某些字段 Polygon、某些 FMP"简单，回滚成本也可控
+- **删除 polygon_client.py**：保留一个废弃模块成本低（不被导入即 0 运行时开销），回滚复杂度低很多
+- **强制每季度刷新 fundamentals**：FMP rate limit 宽松下短期不必要，按需拉即可；后续 F105（性能优化）统一做缓存
+
+**影响**：
+- **冻结 F103**：F103 的目标（真实财报、ROCE 真值、source != "mock"）被 F104 整体吸收；F103 phase 改为 `deprecated`，`superseded_by: F104`
+- **新增 F104**："数据源迁移到 FMP"，工程 feature（非产品 feature），优先级 P0，估 2–3 个 session
+- **DATA-MODEL.md 无变化**：字段命名、表结构、枚举值全部保留
+- **前端类型定义无变化**：`Fundamentals` / `ChartPoint` / `MarketIndex` 类型不动
+- **MarketOverviewBar 行为无变化**：SPX/NDX/TNX 仍按既有逻辑渲染
+
