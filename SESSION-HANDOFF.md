@@ -71,14 +71,44 @@
 
 ## 下一步 Phase 4 任务
 
-**目标**：Workbench 接管根路由 `/`，清理老 pages 和 StockDetailModal，TopNav 简化。
+**目标**：Workbench 接管根路由 `/`；保留 `/journal` `/logs` 作为独立页；清理 Dashboard 和 Modal。
 
-1. `App.tsx`：`/` 渲染 Workbench；`/journal` `/logs` redirect 到 `/`；移除 `/workbench` 临时路由（或保留 alias）
-2. 删除 `src/pages/Dashboard.tsx` / `Journal.tsx` / `Logs.tsx`、`src/components/features/stock-detail/StockDetailModal.tsx`（先 grep 确认无引用）
-3. TopNav 移除 Dashboard/Journal/Logs 链接，保留 Refresh Data
-4. `ResetLayoutButton` 的显示条件从 `/workbench` 改为 `/`（或总是显示）
-5. 验证：`pnpm build` 零 TS 错误；`/journal` `/logs` 不 404；浏览器实测所有 widget 功能
-6. features.json：F101 → `done`, F102 → `in_progress`
+### 用户确认的范围（2026-04-19）
+- **保留独立路由**：`/journal` `/logs` 继续存在，TopNav 保留这两个链接
+- **Workbench 首页 widget**：Chart / Fundamentals / Pullback / Watchlist / QuickAdd（共 5 个）
+- **Workbench 不放 JournalWidget / LogsWidget**（独立页已覆盖）
+- **QuickAddWidget 保留**（首页快捷录入一笔 journal，与独立 Journal 页并存）
+
+### 执行步骤
+
+1. **路由切换（App.tsx）**
+   - `/` → Workbench（取代 Dashboard）
+   - `/journal` → Journal（不变）
+   - `/logs` → Logs（不变）
+   - 移除 `/workbench` 临时路由
+   - `ResetLayoutButton` 显示条件从 `pathname === '/workbench'` 改为 `pathname === '/'`
+
+2. **删除 Workbench 里的 Journal/Logs widget**
+   - 删 `src/workbench/widgets/JournalWidget.tsx`
+   - 删 `src/workbench/widgets/LogsWidget.tsx`
+   - `WidgetRegistry.ts` 移除 `journal.list` / `logs.list`；category `'logs'` 若只剩一个用户可去（或保留）
+   - `useLayoutStore` persist key `v4 → v5`
+
+3. **删除老文件**
+   - `src/pages/Dashboard.tsx`
+   - `src/components/features/stock-detail/StockDetailModal.tsx`（先 grep 确认只有 Dashboard 引用）
+
+4. **TopNav 改造**
+   - 移除 Dashboard 链接，保留 Journal / Logs
+   - 首页 `/` 的激活样式：Journal/Logs 链接在 `/` 时都不激活（`NavLink end` 行为默认已满足）
+   - 保留 Refresh Data 按钮
+
+5. **验证**
+   - `pnpm build` 零 TS 错误
+   - 浏览器：`/` 显示 Workbench 5 widget；`/journal` `/logs` 独立页正常；点 Watchlist ticker → Chart/Fund/Pullback 联动；QuickAdd 提交后 `/journal` 能看到新条目
+   - `pnpm dev` 先跑一遍再 commit
+
+6. **features.json**：F101 → `done`，F102 → `in_progress`
 
 ### Phase 5 预告
 - `React.lazy(Workbench)` code-split → bundle < 500KB
@@ -92,6 +122,7 @@
 1. **关闭的 widget 恢复**：目前唯一入口是"重置布局"（全部恢复）。Phase 5 前考虑加 widget picker（部分恢复）
 2. **StockDetailModal 删除前**：grep 确认除 `Dashboard.tsx` 外无引用
 3. **bundle size**：Phase 5 前 `React.lazy`
+4. **Workbench widget 数量收敛**：用户确认首页只保留 5 个（Chart/Fund/Pullback/Watchlist/QuickAdd），Journal/Logs 回归独立页
 
 ---
 
