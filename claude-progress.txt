@@ -40,5 +40,21 @@
 📊 功能状态：
   F104 数据源迁移：🔄 in_progress（S1+S2 done，S2c 待开始：@live smoke + 前端 Mock banner 清理）
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-19] Sprint：F104-S2c FMP 真实联网 smoke test
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 backend/tests/test_fmp_live_smoke.py，6 个 @pytest.mark.live case 覆盖 5 方法 + search-name fallback
+  - pyproject.toml：注册 `live` marker，`addopts = "-m 'not live'"` 默认排除
+  - 无 FMP_API_KEY 时模块级 skipif 自动 skip
+  - 默认 pytest：172 passed + 6 deselected ✅
+  - pytest -m live 无 key：6 skipped ✅
+  - phase: F104 in_progress / S1+S2+S2c done
+
+📊 功能状态：
+  F104 数据源迁移：🔄 in_progress（S1+S2+S2c done，S3 待开始：fundamentals 真实接入 + 前端 Mock banner 清理）
+
 [下一个 Session]
-  F104 Sprint 2c：≥5 个 @live smoke test（tests/test_fmp_live_smoke.py）+ 前端 Fundamentals Mock Data banner 清理（S3 若用户想合并）
+  F104 Sprint 3：fundamentals 真实接入（routers/service 调 get_ratios_ttm）+ 前端 Fundamentals Mock Data banner 清理；
+  运行一次 `FMP_API_KEY=... uv run pytest -m live` 验证真实端点联通

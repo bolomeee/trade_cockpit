@@ -25,6 +25,10 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "live: hits real FMP /stable/ endpoints; requires FMP_API_KEY; skipped by default",
+]
+addopts = "-m 'not live'"
 
 [tool.uv]
 package = false
