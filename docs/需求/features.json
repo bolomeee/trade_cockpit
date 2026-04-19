@@ -1,10 +1,10 @@
 {
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench",
-  "version": "1.1.0-dev",
+  "version": "1.1.0",
   "last_updated": "2026-04-19",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式",
-  "completion_rate": "v1.0.0 全部 done；v1.1.0 Workbench 重构进行中",
+  "completion_rate": "v1.0.0 + v1.1.0 全部 done；F103 排期至后续迭代",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
@@ -42,7 +42,9 @@
         "F101",
         "F102"
       ],
-      "status": "in_progress",
+      "status": "done",
+      "released_at": "2026-04-19",
+      "released_tag": "v1.1.0",
       "description": "Workbench 重构：Dashboard/Journal/Logs 三页合并为单页 widget 工作台。F001-F008 作为首批 widget 保留，不重新开发"
     }
   ],
@@ -957,8 +959,8 @@
       "description": "Workbench 接管根路由 /；保留 /journal /logs 作为独立页（TopNav 保留这两个链接）；删除 Dashboard、StockDetailModal、Workbench 内的 Journal/Logs widget。Workbench 首页保留 5 个 widget：Chart/Fundamentals/Pullback/Watchlist/QuickAdd",
       "user_story": "作为用户，我打开首页就看到 Workbench；/journal /logs 仍可单独访问",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F101"],
       "estimated_sessions": 1,
       "estimated_files_changed": [

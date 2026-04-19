@@ -1,10 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
-import Journal from '@/pages/Journal'
-import Logs from '@/pages/Logs'
-import Workbench from '@/workbench/Workbench'
 import { TopNav } from '@/components/features/topnav/TopNav'
 import { MarketOverviewBar } from '@/components/features/market-overview/MarketOverviewBar'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
+
+const Workbench = lazy(() => import('@/workbench/Workbench'))
+const Journal = lazy(() => import('@/pages/Journal'))
+const Logs = lazy(() => import('@/pages/Logs'))
 
 export default function App() {
   const { pathname } = useLocation()
@@ -31,11 +33,13 @@ export default function App() {
         )}
       </div>
       <main>
-        <Routes>
-          <Route path="/" element={<Workbench />} />
-          <Route path="/journal" element={<Journal />} />
-          <Route path="/logs" element={<Logs />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<Workbench />} />
+            <Route path="/journal" element={<Journal />} />
+            <Route path="/logs" element={<Logs />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   )
