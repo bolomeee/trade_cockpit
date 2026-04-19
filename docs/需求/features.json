@@ -911,8 +911,9 @@
       "description": "把 v1.0.0 的 SignalBoard / StockDetailModal 内容 / Journal / Logs / MarketOverview / QuickAdd 迁移为 widget 包装。StockDetailModal 拆成 3 个独立 widget（Chart/Fundamentals/Pullback），共享 AppStore.selectedSymbol。PriceChart 改造为响应式高度",
       "user_story": "作为用户，我想继续使用 v1.0.0 所有功能，但以可拖拽 widget 的形式",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-19",
       "dependencies": ["F100"],
       "estimated_sessions": 3,
       "estimated_files_changed": [
@@ -952,12 +953,12 @@
     },
     {
       "id": "F102",
-      "name": "路由切换 + 清理 + 默认布局预设",
-      "description": "Workbench 接管根路由 /，删除 v1.0.0 pages 目录下 Dashboard/Journal/Logs 和 StockDetailModal；/journal、/logs 路由 redirect 到 /。TopNav 简化：移除路由链接，保留 refresh。提供合理默认 Workbench 布局",
-      "user_story": "作为用户，我打开首页就看到完整 Workbench 默认布局；老书签 /journal /logs 不 404",
+      "name": "路由切换 + 清理（保留 Journal/Logs 独立页）",
+      "description": "Workbench 接管根路由 /；保留 /journal /logs 作为独立页（TopNav 保留这两个链接）；删除 Dashboard、StockDetailModal、Workbench 内的 Journal/Logs widget。Workbench 首页保留 5 个 widget：Chart/Fundamentals/Pullback/Watchlist/QuickAdd",
+      "user_story": "作为用户，我打开首页就看到 Workbench；/journal /logs 仍可单独访问",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
+      "status": "in_progress",
+      "phase": "needs_review",
       "dependencies": ["F101"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -981,17 +982,57 @@
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "/ 直接渲染 Workbench，非 /workbench",
-        "访问 /journal /logs 自动 redirect 到 /（不 404）",
-        "TopNav 不再显示 Dashboard / Journal / Logs 路由链接",
-        "首次访问（无 localStorage）时 Workbench 渲染默认布局，5+ widget 可见",
+        "/ 直接渲染 Workbench，/workbench 路由移除",
+        "/journal /logs 独立页保留不变",
+        "TopNav 移除 Dashboard 链接，保留 Journal / Logs",
+        "Workbench 默认 5 widget：Chart/Fundamentals/Pullback/Watchlist/QuickAdd",
         "重置布局按钮：清 localStorage → 回到默认布局",
         "pnpm build 零 TS 错误；backend 零改动，所有既有 API 调用不变",
-        "CHANGELOG 准备 v1.1.0 条目"
+        "CHANGELOG 准备 v1.1.0 条目（Phase 5）"
       ],
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
       "notes": "对应重构计划 Phase 4-5；完成后发 v1.1.0 tag"
+    },
+    {
+      "id": "F103",
+      "name": "Fundamentals 真实财报接入",
+      "description": "替换 _mock_fundamentals：接 Polygon vX/reference/financials，拉 EBIT / Total Assets / Total Current Liabilities 计算 ROCE，同时替换 PE/PS/PEG/FCF 为 trailing price + 财报字段真实计算。季度级缓存，新增 StockFundamentals 存储",
+      "user_story": "作为投资者，我想看到真实的 ROCE / PE / PS / PEG / FCF，不是占位 mock",
+      "priority": "P1",
+      "status": "not_started",
+      "phase": "design_needed",
+      "dependencies": ["F102"],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [
+        "backend/app/external/polygon_client.py",
+        "backend/app/repositories/fundamentals_repository.py (new)",
+        "backend/app/services/stock_detail_service.py",
+        "backend/app/schemas/stock_detail.py",
+        "backend/app/models.py (新增 StockFundamentals or JSON 列)",
+        "backend/alembic/versions/xxxx.py (migration)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": ["GET /api/stocks/:ticker/fundamentals"],
+        "db_tables": ["StockFundamentals (TBD)"],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#stock-detail"],
+        "data_model_refs": ["DATA-MODEL.md#fundamentals (TBD)"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "ROCE = EBIT / (Total Assets - Total Current Liabilities)，值按百分比呈现",
+        "PE/PS/PEG/FCF 从真实财报推导，不再是 sha1 mock",
+        "source 字段返回 'polygon'，前端不再需要 Mock Data 标识",
+        "Polygon rate limit 合规（季度级缓存命中率 ≥ 95%）",
+        "财报缺失 / 异常时字段返回 null，UI 显示 '—'"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "决策见 DECISIONS D032。v1.1.0 发版后评估优先级；接入前 ROCE 在 UI 上显示 mock 值"
     }
   ]
 }

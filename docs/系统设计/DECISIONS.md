@@ -517,3 +517,53 @@ last_modified_by: system-design
 - 失去 "Modal 弹出感" UX —— 可接受，因为 widget 本身就是"聚焦显示"
 - `PriceChart` 响应式改造需同步解决 lightweight-charts 在窄宽度下的标签遮挡问题
 
+---
+
+## D032：Fundamentals 维持 mock，ROCE 以 mock 占位，真实财报接入延至独立 feature
+**时间**：2026-04-19（v1.1.0 Workbench 重构期间）
+**背景**：`FundamentalsWidget` UI 改为双列 shadcn Table 后需要展示 ROCE = EBIT / (Total Assets − Total Current Liabilities)。但 `/api/stocks/:ticker/fundamentals` 目前整体是 mock（`_mock_fundamentals` 基于 sha1 造假数据，source 字段标记为 `"mock"`），PE / PS / PEG / FCF / MarketCap 全部是假。接入 ROCE 真值需要拉 Polygon `vX/reference/financials`（EBIT / TotalAssets / CurrentLiabilities），并改 repo + service + caching，影响 ≥ 4 文件，超出"架构变更影响 2 文件"红线。
+
+**决策**：
+- 现阶段在 `_mock_fundamentals` 里追加 mock `roce`（sha1 衍生，0.05–0.40 范围），保持与其他字段一致的 mock 风格
+- 前端 `Fundamentals` 类型新增 `roce?: number | null`，widget 用 "—" 兜底缺值
+- 真实财报接入延至新 feature（**F103 — Fundamentals 真实财报接入**），需单独 sprint contract：
+  - Polygon `vX/reference/financials` endpoint 封装 + rate-limit 预算
+  - 新 repository / service / schema（`StockFundamentals` ORM 或 JSON 列）
+  - 季度级缓存策略
+  - 同时将 PE / PS / PEG / FCF 从 mock 替换为 trailing price / market cap + 财报字段计算
+  - `source` 字段从 `"mock"` 改为 `"polygon"`
+
+**放弃了什么**：
+- **这次就接真财报**：scope 过大，破坏重构节奏，与 Workbench 主线不正交
+- **只接 ROCE 不碰其他四个**：会出现 "4 假 + 1 真" 的不一致状态，用户难分辨可信度
+
+**影响**：
+- v1.1.0 发版时 FundamentalsWidget 的 5 个指标全部 mock，保留 `source: "mock"` 语义
+- `features.json` 追加 F103 占位（phase: `design_needed`），v1.1.0 发版后评估优先级
+- 前端 `roce?: number | null` 可选字段，将来真实接入保持兼容
+
+---
+
+## D033：非 watchlist ticker 的 chart preview 延到首个"含外部 ticker 的 widget"立项时再设计
+**时间**：2026-04-19（v1.1.0 Workbench 重构期间）
+**背景**：Workbench 的跨 widget 联动走 `useAppStore.selectedSymbol`（D030），理论上任何 widget 调 `setSelectedSymbol(ticker)` 就能驱动 ChartWidget / FundamentalsWidget / PullbackWidget 切换。疑问：如果将来某个 widget（News / Scan / AI 观点）里的 ticker 不在 watchlist，点击后 chart 该怎么办？要不要做本地缓存？
+
+**现状盘点**：
+- **watchlist 内 ticker**：chart/pullbacks/fundamentals 读本地 `DailyBar`，零外部 API；F003 daily scheduler + 手动 Refresh 增量维护 250 天滚动窗口；前端 React Query 额外 5min staleTime 内存缓存。不重复拉
+- **非 watchlist ticker**：`StockDetailService._resolve_active_stock` 硬卡 404，当前根本点不了
+
+**决策**：
+- **不在 v1.1.0 动这块**。当前所有 widget 的 ticker 来源都在 watchlist 内，point 2（preview 缓存）是未触发的问题
+- 等第一个"含外部 ticker 的 widget"立项（News / Scan / AI 观点等）时，把 preview 流程作为那个 feature 的一部分一起设计，候选方案：
+  - **方案 A（preview-without-add）**：解除 `_resolve_active_stock` 硬拦 + Polygon `get_daily_aggs` 按需拉 250 天 + TTL 缓存（建议 24h，不用一个月）
+  - **方案 B（强制加 watchlist）**：点击外部 ticker 时不直接 preview，弹"加入 watchlist"按钮，走 F001 已有流程
+- 选哪个由那个 feature 的 UX 决定，现在不预判
+
+**放弃了什么**：
+- **现在就做 preview 缓存**：没有调用方，YAGNI；且 TTL 策略（时长、失效触发、与 EOD refresh 关系）需要结合具体 UX 决，现在决定大概率要推翻
+- **一个月缓存**：太长，财报更新、分红、拆股会让缓存和真值漂移；24h 对 preview 够用
+
+**影响**：
+- `StockDetailService._resolve_active_stock` 的 404 行为保留，不动
+- 新 widget 开发者要记住：如果 widget 会显示外部 ticker 且计划联动 chart，需要先立 feature 决 preview 策略，不要直接硬接
+- Polygon rate limit（5/min）在 preview 方案 A 下可能触发，缓存命中率是那个 feature 的验收指标之一
