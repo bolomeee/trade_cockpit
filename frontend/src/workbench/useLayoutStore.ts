@@ -16,8 +16,8 @@ export const useLayoutStore = create<LayoutStore>()(
       reset: (defaultLayout) => set({ layout: defaultLayout }),
     }),
     {
-      name: 'ma150.workbench.layouts.v4',
-      version: 4,
+      name: 'ma150.workbench.layouts.v5',
+      version: 5,
     },
   ),
 )

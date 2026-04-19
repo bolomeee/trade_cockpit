@@ -4,11 +4,9 @@ import { ChartWidget } from './widgets/ChartWidget'
 import { FundamentalsWidget } from './widgets/FundamentalsWidget'
 import { PullbackWidget } from './widgets/PullbackWidget'
 import { WatchlistWidget } from './widgets/WatchlistWidget'
-import { JournalWidget } from './widgets/JournalWidget'
-import { LogsWidget } from './widgets/LogsWidget'
 import { QuickAddWidget } from './widgets/QuickAddWidget'
 
-export type WidgetCategory = 'sma150' | 'journal' | 'logs'
+export type WidgetCategory = 'sma150' | 'journal'
 
 export type WidgetManifest = {
   id: string
@@ -53,20 +51,6 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     component: QuickAddWidget,
     defaultLayout: { x: 8, y: 8, w: 4, h: 8, minW: 3, minH: 6 },
     category: 'journal',
-  },
-  'journal.list': {
-    id: 'journal.list',
-    title: 'Trade Journal',
-    component: JournalWidget,
-    defaultLayout: { x: 0, y: 16, w: 12, h: 8, minW: 6, minH: 5 },
-    category: 'journal',
-  },
-  'logs.list': {
-    id: 'logs.list',
-    title: 'Logs',
-    component: LogsWidget,
-    defaultLayout: { x: 0, y: 24, w: 12, h: 6, minW: 6, minH: 4 },
-    category: 'logs',
   },
 }
 

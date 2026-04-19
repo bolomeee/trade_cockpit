@@ -4,7 +4,6 @@ import { useRefreshStatus } from '@/hooks/useRefreshStatus'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
-  { to: '/', label: 'Dashboard', end: true },
   { to: '/journal', label: 'Journal', end: false },
   { to: '/logs', label: 'Logs', end: false },
 ] as const

@@ -1,5 +1,4 @@
 import { Route, Routes, useLocation } from 'react-router-dom'
-import Dashboard from '@/pages/Dashboard'
 import Journal from '@/pages/Journal'
 import Logs from '@/pages/Logs'
 import Workbench from '@/workbench/Workbench'
@@ -9,7 +8,7 @@ import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
 
 export default function App() {
   const { pathname } = useLocation()
-  const showResetLayout = pathname === '/workbench'
+  const showResetLayout = pathname === '/'
 
   return (
     <div className="min-h-screen">
@@ -33,10 +32,9 @@ export default function App() {
       </div>
       <main>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Workbench />} />
           <Route path="/journal" element={<Journal />} />
           <Route path="/logs" element={<Logs />} />
-          <Route path="/workbench" element={<Workbench />} />
         </Routes>
       </main>
     </div>
