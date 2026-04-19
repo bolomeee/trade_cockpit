@@ -4,6 +4,32 @@
 
 ---
 
+## [v1.1.0] - 2026-04-19
+
+Workbench 重构 — 从单页 Dashboard 演进为可拖拽 widget 工作台。
+
+### ✨ 新增
+- **Workbench 框架 (F100)**：`react-grid-layout` 单页多 widget + `WidgetShell` 统一外壳 + `WidgetRegistry` manifest 注册 + `useLayoutStore` 持久化布局（localStorage key `ma150.workbench.layouts.v5`）+ Reset Layout
+- **SMA150 widget 迁移 (F101)**：Chart / Fundamentals / PullbackHistory / Watchlist / QuickAdd 五个 widget 默认加载；Watchlist 点击联动 Chart / Fundamentals / Pullback
+- **Fundamentals 2 列布局**：shadcn `Table` 双列（P/E · P/S · PEG / ROCE · FCF）+ ROCE mock 占位（真实算法延至 F103）
+- **ChartWidget 标题 overlay**：图表左上角 overlay ticker + 公司名（`pointer-events: none`，零额外 API）
+- **AddStock 实时搜索**：200ms debounce + Polygon ticker 前缀匹配 + 公司名 fallback
+
+### ♻️ 重构
+- **路由切换 (F102)**：`/` 由 Dashboard 改为 Workbench；删除 `pages/Dashboard.tsx` / `StockDetailModal` / `StockDetailHeader` / `SignalBoard` / `SignalCard`
+- **widget 去重复包装**：各 widget 去掉内部 card 外壳和重复标题，统一由 `WidgetShell` 承担
+- **Watchlist**：卡片网格 → shadcn `Table`（Ticker · Name · Signal · Close · % MA150 · 删除）
+- **code-split**：`Workbench` / `Journal` / `Logs` 改 `React.lazy`，initial bundle 降至 234KB（gzip 75KB）
+
+### 🐛 修复
+- **Polygon 搜索**：`search=O` 返回 A 开头 ETF 的排序问题，改 `ticker_gte/ticker_lt` 前缀匹配 + `search=` fallback
+
+### 📖 决策
+- **D032** Fundamentals 维持 mock；ROCE 延至 F103 真实财报接入
+- **D033** 非 watchlist ticker 的 chart preview 延至首个"含外部 ticker 的 widget"立项时设计
+
+---
+
 ## [v1.0.0] - 2026-04-18
 
 MA150 Tracker MVP 首次发版 — 围绕 150 日均线的个人美股交易辅助工具。

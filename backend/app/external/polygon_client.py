@@ -19,6 +19,23 @@ POLYGON_HTTP_BASE = "https://api.polygon.io"
 INDEX_SYMBOL_PREFIX = "I:"
 
 
+def _next_prefix(prefix: str) -> str:
+    """Return lexicographic successor of `prefix` for ticker_lt bounds.
+
+    Tickers use A-Z/0-9 (and '.'). Incrementing the last char gives a valid
+    upper bound. For trailing 'Z', carry over; empty fallback returns 'ZZZZZ'.
+    """
+    chars = list(prefix)
+    i = len(chars) - 1
+    while i >= 0:
+        c = chars[i]
+        if c < "Z":
+            chars[i] = chr(ord(c) + 1)
+            return "".join(chars[: i + 1])
+        i -= 1
+    return "ZZZZZ"
+
+
 class PolygonClient:
     """Thread-safe wrapper over `massive.RESTClient` with a token-bucket rate limiter.
 
@@ -70,16 +87,33 @@ class PolygonClient:
             self._sleep(wait)
 
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
-        # `list_tickers` auto-paginates; `limit` is page size, not result cap.
-        # Slice the iterator so we consume only one page's worth of HTTP calls.
+        # Two-phase: ticker prefix match first (users typing tickers like "OXY"
+        # expect OXY on top, not A-prefixed substring matches), then fall back to
+        # Polygon's `search` (which does name/ticker substring match) if prefix
+        # yields nothing — this covers name queries like "occidental".
+        q = query.strip().upper()
+        if not q:
+            return []
+        upper_bound = _next_prefix(q)
         self._acquire()
-        iterator = self._client.list_tickers(
+        prefix_iter = self._client.list_tickers(
+            ticker_gte=q,
+            ticker_lt=upper_bound,
+            market="stocks",
+            active=True,
+            limit=limit,
+        )
+        results = list(itertools.islice(prefix_iter, limit))
+        if results:
+            return results
+        self._acquire()
+        search_iter = self._client.list_tickers(
             search=query,
             market="stocks",
             active=True,
             limit=limit,
         )
-        return list(itertools.islice(iterator, limit))
+        return list(itertools.islice(search_iter, limit))
 
     def get_previous_close(self, ticker: str) -> Any:
         self._acquire()

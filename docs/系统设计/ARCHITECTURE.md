@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-17
-last_modified_by: feature-dev (F000-b · D011+D012)
+confirmed_at: 2026-04-18
+last_modified_by: workbench refactor phase 0 (v1.1.0)
 ---
 
 # ARCHITECTURE.md
 
-> 最后更新：2026-04-16 | 状态：已确认
+> 最后更新：2026-04-18 | 状态：已确认
 > ⚠️ 技术栈变更必须先更新此文档并征得用户同意，不得擅自更改
 
 ---
@@ -19,7 +19,10 @@ last_modified_by: feature-dev (F000-b · D011+D012)
 | 构建工具 | Vite | 8.x | D012（2026-04-17 升级，原 Vite 6.x） |
 | 样式 | Tailwind CSS | v4 | 用户指定 |
 | UI 组件 | shadcn/ui | latest | 用户指定，可定制性好 |
-| 图表 | lightweight-charts (TradingView) | 4.x | 专为金融 K 线图设计，~40KB，原生支持 OHLC + MA 叠加 |
+| 图表 | lightweight-charts (TradingView) | 5.x | 专为金融 K 线图设计，~40KB，原生支持 OHLC + MA 叠加 |
+| Widget 布局引擎 | react-grid-layout | 1.x | v1.1.0 引入，支持拖拽 + resize + 响应式断点（D029） |
+| Client state（跨 widget） | zustand | 5.x | v1.1.0 引入，替代 React Query 不覆盖的跨 widget 联动状态（D030） |
+| Server state | @tanstack/react-query | 5.x | v1.0.0 引入（D017） |
 | 后端 | FastAPI (Python) | 0.115+ | 用户指定，异步生态好 |
 | 运行时 | Python | 3.12+ | 用户指定 |
 | 数据库 | SQLite | 3.x | 单用户局域网场景，零运维 |
@@ -64,13 +67,17 @@ last_modified_by: feature-dev (F000-b · D011+D012)
 ### 前端
 
 ```
-pages/          → 只能调用 widgets/ 和 hooks/
-widgets/        → 只能调用 components/ 和 hooks/
-components/     → 纯展示组件，不含业务逻辑，不直接调 API
-hooks/          → 只能调用 services/
-services/       → 只能调用后端 API（fetch/axios）
-lib/            → 纯工具函数，无副作用，任何层可用
+workbench/Workbench.tsx → 只能引用 WidgetRegistry
+workbench/widgets/      → 只能调用 components/features/* 和 hooks/ 和 store/
+components/features/    → 业务组件（v1.0.0 既有），可被 widget 包装复用
+components/ui/          → shadcn/ui 封装 + 通用纯展示组件
+hooks/                  → 只能调用 lib/api/
+lib/api/                → 只能调用后端 API（apiFetch 封装）
+store/                  → zustand client state，任何层可用
+lib/                    → 纯工具函数，无副作用，任何层可用
 ```
+
+> v1.1.0 起，`pages/` 目录收敛到仅 `Workbench.tsx`；v1.0.0 的 `Dashboard.tsx` / `Journal.tsx` / `Logs.tsx` 在 Phase 4 清理删除，其内容迁移为 widget。
 
 ### 后端
 
@@ -94,29 +101,23 @@ schemas/        → Pydantic 请求/响应模型
 ```
 frontend/
 ├── src/
-│   ├── pages/              # 页面（仅路由和布局编排）
-│   │   ├── Dashboard.tsx   # 首页：大盘概览 + SignalBoard + Add Stock + Journal 快捷
-│   │   ├── Journal.tsx     # 交易日志页
-│   │   └── Logs.tsx        # 系统日志页
-│   ├── widgets/            # Widget 组件（独立业务单元，可组合）
-│   │   ├── MarketOverview/ # 大盘概览 Widget
-│   │   ├── SignalBoard/    # 信号总览 Widget
-│   │   ├── StockDetailModal/ # 个股详情 Modal（纯前端弹窗，不改变 URL）
-│   │   ├── QuickAddStock/  # Dashboard 右侧 Add Stock 快捷表单
-│   │   ├── QuickJournalEntry/ # Dashboard 右侧 Trade Journal 完整表单
-│   │   ├── StockChart/     # K线图 + MA150 Widget
-│   │   ├── PullbackTable/  # 回踩历史 Widget
-│   │   ├── Fundamentals/   # 基本面数据 Widget
-│   │   ├── JournalList/    # Journal 列表 Widget
-│   │   ├── JournalForm/    # Journal 表单 Widget
-│   │   └── SystemLog/      # 系统日志 Widget
-│   ├── components/         # 通用 UI 组件（shadcn/ui 封装 + 项目共用）
-│   ├── hooks/              # 自定义 React Hooks
-│   ├── services/           # API 调用层（fetch 封装）
-│   ├── lib/                # 工具函数（纯函数，无副作用）
+│   ├── pages/              # v1.1.0 收敛到仅 Workbench（v1.0.0 的 Dashboard/Journal/Logs 已删除）
+│   ├── workbench/          # v1.1.0 引入：Widget 框架
+│   │   ├── WidgetRegistry.ts
+│   │   ├── WidgetShell.tsx
+│   │   ├── Workbench.tsx
+│   │   ├── useLayoutStore.ts   # zustand + persist (localStorage)
+│   │   └── widgets/            # 薄包装，复用 components/features/*
+│   ├── components/
+│   │   ├── features/       # v1.0.0 业务组件（被 widget 复用）
+│   │   └── ui/             # shadcn/ui 封装
+│   ├── store/              # v1.1.0 引入：跨 widget 全局 state（zustand）
+│   ├── hooks/              # 自定义 React Hooks（React Query 包装）
+│   ├── lib/
+│   │   └── api/            # API 调用层（apiFetch 封装）
 │   ├── types/              # TypeScript 类型定义
 │   └── styles/
-│       └── tokens.css      # Design Tokens（由 design-bridge 生成）
+│       └── tokens.css      # Design Tokens
 ├── index.html
 ├── vite.config.ts
 ├── tsconfig.json (+ tsconfig.app.json / tsconfig.node.json)
@@ -205,14 +206,51 @@ REFRESH_CRON_MINUTE=0
 
 ---
 
-## Widget 化架构原则
+## Workbench Widget Framework（v1.1.0）
 
-前端采用 Widget 化设计，每个 Widget 是独立的业务功能单元：
+前端核心是一个 Workbench 单页面承载多个可拖拽 widget。加新功能 = 加一个 widget + 一个后端 endpoint + 注册一行。
 
-1. **自包含**：每个 Widget 自带数据获取（通过 hooks）、状态管理、UI 渲染
-2. **可组合**：Page 层仅负责 Widget 的布局编排，不含业务逻辑
-3. **解耦**：Widget 之间不直接通信，通过 URL 参数或共享的 API 数据间接联动
-4. **独立开发**：每个 Widget 可以独立开发和测试
+### 层级
+
+```
+src/workbench/
+├── WidgetRegistry.ts       # widget manifest（id → 组件 + 默认布局 + 分类）
+├── WidgetShell.tsx         # 标准外壳（标题栏 + 拖拽 handle + 内容区）
+├── Workbench.tsx           # react-grid-layout 容器
+├── useLayoutStore.ts       # zustand + persist：layouts → localStorage
+└── widgets/                # 薄包装，复用 components/features/*
+    ├── WatchlistWidget.tsx
+    ├── ChartWidget.tsx
+    ├── FundamentalsWidget.tsx
+    ├── PullbackWidget.tsx
+    ├── JournalWidget.tsx
+    ├── LogsWidget.tsx
+    ├── MarketOverviewWidget.tsx
+    └── QuickAddWidget.tsx
+
+src/store/useAppStore.ts    # 跨 widget client state（selectedSymbol 等）
+```
+
+### Widget 契约
+
+```typescript
+type WidgetManifest = {
+  id: string;                          // 唯一 id，如 "sma150.watchlist"
+  title: string;
+  component: React.ComponentType;      // 从 store 读共享态，自己 fetch 数据
+  defaultLayout: { w: number; h: number; minW?: number; minH?: number };
+  category?: string;                   // "sma150" | "scanner" | "news" | "ai" …
+};
+```
+
+### 原则
+
+1. **自包含**：每个 widget 自带数据获取（React Query hooks）、状态管理、UI 渲染
+2. **可组合**：Workbench 只负责布局编排，不含业务逻辑
+3. **解耦**：Widget 之间不直接通信，通过 zustand 全局 store（D030）间接联动
+4. **独立开发**：每个 widget 可以独立开发和测试
+5. **布局持久化**：localStorage，key `ma150.workbench.layouts.v1`，不进数据库（D029）
+6. **后端零改动**：加 widget 不要求改现有 router；若需新数据，新增 router 遵循既有分层
 
 ---
 

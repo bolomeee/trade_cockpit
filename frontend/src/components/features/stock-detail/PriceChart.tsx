@@ -14,7 +14,6 @@ import type { ChartData } from '@/types/stockDetail'
 
 interface PriceChartProps {
   data: ChartData
-  height?: number
 }
 
 function toUtcTimestamp(dateStr: string): UTCTimestamp {
@@ -29,7 +28,7 @@ function readToken(name: string, fallback: string): string {
   return v || fallback
 }
 
-export function PriceChart({ data, height = 302 }: PriceChartProps) {
+export function PriceChart({ data }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -44,9 +43,12 @@ export function PriceChart({ data, height = 302 }: PriceChartProps) {
     const borderColor = readToken('--color-border', 'rgba(0,0,0,0.1)')
     const bgColor = readToken('--color-card', '#ffffff')
 
+    const initialWidth = container.clientWidth || 1
+    const initialHeight = container.clientHeight || 1
+
     const chart: IChartApi = createChart(container, {
-      width: container.clientWidth,
-      height,
+      width: initialWidth,
+      height: initialHeight,
       layout: {
         background: { color: bgColor },
         textColor,
@@ -108,16 +110,21 @@ export function PriceChart({ data, height = 302 }: PriceChartProps) {
 
     chart.timeScale().fitContent()
 
-    const handleResize = () => {
-      if (container) chart.applyOptions({ width: container.clientWidth })
-    }
-    window.addEventListener('resize', handleResize)
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height: h } = entry.contentRect
+        if (width > 0 && h > 0) {
+          chart.applyOptions({ width: Math.floor(width), height: Math.floor(h) })
+        }
+      }
+    })
+    observer.observe(container)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      observer.disconnect()
       chart.remove()
     }
-  }, [data, height])
+  }, [data])
 
   return (
     <div
@@ -125,7 +132,7 @@ export function PriceChart({ data, height = 302 }: PriceChartProps) {
       data-testid="price-chart"
       style={{
         width: '100%',
-        height: `${height}px`,
+        height: '100%',
         borderRadius: 'var(--radius-card)',
         overflow: 'hidden',
       }}

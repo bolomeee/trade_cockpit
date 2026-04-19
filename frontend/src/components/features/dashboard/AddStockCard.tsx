@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 
@@ -51,66 +51,48 @@ export function AddStockCard() {
     },
   })
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const trimmed = input.trim()
-      if (trimmed.length === 0) return
+  useEffect(() => {
+    const trimmed = input.trim()
+    if (trimmed.length === 0) {
+      setQuery(null)
+      return
+    }
+    const t = setTimeout(() => {
       setQuery(trimmed)
       setItemError(null)
-    }
-  }
+    }, 200)
+    return () => clearTimeout(t)
+  }, [input])
 
   const isOpen = query !== null && query.length > 0
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--shadow-card)',
-        border: '1px solid var(--color-border)',
-        padding: 'var(--spacing-card-padding-sm)',
-      }}
-    >
-      <h3
-        style={{
-          fontSize: 'var(--font-size-subtitle)',
-          fontWeight: 'var(--font-weight-bold)',
-          color: 'var(--color-text-primary)',
-          marginBottom: 'var(--spacing-3)',
-        }}
+    <Popover open={isOpen} onOpenChange={(open) => { if (!open) setQuery(null) }}>
+      <PopoverAnchor asChild>
+        <Input
+          ref={inputRef}
+          value={input}
+          placeholder="Search ticker or name (e.g. OXY)"
+          onChange={(e) => setInput(e.target.value)}
+        />
+      </PopoverAnchor>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        style={{ width: '260px', padding: 0 }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        Add Stock
-      </h3>
-
-      <Popover open={isOpen} onOpenChange={(open) => { if (!open) setQuery(null) }}>
-        <PopoverAnchor asChild>
-          <Input
-            ref={inputRef}
-            value={input}
-            placeholder="e.g. AAPL"
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-        </PopoverAnchor>
-        <PopoverContent
-          align="start"
-          sideOffset={4}
-          style={{ width: '260px', padding: 0 }}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <SearchResults
-            isLoading={searchQuery.isLoading}
-            isError={searchQuery.isError}
-            onRetry={() => searchQuery.refetch()}
-            items={searchQuery.data ?? []}
-            onSelect={(ticker) => addMutation.mutate(ticker)}
-            pendingTicker={pendingTicker}
-            itemError={itemError}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+        <SearchResults
+          isLoading={searchQuery.isLoading}
+          isError={searchQuery.isError}
+          onRetry={() => searchQuery.refetch()}
+          items={searchQuery.data ?? []}
+          onSelect={(ticker) => addMutation.mutate(ticker)}
+          pendingTicker={pendingTicker}
+          itemError={itemError}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 

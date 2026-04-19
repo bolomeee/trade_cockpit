@@ -114,6 +114,9 @@ def _mock_fundamentals(ticker: str) -> dict[str, Any]:
     pe = pick(0, 60, 0.5, 10.0)
     ps = pick(1, 30, 0.2, 1.0)
     peg = pick(2, 30, 0.1, 0.5)
+    # ROCE range 0.05–0.40 (5%–40%). Real calc (EBIT / (Total Assets - Total Current Liabilities))
+    # deferred to F103; see DECISIONS D032.
+    roce = round(0.05 + (digest[12] % 36) * 0.01, 4)
     fcf = float((int.from_bytes(digest[3:7], "big") % 95_000 + 5_000) * 1_000_000)
     market_cap = float((int.from_bytes(digest[7:12], "big") % 2_500 + 50) * 1_000_000_000)
 
@@ -122,6 +125,7 @@ def _mock_fundamentals(ticker: str) -> dict[str, Any]:
         "priceToEarnings": pe,
         "priceToSales": ps,
         "peg": peg,
+        "roce": roce,
         "freeCashFlow": fcf,
         "marketCap": market_cap,
         "source": FUNDAMENTALS_MOCK_SOURCE,

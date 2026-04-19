@@ -1,10 +1,72 @@
-# PRD：MA150 Tracker
+# PRD：MA150 Tracker → Workbench
 
-> 版本：v1.0 | 日期：2026-04-16
+> 版本：v1.1（2026-04-18，Workbench 重构） / v1.0（2026-04-16，历史）
+> 以下 v1.1 内容为当前 vision，替代 v1.0 中"固定三页 app"的设定。v1.0 章节保留作为首批 widget 的功能基线参考。
 
 ---
 
-## 1. 一句话描述
+## v1.1 · Workbench 愿景（当前）
+
+### 一句话描述
+
+个人投资 **Workbench**：一个可拖拽 widget 的单页面工作台，首批 widget 提供 SMA150 信号 / 走势 / 基本面 / 交易日志 / 系统日志，未来按相同模式扩展全市场扫描、PDF/OCR、AI 观点等。
+
+### 核心设计原则
+
+1. **单一页面**：所有功能 widget 都渲染在同一个 Workbench 网格里，不再有"切到 /journal 页"的概念
+2. **可拖拽 + resize**：用户自主决定每个 widget 在屏幕上的位置和大小，布局存本地（localStorage）
+3. **加新功能 = 加一个 widget + 一个后端 endpoint + 注册一行**：不动布局、不影响现有功能
+4. **个人单用户**：简单优先，不上多 dashboard 切换、用户系统、云端同步；布局不进数据库
+
+### Widget 类别规划（v1.1 首批 + 未来）
+
+| 类别 | v1.1 首批 widget | 未来扩展 widget |
+|------|----------------|----------------|
+| sma150 | Watchlist / Chart / Fundamentals / Pullback / QuickAdd | — |
+| journal | Journal | — |
+| logs | Logs | — |
+| market | MarketOverview | — |
+| scanner（未来） | — | 全市场 150MA 回踩扫描 |
+| news（未来） | — | 个股新闻流 / 行业热度 |
+| research（未来） | — | PDF/OCR 研报解析、AI thesis |
+
+### 与 v1.0 的关系
+
+v1.0.0 的全部功能作为"首批 widget"完整保留：
+- `Dashboard` → 拆解为 `WatchlistWidget` / `QuickAddWidget` / `JournalQuickAddWidget` + 若干独立 widget
+- `StockDetailModal` → 拆解为 `ChartWidget` / `FundamentalsWidget` / `PullbackWidget` 3 个独立 widget（D031）
+- `/journal` 页 → `JournalWidget`
+- `/logs` 页 → `LogsWidget`
+
+后端零改动：所有现有 API 继续工作，加新 widget 时按既有分层新增 router。
+
+### 新增用户旅程（v1.1）
+
+**旅程 D：自定义工作台**
+1. 首次打开 Workbench，看到默认布局（5–7 个 widget 铺满屏幕）
+2. 拖动某 widget 到新位置 / 改大小 → 自动保存到 localStorage
+3. 刷新浏览器 → 布局保留
+4. "重置布局"按钮 → 清 localStorage → 回到默认
+
+**旅程 E：并排对比多只股票（v1.0 做不到）**
+1. 在 WatchlistWidget 点 AAPL → ChartWidget + FundamentalsWidget + PullbackWidget 同步拉 AAPL
+2. 需要对比 MSFT 时：再加一组 chart/fundamentals/pullback widget（未来 v1.2 考虑；v1.1 先支持单 ticker 联动）
+
+### v1.1 明确不做
+
+- ❌ widget 布局进数据库（localStorage 足够）
+- ❌ 多 dashboard 预设切换
+- ❌ `/api/widgets` 或 widget marketplace（前端静态 registry）
+- ❌ micro-frontend / iframe / Module Federation
+- ❌ widget 间复杂消息总线（zustand 全局 store 已覆盖所有联动需求）
+
+---
+
+## v1.0 · MA150 Tracker 原始需求（历史，功能基线）
+
+> 以下内容为 v1.0.0 发布时的完整需求，作为首批 widget 的功能验收基线保留。
+
+### 1. 一句话描述
 
 个人美股投资辅助 web app，围绕 150 日均线自动识别回踩买点和均线突破信号，让交易机会主动来找用户。
 

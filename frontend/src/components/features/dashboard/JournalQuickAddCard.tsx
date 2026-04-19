@@ -75,77 +75,55 @@ export function JournalQuickAddCard() {
   }
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--color-card)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--shadow-card)',
-        border: '1px solid var(--color-border)',
-        padding: 'var(--spacing-card-padding-sm)',
-        marginTop: 'var(--spacing-4)',
-      }}
-    >
-      <h3
-        style={{
-          fontSize: 'var(--font-size-subtitle)',
-          fontWeight: 'var(--font-weight-bold)',
-          color: 'var(--color-text-primary)',
-          marginBottom: 'var(--spacing-3)',
-        }}
-      >
-        Trade Journal
-      </h3>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+      <div>
+        <Label htmlFor="quick-ticker" style={labelStyle}>Ticker</Label>
+        <Input
+          id="quick-ticker"
+          value={ticker}
+          placeholder="e.g. AAPL"
+          onChange={(e) => setTicker(e.target.value)}
+          autoComplete="off"
+        />
+      </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-        <div>
-          <Label htmlFor="quick-ticker" style={labelStyle}>Ticker</Label>
-          <Input
-            id="quick-ticker"
-            value={ticker}
-            placeholder="e.g. AAPL"
-            onChange={(e) => setTicker(e.target.value)}
-            autoComplete="off"
-          />
+      <div>
+        <Label htmlFor="quick-action" style={labelStyle}>Action</Label>
+        <Select value={action} onValueChange={(v) => setAction(v as Action)}>
+          <SelectTrigger id="quick-action">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ACTIONS.map((a) => (
+              <SelectItem key={a} value={a}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="quick-price" style={labelStyle}>Price</Label>
+        <Input
+          id="quick-price"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min="0"
+          value={price}
+          placeholder="0.00"
+          onChange={(e) => setPrice(e.target.value)}
+        />
+      </div>
+
+      {formError && (
+        <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-error)' }}>
+          {formError}
         </div>
+      )}
 
-        <div>
-          <Label htmlFor="quick-action" style={labelStyle}>Action</Label>
-          <Select value={action} onValueChange={(v) => setAction(v as Action)}>
-            <SelectTrigger id="quick-action">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACTIONS.map((a) => (
-                <SelectItem key={a} value={a}>{a}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="quick-price" style={labelStyle}>Price</Label>
-          <Input
-            id="quick-price"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            value={price}
-            placeholder="0.00"
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </div>
-
-        {formError && (
-          <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-error)' }}>
-            {formError}
-          </div>
-        )}
-
-        <Button type="submit" disabled={!canSubmit} style={{ width: '100%' }}>
-          {mutation.isPending ? 'Adding…' : '+ Add Entry'}
-        </Button>
-      </form>
-    </div>
+      <Button type="submit" disabled={!canSubmit} style={{ width: '100%' }}>
+        {mutation.isPending ? 'Adding…' : '+ Add Entry'}
+      </Button>
+    </form>
   )
 }

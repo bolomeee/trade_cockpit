@@ -13,6 +13,7 @@ export interface Fundamentals {
   priceToEarnings: number
   priceToSales: number
   peg: number
+  roce?: number | null
   freeCashFlow: number
   marketCap: number
   source: string
