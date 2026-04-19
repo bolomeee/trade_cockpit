@@ -4,7 +4,7 @@
   "version": "1.1.0",
   "last_updated": "2026-04-19",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。",
-  "completion_rate": "v1.0.0 + v1.1.0 全部 done；F103 已被 F104 取代（D034）；F104 待开发",
+  "completion_rate": "v1.0.0 + v1.1.0 + F104 全部 done",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
@@ -1150,8 +1150,8 @@
       "description": "整体替换 Polygon (massive) Stocks Starter → FMP Starter /stable/ 端点。新增 fmp_client.py（httpx REST + 300/min token bucket）；watchlist 搜索、EOD 日线、大盘指数、10Y 国债、基本面全部走 FMP；polygon_client.py 标 deprecated 保留作回滚；fundamentals 从 mock 切到真实 ratios-ttm，source 字段从 'mock' 改 'fmp'；前端类型不动，后端在 service 层做字段适配。F103 目标在此并入",
       "user_story": "作为维护者，我想只用一个外部数据源覆盖所有需求，降低订阅成本+代码复杂度，并拿到真实的 5 项基本面指标",
       "priority": "P0",
-      "status": "needs_review",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "current_sprint": "S2",
       "dependencies": [
         "F102"
@@ -1224,7 +1224,8 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调"
+      "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调",
+      "completed_at": "2026-04-19"
     }
   ]
 }

@@ -103,3 +103,33 @@
 [下一个 Session]
   - 触发 acceptance skill 做 F104 最终验收
   - 或进入 v1.2 Sprint 规划
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-19] Acceptance：F104 通过验收
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收结果：
+  - 技术门禁：177 pytest + 7 live smoke 全绿
+  - 业务逻辑：B1–B7 全部通过（自动化 + 真实数据交叉验证）
+  - 视觉/交互 V1–V5：用户浏览器亲眼确认通过
+  - 边缘场景 E1–E3：404 / 502 / 大小写不敏感全通
+  - MELI FCF $10.1B 经 FMP 三种推导 + StockAnalysis.com FY2025 10.77B 交叉验证，差 <7%
+
+📌 决策轨迹（保留审计痕迹）：
+  D034 迁移 FMP → D035 估值迁 key-metrics-ttm（基于 S2c 假阴性观察，错误）
+  → D036 两端点合并（S3 live smoke 暴露 D035 错误后经真实 API dump 修正，正解）
+
+🏷️ tag：v1.1.1（本地 feat-newfeature 分支，未 push、未 merge 到 main）
+
+📊 功能状态：
+  F104 数据源迁移：✅ done
+  v1.0.0 + v1.1.0 所有 P0 feature：✅ done
+  F104 属 v1.1 迭代的补丁级工程 feature
+
+⚠️ 已知遗留（v1.2 跟进）：
+  - 前端 Fundamentals TS 类型需同步 nullable
+  - FundamentalsCard FCF null 显示 $0.00 → 应显示 —
+
+[下一个 Session]
+  - 用户决定 v1.2 规划 或 何时 merge feat-newfeature → main
+  - acceptance 阶段已结束；后续 merge 时可触发 project-commiter 统一生成 CHANGELOG
