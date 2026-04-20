@@ -94,6 +94,39 @@ def test_live_key_metrics_ttm_aapl(fmp: FmpClient) -> None:
         )
 
 
+def test_live_screener_large_caps(fmp: FmpClient) -> None:
+    # F105 (D038): universe = NYSE/NASDAQ/AMEX actively-traded, marketCap >= 50B.
+    # Smoke asserts the merged response is non-trivial and the market-cap floor
+    # holds for every returned row.
+    universe = fmp.get_screener_universe()
+    assert len(universe) >= 50, f"expected >=50 large-cap rows, got {len(universe)}"
+    for row in universe[:10]:
+        for field in ("symbol", "companyName", "exchange", "marketCap"):
+            assert _field(row, field) is not None, f"screener row missing {field}: {row}"
+    # Floor check on every row (lenient: FMP's floor is inclusive, we requested > 50B).
+    assert all(float(_field(r, "marketCap") or 0) >= 50_000_000_000 for r in universe)
+
+
+def test_live_sma_or_eod_fallback_aapl(fmp: FmpClient) -> None:
+    # F105 (D039): SMA endpoint is the primary path. If Starter tier does not
+    # cover it (402/403/404), get_ma150_series_or_eod transparently falls back
+    # to EOD — both outcomes are acceptable for this feature.
+    result = fmp.get_ma150_series_or_eod("AAPL")
+    assert result["source"] in ("sma", "eod_fallback")
+    bars = result["bars"]
+    assert bars, f"expected non-empty bars, source={result['source']}"
+    if result["source"] == "sma":
+        # Each SMA row carries its own sma value; window is ~25 trading days.
+        assert len(bars) >= 15, f"SMA series unexpectedly short: {len(bars)}"
+        assert _field(bars[0], "sma") is not None
+        assert _field(bars[0], "close") is not None
+    else:
+        # EOD fallback window is 260 calendar days → ≥180 trading days expected.
+        assert len(bars) >= 180, f"EOD fallback series too short: {len(bars)}"
+        for field in ("date", "open", "high", "low", "close", "volume"):
+            assert _field(bars[0], field) is not None, f"EOD bar missing {field}"
+
+
 def _field(obj, name: str):
     if isinstance(obj, dict):
         return obj.get(name)

@@ -28,6 +28,20 @@ FMP_EP_TREASURY = "/treasury-rates"
 FMP_EP_SEARCH_SYMBOL = "/search-symbol"
 FMP_EP_SEARCH_NAME = "/search-name"
 FMP_EP_QUOTE = "/quote"
+FMP_EP_SCREENER = "/company-screener"  # F105 universe (D038)
+FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
+
+# F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
+# Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
+# 404 (endpoint not found). 5xx and connection errors are considered transient
+# upstream problems and must surface rather than mask behind a data-path switch.
+_SMA_FALLBACK_STATUS_CODES: frozenset[int] = frozenset({402, 403, 404})
+
+# F105 default SMA window: 35 calendar days ≈ 25 trading days (D039 "最近 25 交易日窗口").
+_SMA_DEFAULT_WINDOW_DAYS: int = 35
+# F105 EOD fallback window: 260 calendar days ≈ 180 trading days, enough for
+# MA150 + 20-day slope even after weekends/holidays.
+_EOD_FALLBACK_WINDOW_DAYS: int = 260
 
 
 class FmpClient:
@@ -167,6 +181,121 @@ class FmpClient:
         if not results:
             return None
         return results[0]
+
+    def get_company_screener_page(
+        self,
+        market_cap_gte: int,
+        exchange: str,
+        *,
+        is_etf: bool = False,
+        is_actively_trading: bool = True,
+        limit: int = 500,
+    ) -> list[Any]:
+        """Single-exchange FMP company screener call (F105 universe, D038).
+
+        Returns FMP's raw list of screener rows (each item typically contains
+        `symbol`, `companyName`, `exchange`, `marketCap`, etc.). Caller should
+        use `get_screener_universe` for the three-exchange merge.
+        """
+        params = {
+            "marketCapMoreThan": market_cap_gte,
+            "exchange": exchange,
+            "isEtf": "true" if is_etf else "false",
+            "isActivelyTrading": "true" if is_actively_trading else "false",
+            "limit": limit,
+        }
+        body = self._request(FMP_EP_SCREENER, params)
+        return list(body or [])
+
+    def get_screener_universe(
+        self,
+        market_cap_gte: int = 50_000_000_000,
+        exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
+        limit_per_exchange: int = 500,
+    ) -> list[dict[str, Any]]:
+        """Merged, de-duplicated screener universe across US exchanges (F105, D038).
+
+        Calls `get_company_screener_page` once per exchange and merges results,
+        de-duplicating by `symbol` with first-seen wins (stable ordering for
+        downstream consumers). Any per-exchange error propagates — the caller
+        is responsible for retrying the whole refresh.
+        """
+        seen: set[str] = set()
+        merged: list[dict[str, Any]] = []
+        for exchange in exchanges:
+            rows = self.get_company_screener_page(
+                market_cap_gte=market_cap_gte,
+                exchange=exchange,
+                limit=limit_per_exchange,
+            )
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                symbol = row.get("symbol")
+                if not symbol or symbol in seen:
+                    continue
+                seen.add(symbol)
+                merged.append(row)
+        return merged
+
+    def get_sma_series(
+        self,
+        symbol: str,
+        period_length: int = 150,
+        from_date: str | date | None = None,
+        to_date: str | date | None = None,
+        timeframe: str = "1day",
+    ) -> list[Any]:
+        """FMP `/technical-indicators/sma` time series (F105 daily scan primary path, D039).
+
+        Each payload item contains `date / open / high / low / close / volume / sma`.
+        When `from_date`/`to_date` are omitted, defaults to the most recent
+        35 calendar days (≈ 25 trading days — enough for breakout judgement and
+        20-day MA150 linear regression slope).
+        """
+        today = datetime.now(timezone.utc).date()
+        to_d = to_date if to_date is not None else today
+        from_d = (
+            from_date
+            if from_date is not None
+            else today - timedelta(days=_SMA_DEFAULT_WINDOW_DAYS)
+        )
+        params = {
+            "symbol": symbol,
+            "periodLength": period_length,
+            "timeframe": timeframe,
+            "from": _fmt_date(from_d),
+            "to": _fmt_date(to_d),
+        }
+        body = self._request(FMP_EP_SMA, params)
+        if isinstance(body, dict):
+            # Defensive: some FMP endpoints wrap payloads in {"historical": [...]}
+            return list(body.get("historical") or [])
+        return list(body or [])
+
+    def get_ma150_series_or_eod(self, symbol: str) -> dict[str, Any]:
+        """Transparent SMA → EOD fallback for F105 daily scan (D039).
+
+        Primary path hits `/technical-indicators/sma?periodLength=150`. If the
+        endpoint is unavailable on the current FMP tier (402/403/404), falls
+        back to `/historical-price-eod/full` so the caller can compute MA150
+        and the 20-day slope locally (reusing F002 signal_engine).
+
+        Returns `{"source": "sma" | "eod_fallback", "bars": [...]}`. The
+        caller (F105-a3 MarketScannerService) inspects `source` to decide
+        whether to emit a SystemLog WARN — the client layer deliberately does
+        not log, keeping external/ layer free of DB dependencies.
+        """
+        try:
+            bars = self.get_sma_series(symbol, period_length=150)
+            return {"source": "sma", "bars": bars}
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in _SMA_FALLBACK_STATUS_CODES:
+                raise
+        today = datetime.now(timezone.utc).date()
+        from_d = today - timedelta(days=_EOD_FALLBACK_WINDOW_DAYS)
+        eod_bars = self.get_daily_bars(symbol, from_d, today)
+        return {"source": "eod_fallback", "bars": eod_bars}
 
     def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
         """TTM key metrics (valuation) for a single symbol. Source for PE/PS/PEG/ROCE/FCF/marketCap (D035)."""

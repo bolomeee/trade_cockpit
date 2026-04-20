@@ -275,3 +275,43 @@
 
 [下一个 Session]
   开发 F105-a2（FMP screener + sma + EOD fallback + config/.env + client 单测与 live smoke）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 07:05] Sprint：F105-a2 FMP 客户端扩展
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - fmp_client 新增 2 端点常量（FMP_EP_SCREENER / FMP_EP_SMA）+ 4 方法：
+    get_company_screener_page / get_screener_universe（三交易所合并去重）
+    get_sma_series（periodLength=150, timeframe=1day, 35 日历天窗口）
+    get_ma150_series_or_eod（透明 402/403/404 → EOD fallback, D039）
+  - config.py +5 Settings 字段（scanner_cron / universe_cron）
+  - .env.example 同步追加 5 个 env var 样例
+  - 单元测试：+14 条（screener 4、sma 4、fallback 5，另含 parametrize 402/403/404）
+  - Live smoke：+2 条（screener + sma_or_eod_fallback）
+  - 单元测试：36/36 通过
+  - 全量回归：201/201 通过，F001–F105-a1 零回归
+  - Live smoke（用户手动）：两条全通过；AAPL SMA 端点 Starter tier **可用**（source=sma, 25 根 bar，含 date/open/high/low/close/volume/sma）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无。F105-a3 可直接以 SMA 为主路径，EOD fallback 作为防御保留。
+
+🔧 系统变更：
+  - backend/app/external/fmp_client.py（新增 2 常量 + 4 方法）
+  - backend/app/config.py（+5 Settings 字段）
+  - .env.example（+5 env var 注释）
+  - backend/tests/test_fmp_client.py（+13 单测，删 1 条挂死 edge case）
+  - backend/tests/test_fmp_live_smoke.py（+2 live smoke）
+  - docs/开发/sprint-contracts/F105-a2-contract.md（新建）
+
+📊 功能状态：
+  F105-a1 数据层：✅ done
+  F105-a2 FMP 客户端：🔍 needs_review
+  F105-a3 scanner service：⬜ planned
+  F105-a4 读端点：⬜ planned
+  F105-b/c：⬜ planned
+
+[下一个 Session]
+  开发 F105-a3（UniverseRefreshService + MarketScannerService + 独立 cron + 服务层测试）。主路径用 get_ma150_series_or_eod → SMA（已验证可用）

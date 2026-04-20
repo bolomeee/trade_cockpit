@@ -19,8 +19,10 @@ from app.external.fmp_client import (
     FMP_EP_HIST_EOD,
     FMP_EP_KEY_METRICS_TTM,
     FMP_EP_RATIOS_TTM,
+    FMP_EP_SCREENER,
     FMP_EP_SEARCH_NAME,
     FMP_EP_SEARCH_SYMBOL,
+    FMP_EP_SMA,
     FMP_EP_TREASURY,
     FmpClient,
 )
@@ -349,6 +351,207 @@ def test_5xx_does_not_retry(clock):
     with pytest.raises(httpx.HTTPStatusError):
         client.get_ratios_ttm("AAPL")
     assert call_count["n"] == 1
+
+
+# --- F105: screener ------------------------------------------------------
+
+def test_get_company_screener_page_endpoint_and_params(clock):
+    def handler(req):
+        return ok([{"symbol": "AAPL", "marketCap": 3_000_000_000_000}])
+
+    client, calls = make_client(handler, clock)
+    result = client.get_company_screener_page(
+        market_cap_gte=50_000_000_000, exchange="NYSE"
+    )
+
+    assert result == [{"symbol": "AAPL", "marketCap": 3_000_000_000_000}]
+    assert calls[0].url.path.endswith(FMP_EP_SCREENER)
+    params = calls[0].url.params
+    assert params["marketCapMoreThan"] == "50000000000"
+    assert params["exchange"] == "NYSE"
+    assert params["limit"] == "500"
+    assert params["apikey"] == "test-key"
+
+
+def test_get_company_screener_page_bool_serialization(clock):
+    captured: dict[str, str] = {}
+
+    def handler(req):
+        captured.update(req.url.params)
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    client.get_company_screener_page(
+        market_cap_gte=1, exchange="NYSE", is_etf=False, is_actively_trading=True
+    )
+    assert captured["isEtf"] == "false"
+    assert captured["isActivelyTrading"] == "true"
+
+    captured.clear()
+    client.get_company_screener_page(
+        market_cap_gte=1, exchange="NYSE", is_etf=True, is_actively_trading=False
+    )
+    assert captured["isEtf"] == "true"
+    assert captured["isActivelyTrading"] == "false"
+
+
+def test_get_screener_universe_merges_three_exchanges_and_dedupes(clock):
+    # Per-exchange payloads: NYSE→[AAPL, MSFT], NASDAQ→[AAPL, GOOG], AMEX→[TSLA]
+    responses = iter([
+        ok([{"symbol": "AAPL", "exchange": "NYSE"}, {"symbol": "MSFT", "exchange": "NYSE"}]),
+        ok([{"symbol": "AAPL", "exchange": "NASDAQ"}, {"symbol": "GOOG", "exchange": "NASDAQ"}]),
+        ok([{"symbol": "TSLA", "exchange": "AMEX"}]),
+    ])
+
+    def handler(req):
+        return next(responses)
+
+    client, calls = make_client(handler, clock)
+    result = client.get_screener_universe()
+
+    assert len(calls) == 3
+    # first-seen wins → AAPL keeps the NYSE entry
+    assert [r["symbol"] for r in result] == ["AAPL", "MSFT", "GOOG", "TSLA"]
+    assert result[0]["exchange"] == "NYSE"
+    # Each call targets the screener endpoint, one exchange per call
+    exchanges_requested = [c.url.params["exchange"] for c in calls]
+    assert exchanges_requested == ["NYSE", "NASDAQ", "AMEX"]
+    for c in calls:
+        assert c.url.path.endswith(FMP_EP_SCREENER)
+        assert c.url.params["marketCapMoreThan"] == "50000000000"
+
+
+def test_get_screener_universe_skips_non_dict_rows(clock):
+    # Defensive: if FMP returns unexpected string/None entries, they're skipped.
+    responses = iter([
+        ok([{"symbol": "AAPL"}, "junk", None]),
+        ok([]),
+        ok([]),
+    ])
+
+    def handler(req):
+        return next(responses)
+
+    client, _ = make_client(handler, clock)
+    result = client.get_screener_universe()
+    assert [r["symbol"] for r in result] == ["AAPL"]
+
+
+# --- F105: sma -----------------------------------------------------------
+
+def test_get_sma_series_endpoint_and_params(clock):
+    def handler(req):
+        return ok([{"date": "2026-04-18", "close": 200.0, "sma": 180.0}])
+
+    client, calls = make_client(handler, clock)
+    result = client.get_sma_series(
+        "AAPL",
+        period_length=150,
+        from_date="2026-03-14",
+        to_date="2026-04-18",
+    )
+
+    assert result == [{"date": "2026-04-18", "close": 200.0, "sma": 180.0}]
+    assert calls[0].url.path.endswith(FMP_EP_SMA)
+    params = calls[0].url.params
+    assert params["symbol"] == "AAPL"
+    assert params["periodLength"] == "150"
+    assert params["timeframe"] == "1day"
+    assert params["from"] == "2026-03-14"
+    assert params["to"] == "2026-04-18"
+
+
+def test_get_sma_series_default_window(clock, monkeypatch):
+    from datetime import datetime as real_dt, timezone as real_tz
+
+    fixed = real_dt(2026, 4, 18, tzinfo=real_tz.utc)
+
+    class FixedDT(real_dt):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed if tz is None else fixed.astimezone(tz)
+
+    monkeypatch.setattr("app.external.fmp_client.datetime", FixedDT)
+
+    captured: dict[str, str] = {}
+
+    def handler(req):
+        captured.update(req.url.params)
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    client.get_sma_series("AAPL")
+
+    assert captured["to"] == "2026-04-18"
+    assert captured["from"] == "2026-03-14"  # 35 calendar days before
+
+
+def test_get_sma_series_bare_list(clock):
+    def handler(req):
+        return ok([{"date": "2026-04-18", "sma": 180.0}])
+
+    client, _ = make_client(handler, clock)
+    assert client.get_sma_series("AAPL", from_date="2026-03-14", to_date="2026-04-18") == [
+        {"date": "2026-04-18", "sma": 180.0}
+    ]
+
+
+def test_get_sma_series_dict_wrapped_payload(clock):
+    def handler(req):
+        return ok({"symbol": "AAPL", "historical": [{"date": "2026-04-18", "sma": 180.0}]})
+
+    client, _ = make_client(handler, clock)
+    assert client.get_sma_series("AAPL", from_date="2026-03-14", to_date="2026-04-18") == [
+        {"date": "2026-04-18", "sma": 180.0}
+    ]
+
+
+# --- F105: ma150 fallback ------------------------------------------------
+
+def test_get_ma150_series_or_eod_primary_sma(clock):
+    def handler(req):
+        assert req.url.path.endswith(FMP_EP_SMA)
+        return ok([{"date": "2026-04-18", "close": 200.0, "sma": 180.0}])
+
+    client, calls = make_client(handler, clock)
+    result = client.get_ma150_series_or_eod("AAPL")
+
+    assert result["source"] == "sma"
+    assert result["bars"] == [{"date": "2026-04-18", "close": 200.0, "sma": 180.0}]
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("fallback_status", [402, 403, 404])
+def test_get_ma150_series_or_eod_fallback_on_tier_errors(clock, fallback_status):
+    responses = iter([
+        httpx.Response(fallback_status),
+        ok([{"date": "2026-04-18", "close": 200.0}]),
+    ])
+
+    def handler(req):
+        return next(responses)
+
+    client, calls = make_client(handler, clock)
+    result = client.get_ma150_series_or_eod("AAPL")
+
+    assert result["source"] == "eod_fallback"
+    assert result["bars"] == [{"date": "2026-04-18", "close": 200.0}]
+    assert len(calls) == 2
+    assert calls[0].url.path.endswith(FMP_EP_SMA)
+    assert calls[1].url.path.endswith(FMP_EP_HIST_EOD)
+
+
+def test_get_ma150_series_or_eod_no_fallback_on_500(clock):
+    # 500 triggers the existing _request behaviour (no retry on 5xx) and must
+    # surface rather than mask an upstream outage behind an EOD fallback.
+    def handler(req):
+        return httpx.Response(500)
+
+    client, calls = make_client(handler, clock)
+    with pytest.raises(httpx.HTTPStatusError):
+        client.get_ma150_series_or_eod("AAPL")
+    assert len(calls) == 1
+    assert calls[0].url.path.endswith(FMP_EP_SMA)
 
 
 # --- deprecated guard ----------------------------------------------------
