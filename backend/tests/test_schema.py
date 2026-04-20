@@ -18,6 +18,8 @@ EXPECTED_TABLES = {
     "market_indices",
     "system_logs",
     "journal_entries",
+    "market_scan_universe",
+    "market_breakout_scans",
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {
@@ -36,6 +38,14 @@ EXPECTED_COLUMNS: dict[str, set[str]] = {
     "journal_entries": {
         "id", "stock_id", "action", "price", "date", "position_size",
         "stop_loss", "target_price", "reason", "reference", "created_at", "updated_at",
+    },
+    "market_scan_universe": {
+        "id", "ticker", "company_name", "exchange", "market_cap",
+        "last_seen_at", "added_at",
+    },
+    "market_breakout_scans": {
+        "id", "scan_date", "ticker", "company_name", "close_price",
+        "ma150_value", "pct_above_ma150", "slope_value", "market_cap", "scanned_at",
     },
 }
 

@@ -1,5 +1,95 @@
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-20] Pipeline 阶段 1：F105 系统设计完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - DATA-MODEL.md 新增 MarketScanUniverse + MarketBreakoutScan 实体 + ORM schema
+  - API-CONTRACT.md 新增 GET /api/market/breakouts；扩展 GET /api/stocks/:ticker/chart 行为
+    （非 watchlist ticker fallback 到 FMP on-demand，schema 不变；新增 502 EXTERNAL_SERVICE_ERROR）
+  - ARCHITECTURE.md FMP 映射表新增 screener + sma 两行；环境变量新增 SCANNER/UNIVERSE cron
+    （SCANNER_CRON=06:15；UNIVERSE_CRON=每月 1 号 05:00）；fmp_client 常量新增 FMP_EP_SCREENER/SMA
+  - DECISIONS.md 追加 D038-D042（5 条决策）
+  - features.json F105 contract 填入 api_refs / data_model_refs / decision_refs
+  - _pipeline_status.system_design: in_progress → done
+
+🎯 F105 关键架构：
+  1. universe 与扫描解耦：月级刷新 market_scan_universe（D038），每日扫描读此表
+  2. SMA 端点主路径（D039）：/stable/technical-indicators/sma 单次调用含 close + sma
+     fallback：端点不可用时透明切换到 /stable/historical-price-eod/full 本地算 MA150
+     S1 Sprint Contract 第一步必做 live smoke test 验证 Starter tier 可用性
+  3. market_breakout_scans 只存最新快照（D040），覆盖写入
+  4. chart 端点扩展 on-demand fallback（D041，落实 D033），前端 ChartWidget 零改动
+  5. 独立 scanner cron（D042），错开 watchlist refresh 避免 token bucket 竞争
+
+📊 API 调用预算：
+  - universe refresh（月级）：3 次 screener
+  - 每日扫描：~280 次 SMA
+  - 300/min token bucket + burst 50 → 单次扫描约 56s，符合 <90s 目标
+
+📐 架构约束确认：
+  - widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'
+  - universe 通过 exchange=NYSE/NASDAQ/AMEX 分别查询（不带 country）覆盖 ADR
+  - market_scan_universe / market_breakout_scans 均不做 FK 到 stocks（解耦）
+
+📊 功能状态：
+  F000-a/b/c、F001-F008、F100-F102、F104：✅ done
+  F103：⛔ deprecated
+  F105：📝 design_needed（系统设计已完成，phase 推进需 design-bridge 验证后自动→ready_to_dev）
+
+[下一步]
+  触发 design-bridge skill（无 Figma，在 design-spec.md 手写规格）：
+    - Scanner widget 视觉规格：布局、表格列、+ 按钮 3 态（idle/loading/added）
+    - 空态 "No breakouts today" / "Waiting for today's scan" / 错误态
+    - 移动端响应式（表格横向滚动）
+    - WidgetShell 尺寸适配 + react-grid-layout defaultLayout 建议值（w/h/minW/minH）
+    - 一致性验证通过后 phase → ready_to_dev
+  然后进入 feature-dev S1（F105-a 后端 universe refresh + scanner + GET breakouts）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-20] Pipeline 阶段 0（迭代模式）：v1.2 迭代 — F105 Market Breakout Scanner 规划
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - features.json 追加 F105（phase: design_needed），version 1.1.0 → 1.2.0
+  - _iteration_log 追加 v1.2 条目（added: [F105]）
+  - _pipeline_status.current_iteration → v1.2；system_design → in_progress
+  - PRD.md 追加「版本迭代记录 → v1.2」
+  - 备份 .features.json.bak
+
+🔎 需求摘要：
+  - 扫描 universe：NYSE/NASDAQ/AMEX 全美股可交易股票（含 ADR），市值≥500亿
+  - 信号判定（沿用 F002 规则）：昨日<MA150 / 今日≥MA150 / 幅度≤10% / 20 日斜率>0
+  - 调度：每日盘后自动跑，结果只存最新快照（market_breakout_scans 表）
+  - 点击 ticker 联动现有 ChartWidget：方案 A = 扩展 /api/stocks/:ticker/chart 加 on-demand fallback（前端零改动）
+  - 行内 + 按钮一键加入 watchlist（复用 POST /api/watchlist）
+  - Widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'
+
+⚠️ 待系统设计决策（S1 Sprint Contract 前必须解决）：
+  1. FMP screener 端点不在 D034 映射表中 → 需补映射 + context7 验证 /stable/screener 参数
+  2. 扫描数据策略：/stable/technical-indicators/sma 直出 vs 批量拉 151 天 EOD 自算
+  3. 扫描调度时间与现有 REFRESH_CRON_HOUR=6 的先后关系
+  4. market_breakout_scans 表 schema 与索引策略
+
+📊 功能状态：
+  F000-a/b/c、F001-F008、F100-F102、F104：✅ done
+  F103：⛔ deprecated（被 F104 吸收）
+  F105：📝 design_needed（本次新增）
+
+🪞 过程反思：
+  - 初稿方案遗漏 WidgetRegistry 架构约束（category 限制、ChartWidget 复用路径），
+    根因是先凭 features.json 概念推断方案、后补读架构文件。已存 memory
+    feedback_read_architecture_before_drafting.md 作长期约束
+
+[下一步]
+  触发 system-design skill：
+    - 补 DATA-MODEL.md（market_breakout_scans 表）
+    - 补 API-CONTRACT.md（GET /api/market/breakouts + 扩展 /api/stocks/:ticker/chart）
+    - 补 ARCHITECTURE.md FMP 端点映射（screener）
+    - 补 DECISIONS.md 4 条新决策
+  随后触发 design-bridge（无 Figma → 在 design-spec.md 手写规格）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-19] Sprint：F104-S1 FMP 客户端 + 测试替身
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -140,3 +230,48 @@
 - NDX 402 Payment Required：FMP Starter 不含 ^NDX；按用户选择改用 QQQM ETF 价格
 - DECISIONS.md 新增 D037；验收记录 docs/验收/v1.0-deploy-hotfix.md
 - pytest test_market_refresh.py 8/8 通过；浏览器验证三个指标齐全
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-20] F105 推进到 ready_to_dev（跳过 design-bridge）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - features.json F105.notes 追加"视觉沿用清单"（7 条），替代 design-spec
+  - DECISIONS.md 新增 D043：widget 类 feature 跳过 design-bridge 的通用规则
+  - F105 phase：design_needed → ready_to_dev
+
+📊 功能状态：
+  F105 Market Breakout Scanner Widget：⚙️ ready_to_dev
+
+[下一步]
+  触发 feature-dev skill，启动 F105-a Sprint Contract：
+  后端 universe refresh + scanner + GET /api/market/breakouts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-20] Sprint：F105-a1 Market Scan 数据层脚手架
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新增 MarketScanUniverse / MarketBreakoutScan 两个 ORM model（对照 DATA-MODEL L230-288）
+  - alembic 迁移 002_f105_market_scan_tables（up/down 干净）
+  - MarketScanUniverseRepository：upsert_many / list_active / latest_refresh_time / count
+  - MarketBreakoutRepository：replace_scan（begin_nested 单事务）/ get_latest_snapshot（pct ASC）
+  - 单元测试 9 个（含 replace_scan 中途异常原子性验证）
+  - 回归：188 passed（live smoke 默认 skip）
+  - phase → needs_review
+
+⚠️ 待决策：无
+
+🔧 系统变更：
+  - 新表 market_scan_universe / market_breakout_scans
+  - test_schema.py EXPECTED_* 同步新表
+
+📊 功能状态：
+  F105-a1 数据层：🔍 needs_review
+  F105-a2 FMP 客户端扩展：⬜ planned（解锁）
+  F105-a3 扫描与调度服务：⬜ planned（待 a2）
+  F105-a4 读端点：⬜ planned（待 a3）
+  F105-b/c：⬜ planned
+
+[下一个 Session]
+  开发 F105-a2（FMP screener + sma + EOD fallback + config/.env + client 单测与 live smoke）

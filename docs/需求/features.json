@@ -1,17 +1,17 @@
 {
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench",
-  "version": "1.1.0",
-  "last_updated": "2026-04-19",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。",
-  "completion_rate": "v1.0.0 + v1.1.0 + F104 全部 done",
+  "version": "1.2.0",
+  "last_updated": "2026-04-20",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。",
+  "completion_rate": "v1.0.0 + v1.1.0 + F104 全部 done；v1.2 F105 规划中",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
-    "ui_design": "done",
-    "development": "in_progress",
+    "ui_design": "not_started",
+    "development": "not_started",
     "deployment": "not_started",
-    "current_iteration": "v1.1"
+    "current_iteration": "v1.2"
   },
   "_iteration_log": [
     {
@@ -46,6 +46,15 @@
       "released_at": "2026-04-19",
       "released_tag": "v1.1.0",
       "description": "Workbench 重构：Dashboard/Journal/Logs 三页合并为单页 widget 工作台。F001-F008 作为首批 widget 保留，不重新开发"
+    },
+    {
+      "version": "v1.2",
+      "date": "2026-04-20",
+      "added": ["F105"],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "新增 Market Breakout Scanner widget：每日盘后扫描全美股市值≥500亿且今日 MA150 breakout（昨日< MA / 今日≥MA / 幅度≤10% / 斜率>0）的候选。新 widget category 'scanner'"
     }
   ],
   "_phase_legend": {
@@ -1226,6 +1235,115 @@
       "iteration_history": [],
       "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调",
       "completed_at": "2026-04-19"
+    },
+    {
+      "id": "F105",
+      "_split_log": [
+        {
+          "date": "2026-04-20",
+          "action": "split F105 into a1/a2/a3/a4/b/c (6-file rule)",
+          "approved_by": "user"
+        }
+      ],
+      "subtasks": {
+        "F105-a1": {
+          "scope": "数据层脚手架：2 ORM models + alembic migration + 2 repositories + repo 单测（models/__init__.py 计为 trivial edit）",
+          "phase": "needs_review",
+          "depends_on": [],
+          "completed_at": "2026-04-20"
+        },
+        "F105-a2": {
+          "scope": "FMP 客户端扩展：screener + sma + EOD fallback + config/.env + client 单测与 live smoke",
+          "phase": "planned",
+          "depends_on": ["F105-a1"]
+        },
+        "F105-a3": {
+          "scope": "UniverseRefreshService + MarketScannerService + refresh_job 挂独立 cron + 服务层测试",
+          "phase": "planned",
+          "depends_on": ["F105-a1", "F105-a2"]
+        },
+        "F105-a4": {
+          "scope": "GET /api/market/breakouts router + schema + test_market_api 追加",
+          "phase": "planned",
+          "depends_on": ["F105-a3"]
+        },
+        "F105-b": {
+          "scope": "后端 on-demand chart fallback（扩展 /api/stocks/:ticker/chart）",
+          "phase": "planned",
+          "depends_on": ["F105-a1"]
+        },
+        "F105-c": {
+          "scope": "前端 MarketBreakoutWidget + WidgetRegistry 注册",
+          "phase": "planned",
+          "depends_on": ["F105-a4", "F105-b"]
+        }
+      },
+      "name": "Market Breakout Scanner Widget",
+      "description": "每日盘后扫描全美股（NYSE/NASDAQ/AMEX 可交易股票，含 ADR）市值≥500亿美元的股票池，筛出今日 MA150 穿越候选（昨日收盘<MA150 且今日收盘≥MA150，且今日价≤MA150×1.10，且 MA150 的 20 日线性回归斜率>0），展示为 Workbench 的新 widget（category: scanner, id: scanner.breakouts）。点击 ticker 联动现有 ChartWidget（后端单端点加 on-demand fallback，非 watchlist ticker 临时拉 FMP 不入库）；行内圆形 + 按钮一键加入 watchlist",
+      "user_story": "作为美股投资者，我想每天盘后看到大市值股票中当日刚穿越 150 日均线且幅度<10% 的候选，这样我能在 watchlist 之外发现新的买入机会",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "ready_to_dev",
+      "dependencies": [
+        "F102",
+        "F104"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Workbench / (新 widget scanner.breakouts)"
+        ],
+        "api_endpoints": [
+          "GET /api/market/breakouts",
+          "GET /api/stocks/:ticker/chart (扩展现有端点：非 watchlist ticker fallback 到 FMP on-demand，不入 DailyBar 表)"
+        ],
+        "db_tables": [
+          "market_breakout_scans (新表，当日快照覆盖写)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#GET-/api/market/breakouts",
+          "API-CONTRACT.md#GET-/api/stocks/:ticker/chart (F105 扩展 on-demand fallback 分支)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#marketscanuniverse",
+          "DATA-MODEL.md#marketbreakoutscan"
+        ],
+        "decision_refs": [
+          "DECISIONS.md#D038 universe 解耦月级刷新",
+          "DECISIONS.md#D039 SMA 端点主路径 + EOD fallback",
+          "DECISIONS.md#D040 只存最新快照",
+          "DECISIONS.md#D041 扩展 chart 端点而非新建",
+          "DECISIONS.md#D042 独立 scanner cron"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Workbench WidgetRegistry 新增 scanner.breakouts 条目（新 category 'scanner'），加一行即挂载",
+        "每日美股收盘后自动扫描：universe 为 NYSE/NASDAQ/AMEX 全美股可交易股票（含 ADR），市值≥500亿美元",
+        "信号判定：昨日收盘 < MA150 且今日收盘 ≥ MA150，且今日价 ≤ MA150 × 1.10，且 MA150 最近 20 日线性回归斜率 > 0（沿用 F002 规则）",
+        "扫描结果覆盖写入 market_breakout_scans 表，只保留最新一次快照，不保留历史",
+        "widget 展示字段：ticker / 公司名 / 今日股价 / 超过 MA150 幅度%，按幅度升序排列",
+        "空态：当日无符合条件标的时，widget 显示 'No breakouts today' 占位",
+        "点击 ticker → 触发 AppStore.setSelectedSymbol，现有 ChartWidget 同步展示 1 年 EOD 走势 + MA150；非 watchlist ticker 通过扩展 /api/stocks/:ticker/chart 服务端 fallback 拉 FMP，不写 DailyBar 表，前端 ChartWidget 零改动",
+        "每行 ticker 旁圆形 + 按钮，点击调用 POST /api/watchlist 加入 watchlist；成功后按钮变为已添加态，其他行不受影响",
+        "已在 watchlist 的 ticker，+ 按钮显示为禁用/已添加",
+        "全生产 universe（≈250-300 只）单次扫描 <90s；FMP 300/min token bucket 不触发阻塞",
+        "扫描失败或 FMP 异常：记录 SystemLog ERROR；widget 显示错误提示",
+        "移动端响应式：窄宽度下表格横向滚动或折叠展示",
+        "pnpm build + pytest 全绿；现有 widget（ChartWidget 除端点行为外、WatchlistWidget、Fundamentals 等）无回归"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "【系统设计待决策（S1 Sprint Contract 前必须解决）】(1) FMP screener 端点不在 D034 映射表中，需在 ARCHITECTURE.md 补映射，并通过 context7 验证 /stable/screener 参数形态（marketCapMoreThan / exchange / isActivelyTrading 等）。(2) 扫描数据获取策略：方案 X 用 /stable/technical-indicators/sma?periodLength=150 直出 SMA 值，方案 Y 批量拉 151 天 EOD 自算 MA150+斜率，方案 Z 两者组合。300/min rate limit 下需在 system-design 阶段评估 API 调用量。(3) 扫描调度时间：与现有 EOD refresh (REFRESH_CRON_HOUR=6) 的先后关系、是否独立 cron。(4) market_breakout_scans 表 schema：scan_date / ticker / company_name / close_price / ma150_value / pct_above_ma150 / slope_value / market_cap / scanned_at + 索引策略。【架构约束】widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'，component 无 props 靠 AppStore+hooks。【on-demand chart 决策】用户选方案 A：扩展 /api/stocks/:ticker/chart 服务端加 fallback，前端 ChartWidget 零改动。【预计拆分】F105-a 后端扫描引擎+调度+表+GET breakouts；F105-b 后端 on-demand chart fallback；F105-c 前端 MarketBreakoutWidget+注册（feature-dev 阶段正式拆分）。【localStorage】单用户项目，手动 reset 布局即可，不做自动迁移。【视觉沿用清单（替代 design-spec，依据 D043）】(1) WidgetShell 与 Watchlist/Chart 保持一致（title bar + body padding + border-radius）。(2) 表格样式沿用 WatchlistWidget：列顺序 Ticker → Company → Close → % Above MA150；字体/行高/hover 态直接复用。(3) + 按钮：shadcn Button variant='ghost' size='icon' + lucide-react Plus 图标，rounded-full；三态 idle / loading (Loader2 spin) / added (Check 灰显 disabled)。(4) 列表默认按 pctAboveMa150 升序。(5) 空态文案：scanDate=null → 'Waiting for today\u2019s scan'；items 为空 → 'No breakouts today'。(6) 移动端 overflow-x-auto 横滚，不折叠。(7) defaultLayout：{x:0, y:16, w:8, h:8, minW:5, minH:5}。",
+      "completed_at": null
     }
   ]
 }
