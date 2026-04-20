@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-19
-last_modified_by: system-design (D034 polygon→fmp migration)
+confirmed_at: 2026-04-20
+last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on-demand fallback)
 ---
 
 # API-CONTRACT.md
 
-> 最后更新：2026-04-19 | 状态：已确认
+> 最后更新：2026-04-20 | 状态：已确认
 > ⚠️ 新增 API 必须先在此文档定义，经用户确认后才能实现。
 > ⚠️ 修改已有接口必须同步更新此文档，并评估前端影响。
 
@@ -283,12 +283,19 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 ## Stock Detail（/api/stocks/:ticker）
 
 ### GET /api/stocks/:ticker/chart
-> Feature：F005 个股详情
+> Feature：F005 个股详情；F105 扩展（non-watchlist on-demand fallback，见 D041）
 
 **用途**：获取 K 线图表数据（OHLCV + MA150 值）。数据来源 D034 起为 FMP `/stable/historical-price-eod/full`，后端在 service 层将 FMP 响应（`date / open / high / low / close / volume`）转成本契约；响应 schema 保持不变
 **认证**：不需要
 
 **路径参数**：`ticker` — 股票代码
+
+**服务端行为分支（F105 / D041 新增）**：
+1. 查 `stocks` 表（不限 `is_active`）：
+   - **命中** → 走原逻辑：从本地 `DailyBar` 读取 + service 层 MA150 计算 + 查 `Pullback` 表生成 `pullbackMarkers`
+   - **未命中** → fallback on-demand 拉 FMP `/stable/historical-price-eod/full?symbol={ticker}&from=(今日-400天)&to=今日`，服务端计算 MA150 序列（取约 250 个交易日窗口），不写 `DailyBar` 表；`pullbackMarkers` 固定返回空数组（Scanner 场景无历史回踩需求）
+2. 两条分支的响应 schema **完全一致**，前端不需分支逻辑
+3. FMP 返回 404 / 空数据 → 返回本契约的 `NOT_FOUND` 错误码
 
 **成功响应（200）**：
 ```json
@@ -331,7 +338,8 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
-| ticker 不在 watchlist 中 | NOT_FOUND | 404 |
+| ticker 不在 watchlist 且 FMP on-demand 拉取失败 / 返回空 | NOT_FOUND | 404 |
+| FMP 外部服务异常 | EXTERNAL_SERVICE_ERROR | 502 |
 
 ---
 
@@ -530,6 +538,54 @@ last_modified_by: system-design (D034 polygon→fmp migration)
   "message": "success"
 }
 ```
+
+---
+
+### GET /api/market/breakouts
+> Feature：F105 Market Breakout Scanner Widget
+
+**用途**：读取最新一次扫描快照（市值≥500亿且今日 MA150 breakout 候选）。纯读端点，不触发扫描；扫描由调度器（`SCANNER_CRON_*`）每日盘后自动执行。
+**认证**：不需要
+
+**成功响应（200）**：
+```json
+{
+  "data": {
+    "scanDate": "2026-04-20",
+    "scannedAt": "2026-04-20T22:15:03Z",
+    "items": [
+      {
+        "ticker": "NVDA",
+        "companyName": "NVIDIA Corp",
+        "closePrice": 850.50,
+        "ma150Value": 812.30,
+        "pctAboveMa150": 4.70,
+        "marketCap": 2100000000000
+      }
+    ],
+    "total": 1
+  },
+  "message": "success"
+}
+```
+
+**说明**：
+- `scanDate`：扫描所依据的交易日（美东日历）。首次部署 / 尚未有任何扫描完成时为 `null`
+- `scannedAt`：扫描任务执行完成的 UTC 时间；`scanDate` 为 `null` 时本字段也为 `null`
+- `items`：按 `pctAboveMa150` 升序排列（最贴近 MA150 的 breakout 排在前）
+- 无命中标的时返回 `{scanDate: "<date>", scannedAt: "<ts>", items: [], total: 0}`（前端据此显示"No breakouts today"）
+- 尚无任何扫描快照时返回 `{scanDate: null, scannedAt: null, items: [], total: 0}`（前端据此显示"Waiting for today's scan"）
+- 所有金额 / 价格数值按 2 位小数四舍五入返回；`marketCap` 以原始整数返回
+
+**错误响应**：
+
+| 场景 | 错误码 | HTTP |
+|------|--------|------|
+| 数据库异常 | INTERNAL_SERVER_ERROR | 500 |
+
+**不提供**：
+- 不提供历史快照查询（表设计为只存最新一次）
+- 不提供"触发立即扫描"端点（扫描仅由调度器执行；如需手动触发，后续可在 /api/data/refresh 扩展）
 
 ---
 

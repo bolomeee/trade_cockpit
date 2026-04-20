@@ -1,23 +1,60 @@
 {
   "_schema_version": "2.0",
-  "project": "MA150 Tracker",
-  "version": "1.0.0",
-  "last_updated": "2026-04-16",
-  "completion_rate": "0%",
+  "project": "MA150 Tracker → Workbench",
+  "version": "1.2.0",
+  "last_updated": "2026-04-20",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。",
+  "completion_rate": "v1.0.0 + v1.1.0 + F104 全部 done；v1.2 F105 规划中",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
     "ui_design": "not_started",
     "development": "not_started",
     "deployment": "not_started",
-    "current_iteration": "v1.0"
+    "current_iteration": "v1.2"
   },
   "_iteration_log": [
     {
       "version": "v1.0",
       "date": "2026-04-16",
-      "features_snapshot": ["F001", "F002", "F003", "F004", "F005", "F006", "F007"],
-      "status": "in_progress"
+      "features_snapshot": [
+        "F001",
+        "F002",
+        "F003",
+        "F004",
+        "F005",
+        "F006",
+        "F007-a",
+        "F007-b",
+        "F007-c",
+        "F007-d",
+        "F008"
+      ],
+      "status": "done",
+      "released_at": "2026-04-18",
+      "released_tag": "v1.0.0"
+    },
+    {
+      "version": "v1.1",
+      "date": "2026-04-18",
+      "features_snapshot": [
+        "F100",
+        "F101",
+        "F102"
+      ],
+      "status": "done",
+      "released_at": "2026-04-19",
+      "released_tag": "v1.1.0",
+      "description": "Workbench 重构：Dashboard/Journal/Logs 三页合并为单页 widget 工作台。F001-F008 作为首批 widget 保留，不重新开发"
+    },
+    {
+      "version": "v1.2",
+      "date": "2026-04-20",
+      "added": ["F105"],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "新增 Market Breakout Scanner widget：每日盘后扫描全美股市值≥500亿且今日 MA150 breakout（昨日< MA / 今日≥MA / 幅度≤10% / 斜率>0）的候选。新 widget category 'scanner'"
     }
   ],
   "_phase_legend": {
@@ -38,30 +75,228 @@
   },
   "features": [
     {
+      "id": "F000-a",
+      "name": "后端脚手架 + 数据库基座",
+      "description": "初始化 backend/ 目录：FastAPI 入口、SQLAlchemy engine、所有 ORM models 定义、Alembic 初始化并生成初始 migration、/health 探活接口",
+      "user_story": "作为开发者，我需要一个可运行的后端骨架，能启动 FastAPI 服务并连接 SQLite 数据库",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /health"
+        ],
+        "db_tables": [
+          "stocks",
+          "daily_bars",
+          "signals",
+          "pullbacks",
+          "market_indices",
+          "system_logs",
+          "journal_entries"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md#orm-schema"
+        ],
+        "acceptance_type": "infrastructure"
+      },
+      "acceptance_criteria": [
+        "uv run uvicorn app.main:app 可正常启动 FastAPI 服务",
+        "GET /health 返回 200 和 {\"status\": \"ok\"}",
+        "alembic upgrade head 成功创建所有 7 张表",
+        "ORM 字段命名与 DATA-MODEL.md 完全一致",
+        "pytest 通过 /health 集成测试"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "脚手架固有最小文件数超过常规 6 文件上限，已获用户批准例外（DECISIONS D010）",
+      "completed_at": "2026-04-17"
+    },
+    {
+      "id": "F000-b",
+      "name": "前端脚手架 + 路由基座",
+      "description": "初始化 frontend/ 目录：Vite + React 19 + TS 6 + Tailwind v4 + shadcn/ui（radix-nova），三个空页面路由（Dashboard/Journal/Logs），tokens.css 接入（详见 DECISIONS D011/D012）",
+      "user_story": "作为开发者，我需要一个可运行的前端骨架，能启动 Vite 开发服务器并渲染三个空页面",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F000-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/package.json",
+        "frontend/vite.config.ts",
+        "frontend/tsconfig.json",
+        "frontend/tsconfig.app.json",
+        "frontend/tsconfig.node.json",
+        "frontend/index.html",
+        "frontend/components.json",
+        "frontend/.gitignore",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/index.css",
+        "frontend/src/styles/tokens.css",
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/pages/Journal.tsx",
+        "frontend/src/pages/Logs.tsx",
+        "frontend/src/lib/utils.ts",
+        "frontend/src/components/ui/button.tsx",
+        "src/styles/tokens.css (deleted)",
+        "docs/系统设计/DECISIONS.md",
+        "claude-progress.txt"
+      ],
+      "scope": {
+        "pages": [
+          "/",
+          "/journal",
+          "/logs"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "infrastructure"
+      },
+      "acceptance_criteria": [
+        "pnpm dev 可正常启动 Vite 开发服务器",
+        "三个路由 / /journal /logs 均渲染空页面（带 H1 标题）",
+        "Tailwind v4 工作正常（通过测试类名验证）",
+        "tokens.css 中的 CSS 变量可在页面中引用",
+        "shadcn/ui 可正常引入组件（Button 演示）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "",
+      "completed_at": "2026-04-17"
+    },
+    {
+      "id": "F000-c",
+      "name": "Docker Compose + Polygon Client",
+      "description": "docker-compose 一键启动前后端、前后端 Dockerfile、nginx 反向代理配置、Polygon.io 客户端封装（含 5 次/分钟 rate limit）",
+      "user_story": "作为开发者，我需要一键启动完整环境并能调用 Polygon.io API",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F000-a",
+        "F000-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "docker-compose.yml",
+        ".env.example",
+        ".env (gitignored)",
+        "backend/Dockerfile",
+        "backend/.dockerignore",
+        "backend/pyproject.toml",
+        "backend/app/external/__init__.py",
+        "backend/app/external/polygon_client.py",
+        "backend/tests/test_polygon_client.py",
+        "frontend/Dockerfile",
+        "frontend/.dockerignore",
+        "frontend/nginx.conf"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "infrastructure"
+      },
+      "completed_at": "2026-04-17",
+      "acceptance_criteria": [
+        "docker compose up 可同时启动前后端并互相通信",
+        "nginx 将 /api/* 正确反向代理到后端",
+        "PolygonClient.search('AAPL') 返回有效结果",
+        "PolygonClient 在短时间内超过 5 次调用时自动等待（rate limit 合规）",
+        "单元测试覆盖 rate limit 逻辑"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Polygon API key 从 .env 读取，测试时可 mock。F000-c 验收结论：D013（massive 包选型）+ D014（token bucket rate limit）"
+    },
+    {
       "id": "F001",
       "name": "Watchlist 管理",
       "description": "用户可以管理自选股列表：搜索美股代码/名称添加股票，删除不再关注的股票，查看当前 watchlist",
       "user_story": "作为美股投资者，我想管理我关注的股票列表，这样我只看到我在意的标的",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": [],
-      "estimated_sessions": 2,
+      "status": "done",
+      "phase": "done",
+      "completed_at": null,
+      "dependencies": [
+        "F000-c"
+      ],
+      "estimated_sessions": 3,
       "estimated_files_changed": [],
+      "subtasks": {
+        "F001-a": {
+          "scope": "Backend watchlist + search API",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F001-b": {
+          "scope": "Frontend watchlist 读取展示 + empty/error",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F001-c": {
+          "scope": "Frontend AddStock/search/delete 交互",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        }
+      },
       "scope": {
-        "pages": ["首页 / Dashboard /"],
+        "pages": [
+          "Dashboard / (Add Stock 快捷表单)"
+        ],
         "api_endpoints": [
           "GET /api/watchlist",
           "POST /api/watchlist",
           "DELETE /api/watchlist/:ticker",
           "GET /api/stocks/search?q="
         ],
-        "db_tables": ["Stock"],
-        "design_figma_link": ""
+        "db_tables": [
+          "Stock"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#watchlist", "API-CONTRACT.md#stock-search"],
-        "data_model_refs": ["DATA-MODEL.md#stock"],
+        "api_refs": [
+          "API-CONTRACT.md#watchlist",
+          "API-CONTRACT.md#stock-search"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#stock"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -80,8 +315,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "",
-      "completed_at": null
+      "notes": ""
     },
     {
       "id": "F002",
@@ -89,23 +323,44 @@
       "description": "基于日线数据计算每只股票的 150 日均线信号：BUY_ZONE（斜率正+价距0–5%）、BREAKOUT（斜率正+向上穿越）、NEUTRAL（其余）。使用 20 日线性回归斜率判定均线方向，仅斜率为正时产生买入信号。自动识别历史回踩记录",
       "user_story": "作为美股投资者，我想让系统自动计算 150MA 信号，这样我不用手动逐只检查",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
+      "status": "done",
+      "phase": "done",
       "dependencies": [],
       "estimated_sessions": 2,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/app/services/signal_engine.py",
+        "backend/app/repositories/signal_repository.py",
+        "backend/app/services/signal_service.py",
+        "backend/app/schemas/signal.py",
+        "backend/app/routers/signals.py",
+        "backend/app/main.py",
+        "backend/tests/test_signal_engine.py",
+        "backend/tests/test_signal_service.py",
+        "backend/tests/test_signals_api.py"
+      ],
+      "notes_override": "9 文件，已豁免 6 文件上限（用户同意 2026-04-17），理由见 docs/开发/sprint-contracts/F002-contract.md 和 DECISIONS D015",
       "scope": {
         "pages": [],
         "api_endpoints": [
           "GET /api/signals",
           "GET /api/signals/:ticker"
         ],
-        "db_tables": ["DailyBar", "Signal", "Pullback"],
-        "design_figma_link": ""
+        "db_tables": [
+          "DailyBar",
+          "Signal",
+          "Pullback"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals"],
-        "data_model_refs": ["DATA-MODEL.md#daily-bar", "DATA-MODEL.md#signal", "DATA-MODEL.md#pullback"],
+        "api_refs": [
+          "API-CONTRACT.md#signals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#daily-bar",
+          "DATA-MODEL.md#signal",
+          "DATA-MODEL.md#pullback"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -125,7 +380,7 @@
       },
       "iteration_history": [],
       "notes": "信号判定优先级：BREAKOUT > BUY_ZONE > NEUTRAL",
-      "completed_at": null
+      "completed_at": "2026-04-17"
     },
     {
       "id": "F003",
@@ -133,23 +388,51 @@
       "description": "通过 Polygon.io API 拉取 EOD 日线数据，支持每日自动调度和用户手动触发刷新，遵守 5次/分钟的 rate limit",
       "user_story": "作为美股投资者，我想让数据每天自动更新，也能手动刷新，这样我总能看到最新信号",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": ["F001"],
-      "estimated_sessions": 2,
+      "status": "done",
+      "phase": "done",
+      "completed_at": null,
+      "dependencies": [
+        "F001"
+      ],
+      "estimated_sessions": 3,
+      "subtasks": {
+        "F003-a": {
+          "scope": "Data refresh core: DailyBar/SystemLog repos + DataRefreshService (backfill/increment/refresh_all)",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F003-b": {
+          "scope": "API routes + APScheduler + add_stock backfill hook",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F003-c": {
+          "scope": "Frontend TopNav Refresh Data button + status polling",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        }
+      },
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["首页 /（刷新按钮）"],
+        "pages": [
+          "首页 /（刷新按钮）"
+        ],
         "api_endpoints": [
           "POST /api/data/refresh",
           "GET /api/data/status"
         ],
-        "db_tables": ["DailyBar"],
-        "design_figma_link": ""
+        "db_tables": [
+          "DailyBar"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#data-refresh", "API-CONTRACT.md#system-logs"],
-        "data_model_refs": ["DATA-MODEL.md#daily-bar", "DATA-MODEL.md#system-log"],
+        "api_refs": [
+          "API-CONTRACT.md#data-refresh"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#daily-bar"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -159,7 +442,7 @@
         "每日自动调度在美股收盘后执行数据更新",
         "新添加的股票自动拉取过去 250 个交易日的历史日线数据",
         "每日增量更新：添加最新交易日数据、删除最早交易日数据，始终保持 250 天窗口",
-        "API 调用失败或异常时，在首页系统日志区域展示错误信息，记录时间和详情"
+        "API 调用失败或异常时，记录到 SystemLog（在 /logs 页面查看）"
       ],
       "test_cases": {
         "unit": [],
@@ -167,8 +450,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "Polygon.io Stocks Basic tier，需考虑 rate limiting 策略",
-      "completed_at": null
+      "notes": "Polygon.io Stocks Basic tier，需考虑 rate limiting 策略"
     },
     {
       "id": "F004",
@@ -176,29 +458,50 @@
       "description": "在首页展示所有自选股的当前 150MA 信号状态，按信号优先级排序（BREAKOUT/BUY_ZONE 等买入信号在前），信号类型用颜色区分",
       "user_story": "作为美股投资者，我想一眼看到所有股票的信号状态，这样我能快速发现交易机会",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": ["F001", "F002"],
+      "status": "done",
+      "phase": "done",
+      "completed_at": null,
+      "dependencies": [
+        "F001",
+        "F002"
+      ],
       "estimated_sessions": 2,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "frontend/src/types/signal.ts",
+        "frontend/src/lib/api/signals.ts",
+        "frontend/src/components/features/dashboard/StockDetailModal.tsx",
+        "frontend/src/components/features/dashboard/SignalBoard.tsx",
+        "frontend/src/components/features/dashboard/SignalCard.tsx",
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/components/features/dashboard/AddStockCard.tsx",
+        "frontend/src/hooks/useRefreshStatus.ts"
+      ],
       "scope": {
-        "pages": ["首页 /"],
+        "pages": [
+          "首页 /"
+        ],
         "api_endpoints": [
           "GET /api/signals"
         ],
-        "db_tables": ["Signal"],
-        "design_figma_link": ""
+        "db_tables": [
+          "Signal"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals"],
-        "data_model_refs": ["DATA-MODEL.md#signal"],
+        "api_refs": [
+          "API-CONTRACT.md#signals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#signal"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
         "首页 SignalBoard 展示所有 watchlist 股票及其当前信号类型",
         "BREAKOUT / BUY_ZONE 等买入信号排在列表最前面",
         "每种信号类型用不同的高饱和色彩标识（信号颜色是唯一高饱和色彩）",
-        "点击某只股票可跳转到个股详情页",
+        "点击某只股票弹出个股详情 Modal（纯前端弹窗，不改变 URL）",
         "移动端响应式布局，手机上可正常浏览"
       ],
       "test_cases": {
@@ -207,34 +510,49 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "",
-      "completed_at": null
+      "notes": ""
     },
     {
       "id": "F005",
-      "name": "个股 150MA 详情页",
-      "description": "展示单只股票的 150MA 专项详情：K线图表（价格+150MA均线）、均线斜率、价距%、历史回踩记录（在K线图上标识）、基本面数据（PE/PS/PEG/FCF）",
+      "name": "个股 150MA 详情 Modal",
+      "description": "Modal 弹窗展示单只股票的 150MA 专项详情：K线图表（价格+150MA均线）、均线斜率、价距%、历史回踩记录（在K线图上标识）、基本面数据（PE/PS/PEG/FCF）。纯前端弹窗，不改变 URL",
       "user_story": "作为美股投资者，我想查看个股的 150MA 详细分析，这样我能判断这次回踩的质量和值不值得买入",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": ["F002", "F003"],
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F002",
+        "F003"
+      ],
       "estimated_sessions": 3,
       "estimated_files_changed": [],
       "scope": {
-        "pages": ["个股详情 /stock/:ticker"],
+        "pages": [
+          "个股详情 Modal (Dashboard 弹窗，无独立路由)"
+        ],
         "api_endpoints": [
           "GET /api/signals/:ticker",
           "GET /api/stocks/:ticker/pullbacks",
           "GET /api/stocks/:ticker/chart",
           "GET /api/stocks/:ticker/fundamentals"
         ],
-        "db_tables": ["Signal", "Pullback", "DailyBar"],
-        "design_figma_link": ""
+        "db_tables": [
+          "Signal",
+          "Pullback",
+          "DailyBar"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#signals", "API-CONTRACT.md#stock-detail"],
-        "data_model_refs": ["DATA-MODEL.md#signal", "DATA-MODEL.md#pullback", "DATA-MODEL.md#daily-bar"],
+        "api_refs": [
+          "API-CONTRACT.md#signals",
+          "API-CONTRACT.md#stock-detail"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#signal",
+          "DATA-MODEL.md#pullback",
+          "DATA-MODEL.md#daily-bar"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -243,7 +561,8 @@
         "显示当前均线斜率（20 日线性回归斜率值及正/负状态）和价距百分比",
         "展示历史回踩记录表：触及日期、价距、后续 10/20/30 日涨幅",
         "展示基本面数据：市盈率(PE)、市销率(PS)、PEG、自由现金流(FCF)",
-        "移动端响应式，图表在手机上可正常查看"
+        "移动端响应式，图表在手机上可正常查看",
+        "关闭 Modal 回到 Dashboard，不影响 URL"
       ],
       "test_cases": {
         "unit": [],
@@ -251,8 +570,25 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "K线图表为 MVP 核心视觉组件，需选择合适的图表库",
-      "completed_at": null
+      "notes": "K线图表使用 TradingView lightweight-charts。Modal 形式，非独立页面",
+      "completed_at": "2026-04-17",
+      "subtasks": {
+        "F005-a": {
+          "scope": "Backend stock detail 3 endpoints",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F005-b": {
+          "scope": "Frontend Header/Pullback/Fundamentals + Modal 改造（移至 stock-detail/）",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        },
+        "F005-c": {
+          "scope": "PriceChart + lightweight-charts 集成",
+          "phase": "done",
+          "completed_at": "2026-04-17"
+        }
+      }
     },
     {
       "id": "F006",
@@ -260,22 +596,47 @@
       "description": "在首页展示大盘环境数据：标普500、纳斯达克指数涨跌、10年期美债利率，帮助用户判断市场整体环境",
       "user_story": "作为美股投资者，我想快速了解大盘环境，这样我能判断当前是否适合操作",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": ["F003"],
+      "status": "in_progress",
+      "phase": "testing",
+      "dependencies": [
+        "F003"
+      ],
       "estimated_sessions": 1,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/app/external/polygon_client.py",
+        "backend/app/repositories/market_index_repository.py",
+        "backend/app/services/market_refresh_service.py",
+        "backend/app/services/refresh_job.py",
+        "backend/tests/test_market_refresh.py",
+        "(F006-b) backend/app/schemas/market.py",
+        "(F006-b) backend/app/routers/market.py",
+        "(F006-b) backend/app/main.py",
+        "(F006-b) backend/tests/test_market_api.py",
+        "(F006-c) frontend/src/types/market.ts",
+        "(F006-c) frontend/src/lib/api/market.ts",
+        "(F006-c) frontend/src/hooks/useMarketOverview.ts",
+        "(F006-c) frontend/src/components/features/market-overview/MarketOverviewBar.tsx",
+        "(F006-c) frontend/src/App.tsx"
+      ],
       "scope": {
-        "pages": ["首页 /"],
+        "pages": [
+          "首页 /"
+        ],
         "api_endpoints": [
           "GET /api/market/overview"
         ],
-        "db_tables": ["MarketIndex"],
-        "design_figma_link": ""
+        "db_tables": [
+          "MarketIndex"
+        ],
+        "design_figma_link": "https://www.figma.com/design/Wk5znwTAjGZXPeDDKLtVSb/stock_portal?node-id=0-1&m=dev"
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#market"],
-        "data_model_refs": ["DATA-MODEL.md#market-index"],
+        "api_refs": [
+          "API-CONTRACT.md#market"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#market-index"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
@@ -293,38 +654,280 @@
       "completed_at": null
     },
     {
-      "id": "F007",
-      "name": "交易日志 Journal",
-      "description": "用户可以创建、查看、编辑交易决策记录，每条记录关联股票，包含操作类型（买/卖/加仓/减仓/观望）、价格、仓位大小（数字输入，加仓/减仓在当前仓位基础上调整）、止损位、目标价、买入原因和参考内容",
-      "user_story": "作为美股投资者，我想记录每次交易决策的完整上下文，这样我能复盘和提升交易质量",
+      "id": "F007-a",
+      "name": "交易日志 Journal — 后端 API",
+      "description": "Journal 四端接口（GET/POST/PUT/DELETE /api/journal）+ Repository/Service/Schema + 集成测试",
+      "user_story": "作为前端，我需要一套 Journal CRUD API 以支撑 /journal 页面和 Dashboard 快捷表单",
       "priority": "P0",
-      "status": "not_started",
-      "phase": "design_needed",
-      "dependencies": ["F001"],
-      "estimated_sessions": 2,
-      "estimated_files_changed": [],
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-17",
+      "dependencies": [
+        "F001"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/repositories/journal_repository.py",
+        "backend/app/services/journal_service.py",
+        "backend/app/schemas/journal.py",
+        "backend/app/routers/journal.py",
+        "backend/app/main.py",
+        "backend/tests/test_journal_api.py"
+      ],
       "scope": {
-        "pages": ["交易日志 /journal"],
+        "pages": [],
         "api_endpoints": [
           "GET /api/journal",
           "POST /api/journal",
           "PUT /api/journal/:id",
           "DELETE /api/journal/:id"
         ],
-        "db_tables": ["JournalEntry"],
-        "design_figma_link": ""
+        "db_tables": [
+          "JournalEntry"
+        ],
+        "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#journal"],
-        "data_model_refs": ["DATA-MODEL.md#journal-entry"],
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "用户可以新建交易记录，填写：股票代码、操作类型（买/卖/加仓/减仓/观望）、价格、日期",
-        "用户可以填写仓位大小（数字输入，加仓/减仓时在当前仓位基础上调整）、止损位、目标价",
-        "用户可以填写买入原因（文本）和参考内容（大文本框，支持多行）",
-        "Journal 列表页按日期倒序展示所有记录",
-        "用户可以编辑和删除已有记录"
+        "GET /api/journal 按 date 倒序返回 items + total + limit + offset",
+        "GET 支持 ticker / action / limit / offset 过滤与分页",
+        "POST /api/journal 创建成功返回 201 + 完整 entry（含 stockName）",
+        "POST 校验：ticker 必须在 watchlist 中（404 NOT_FOUND），action 非法（422），必填缺失（422）",
+        "PUT /api/journal/:id 支持部分字段更新；id 不存在返回 404",
+        "DELETE /api/journal/:id 成功返回 { id, deleted: true }；id 不存在返回 404",
+        "所有响应 JSON 字段命名符合 API-CONTRACT（camelCase），数据库字段命名符合 DATA-MODEL（snake_case）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F007 拆分为 a/b/c/d（2026-04-17，因 18+ 文件超出 6 上限）"
+    },
+    {
+      "id": "F007-b",
+      "name": "交易日志 Journal — 前端列表 + 筛选 + 删除",
+      "description": "/journal 页面：类型、API client、列表 Table（含 Row 展开详情）、ActionBadge、FilterCard、删除（AlertDialog）",
+      "user_story": "作为美股投资者，我想在 /journal 查看所有交易记录、按股票/操作过滤、删除不想要的条目",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-17",
+      "dependencies": [
+        "F007-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/types/journal.ts",
+        "frontend/src/lib/api/journal.ts",
+        "frontend/src/pages/Journal.tsx",
+        "frontend/src/components/features/journal/JournalTable.tsx",
+        "frontend/src/components/features/journal/ActionBadge.tsx",
+        "frontend/src/components/features/journal/JournalFilterCard.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "交易日志 /journal"
+        ],
+        "api_endpoints": [
+          "GET /api/journal",
+          "DELETE /api/journal/:id"
+        ],
+        "db_tables": [],
+        "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=0-1&m=dev"
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "/journal 页面替换占位，渲染 TopNav + MarketOverviewBar + HeaderRow(+New Entry 暂不可用) + FilterCard + Table",
+        "Table 按 date 倒序展示全部 entries；空/加载/错误三态均按 design-spec",
+        "JournalRow 可通过 chevron 展开，显示 reason / reference / stopLoss / targetPrice",
+        "ActionBadge 5 枚举色使用 --color-action-* token",
+        "FilterCard：Ticker Select（watchlist 去重） + Action Select（含 All） + Clear Filters（前端过滤）",
+        "Delete：shadcn AlertDialog 二次确认 → DELETE /api/journal/:id → invalidate query",
+        "JournalRow 内联（不单开文件），保持 6 文件上限"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "+ New Entry 按钮渲染但禁用/无响应，F007-c 实现新建/编辑"
+    },
+    {
+      "id": "F007-c",
+      "name": "交易日志 Journal — 新建/编辑 Dialog",
+      "description": "JournalEntryDialog + JournalEntryForm（react-hook-form + zod 校验），接入 /journal 的 New/Edit 入口",
+      "user_story": "作为美股投资者，我想通过 Dialog 录入完整字段的交易记录（新建和编辑）",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F007-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/components/features/journal/JournalEntryDialog.tsx",
+        "frontend/src/components/features/journal/JournalEntryForm.tsx",
+        "frontend/src/pages/Journal.tsx",
+        "frontend/src/components/ui/select.tsx",
+        "frontend/src/components/ui/label.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "交易日志 /journal（Dialog）"
+        ],
+        "api_endpoints": [
+          "POST /api/journal",
+          "PUT /api/journal/:id"
+        ],
+        "db_tables": [],
+        "design_figma_link": "https://www.figma.com/design/uoZCLcuEglJh87mfP15C9o/trade_journal?node-id=1-382&m=dev"
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "点击 + New Entry 或行 Edit 打开 Dialog；Title 根据 mode 切换",
+        "表单字段：Ticker*/Date*/Action*/Price*/Position/StopLoss/Target/Reason/Reference，校验规则按 design-spec",
+        "提交：mode=new → POST，mode=edit → PUT；成功关闭 Dialog 并 invalidate query",
+        "字段级错误（VALIDATION_ERROR）在字段下方显示红字；表单级错误在 Footer 上方显示",
+        "DatePicker 使用 input[type=date]（避免引入 calendar 组件；与 design-spec 偏离需回写）",
+        "Action=WATCH 时 Position 字段禁用"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "引入新依赖 react-hook-form + zod，需走新依赖流程 + DECISIONS 记录",
+      "completed_at": "2026-04-18"
+    },
+    {
+      "id": "F007-d",
+      "name": "交易日志 Journal — Dashboard QuickAdd",
+      "description": "Dashboard 右侧 JournalQuickAddCard（3 字段：ticker / action / price）+ 挂载",
+      "user_story": "作为美股投资者，我想在 Dashboard 直接快捷记录一条最简交易",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F007-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/components/features/dashboard/JournalQuickAddCard.tsx",
+        "frontend/src/pages/Dashboard.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Dashboard /"
+        ],
+        "api_endpoints": [
+          "POST /api/journal"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#journal"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#journal-entry"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Dashboard 右侧出现 JournalQuickAddCard（3 字段 + Add Entry 按钮）",
+        "提交调用 POST /api/journal，成功清空表单，失败显示内联错误",
+        "空 ticker/action/price 禁用提交按钮"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "对应 PRD 验收条款『Dashboard Trade Journal Widget』，按 design-spec 简化为 3 字段快捷表单",
+      "completed_at": "2026-04-18"
+    },
+    {
+      "id": "F008",
+      "name": "系统日志页面",
+      "description": "独立页面展示系统运行日志（数据同步、信号计算、调度等），支持按级别 toggle 过滤（ALL/OK/INFO/WARN/ERROR），按时间倒序排列",
+      "user_story": "作为用户，我想查看系统运行日志，这样我能了解数据同步和信号计算的执行情况",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "subtasks": {
+        "F008-a": {
+          "name": "后端 /api/logs API",
+          "phase": "done",
+          "completed_at": "2026-04-18"
+        },
+        "F008-b": {
+          "name": "前端 /logs 页面",
+          "phase": "done",
+          "completed_at": "2026-04-18"
+        }
+      },
+      "dependencies": [
+        "F003"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "系统日志 /logs"
+        ],
+        "api_endpoints": [
+          "GET /api/logs"
+        ],
+        "db_tables": [
+          "SystemLog"
+        ],
+        "design_figma_link": "https://www.figma.com/design/ReibtcedQZ2Zynr5goIUGG/system_logs?node-id=0-1&m=dev"
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#system-logs"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#system-log"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "独立页面 /logs 展示所有系统日志",
+        "支持按级别 toggle 过滤：ALL / OK / INFO / WARN / ERROR",
+        "日志表格显示：Timestamp、Level（彩色 Badge）、Source、Message",
+        "按 created_at 倒序排列",
+        "顶部导航栏有 Logs tab 可进入此页面"
       ],
       "test_cases": {
         "unit": [],
@@ -333,6 +936,373 @@
       },
       "iteration_history": [],
       "notes": "",
+      "completed_at": "2026-04-18"
+    },
+    {
+      "id": "F100",
+      "name": "Workbench 框架",
+      "description": "引入 react-grid-layout + zustand，搭建 Workbench 单页面 widget 容器、WidgetRegistry、WidgetShell 标准外壳、跨 widget AppStore。临时挂 /workbench 路由，老路由不动",
+      "user_story": "作为用户，我想在单一页面上看到所有 widget 并可以拖拽重排",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-18",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/package.json",
+        "frontend/src/workbench/WidgetRegistry.ts",
+        "frontend/src/workbench/WidgetShell.tsx",
+        "frontend/src/workbench/Workbench.tsx",
+        "frontend/src/workbench/useLayoutStore.ts",
+        "frontend/src/store/useAppStore.ts",
+        "frontend/src/App.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "/workbench（临时路由，Phase 4 收敛到 /）"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "pnpm add react-grid-layout zustand 成功，build 零 TS 错误",
+        "/workbench 路由加载，显示至少一个 demo widget（占位）",
+        "demo widget 可拖拽 + resize，布局变更自动写入 localStorage key `ma150.workbench.layouts.v1`",
+        "刷新浏览器后 demo widget 位置保留",
+        "老路由 / /journal /logs 不受影响"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 1；风险：react-grid-layout 与 React 19 兼容性，demo 阶段验证"
+    },
+    {
+      "id": "F101",
+      "name": "SMA150 widget 迁移",
+      "description": "把 v1.0.0 的 SignalBoard / StockDetailModal 内容 / Journal / Logs / MarketOverview / QuickAdd 迁移为 widget 包装。StockDetailModal 拆成 3 个独立 widget（Chart/Fundamentals/Pullback），共享 AppStore.selectedSymbol。PriceChart 改造为响应式高度",
+      "user_story": "作为用户，我想继续使用 v1.0.0 所有功能，但以可拖拽 widget 的形式",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-19",
+      "dependencies": [
+        "F100"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "frontend/src/workbench/widgets/WatchlistWidget.tsx",
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "frontend/src/workbench/widgets/FundamentalsWidget.tsx",
+        "frontend/src/workbench/widgets/PullbackWidget.tsx",
+        "frontend/src/workbench/widgets/JournalWidget.tsx",
+        "frontend/src/workbench/widgets/LogsWidget.tsx",
+        "frontend/src/workbench/widgets/MarketOverviewWidget.tsx",
+        "frontend/src/workbench/widgets/QuickAddWidget.tsx",
+        "frontend/src/components/features/stock-detail/PriceChart.tsx",
+        "frontend/src/components/features/dashboard/SignalCard.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Workbench /workbench → / (Phase 4)"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Workbench 可同时显示 Watchlist / Chart / Fundamentals / Pullback / Journal / Logs / MarketOverview / QuickAdd 8 种 widget",
+        "点 WatchlistWidget 中某股票 → Chart/Fundamentals/Pullback widget 同步拉该股票数据",
+        "ChartWidget 自适应容器尺寸，lightweight-charts 在 resize 后正确 relayout",
+        "Journal/Logs widget 在窄宽度下内容可滚动不溢出 Shell",
+        "所有 widget 功能与 v1.0.0 等价（数据 fetch、新建/编辑、筛选、删除均正常）",
+        "v1.0.0 的 StockDetailModal.tsx 不再被引用"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 2-3；PriceChart 响应式改造是关键风险点"
+    },
+    {
+      "id": "F102",
+      "name": "路由切换 + 清理（保留 Journal/Logs 独立页）",
+      "description": "Workbench 接管根路由 /；保留 /journal /logs 作为独立页（TopNav 保留这两个链接）；删除 Dashboard、StockDetailModal、Workbench 内的 Journal/Logs widget。Workbench 首页保留 5 个 widget：Chart/Fundamentals/Pullback/Watchlist/QuickAdd",
+      "user_story": "作为用户，我打开首页就看到 Workbench；/journal /logs 仍可单独访问",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F101"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/App.tsx",
+        "frontend/src/pages/Dashboard.tsx (delete)",
+        "frontend/src/pages/Journal.tsx (delete)",
+        "frontend/src/pages/Logs.tsx (delete)",
+        "frontend/src/components/features/stock-detail/StockDetailModal.tsx (delete)",
+        "frontend/src/components/features/topnav/TopNav.tsx",
+        "frontend/src/workbench/WidgetRegistry.ts"
+      ],
+      "scope": {
+        "pages": [
+          "/（Workbench 主入口）"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "/ 直接渲染 Workbench，/workbench 路由移除",
+        "/journal /logs 独立页保留不变",
+        "TopNav 移除 Dashboard 链接，保留 Journal / Logs",
+        "Workbench 默认 5 widget：Chart/Fundamentals/Pullback/Watchlist/QuickAdd",
+        "重置布局按钮：清 localStorage → 回到默认布局",
+        "pnpm build 零 TS 错误；backend 零改动，所有既有 API 调用不变",
+        "CHANGELOG 准备 v1.1.0 条目（Phase 5）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "对应重构计划 Phase 4-5；完成后发 v1.1.0 tag"
+    },
+    {
+      "id": "F103",
+      "name": "Fundamentals 真实财报接入（已废弃，被 F104 取代）",
+      "description": "原计划基于 Polygon vX/reference/financials 接入真实财报。D034（2026-04-19）迁移到 FMP 后，ratios-ttm 单次调用直出 PE/PS/PEG/ROCE/FCF/marketCap 全部 5 项指标；本 feature 的目标整体并入 F104 数据源迁移",
+      "user_story": "作为投资者，我想看到真实的 ROCE / PE / PS / PEG / FCF，不是占位 mock",
+      "priority": "P1",
+      "status": "deprecated",
+      "phase": "deprecated",
+      "superseded_by": "F104",
+      "deprecated_at": "2026-04-19",
+      "deprecated_reason": "Polygon Stocks Starter 缺 CapEx 无法真算 FCF；D034 决定整体切换至 FMP /stable/ratios-ttm，F103 目标被 F104 吸收",
+      "dependencies": [
+        "F102"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [
+        "backend/app/external/polygon_client.py",
+        "backend/app/repositories/fundamentals_repository.py (new)",
+        "backend/app/services/stock_detail_service.py",
+        "backend/app/schemas/stock_detail.py",
+        "backend/app/models.py (新增 StockFundamentals or JSON 列)",
+        "backend/alembic/versions/xxxx.py (migration)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/fundamentals"
+        ],
+        "db_tables": [
+          "StockFundamentals (TBD)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#stock-detail"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#fundamentals (TBD)"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "ROCE = EBIT / (Total Assets - Total Current Liabilities)，值按百分比呈现",
+        "PE/PS/PEG/FCF 从真实财报推导，不再是 sha1 mock",
+        "source 字段返回 'polygon'，前端不再需要 Mock Data 标识",
+        "Polygon rate limit 合规（季度级缓存命中率 ≥ 95%）",
+        "财报缺失 / 异常时字段返回 null，UI 显示 '—'"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-04-19",
+          "change": "deprecated; superseded by F104 (D034)"
+        }
+      ],
+      "notes": "决策见 DECISIONS D032（原立项）和 D034（废弃原因）。保留审计痕迹，不删除。"
+    },
+    {
+      "id": "F104",
+      "name": "数据源迁移到 FMP（工程 feature）",
+      "description": "整体替换 Polygon (massive) Stocks Starter → FMP Starter /stable/ 端点。新增 fmp_client.py（httpx REST + 300/min token bucket）；watchlist 搜索、EOD 日线、大盘指数、10Y 国债、基本面全部走 FMP；polygon_client.py 标 deprecated 保留作回滚；fundamentals 从 mock 切到真实 ratios-ttm，source 字段从 'mock' 改 'fmp'；前端类型不动，后端在 service 层做字段适配。F103 目标在此并入",
+      "user_story": "作为维护者，我想只用一个外部数据源覆盖所有需求，降低订阅成本+代码复杂度，并拿到真实的 5 项基本面指标",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "current_sprint": "S2",
+      "dependencies": [
+        "F102"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "backend/app/external/fmp_client.py (new)",
+        "backend/app/external/polygon_client.py (mark deprecated)",
+        "backend/app/external/__init__.py",
+        "backend/app/config.py",
+        "backend/app/dependencies.py",
+        "backend/app/main.py",
+        "backend/app/routers/data.py",
+        "backend/app/services/watchlist_service.py",
+        "backend/app/services/data_refresh_service.py",
+        "backend/app/services/market_refresh_service.py",
+        "backend/app/services/stock_detail_service.py",
+        "backend/app/services/refresh_job.py",
+        "backend/tests/conftest.py (fake_fmp fixture)",
+        "backend/tests/test_polygon_client.py → test_fmp_client.py (rename + rewrite)",
+        "backend/tests/test_*.py (fixtures 迁移，契约回归)",
+        "frontend/src/workbench/widgets/FundamentalsWidget.tsx (remove Mock Data banner)",
+        ".env.example",
+        ".env (FMP_API_KEY, POLYGON_API_KEY 标 legacy)"
+      ],
+      "scope": {
+        "pages": [
+          "Fundamentals widget（仅清理 Mock banner）"
+        ],
+        "api_endpoints": [
+          "GET /api/stocks/search",
+          "GET /api/stocks/:ticker/chart",
+          "GET /api/stocks/:ticker/fundamentals",
+          "GET /api/market/overview",
+          "POST /api/data/refresh",
+          "GET /api/data/status"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#stock-search",
+          "API-CONTRACT.md#stock-detail",
+          "API-CONTRACT.md#market",
+          "API-CONTRACT.md#data-refresh"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#stock",
+          "DATA-MODEL.md#daily-bar",
+          "DATA-MODEL.md#market-index"
+        ],
+        "acceptance_type": "engineering"
+      },
+      "acceptance_criteria": [
+        "所有后端代码路径不再 import PolygonClient；polygon_client.py 顶部标 DEPRECATED 但文件保留",
+        "GET /api/stocks/search 返回结果排序与 D028 两阶段搜索一致（ticker 前缀优先，公司名 fallback）",
+        "GET /api/stocks/:ticker/chart 响应 schema 零变化，bars/ma150/pullbackMarkers 前端无需改动",
+        "GET /api/stocks/:ticker/fundamentals 返回 source: 'fmp'，PE/PS/PEG/ROCE/FCF/MarketCap 来自 /stable/ratios-ttm 真实值；失败字段返回 null",
+        "GET /api/market/overview SPX/NDX/TNX 正常刷新，DB 层 symbol 仍为 SPX/NDX/TNX",
+        "POST /api/data/refresh 在 30 只 watchlist 下 <60s 完成；300/min token bucket 不触发阻塞",
+        "既有 162 个 pytest 全部迁移到 fake_fmp fixture 并通过；新增 ≥5 个 live smoke test（@pytest.mark.live，默认 skip）",
+        "FundamentalsWidget 前端不再显示 'Mock Data' 提示条",
+        ".env.example 含 FMP_API_KEY；POLYGON_API_KEY 注释 legacy 但保留字段以便回滚",
+        "pnpm build + pytest 全绿；无 TS / mypy 错误"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "决策见 DECISIONS D034。迁移影响清单见 D034 表格。前端契约不变是强约束。预计 3 个 session：S1 fmp_client + tests，S2 services/routers 迁移 + 测试修复，S3 fundamentals 真实接入 + UI banner 清理 + 联调",
+      "completed_at": "2026-04-19"
+    },
+    {
+      "id": "F105",
+      "name": "Market Breakout Scanner Widget",
+      "description": "每日盘后扫描全美股（NYSE/NASDAQ/AMEX 可交易股票，含 ADR）市值≥500亿美元的股票池，筛出今日 MA150 穿越候选（昨日收盘<MA150 且今日收盘≥MA150，且今日价≤MA150×1.10，且 MA150 的 20 日线性回归斜率>0），展示为 Workbench 的新 widget（category: scanner, id: scanner.breakouts）。点击 ticker 联动现有 ChartWidget（后端单端点加 on-demand fallback，非 watchlist ticker 临时拉 FMP 不入库）；行内圆形 + 按钮一键加入 watchlist",
+      "user_story": "作为美股投资者，我想每天盘后看到大市值股票中当日刚穿越 150 日均线且幅度<10% 的候选，这样我能在 watchlist 之外发现新的买入机会",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_needed",
+      "dependencies": [
+        "F102",
+        "F104"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Workbench / (新 widget scanner.breakouts)"
+        ],
+        "api_endpoints": [
+          "GET /api/market/breakouts",
+          "GET /api/stocks/:ticker/chart (扩展现有端点：非 watchlist ticker fallback 到 FMP on-demand，不入 DailyBar 表)"
+        ],
+        "db_tables": [
+          "market_breakout_scans (新表，当日快照覆盖写)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#GET-/api/market/breakouts",
+          "API-CONTRACT.md#GET-/api/stocks/:ticker/chart (F105 扩展 on-demand fallback 分支)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#marketscanuniverse",
+          "DATA-MODEL.md#marketbreakoutscan"
+        ],
+        "decision_refs": [
+          "DECISIONS.md#D038 universe 解耦月级刷新",
+          "DECISIONS.md#D039 SMA 端点主路径 + EOD fallback",
+          "DECISIONS.md#D040 只存最新快照",
+          "DECISIONS.md#D041 扩展 chart 端点而非新建",
+          "DECISIONS.md#D042 独立 scanner cron"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Workbench WidgetRegistry 新增 scanner.breakouts 条目（新 category 'scanner'），加一行即挂载",
+        "每日美股收盘后自动扫描：universe 为 NYSE/NASDAQ/AMEX 全美股可交易股票（含 ADR），市值≥500亿美元",
+        "信号判定：昨日收盘 < MA150 且今日收盘 ≥ MA150，且今日价 ≤ MA150 × 1.10，且 MA150 最近 20 日线性回归斜率 > 0（沿用 F002 规则）",
+        "扫描结果覆盖写入 market_breakout_scans 表，只保留最新一次快照，不保留历史",
+        "widget 展示字段：ticker / 公司名 / 今日股价 / 超过 MA150 幅度%，按幅度升序排列",
+        "空态：当日无符合条件标的时，widget 显示 'No breakouts today' 占位",
+        "点击 ticker → 触发 AppStore.setSelectedSymbol，现有 ChartWidget 同步展示 1 年 EOD 走势 + MA150；非 watchlist ticker 通过扩展 /api/stocks/:ticker/chart 服务端 fallback 拉 FMP，不写 DailyBar 表，前端 ChartWidget 零改动",
+        "每行 ticker 旁圆形 + 按钮，点击调用 POST /api/watchlist 加入 watchlist；成功后按钮变为已添加态，其他行不受影响",
+        "已在 watchlist 的 ticker，+ 按钮显示为禁用/已添加",
+        "全生产 universe（≈250-300 只）单次扫描 <90s；FMP 300/min token bucket 不触发阻塞",
+        "扫描失败或 FMP 异常：记录 SystemLog ERROR；widget 显示错误提示",
+        "移动端响应式：窄宽度下表格横向滚动或折叠展示",
+        "pnpm build + pytest 全绿；现有 widget（ChartWidget 除端点行为外、WatchlistWidget、Fundamentals 等）无回归"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "【系统设计待决策（S1 Sprint Contract 前必须解决）】(1) FMP screener 端点不在 D034 映射表中，需在 ARCHITECTURE.md 补映射，并通过 context7 验证 /stable/screener 参数形态（marketCapMoreThan / exchange / isActivelyTrading 等）。(2) 扫描数据获取策略：方案 X 用 /stable/technical-indicators/sma?periodLength=150 直出 SMA 值，方案 Y 批量拉 151 天 EOD 自算 MA150+斜率，方案 Z 两者组合。300/min rate limit 下需在 system-design 阶段评估 API 调用量。(3) 扫描调度时间：与现有 EOD refresh (REFRESH_CRON_HOUR=6) 的先后关系、是否独立 cron。(4) market_breakout_scans 表 schema：scan_date / ticker / company_name / close_price / ma150_value / pct_above_ma150 / slope_value / market_cap / scanned_at + 索引策略。【架构约束】widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'，component 无 props 靠 AppStore+hooks。【on-demand chart 决策】用户选方案 A：扩展 /api/stocks/:ticker/chart 服务端加 fallback，前端 ChartWidget 零改动。【预计拆分】F105-a 后端扫描引擎+调度+表+GET breakouts；F105-b 后端 on-demand chart fallback；F105-c 前端 MarketBreakoutWidget+注册（feature-dev 阶段正式拆分）。【localStorage】单用户项目，手动 reset 布局即可，不做自动迁移。",
       "completed_at": null
     }
   ]

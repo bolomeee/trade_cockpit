@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-19
-last_modified_by: system-design (D034 polygon→fmp migration)
+confirmed_at: 2026-04-20
+last_modified_by: system-design (F105 v1.2 — FMP screener + sma 端点、扫描调度、universe 月级刷新)
 ---
 
 # ARCHITECTURE.md
 
-> 最后更新：2026-04-19 | 状态：已确认
+> 最后更新：2026-04-20 | 状态：已确认
 > ⚠️ 技术栈变更必须先更新此文档并征得用户同意，不得擅自更改
 
 ---
@@ -210,8 +210,13 @@ stock_portal/
 FMP_API_KEY=your_fmp_key_here           # D034 起主数据源
 POLYGON_API_KEY=                         # LEGACY（D034 后不再使用，保留仅供回滚；默认留空不阻塞启动）
 DATABASE_URL=sqlite+aiosqlite:///./data/prod.db
-REFRESH_CRON_HOUR=6    # 北京时间早6点 = 美东下午6点（收盘后）
+REFRESH_CRON_HOUR=6                      # watchlist EOD 刷新（北京 06:00 = 美东 18:00 收盘后）
 REFRESH_CRON_MINUTE=0
+SCANNER_CRON_HOUR=6                      # F105 每日市场扫描（错开 watchlist，避免 token bucket 竞争；D042）
+SCANNER_CRON_MINUTE=15                   # 默认 06:15（watchlist refresh 耗时 <10s，留 15min 缓冲）
+UNIVERSE_CRON_DAY=1                      # F105 候选池月级刷新：每月 1 号（D038）
+UNIVERSE_CRON_HOUR=5                     # 05:00 早于 REFRESH/SCANNER，避免相互阻塞
+UNIVERSE_CRON_MINUTE=0
 ```
 
 ---
@@ -284,6 +289,8 @@ type WidgetManifest = {
 | 大盘指数 NDX | 同上 | `symbol=^NDX` | `list_aggs("I:NDX", ...)` |
 | 10Y 国债 TNX | `/stable/treasury-rates` | 无（取最新一条），读 `year10` 字段 | 直连 `/fed/v1/treasury-yields` |
 | 基本面 TTM（F104） | `/stable/ratios-ttm` | `symbol=AAPL`, `apikey` | 无（Polygon Starter 不覆盖 CapEx，D002/D032 走 mock） |
+| 全市场筛选（F105 universe 月级刷新） | `/stable/company-screener` | `marketCapMoreThan=50000000000`, `exchange=NYSE\|NASDAQ\|AMEX`（按交易所各调用一次，合并去重，不带 `country` 以覆盖 ADR）, `isEtf=false`, `isActivelyTrading=true`, `limit=500`, `apikey` | 无（Polygon Starter 无同类端点） |
+| MA150 时间序列（F105 每日扫描主路径） | `/stable/technical-indicators/sma` | `symbol=AAPL`, `periodLength=150`, `timeframe=1day`, `from`/`to` 取最近 25 交易日窗口, `apikey` | 无；D039 fallback 方案 Y 改走 `/stable/historical-price-eod/full` 本地算 MA150 |
 
 > DB 层 `market_indices.symbol` 仍保留 `SPX/NDX/TNX`（DATA-MODEL 未变），FMP 的 `^GSPC / ^NDX` 在 service/repo 边界做映射；数据库字段命名不变。
 
@@ -312,5 +319,7 @@ FMP_EP_TREASURY = "/treasury-rates"
 FMP_EP_SEARCH_SYMBOL = "/search-symbol"
 FMP_EP_SEARCH_NAME = "/search-name"
 FMP_EP_QUOTE = "/quote"
+FMP_EP_SCREENER = "/company-screener"          # F105 universe
+FMP_EP_SMA = "/technical-indicators/sma"       # F105 每日扫描
 ```
 未来 FMP 若改路径，只改一处。

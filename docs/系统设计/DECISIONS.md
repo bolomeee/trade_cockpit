@@ -748,3 +748,142 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - 后端测试 `test_market_refresh.py` 3 处 `^NDX` → `QQQM`（其中 `called_symbols` 断言保留，证实映射正确）
 - DATA-MODEL.md / API-CONTRACT.md **不变**
 - 未来若 FMP 对 `^NDX` 放开 Starter 访问，单行配置即可回切
+
+---
+
+## D038：F105 universe 与每日扫描解耦，候选池独立月级刷新
+
+**日期**：2026-04-20
+**feature**：F105 Market Breakout Scanner
+
+**决策**：新增 `market_scan_universe` 表作为"市值≥500亿美股"候选池的持久化事实，与每日 breakout 扫描解耦。universe 由独立 cron 月级刷新（`UNIVERSE_CRON_DAY=1, UNIVERSE_CRON_HOUR=5`），每日扫描仅读取此表后调用 SMA 端点。
+
+**原因**：
+- 市值≥500亿的股票变化缓慢，周/月级刷新足够（用户敲定月级）
+- 解耦后每日扫描只需 ~N 次 SMA 调用（N ≈ universe 规模 280），省去每日重复 3 次 screener 调用
+- universe 表可持久化 `company_name / exchange / market_cap`，扫描任务读取直接生成 breakout 快照，无需等 screener 响应回填
+- 故障隔离：universe 刷新失败不影响当日扫描（若冷启动则自动先补一次 refresh）
+
+**放弃的备选**：
+- **方案 N1：每日扫描时实时调 screener** — 放弃：每日 3 次 screener 调用为重复劳动；若 screener 端点波动则当天所有扫描报废
+- **方案 N2：screener 调用结果放 in-memory / Redis 缓存** — 放弃：本项目无缓存层（D017 仅前端有 react-query），为此单端点引入缓存过度
+- **方案 N3：一张表合并 universe 与 scan 结果** — 放弃：违背单一职责（universe 是全市场事实，scan 是 breakout 选择），字段集与刷新频率不同
+
+**影响**：
+- DATA-MODEL.md 新增 `MarketScanUniverse` 实体
+- 后端新增 `UniverseRefreshService` + 独立 cron 任务（`refresh_job.py` 或新文件）
+- 冷启动：扫描任务启动时若 `market_scan_universe` 表为空，自动先触发一次 universe refresh 作为初始化
+- Upsert 语义：`last_seen_at` 记录最近一次 refresh 中出现的时间；掉出 universe 的记录不删除，每日扫描通过 `last_seen_at >= 最近 refresh 时间` 筛选有效行
+- 环境变量 `UNIVERSE_CRON_DAY / UNIVERSE_CRON_HOUR / UNIVERSE_CRON_MINUTE` 已加入 `.env.example`
+
+---
+
+## D039：F105 扫描数据源选 SMA 端点，EOD fallback 透明兜底
+
+**日期**：2026-04-20
+**feature**：F105 Market Breakout Scanner
+
+**决策**：每日扫描主路径使用 FMP `/stable/technical-indicators/sma?periodLength=150&timeframe=1day`，每次请求返回时间序列（每点含 `date/open/high/low/close/volume/sma`）。本地只需计算 20 日 MA150 线性回归斜率 + 应用 breakout 判定。端点不可用（402/403/非 200）时在 `fmp_client` 层透明切换到 `/stable/historical-price-eod/full`，本地复用 F002 `signal_engine.py` 的 MA150 + 斜率算法。
+
+**原因**：
+- SMA 端点单次调用即包含 breakout 判定所需的全部数据（昨日/今日的 close+sma、最近 20 日 sma 序列）
+- 单次 payload ≈ 25 行 JSON（取最近 25 交易日窗口），比方案 Y（170 行 EOD）小 ~7 倍
+- MA150 由 FMP 计算，本地只算 20 日线性回归，逻辑简化
+- API 调用预算：1 股/次 × ~280 股 = ~280 次；300/min + burst 50 token bucket 下约 56s 可完成，符合 <90s 目标
+
+**放弃的备选**：
+- **方案 Y：全量批量拉 171 天 EOD 本地算 MA150** — 降级为 fallback；主路径不选的原因是每次响应 7× 大、本地算 MA150 的代码路径更长
+- **方案 Z：组合并行** — 放弃：并发让 token bucket 策略复杂化，收益不明显
+
+**影响**：
+- `backend/app/external/fmp_client.py` 新增 `get_sma_series()` 方法 + fallback 逻辑 `get_ma150_series_or_eod()`
+- Starter tier 是否覆盖 SMA 端点 FMP docs 页未能确认；S1 Sprint Contract 第一步必须做 live smoke test，失败自动走 fallback
+- Fallback 触发时记 SystemLog WARN `"SMA endpoint unavailable, falling back to EOD"`
+- `signal_engine.py` 的纯函数接口（D021）可直接被 scanner service 复用
+
+---
+
+## D040：F105 `market_breakout_scans` 只存最新快照，覆盖写入
+
+**日期**：2026-04-20
+**feature**：F105 Market Breakout Scanner
+
+**决策**：`market_breakout_scans` 表只保留最新一次扫描的结果，不保留历史。扫描开始时在单事务内 `DELETE FROM market_breakout_scans; INSERT ALL rows;`。
+
+**原因**：
+- 用户明确"只展示今日扫描结果，不需要历史"（v1.2 project-init 对话）
+- 避免累积表带来的索引维护、vacuum 成本
+- 后续如需历史回溯，可追加 `market_breakout_scan_history` 表不破坏当前读路径
+
+**放弃的备选**：
+- **保留 7 / 30 天快照** — 放弃：需求未明，先按 YAGNI 做最小，历史需求出现时再引入历史表
+- **版本化行（同表保留多 scan_date）** — 放弃：读取快照时需额外按 `scanned_at DESC LIMIT` 筛选，逻辑复杂度换不到用户价值
+
+**影响**：
+- `MarketBreakoutRepository.replace_scan()` 必须单事务 `DELETE` + `INSERT`，事务中断不得留空表（通过 SAVEPOINT 或回滚）
+- 若扫描过程中发生异常，保留上次快照（不做清空）— 即事务只在成功获取所有扫描结果后才执行
+
+---
+
+## D041：F105 扩展 `/api/stocks/:ticker/chart` 行为，非 watchlist ticker 走 on-demand fallback（落实 D033）
+
+**日期**：2026-04-20
+**feature**：F105 Market Breakout Scanner
+**上位决策**：D033（曾推迟该设计至"首个含外部 ticker 的 widget"立项，F105 即该立项）
+
+**决策**：在服务端扩展现有 `GET /api/stocks/:ticker/chart` 行为：ticker 不在 `stocks` 表时，fallback 拉 FMP `/stable/historical-price-eod/full?from=今日-400&to=今日` on-demand 获取数据，服务端算 MA150 序列返回；**不写 `DailyBar` 表**。响应 schema 对前端完全不变（ChartWidget 零改动）。`pullbackMarkers` 在 fallback 路径下固定返回空数组。
+
+**原因**：
+- 方案 A（扩展现有端点 + 服务端分支）对前端零侵入，最符合 CLAUDE.md "加新功能 = 加 widget + 加 endpoint + 注册一行" 原则
+- 复用 service 层的 MA150 计算逻辑，新增代码只在数据获取层增加 branch
+- 不入库避免 Scanner 池污染 watchlist 的 DailyBar 数据窗口（250 天），保持 F003 的"watchlist 增量维护"语义纯净
+
+**放弃的备选**：
+- **B：新建独立 on-demand 端点** — 放弃：前端 ChartWidget 需判断 ticker 属于 watchlist 还是非 watchlist 走不同端点，逻辑复杂
+- **C：Scanner widget 自带迷你 Chart** — 放弃：两份 chart 实现会漂移，维护成本双倍
+
+**影响**：
+- `stock_detail_service.get_chart()` 增加 ticker 查库分支；fmp_client 新增 `get_historical_eod_range()`（复用现有 EOD 调用）
+- 新增错误码 `EXTERNAL_SERVICE_ERROR` (502) 用于 FMP 外部故障（API-CONTRACT.md）
+- Pullback markers 固定空数组是契约级约定（F105 场景无回踩历史需求）；若后续需要，再扩展
+- 不引入缓存层（一次用户点击对应一次 FMP 调用；性能瓶颈出现时再加）
+
+---
+
+## D042：F105 扫描调度独立 cron，错开现有 watchlist refresh
+
+**日期**：2026-04-20
+**feature**：F105 Market Breakout Scanner
+
+**决策**：Scanner 扫描不复用 `REFRESH_CRON_*`（watchlist EOD 刷新），而是独立一个 `SCANNER_CRON_*`，默认 `HOUR=6, MINUTE=15`（北京时间），在 watchlist refresh 之后 15 分钟启动。
+
+**原因**：
+- watchlist refresh ~30 次调用 <10s，scanner ~280 次调用 <60s，两者若同时跑会竞争 FMP 300/min token bucket
+- 独立 cron 任务解耦失败影响：scanner 失败不影响 watchlist；watchlist 失败不阻塞 scanner
+- 观测性分离：SystemLog source 区分 `data_refresh` vs `market_scanner`，排查快
+- 15 min 缓冲给 watchlist refresh 充足完成窗口（<10s 实际 + 含异常重试余量）
+
+**放弃的备选**：
+- **A：串行共用 cron** — 放弃：scanner 失败会让"watchlist 已刷新"的观测模糊
+- **C：并发同时跑** — 放弃：token bucket 竞争导致整体耗时增加，无并发收益
+
+**影响**：
+- 新增环境变量 `SCANNER_CRON_HOUR / SCANNER_CRON_MINUTE`
+- `refresh_job.py`（或新 `scanner_job.py`）注册独立 APScheduler 任务
+- `SystemLog` 新增 source 值 `market_scanner` / `universe_refresher`
+
+---
+
+## D043：widget 类 feature 跳过 design-bridge
+**日期**：2026-04-20
+**决策**：纯 widget 形态的 feature（新增一个挂在 Workbench 上的 widget，不引入新页面、不改框架）不走 design-bridge skill，不产出独立 design-spec 章节；视觉规格沿用 Workbench 既有约定：tokens.css 变量 + shadcn/ui 组件 + 参考既有 widget（WatchlistWidget / ChartWidget / FundamentalsWidget）。feature 的 `notes` 字段追加"视觉沿用清单"即可替代 design-spec。
+
+**原因**：Workbench 架构（react-grid-layout + WidgetRegistry）本身的设计意图就是"加一个 widget 等于注册一行 + 复用既有视觉"，F100-F104 均未单独出 design-spec。再为 F105 走一遍 design-bridge 属于流程冗余，且会产出与既有 widget 重复的视觉规格。
+
+**放弃了什么**：独立的 F105 design-spec 章节、单独的 component-plan 条目、design-bridge 的 data-mapping 校验（F105 字段命名由 DATA-MODEL.md + API-CONTRACT.md 直接约束，无需额外映射层）。
+
+**影响**：
+- F105 phase 从 `design_needed` 直接前进到 `ready_to_dev`，不经 design-bridge
+- 未来新增 widget-only feature 可援引 D043 同样跳过 design-bridge
+- 若 feature 引入新页面、新布局模式或框架级视觉变更，仍必须走 design-bridge
+- feature-dev skill 的前置条件检查中，widget-only feature 允许 design-spec.md 不含该 feature 章节，以 `notes` 中"视觉沿用清单"为准

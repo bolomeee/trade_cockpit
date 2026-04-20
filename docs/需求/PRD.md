@@ -201,3 +201,27 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
    - API 调用失败或异常：首页系统日志区域展示错误信息，记录时间和详情
    - 股票搜索无结果：弹出 Alert 组件提示"未找到匹配的股票"
    - 新上市股票数据不足 150 个交易日：仍添加到 watchlist，信号显示"数据不足"
+
+---
+
+## 版本迭代记录
+
+### v1.2 迭代 — 2026-04-20
+
+**变更原因**：v1.0/v1.1 的 SMA150 分析都基于手动输入的 watchlist。需要主动发现 watchlist 之外的新候选 —— 当日刚穿越 150MA 的大市值股票（市值≥500亿，以避免微盘股噪声）。
+
+**新增 feature**：
+- **F105：Market Breakout Scanner Widget** — 每日盘后扫描全美股（NYSE/NASDAQ/AMEX，含 ADR）市值≥500亿的股票池，筛出今日 MA150 穿越候选（昨日<MA、今日≥MA、幅度≤10%、MA150 斜率>0），以新 widget（category: `scanner`）形式展示。点击 ticker 联动现有 ChartWidget（服务端加 on-demand fallback，非 watchlist ticker 不入库）；行内 + 按钮一键加入 watchlist。
+
+**修改 feature**：无。
+
+**废弃 feature**：无。
+
+**对下游文档的影响**：
+- **DATA-MODEL.md**：新增 `market_breakout_scans` 表
+- **API-CONTRACT.md**：新增 `GET /api/market/breakouts`；扩展现有 `GET /api/stocks/:ticker/chart` 加入 non-watchlist on-demand fallback（响应 schema 不变）
+- **DECISIONS.md**：待新增决策 —— (a) 扫描只存最新快照、不保留历史；(b) 扩展现有 chart 端点而非新建 on-demand 端点（前端 ChartWidget 零改动）；(c) FMP screener 端点补入 D034 映射表并验证参数；(d) 扫描调度时间与 EOD refresh 的关系
+- **design-spec.md**：待补 scanner widget 视觉规格（空态、错误态、+ 按钮 3 种状态）
+- **ARCHITECTURE.md**：FMP 端点映射表新增 screener 条目
+
+**下一步**：触发 system-design skill 补系统设计文档。

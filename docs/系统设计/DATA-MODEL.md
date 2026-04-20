@@ -1,12 +1,12 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-16
-last_modified_by: system-design
+confirmed_at: 2026-04-20
+last_modified_by: system-design (F105 v1.2 迭代 — 新增 MarketScanUniverse + MarketBreakoutScan)
 ---
 
 # DATA-MODEL.md
 
-> 最后更新：2026-04-16 | 状态：已确认
+> 最后更新：2026-04-20 | 状态：已确认
 > ⚠️ 此文档是字段命名的唯一权威。前端、后端、数据库命名必须以此为准。
 > ⚠️ 修改前必须评估对已有 API 和前端的影响，并告知用户。
 
@@ -36,6 +36,8 @@ Stock (1) ──────── (N) DailyBar
 
 MarketIndex（独立实体，无外键关联）
 SystemLog（独立实体，无外键关联）
+MarketScanUniverse（独立实体，无外键关联；市值≥500亿候选池，月级刷新）
+MarketBreakoutScan（独立实体，无外键关联；当日 breakout 快照，覆盖写入）
 ```
 
 ---
@@ -225,6 +227,66 @@ SystemLog（独立实体，无外键关联）
 
 ---
 
+## MarketScanUniverse（全市场候选池）
+
+> 对应数据库表：`market_scan_universe`
+> Feature：F105 Market Breakout Scanner Widget
+> 决策依据：D038（universe 与每日扫描解耦）
+
+持久化市值≥500亿美元的全市场候选池，月级刷新一次。每日扫描读取此表，对每个 ticker 调用 SMA 端点判定 breakout。与 `stocks` 表解耦（`stocks` 只存 watchlist）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，唯一索引 |
+| company_name | String(200) | ✅ | 公司名称（来自 FMP screener） |
+| exchange | String(20) | ✅ | 交易所：NYSE / NASDAQ / AMEX |
+| market_cap | BigInteger | ✅ | 最近一次 universe refresh 时的市值（美元） |
+| last_seen_at | DateTime | ✅ | 最近一次在 refresh 结果中出现的 UTC 时间 |
+| added_at | DateTime | ✅ | 首次进入 universe 的 UTC 时间 |
+
+**业务规则**：
+- 每月 1 号自动刷新（`UNIVERSE_CRON_*` 配置）；3 次 screener 调用：分别按 `exchange=NYSE / NASDAQ / AMEX`，`marketCapMoreThan=50000000000`，合并去重
+- Upsert 策略：已存在 → 更新 `company_name / exchange / market_cap / last_seen_at`；不存在 → 插入
+- **不删除**"掉出 universe"的记录，保留审计痕迹。每日扫描通过 `last_seen_at >= 最近一次 refresh 时间` 筛选有效行
+- 冷启动：服务启动时若表为空，自动触发一次 universe refresh 作为初始化
+- 不做 FK 到 `stocks` 表，两张表职责独立
+
+---
+
+## MarketBreakoutScan（每日 breakout 快照）
+
+> 对应数据库表：`market_breakout_scans`
+> Feature：F105 Market Breakout Scanner Widget
+> 决策依据：D040（只存最新快照，覆盖写入）
+
+存储每日扫描结果。每次扫描开始时单事务 `DELETE FROM market_breakout_scans` + 批量 `INSERT`，表永远只含最新一次扫描的命中记录。不保留历史。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| scan_date | Date | ✅ | 扫描所依据的交易日（美东日历） |
+| ticker | String(10) | ✅ | 股票代码，全大写 |
+| company_name | String(200) | ✅ | 公司名称（来自 universe 表） |
+| close_price | Float | ✅ | 扫描日收盘价 |
+| ma150_value | Float | ✅ | 扫描日的 MA150 值 |
+| pct_above_ma150 | Float | ✅ | (close - ma150) / ma150 × 100；保留 2 位小数业务含义 |
+| slope_value | Float | ✅ | 最近 20 日 MA150 线性回归斜率；按判定规则必 > 0 |
+| market_cap | BigInteger | ✅ | 扫描日该 ticker 的市值（扫描时从 universe 表读取） |
+| scanned_at | DateTime | ✅ | 扫描任务的 UTC 执行时间 |
+
+**索引**：
+- 唯一：`(scan_date, ticker)`
+- 辅助：`scanned_at DESC` 用于前端快速读最新快照
+
+**业务规则**：
+- Breakout 判定（沿用 F002 规则）：昨日 close < 昨日 MA150，今日 close ≥ 今日 MA150，今日 close ≤ 今日 MA150 × 1.10，最近 20 日 MA150 斜率 > 0
+- 扫描失败（FMP 异常、数据不足）：该 ticker 跳过，记 SystemLog，不写入本表
+- 本表**不持久化未命中的 ticker**，只存命中记录
+- 不做 FK 到 `stocks` 或 `market_scan_universe` 表，避免跨实体依赖约束；`ticker` 保持独立 VARCHAR(10)
+
+---
+
 ## ORM Schema（SQLAlchemy 2.0）
 
 ```python
@@ -356,4 +418,34 @@ class JournalEntry(Base):
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     stock = relationship("Stock", back_populates="journal_entries")
+
+
+class MarketScanUniverse(Base):
+    __tablename__ = "market_scan_universe"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ticker = Column(String(10), nullable=False, unique=True, index=True)
+    company_name = Column(String(200), nullable=False)
+    exchange = Column(String(20), nullable=False)
+    market_cap = Column(BigInteger, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+    added_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class MarketBreakoutScan(Base):
+    __tablename__ = "market_breakout_scans"
+    __table_args__ = (
+        UniqueConstraint("scan_date", "ticker", name="uq_breakout_scan_date_ticker"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scan_date = Column(Date, nullable=False, index=True)
+    ticker = Column(String(10), nullable=False)
+    company_name = Column(String(200), nullable=False)
+    close_price = Column(Float, nullable=False)
+    ma150_value = Column(Float, nullable=False)
+    pct_above_ma150 = Column(Float, nullable=False)
+    slope_value = Column(Float, nullable=False)
+    market_cap = Column(BigInteger, nullable=False)
+    scanned_at = Column(DateTime, nullable=False, index=True)
 ```
