@@ -32,10 +32,12 @@ SYMBOL_NAMES: dict[str, str] = {
     "TNX": "10-Year Treasury Yield",
 }
 
-# DB symbol → FMP index symbol (D034). TNX uses treasury-rates, not this map.
+# DB symbol → FMP fetch symbol (D034). TNX uses treasury-rates, not this map.
+# NDX uses QQQM (Invesco NASDAQ 100 ETF) because FMP Starter plan does not
+# cover the ^NDX licensed index; QQQM tracks NDX with >99% correlation.
 _DB_TO_FMP_INDEX: dict[str, str] = {
     "SPX": "^GSPC",
-    "NDX": "^NDX",
+    "NDX": "QQQM",
 }
 
 

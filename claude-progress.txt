@@ -133,3 +133,10 @@
 [下一个 Session]
   - 用户决定 v1.2 规划 或 何时 merge feat-newfeature → main
   - acceptance 阶段已结束；后续 merge 时可触发 project-commiter 统一生成 CHANGELOG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-20] v1.0.0 Docker 部署冒烟 + Hotfix
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 容器跑起来后 watchlist 添加失败：docker-compose.yml 漏传 FMP_API_KEY，已补
+- NDX 402 Payment Required：FMP Starter 不含 ^NDX；按用户选择改用 QQQM ETF 价格
+- DECISIONS.md 新增 D037；验收记录 docs/验收/v1.0-deploy-hotfix.md
+- pytest test_market_refresh.py 8/8 通过；浏览器验证三个指标齐全

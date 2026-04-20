@@ -6,6 +6,7 @@ services:
       - APP_ENV=production
       - DATABASE_URL=sqlite:////app/data/prod.db
       - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FMP_API_KEY=${FMP_API_KEY}
     volumes:
       - ./backend/data:/app/data
     expose:

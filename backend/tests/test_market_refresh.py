@@ -65,7 +65,7 @@ def test_prune_keeps_window(db_session):
 
 def test_service_refresh_all_success(db_session, fake_fmp):
     fake_fmp.index_bars_results["^GSPC"] = [_bar(2026, 4, 14, 5100.0), _bar(2026, 4, 15, 5200.0)]
-    fake_fmp.index_bars_results["^NDX"] = [_bar(2026, 4, 14, 17900.0), _bar(2026, 4, 15, 18000.0)]
+    fake_fmp.index_bars_results["QQQM"] = [_bar(2026, 4, 14, 17900.0), _bar(2026, 4, 15, 18000.0)]
     fake_fmp.treasury_result = {
         "date": "2026-04-15",
         "year10": 4.25,
@@ -80,7 +80,7 @@ def test_service_refresh_all_success(db_session, fake_fmp):
     assert batch.failed == 0
     # Service must translate DB symbols to FMP symbols before calling fmp client.
     called_symbols = [call[0] for call in fake_fmp.index_bars_calls]
-    assert called_symbols == ["^GSPC", "^NDX"]
+    assert called_symbols == ["^GSPC", "QQQM"]  # NDX → QQQM (Starter plan workaround)
 
     rows = MarketIndexRepository(db_session).list_latest_by_symbol()
     by_sym = {r.symbol: r for r in rows}
@@ -95,7 +95,7 @@ def test_service_refresh_all_success(db_session, fake_fmp):
 
 def test_service_isolates_per_symbol_failure(db_session, fake_fmp):
     fake_fmp.index_bars_results["^GSPC"] = [_bar(2026, 4, 15, 5200.0)]
-    fake_fmp.index_bars_exc["^NDX"] = RuntimeError("boom")
+    fake_fmp.index_bars_exc["QQQM"] = RuntimeError("boom")
     fake_fmp.treasury_result = {
         "date": "2026-04-15",
         "year10": 4.25,
@@ -121,7 +121,7 @@ def test_service_isolates_per_symbol_failure(db_session, fake_fmp):
 
 def test_service_empty_bars_is_error(db_session, fake_fmp):
     fake_fmp.index_bars_results["^GSPC"] = []
-    fake_fmp.index_bars_results["^NDX"] = [_bar(2026, 4, 15, 18000.0)]
+    fake_fmp.index_bars_results["QQQM"] = [_bar(2026, 4, 15, 18000.0)]
     fake_fmp.treasury_result = {
         "date": "2026-04-15",
         "year10": 4.25,

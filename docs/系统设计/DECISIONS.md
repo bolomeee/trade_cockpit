@@ -721,3 +721,30 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - **Service 实现**：`StockDetailService.get_fundamentals` 从"调 1 个端点 + 6 字段映射"改为"并发/串行调 2 个端点 + FCF 推导"
 - **Rate 预算**：与 D035 一致，2 次/symbol，无新影响
 - **S2c 经验教训**：smoke test 只断言"存在"不够，关键字段需要**正向命名断言**（`priceToEarningsRatioTTM in response`），否则契约漂移可能被漏网
+
+---
+
+## D037：NDX 数据源用 QQQM ETF 价格替代 `^NDX` 指数
+**时间**：2026-04-20（v1.0.0 Docker 部署后冒烟发现）
+
+**背景**：
+- `docker compose up` 首次运行后，`/api/market/overview` 缺 NDX 行。后端日志：`^NDX` 调 `/stable/historical-price-eod/full` 返回 `402 Payment Required`
+- 验证：FMP Starter 套餐不包含 `^NDX`（Nasdaq 授权指数通常在 Premium 及以上档位，或需独立 index 附加包）。FMP 文档列出的通用 index 集 (`^GSPC / ^DJI / ^IXIC / ^RUT / ^FTSE / ^N225 / ^HSI / ^STOXX50E / ^VIX`) 也没有 `^NDX`
+- 用户明确排除 `^IXIC`（NASDAQ Composite）方案："纳指看宽泛了没用"
+
+**决策**：
+1. **数据源切到 QQQM**（Invesco NASDAQ 100 ETF，费率 0.15% 版本的 QQQ），走既有 `get_daily_bars` 股票历史端点，Starter 覆盖
+2. **DB symbol 保持 `NDX`**：DATA-MODEL 不变，前端 `MarketOverviewBar` 显示名仍为 "NASDAQ 100"（QQQM 跟踪 NDX，日内方向 >99% 同步，用户层语义等价）
+3. **代码改动**：只改 `market_refresh_service._DB_TO_FMP_INDEX["NDX"]` 从 `"^NDX"` 改为 `"QQQM"`；tests 同步把 `fake_fmp.index_bars_results["^NDX"]` 改为 `"QQQM"`
+4. **部署配置**：`docker-compose.yml` backend service 补透传 `FMP_API_KEY`（发版前漏了）
+
+**放弃的方案**：
+- **升级到 Premium**：为一个指标升套餐不值得；且 Nasdaq 授权变动不透明，续费后仍可能被降级
+- **`^IXIC` 替代**：用户明确否决
+- **QQQ 代替 QQQM**：两者同样 track NDX，价格/方向一致；选 QQQM 纯粹因为费率稍低，差异可忽略
+
+**影响**：
+- NDX 行展示的是 ETF 价格（~$267）而非指数点数（~18000）。change_pct 仍然表达当日 NDX 方向，信息价值等同
+- 后端测试 `test_market_refresh.py` 3 处 `^NDX` → `QQQM`（其中 `called_symbols` 断言保留，证实映射正确）
+- DATA-MODEL.md / API-CONTRACT.md **不变**
+- 未来若 FMP 对 `^NDX` 放开 Starter 访问，单行配置即可回切
