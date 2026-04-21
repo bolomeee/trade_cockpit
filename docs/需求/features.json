@@ -1256,7 +1256,7 @@
         },
         "F105-a2": {
           "scope": "FMP 客户端扩展：screener + sma + EOD fallback + config/.env + client 单测与 live smoke",
-          "phase": "needs_review",
+          "phase": "done",
           "depends_on": [
             "F105-a1"
           ],
