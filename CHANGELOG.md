@@ -4,6 +4,43 @@
 
 ---
 
+## [v1.2.0] - 2026-04-21
+
+Market Breakout Scanner — Workbench 新增 scanner 类别，每日盘后扫描全美大市值股票池的 MA150 穿越候选；配套 FMP 并发调度重构。
+
+### ✨ 新增
+- **突破扫描数据层 (F105-a1/a2/a3)**：新表 `market_scan_universe` / `market_breakout_scans` + FMP `/company-screener` 三交易所合并去重 + SMA/EOD 双路径拉取 + 每月 1 号 05:00 universe 刷新 cron + 工作日 06:15 独立 scanner cron（D038/D039/D040/D042）
+- **GET /api/market/breakouts (F105-a4)**：返回当日最新 scan 快照，按 `pct_above_ma150` 升序，空态返回 `scanDate=null`
+- **Chart on-demand fallback (F105-b)**：`/api/stocks/:ticker/chart` 对非 watchlist 或 inactive ticker 临时拉 FMP 400 天 EOD 并本地算 MA150，不入库（D041）
+- **MarketBreakoutWidget (F105-c)**：Workbench 新增 `scanner` 类别 widget，展示 Ticker / Company / Close / % Above MA150 + 一键加 watchlist 按钮；行点击联动 ChartWidget
+- **FMP 共享限流器 + Scanner 并发 (F105-a5)**：`_FmpRateLimiter` 提升为进程级单例（token bucket + `Semaphore(6)`），所有 `FmpClient` 实例共享；Scanner 改 `ThreadPoolExecutor(6)` 并发扫描；OK 日志追加 `duration_s` / `workers`（D044）
+
+### 🐛 修复
+- **dev proxy 端口冲突**：stock_portal-backend 容器改为发布到宿主 `:8001`，避免与本机其他 `:8000` 服务冲突；Vite proxy 同步
+
+### 📖 决策
+- **D038** universe 每月刷新独立 cron；**D039** SMA → EOD 透明 fallback；**D040** 全部失败时保留旧 snapshot；**D041** chart on-demand fallback 不入库；**D042** scanner 独立 cron（watchlist refresh 后 15 分钟）；**D043** widget-only feature 跳过 design-bridge；**D044** FMP 限流器进程级共享 + 6 并发
+
+---
+
+## [v1.1.1] - 2026-04-19
+
+FMP 接入 — 从 Polygon 切换到 Financial Modeling Prep 作为主数据源；fundamentals 首次对接真实财务数据。
+
+### ✨ 新增
+- **FMP 客户端 (F104-S1)**：`/stable/` 全量端点封装 + token bucket (300 req/min, burst 50) + 429 一次重试 + 显式 httpx transport 注入便于测试
+- **FMP 真值冒烟测试 (F104-S2c)**：`tests/test_fmp_live_smoke.py` + pytest `live` marker，覆盖真实 FMP 返回结构的形状断言
+- **Fundamentals 真实接入 (F104-S3)**：P/E · P/S · PEG · ROCE · FCF Yield · marketCap 接入 FMP `ratios-ttm` + `key-metrics-ttm`，取代 F101 mock
+
+### ♻️ 重构
+- **数据源整体迁移 (F104-S2)**：所有 services / routers / tests 从 Polygon 切换到 FmpClient；polygon_client 保留作为 rollback anchor（标注 DEPRECATED）
+
+### 📖 决策
+- **D034** 主数据源 Polygon → FMP（功能覆盖更广 + 单一 API 配额更清晰）
+- **D035** FMP 为主、Polygon 作为紧急回滚；**D036** fundamentals 字段映射（ROCE 从 `returnOnCapitalEmployedTTM` 取）
+
+---
+
 ## [v1.1.0] - 2026-04-19
 
 Workbench 重构 — 从单页 Dashboard 演进为可拖拽 widget 工作台。
