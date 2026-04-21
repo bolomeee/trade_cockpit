@@ -1289,10 +1289,18 @@
         },
         "F105-c": {
           "scope": "前端 MarketBreakoutWidget + WidgetRegistry 注册",
-          "phase": "needs_review",
+          "phase": "done",
+          "completed_at": "2026-04-21",
           "depends_on": [
             "F105-a4",
             "F105-b"
+          ]
+        },
+        "F105-a5": {
+          "scope": "FMP 客户端共享限流器（6 并发 + 5 rps token bucket）+ scanner 改并发调度，避免 scanner/watchlist/手动刷新叠加超 300 rpm",
+          "phase": "ready_to_dev",
+          "depends_on": [
+            "F105-a3"
           ]
         }
       },
