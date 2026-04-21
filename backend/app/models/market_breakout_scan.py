@@ -15,16 +15,24 @@ from app.models import Base
 class MarketBreakoutScan(Base):
     __tablename__ = "market_breakout_scans"
     __table_args__ = (
-        UniqueConstraint("scan_date", "ticker", name="uq_breakout_scan_date_ticker"),
+        UniqueConstraint(
+            "scan_date",
+            "ticker",
+            "signal_type",
+            name="uq_breakout_scan_date_ticker_signal",
+        ),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     scan_date = Column(Date, nullable=False, index=True)
     ticker = Column(String(10), nullable=False)
     company_name = Column(String(200), nullable=False)
+    signal_type = Column(String(32), nullable=False, index=True)
     close_price = Column(Float, nullable=False)
     ma150_value = Column(Float, nullable=False)
     pct_above_ma150 = Column(Float, nullable=False)
     slope_value = Column(Float, nullable=False)
+    volume = Column(BigInteger, nullable=True)
+    volume_ratio_20 = Column(Float, nullable=True)
     market_cap = Column(BigInteger, nullable=False)
     scanned_at = Column(DateTime, nullable=False, index=True)

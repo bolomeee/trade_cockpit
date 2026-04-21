@@ -16,6 +16,7 @@ def _row(
     pct: float,
     scanned_at: datetime,
     company_name: str = "Example Inc.",
+    signal_type: str = "a1_stage_breakout",
     close_price: float = 100.0,
     ma150_value: float = 90.0,
     slope_value: float = 0.5,
@@ -25,6 +26,7 @@ def _row(
         scan_date=scan_date,
         ticker=ticker,
         company_name=company_name,
+        signal_type=signal_type,
         close_price=close_price,
         ma150_value=ma150_value,
         pct_above_ma150=pct,
@@ -118,9 +120,13 @@ def test_breakouts_returns_latest_snapshot_sorted_asc(client, db_session):
     assert set(data["items"][0].keys()) == {
         "ticker",
         "companyName",
+        "signalType",
         "closePrice",
         "ma150Value",
         "pctAboveMa150",
+        "slopeValue",
+        "volume",
+        "volumeRatio20",
         "marketCap",
     }
 

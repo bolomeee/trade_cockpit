@@ -44,8 +44,9 @@ EXPECTED_COLUMNS: dict[str, set[str]] = {
         "last_seen_at", "added_at",
     },
     "market_breakout_scans": {
-        "id", "scan_date", "ticker", "company_name", "close_price",
-        "ma150_value", "pct_above_ma150", "slope_value", "market_cap", "scanned_at",
+        "id", "scan_date", "ticker", "company_name", "signal_type",
+        "close_price", "ma150_value", "pct_above_ma150", "slope_value",
+        "volume", "volume_ratio_20", "market_cap", "scanned_at",
     },
 }
 
@@ -93,6 +94,77 @@ def test_unique_constraints(migrated_engine) -> None:
     # daily_bars composite unique
     db_uniques = inspector.get_unique_constraints("daily_bars")
     assert any(set(uc["column_names"]) == {"stock_id", "date"} for uc in db_uniques)
+
+
+def test_migration_003_signal_type_upgrade_downgrade_roundtrip() -> None:
+    """F106-a alembic 003: upgrade adds signal_type/volume/volume_ratio_20 +
+    swaps unique constraint; downgrade restores pre-F106 schema.
+    """
+    backend_root = Path(__file__).resolve().parent.parent
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "test.db"
+        url = f"sqlite:///{db_path}"
+        cfg = Config(str(backend_root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_root / "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+
+        # First bring to pre-F106 head (002), confirm baseline schema.
+        command.upgrade(cfg, "002_f105_market_scan_tables")
+        engine = create_engine(url)
+        try:
+            inspector = inspect(engine)
+            cols = {c["name"] for c in inspector.get_columns("market_breakout_scans")}
+            assert "signal_type" not in cols
+            assert "volume" not in cols
+            uniques = inspector.get_unique_constraints("market_breakout_scans")
+            assert any(
+                set(u["column_names"]) == {"scan_date", "ticker"}
+                and u["name"] == "uq_breakout_scan_date_ticker"
+                for u in uniques
+            )
+        finally:
+            engine.dispose()
+
+        # Upgrade to 003 head.
+        command.upgrade(cfg, "head")
+        engine = create_engine(url)
+        try:
+            inspector = inspect(engine)
+            cols = {c["name"] for c in inspector.get_columns("market_breakout_scans")}
+            assert {"signal_type", "volume", "volume_ratio_20"} <= cols
+            uniques = inspector.get_unique_constraints("market_breakout_scans")
+            assert any(
+                set(u["column_names"]) == {"scan_date", "ticker", "signal_type"}
+                and u["name"] == "uq_breakout_scan_date_ticker_signal"
+                for u in uniques
+            )
+            # Old constraint name must be gone.
+            assert not any(
+                u["name"] == "uq_breakout_scan_date_ticker" for u in uniques
+            )
+            # signal_type has an index for filter queries.
+            indexes = inspector.get_indexes("market_breakout_scans")
+            assert any(ix["column_names"] == ["signal_type"] for ix in indexes)
+        finally:
+            engine.dispose()
+
+        # Downgrade one step back to 002 and verify schema is pre-F106 again.
+        command.downgrade(cfg, "002_f105_market_scan_tables")
+        engine = create_engine(url)
+        try:
+            inspector = inspect(engine)
+            cols = {c["name"] for c in inspector.get_columns("market_breakout_scans")}
+            assert "signal_type" not in cols
+            assert "volume" not in cols
+            assert "volume_ratio_20" not in cols
+            uniques = inspector.get_unique_constraints("market_breakout_scans")
+            assert any(
+                set(u["column_names"]) == {"scan_date", "ticker"}
+                and u["name"] == "uq_breakout_scan_date_ticker"
+                for u in uniques
+            )
+        finally:
+            engine.dispose()
 
 
 def test_downgrade_removes_all_tables() -> None:

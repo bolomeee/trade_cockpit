@@ -484,7 +484,7 @@ def test_get_sma_series_default_window(clock, monkeypatch):
     client.get_sma_series("AAPL")
 
     assert captured["to"] == "2026-04-18"
-    assert captured["from"] == "2026-03-14"  # 35 calendar days before
+    assert captured["from"] == "2026-01-18"  # F106: 90 calendar days before (was 35 pre-F106)
 
 
 def test_get_sma_series_bare_list(clock):

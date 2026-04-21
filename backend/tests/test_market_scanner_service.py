@@ -231,6 +231,7 @@ def test_scan_total_failure_preserves_old_snapshot(db_session, fake_fmp):
     repo.replace_scan([
         BreakoutScanRow(
             scan_date=old_scan_date, ticker=t, company_name=f"{t} Inc.",
+            signal_type="legacy_crossover",
             close_price=100.0, ma150_value=99.0, pct_above_ma150=1.0,
             slope_value=0.5, market_cap=10_000_000_000, scanned_at=scanned_at,
         )
@@ -258,6 +259,7 @@ def test_scan_empty_hits_still_overwrites(db_session, fake_fmp):
     repo.replace_scan([
         BreakoutScanRow(
             scan_date=date(2026, 4, 20), ticker="OLD", company_name="Old Co.",
+            signal_type="legacy_crossover",
             close_price=10.0, ma150_value=9.0, pct_above_ma150=1.0,
             slope_value=0.5, market_cap=10_000_000_000,
             scanned_at=datetime.now(timezone.utc),
@@ -356,10 +358,8 @@ def test_scan_runs_workers_in_parallel(db_session):
     import threading
     import time
 
-    from app.services.market_scanner_service import (
-        MarketScannerService,
-        SCAN_WORKER_COUNT,
-    )
+    from app.services.market_scanner_service import MarketScannerService
+    from app.services.scanner_params import SCAN_WORKER_COUNT
 
     tickers = [(f"T{i:02d}", f"Co {i}", 100_000_000_000) for i in range(12)]
     _seed_universe(db_session, tickers)
@@ -435,6 +435,7 @@ def test_scan_preserves_d040_semantics_under_concurrency(db_session):
             scan_date=scan_date,
             ticker="OLD",
             company_name="Old Co",
+            signal_type="legacy_crossover",
             close_price=10.0,
             ma150_value=9.0,
             pct_above_ma150=11.0,

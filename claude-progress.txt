@@ -1,0 +1,38 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21] Sprint：F106-a 多信号扫描核心（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - scanner_params.py 新增：4 种 signal_type 枚举 + A1/A2/B2 阈值 + 共享参数（FETCH_WINDOW=90 / SCAN_WORKER_COUNT=6）
+  - market_scanner_service.py 重构：_BarCtx 不可变 dataclass + 4 个独立 detector（legacy / a1_stage_breakout / a2_slope_flip / b2_ma_pullback）+ hits_by_type 聚合
+  - market_breakout_scan 模型：加 signal_type / volume / volume_ratio_20；唯一键改 (scan_date, ticker, signal_type)
+  - repository：get_latest_snapshot 支持 signal_types 过滤
+  - alembic 003 迁移：batch_alter_table 改唯一键 + 三字段，默认回填 legacy_crossover
+  - 新增测试：test_market_scanner_detectors.py（10 用例覆盖 legacy/A1/A2/B2 正向+边界）
+  - 新增测试：test_schema.py::test_migration_003_... （upgrade→downgrade 往返验证）
+  - 修复：测试文件 8 处因 BreakoutScanRow/API 字段扩展引入的 schema 不一致
+  - F106-a scope 测试：48/48 全绿
+  - 全量回归：243/245（2 失败均为 F108 scope：test_stock_detail.py 的 pullbacks 404 期望，已在 F108-contract 中计入）
+  - phase：F106-a → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-a（Evaluator 自检已通过；2 个 F108-scope 回归失败由 F108 sprint 修复）
+  - F106-a 验收后，按 F106-b contract 进入（router ?type= + schemas + fmp_client SMA 窗口）
+
+🔧 系统变更：
+  - 新文件：backend/app/services/scanner_params.py
+  - 新文件：backend/alembic/versions/003_f106_signal_type_and_volume.py
+  - 新文件：backend/tests/test_market_scanner_detectors.py
+  - 表结构：market_breakout_scans 加 signal_type(NN)/volume/volume_ratio_20，唯一键 uq_breakout_scan_date_ticker → uq_breakout_scan_date_ticker_signal
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a done / b,c contract_agreed）
+    F106-a 扫描核心：🔍 needs_review
+    F106-b 后端 API：⬜ contract_agreed
+    F106-c 前端 widget：⬜ contract_agreed
+  F107  Chart volume + MA5/20：⬜ ready_to_dev（design-spec 需更新）
+  F108  Fundamentals 放开：⬜ contract_agreed（D047）
+  F109  Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+[下一个 Session]
+  验收 F106-a 后继续 F106-b（Generator 模式）：改 router /api/market/breakouts ?type= / 扩 schemas / fmp_client SMA 窗口 35→90

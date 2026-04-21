@@ -2,9 +2,9 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench",
   "version": "1.2.0",
-  "last_updated": "2026-04-20",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。",
-  "completion_rate": "v1.0.0 + v1.1.0 + F104 全部 done；v1.2 F105 规划中",
+  "last_updated": "2026-04-21",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。v1.3 迭代新增 F106 Multi-Signal Scanner（P0：A1 Stage 1→2 Breakout / A2 Slope Flip / B2 MA5 Pullback Bounce）。",
+  "completion_rate": "v1.0.0 + v1.1.0 + v1.2.0 全部 done；v1.3 F106 规划中",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
@@ -55,8 +55,24 @@
       ],
       "modified": [],
       "deprecated": [],
-      "status": "in_progress",
+      "status": "done",
+      "released_at": "2026-04-21",
+      "released_tag": "v1.2.0",
       "description": "新增 Market Breakout Scanner widget：每日盘后扫描全美股市值≥500亿且今日 MA150 breakout（昨日< MA / 今日≥MA / 幅度≤10% / 斜率>0）的候选。新 widget category 'scanner'"
+    },
+    {
+      "version": "v1.3",
+      "date": "2026-04-21",
+      "added": [
+        "F106",
+        "F107",
+        "F108",
+        "F109"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "Multi-Signal Scanner P0（F106：A1/A2/B2）+ 反向补契约：F107 股价图成交量 + 短均线叠加 / F108 fundamentals 与 pullbacks 放开到任意 ticker（延伸 D041 on-demand 语义）/ F109 Widget UI 规范落实（title 底色 #ebf2fa、widget 内部间距 -5px + gap-1、TopNav ResetLayoutButton 位置调整、search input pill 样式）。F107-F109 为 v1.2.0 发布后绕过 feature-dev 手改的代码，在 v1.3 迭代里反向补 Sprint Contract 归入轨道。"
     }
   ],
   "_phase_legend": {
@@ -1370,6 +1386,223 @@
       },
       "iteration_history": [],
       "notes": "【系统设计待决策（S1 Sprint Contract 前必须解决）】(1) FMP screener 端点不在 D034 映射表中，需在 ARCHITECTURE.md 补映射，并通过 context7 验证 /stable/screener 参数形态（marketCapMoreThan / exchange / isActivelyTrading 等）。(2) 扫描数据获取策略：方案 X 用 /stable/technical-indicators/sma?periodLength=150 直出 SMA 值，方案 Y 批量拉 151 天 EOD 自算 MA150+斜率，方案 Z 两者组合。300/min rate limit 下需在 system-design 阶段评估 API 调用量。(3) 扫描调度时间：与现有 EOD refresh (REFRESH_CRON_HOUR=6) 的先后关系、是否独立 cron。(4) market_breakout_scans 表 schema：scan_date / ticker / company_name / close_price / ma150_value / pct_above_ma150 / slope_value / market_cap / scanned_at + 索引策略。【架构约束】widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'，component 无 props 靠 AppStore+hooks。【on-demand chart 决策】用户选方案 A：扩展 /api/stocks/:ticker/chart 服务端加 fallback，前端 ChartWidget 零改动。【预计拆分】F105-a 后端扫描引擎+调度+表+GET breakouts；F105-b 后端 on-demand chart fallback；F105-c 前端 MarketBreakoutWidget+注册（feature-dev 阶段正式拆分）。【localStorage】单用户项目，手动 reset 布局即可，不做自动迁移。【视觉沿用清单（替代 design-spec，依据 D043）】(1) WidgetShell 与 Watchlist/Chart 保持一致（title bar + body padding + border-radius）。(2) 表格样式沿用 WatchlistWidget：列顺序 Ticker → Company → Close → % Above MA150；字体/行高/hover 态直接复用。(3) + 按钮：shadcn Button variant='ghost' size='icon' + lucide-react Plus 图标，rounded-full；三态 idle / loading (Loader2 spin) / added (Check 灰显 disabled)。(4) 列表默认按 pctAboveMa150 升序。(5) 空态文案：scanDate=null → 'Waiting for today’s scan'；items 为空 → 'No breakouts today'。(6) 移动端 overflow-x-auto 横滚，不折叠。(7) defaultLayout：{x:0, y:16, w:8, h:8, minW:5, minH:5}。",
+      "completed_at": null
+    },
+    {
+      "id": "F106",
+      "name": "Multi-Signal Scanner (P0: A1/A2/B2)",
+      "description": "在 F105 的 scanner 基础上扩展出多信号类型：A1 Stage 1→2 Breakout（MA150 近似水平 60 日后首次放量上穿）/ A2 Slope Flip（slope(MA150) 近 30 日由 ≤0 翻正且 close>MA150）/ B2 MA5 Pullback Bounce（slope(MA150)>0 且 MA5 近 10 日曾贴 MA150 ≤2% 后今日重新扩大）。legacy F105 crossover 规则保留入库但默认不在 widget 展示（可通过 ?type=legacy_crossover 查询）。scanner 一次 FMP 调用内并行跑 4 条规则（legacy+A1+A2+B2），emission 为多行（同 ticker 同日可同时命中多类）。市场数据引入 volume 字段。市场扫描 fetch window 从 35 天扩到 90 天。参数集中在 backend/app/services/scanner_params.py，方便后续调整。widget 用 shadcn Tabs 分类（Stage Breakout 合并 A1+A2 / Pullback = B2）",
+      "user_story": "作为投资者，我不想只看到'今天刚上穿 MA150'这一类信号，还想看到'MA150 本身刚翻正'和'已经在上升趋势中回踩 MA150 后反弹'这两类——前者抓新庄启动，后者抓趋势中的加仓点。",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "subtasks": {
+        "F106-a": { "phase": "needs_review", "contract": "docs/开发/sprint-contracts/F106-a-contract.md", "scope": "后端扫描核心（scanner_params 新 + service 4 detector + model + repo + alembic 003）" },
+        "F106-b": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F106-b-contract.md", "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）" },
+        "F106-c": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
+      },
+      "dependencies": [
+        "F105"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/services/scanner_params.py (new)",
+        "backend/app/services/market_scanner_service.py",
+        "backend/app/models/market_breakout_scan.py",
+        "backend/app/repositories/market_breakout_repository.py",
+        "backend/app/routers/market.py",
+        "backend/app/schemas/market.py",
+        "backend/app/external/fmp_client.py (bump SMA default window)",
+        "backend/alembic/versions/003_f106_signal_type_and_volume.py (new)",
+        "frontend/src/components/ui/tabs.tsx (new, shadcn)",
+        "frontend/src/workbench/widgets/MarketBreakoutWidget.tsx",
+        "frontend/src/lib/api/market.ts",
+        "frontend/src/types/market.ts"
+      ],
+      "scope": {
+        "pages": [
+          "Workbench / (scanner.breakouts widget 改造为 Tabs)"
+        ],
+        "api_endpoints": [
+          "GET /api/market/breakouts?type=a1,a2,b2 (扩展已有端点)"
+        ],
+        "db_tables": [
+          "market_breakout_scans (加 signal_type / volume / volume_ratio_20 列；唯一键改为 scan_date+ticker+signal_type)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#GET-/api/market/breakouts"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#marketbreakoutscan"
+        ],
+        "decision_refs": [
+          "DECISIONS.md#D045 F106 signal model"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "scanner 单次扫描对每个 ticker 同时评估 4 条规则（legacy_crossover / a1_stage_breakout / a2_slope_flip / b2_ma_pullback），不增加 FMP 调用",
+        "同一 ticker 同一 scan_date 可产生多条记录，signal_type 各异；表唯一键为 (scan_date, ticker, signal_type)",
+        "A1 规则：MA150 过去 60 个交易日 max/min 比 ≤5%（近似水平），且今日 close≥MA150 且前一日 close<MA150，且今日 volume≥20 日均量×1.5，且 slope(MA150)≥0",
+        "A2 规则：今日 slope(MA150,20)>0 且过去 30 日内曾存在某日 slope≤0（新近翻正），且今日 close>MA150",
+        "B2 规则：今日 slope(MA150)>0 且过去 10 日内 min((MA5-MA150)/MA150)≤2% 且今日 (MA5-MA150)/MA150 比该 min 高出≥0.5% 且今日 MA5>MA150",
+        "scanner 抓取窗口从 35 天扩展到 90 天（支持 A1 的 60 日横盘检测）",
+        "GET /api/market/breakouts 默认 type=a1,a2,b2（legacy 不返回；显式 ?type=legacy_crossover 可返回）；items[] 追加 signalType / volume / volumeRatio20 字段",
+        "widget 改用 shadcn Tabs：Tab 'Stage Breakout'（a1+a2 合并展示，按 signalType 分组 badge）/ Tab 'Pullback'（b2）；legacy 不暴露",
+        "所有参数集中在 backend/app/services/scanner_params.py；修改该文件不需改 scanner 逻辑",
+        "一次手动触发扫描后，docker 部署的 widget 能在两个 Tab 中正常显示对应信号；pytest 全绿"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "设计依据：docs/需求/SIGNAL-CATALOG.md（P0 = A1+A2+B2）。P1/P2/P3 暂不实施。legacy_crossover 保留作对照基线。",
+      "completed_at": null
+    },
+    {
+      "id": "F107",
+      "name": "股价图成交量 + MA5/MA20 叠加",
+      "description": "PriceChart 在 candlestick 主图下方增加独立 priceScale 的成交量 Histogram（底部 20% 区域），柱颜色跟随当日涨跌（40% 透明度）。同时叠加 MA5（橙 #f59e0b）与 MA20（紫 #8b5cf6）两条短均线，与既有 MA150 共同构成 3 条均线图。ChartWidget 左上角新增 MA5/MA20/MA150 三色图例。为短线择时与成交量背离观察提供可视化依据。",
+      "user_story": "作为投资者，光看收盘价和 MA150 不足以判断短线进出场——我需要同时看到 MA5 / MA20 的走势关系和成交量柱，来判断当日突破是否放量、是否处于短周期背离区。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "dependencies": ["F102"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/components/features/stock-detail/PriceChart.tsx",
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "docs/设计/design-spec.md"
+      ],
+      "scope": {
+        "pages": ["Workbench / ChartWidget"],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": [],
+        "acceptance_type": "visual",
+        "sprint_contract": "docs/开发/sprint-contracts/F107-contract.md"
+      },
+      "acceptance_criteria": [
+        "Chart 底部 20% 区域显示成交量 Histogram，涨绿跌红（40% 透明）",
+        "MA5（橙 #f59e0b）、MA20（紫 #8b5cf6）、MA150（蓝）同时显示，前 N-1 天不画点",
+        "ChartWidget 左上角显示三色图例（MA5 / MA20 / MA150）",
+        "design-spec.md 补 ChartWidget 成交量 + 短均线备案",
+        "切换 ticker 无 stale series 残影；pnpm typecheck + build 通过"
+      ],
+      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "iteration_history": [],
+      "notes": "反向补契约：代码已在 v1.2.0 发布后手改落地。lightweight-charts 双 priceScale 用法需 Evaluator 阶段用 context7 `/tradingview/lightweight-charts` 验证。",
+      "completed_at": null
+    },
+    {
+      "id": "F108",
+      "name": "/fundamentals 与 /pullbacks 放开到任意 ticker",
+      "description": "延伸 D041 on-demand 语义：`/api/stocks/:ticker/fundamentals` 不再要求 ticker 在 watchlist，直接打 FMP get_ratios_ttm + get_key_metrics_ttm；`/api/stocks/:ticker/pullbacks` 对非 watchlist / inactive ticker 返回空 list（而非 404），与 chart fallback 语义一致。Scanner 场景下用户点任意 ticker 切换 Fundamentals / Pullbacks Tab 不再报 404。",
+      "user_story": "作为投资者，我在 scanner 里点击一个不在 watchlist 的 ticker 时，除了看图，还想切到 Fundamentals Tab 看估值 —— 而不是被 404 挡住，逼我先把它加进 watchlist。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "dependencies": ["F105-b"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/services/stock_detail_service.py",
+        "backend/tests/test_stock_detail.py",
+        "docs/系统设计/API-CONTRACT.md",
+        "docs/系统设计/DECISIONS.md"
+      ],
+      "scope": {
+        "pages": ["Workbench / FundamentalsWidget / PullbackWidget（仅 API 行为变，UI 不变）"],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/fundamentals（404 语义收窄为空 ticker）",
+          "GET /api/stocks/:ticker/pullbacks（非 watchlist 返回空，不再 404）"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#GET-/api/stocks/:ticker/fundamentals",
+          "API-CONTRACT.md#GET-/api/stocks/:ticker/pullbacks"
+        ],
+        "data_model_refs": [],
+        "decision_refs": ["DECISIONS.md#D041", "DECISIONS.md#D047"],
+        "acceptance_type": "functional",
+        "sprint_contract": "docs/开发/sprint-contracts/F108-contract.md"
+      },
+      "acceptance_criteria": [
+        "非 watchlist ticker /fundamentals → 200 + FMP 数据",
+        "inactive ticker /fundamentals → 200（不再 404）",
+        "空 ticker /fundamentals → 404",
+        "FMP httpx error → 502 EXTERNAL_API_ERROR",
+        "非 watchlist / inactive ticker /pullbacks → 200 + items=[]",
+        "watchlist active ticker 两接口行为与原版字节级一致",
+        "API-CONTRACT.md 的 404 语义已更新；DECISIONS.md 追加 D047"
+      ],
+      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "iteration_history": [],
+      "notes": "反向补契约：用户确认 D041 已覆盖此语义延伸，不需再走 system-design。D047 记录决策推广。",
+      "completed_at": null
+    },
+    {
+      "id": "F109",
+      "name": "Widget UI 规范落实（间距 / 底色 / TopNav / Search）",
+      "description": "把 v1.1.0 起以硬编码形式落地但未走 feature-dev 的 widget UI 规范纳入契约：a) widget title bar 底色统一 #ebf2fa（覆盖原 --color-surface-muted）；widget 内容根元素 marginTop:-5 / marginLeft:-5 + gap-1 紧凑间距。b) TopNav 品牌字变 NavLink 可点击回首页；ResetLayoutButton 从 MarketOverviewBar 右上角挪到 TopNav 右侧；AddStockCard search input pill 样式（10px 粗体）。design-spec 同步备案。",
+      "user_story": "作为使用者，我希望所有 widget 的视觉风格一致（title 色、内容贴边距）；站标能直接点回首页；搜索框更显眼。不是功能需求，但直接影响每天工作台的顺手程度。",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "dependencies": ["F100", "F101", "F102"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/workbench/WidgetShell.tsx",
+        "frontend/src/workbench/widgets/WatchlistWidget.tsx",
+        "frontend/src/workbench/widgets/PullbackWidget.tsx",
+        "frontend/src/workbench/widgets/FundamentalsWidget.tsx",
+        "frontend/src/workbench/widgets/QuickAddWidget.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/features/topnav/TopNav.tsx",
+        "frontend/src/components/features/dashboard/AddStockCard.tsx",
+        "docs/设计/design-spec.md"
+      ],
+      "subtasks": {
+        "F109-a": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F109-a-contract.md", "scope": "Widget 内部间距 + title 底色（WidgetShell + 4 widgets）" },
+        "F109-b": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F109-b-contract.md", "scope": "TopNav 品牌字链接 + ResetLayoutButton 位置 + AddStockCard pill 样式" }
+      },
+      "scope": {
+        "pages": ["Workbench / 所有 widget / TopNav / AddStockCard"],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": ["DECISIONS.md#D046"],
+        "acceptance_type": "visual",
+        "sprint_contract": null
+      },
+      "acceptance_criteria": [
+        "所有 widget title bar 底色 #ebf2fa；内容根 marginTop:-5 / marginLeft:-5 / gap-1",
+        "design-spec.md 已备案 widget 内部间距规范（v1.1.0 起强制）",
+        "DECISIONS.md D046 记录硬编码策略（底色 / 间距跨 widget 一致性优先于 token 抽象）",
+        "TopNav 品牌字 MA150 Tracker 可点击回首页，视觉不变",
+        "ResetLayoutButton 仅在首页 TopNav 右侧可见，非首页隐藏",
+        "AddStockCard search input pill 样式（rounded-full、10px、粗体）",
+        "pnpm typecheck + build 通过，无回归"
+      ],
+      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "iteration_history": [],
+      "notes": "反向补契约：代码已在 v1.2.0 发布前后手改落地；本次以 sprint 形式归档，Evaluator 阶段核对 design-spec / DECISIONS / 代码三者一致。",
       "completed_at": null
     }
   ]

@@ -47,17 +47,20 @@ def test_schema_market_breakout_scans_columns(session_engine):
         "scan_date",
         "ticker",
         "company_name",
+        "signal_type",
         "close_price",
         "ma150_value",
         "pct_above_ma150",
         "slope_value",
+        "volume",
+        "volume_ratio_20",
         "market_cap",
         "scanned_at",
     }
     uniques = inspect(session_engine).get_unique_constraints("market_breakout_scans")
     assert any(
-        set(u["column_names"]) == {"scan_date", "ticker"}
-        and u["name"] == "uq_breakout_scan_date_ticker"
+        set(u["column_names"]) == {"scan_date", "ticker", "signal_type"}
+        and u["name"] == "uq_breakout_scan_date_ticker_signal"
         for u in uniques
     )
 
@@ -138,11 +141,13 @@ def _b(
     pct: float,
     scan_date: date = date(2026, 4, 20),
     scanned_at: datetime | None = None,
+    signal_type: str = "legacy_crossover",
 ) -> BreakoutScanRow:
     return BreakoutScanRow(
         scan_date=scan_date,
         ticker=ticker,
         company_name=f"{ticker} Corp",
+        signal_type=signal_type,
         close_price=100.0 * (1 + pct / 100),
         ma150_value=100.0,
         pct_above_ma150=pct,
