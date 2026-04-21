@@ -9,8 +9,8 @@ services:
       - FMP_API_KEY=${FMP_API_KEY}
     volumes:
       - ./backend/data:/app/data
-    expose:
-      - "8000"
+    ports:
+      - "8001:8000"
     restart: unless-stopped
 
   frontend:
