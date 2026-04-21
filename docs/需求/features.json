@@ -1289,7 +1289,7 @@
         },
         "F105-c": {
           "scope": "前端 MarketBreakoutWidget + WidgetRegistry 注册",
-          "phase": "planned",
+          "phase": "needs_review",
           "depends_on": [
             "F105-a4",
             "F105-b"

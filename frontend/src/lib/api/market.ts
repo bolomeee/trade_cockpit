@@ -1,6 +1,10 @@
 import { apiFetch } from './client'
-import type { MarketIndexItem } from '@/types/market'
+import type { BreakoutSnapshot, MarketIndexItem } from '@/types/market'
 
 export function getMarketOverview(): Promise<MarketIndexItem[]> {
   return apiFetch<MarketIndexItem[]>('/market/overview')
+}
+
+export function getBreakouts(): Promise<BreakoutSnapshot> {
+  return apiFetch<BreakoutSnapshot>('/market/breakouts')
 }

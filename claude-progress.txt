@@ -430,3 +430,34 @@
   - phase: needs_review → done
   - 验收记录：docs/验收/F105-b-acceptance.md
   - 下一步：F105-c（前端 MarketBreakoutWidget + WidgetRegistry 注册）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 24:00] Sprint：F105-c 前端 MarketBreakoutWidget
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - types/market.ts 追加 BreakoutItem / BreakoutSnapshot
+  - lib/api/market.ts 追加 getBreakouts()
+  - workbench/widgets/MarketBreakoutWidget.tsx 新建
+  - WidgetRegistry.ts 扩展 WidgetCategory='scanner' + 注册 scanner.breakouts
+  - tsc --noEmit：0 错
+  - pnpm build：成功 205ms
+  - preview 手测（mock fetch）：
+    • 表格正确渲染 3 行（Ticker/Company/Close/% Above MA150/+）
+    • 行点击联动 ChartWidget（NVDA 切换成功）
+    • + 按钮三态 idle / loading / added（Check+disabled+新 aria-label）
+    • stopPropagation 有效（点 + 不切换选中 ticker）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - （无）等待 acceptance
+
+🔧 系统变更：
+  - 4 文件修改（契约一致）
+
+📊 功能状态：
+  F105-a1/a2/a3/a4/b：✅ done
+  F105-c：🔍 needs_review（F105 最后一块）
+
+[下一个 Session]
+  验收 F105-c → F105 整体 done → 触发 project-commiter 发 v1.1.0
