@@ -36,3 +36,10 @@
 
 [下一个 Session]
   验收 F106-a 后继续 F106-b（Generator 模式）：改 router /api/market/breakouts ?type= / 扩 schemas / fmp_client SMA 窗口 35→90
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-a 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-a phase：needs_review → done
+- 下一步：按 F106-b contract 进入 Generator 模式
