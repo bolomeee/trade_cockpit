@@ -844,7 +844,7 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 
 **影响**：
 - `stock_detail_service.get_chart()` 增加 ticker 查库分支；fmp_client 新增 `get_historical_eod_range()`（复用现有 EOD 调用）
-- 新增错误码 `EXTERNAL_SERVICE_ERROR` (502) 用于 FMP 外部故障（API-CONTRACT.md）
+- 复用既有错误码 `EXTERNAL_API_ERROR` (502) 用于 FMP 外部故障（F105-b 实现时确认：现网代码 + test_stock_detail 已固化此命名，API-CONTRACT.md 已统一）
 - Pullback markers 固定空数组是契约级约定（F105 场景无回踩历史需求）；若后续需要，再扩展
 - 不引入缓存层（一次用户点击对应一次 FMP 调用；性能瓶颈出现时再加）
 

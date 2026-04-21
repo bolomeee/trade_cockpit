@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -248,6 +249,78 @@ def test_detail_endpoints_are_case_insensitive(
     for path in ("chart", "pullbacks", "fundamentals"):
         resp = client.get(f"/api/stocks/ggg/{path}")
         assert resp.status_code == 200, path
+
+
+# ---------- F105-b: /chart on-demand fallback ----------
+
+
+def _make_fmp_bars(start: date, closes: list[float]) -> list[dict]:
+    # FMP returns descending-by-date list; service layer sorts ascending
+    bars = [
+        {
+            "date": (start + timedelta(days=i)).isoformat(),
+            "open": c,
+            "high": c + 0.5,
+            "low": c - 0.5,
+            "close": c,
+            "volume": 1_000_000 + i,
+        }
+        for i, c in enumerate(closes)
+    ]
+    return list(reversed(bars))
+
+
+def test_chart_fallback_for_unknown_ticker(
+    client: TestClient, fake_fmp
+) -> None:
+    closes = [100.0 + i * 0.2 for i in range(200)]
+    fake_fmp.daily_bars_results = _make_fmp_bars(date(2025, 1, 1), closes)
+
+    resp = client.get("/api/stocks/pltr/chart")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["ticker"] == "PLTR"
+    assert len(data["bars"]) == 200
+    dates = [b["date"] for b in data["bars"]]
+    assert dates == sorted(dates)
+    assert len(data["ma150"]) == 200 - 149
+    assert data["pullbackMarkers"] == []
+    # FMP called once with upper-cased ticker
+    assert fake_fmp.daily_bars_calls[0][0] == "PLTR"
+
+
+def test_chart_fallback_for_inactive_ticker(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    _seed_stock(db_session, "INAC", is_active=False)
+    fake_fmp.daily_bars_results = _make_fmp_bars(
+        date(2025, 1, 1), [50.0 + i * 0.1 for i in range(160)]
+    )
+
+    resp = client.get("/api/stocks/INAC/chart")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["ticker"] == "INAC"
+    assert len(data["bars"]) == 160
+    assert data["pullbackMarkers"] == []
+
+
+def test_chart_fallback_empty_fmp_returns_404(
+    client: TestClient, fake_fmp
+) -> None:
+    fake_fmp.daily_bars_results = []
+    resp = client.get("/api/stocks/ZZZZ/chart")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_chart_fallback_fmp_http_error_returns_502(
+    client: TestClient, fake_fmp
+) -> None:
+    fake_fmp.daily_bars_exc = httpx.ConnectError("boom")
+    resp = client.get("/api/stocks/AAPL/chart")
+    assert resp.status_code == 502
+    assert resp.json()["error"]["code"] == "EXTERNAL_API_ERROR"
 
 
 def test_pullback_repository_returns_rows_desc(

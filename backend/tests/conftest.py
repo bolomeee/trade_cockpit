@@ -32,6 +32,7 @@ class FakeFMP:
 
         self.daily_bars_results: list[Any] = []
         self.daily_bars_calls: list[tuple[str, Any, Any]] = []
+        self.daily_bars_exc: Exception | None = None
 
         self.index_bars_results: dict[str, list[Any]] = {}
         self.index_bars_calls: list[tuple[str, int]] = []
@@ -64,6 +65,8 @@ class FakeFMP:
 
     def get_daily_bars(self, symbol: str, from_date, to_date) -> list[Any]:
         self.daily_bars_calls.append((symbol, from_date, to_date))
+        if self.daily_bars_exc is not None:
+            raise self.daily_bars_exc
         return list(self.daily_bars_results)
 
     def get_index_recent_bars(self, symbol: str, days: int = 10) -> list[Any]:

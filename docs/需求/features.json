@@ -1281,7 +1281,7 @@
         },
         "F105-b": {
           "scope": "后端 on-demand chart fallback（扩展 /api/stocks/:ticker/chart）",
-          "phase": "planned",
+          "phase": "needs_review",
           "depends_on": [
             "F105-a1"
           ]

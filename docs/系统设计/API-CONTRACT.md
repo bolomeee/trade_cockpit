@@ -339,7 +339,7 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
 | ticker 不在 watchlist 且 FMP on-demand 拉取失败 / 返回空 | NOT_FOUND | 404 |
-| FMP 外部服务异常 | EXTERNAL_SERVICE_ERROR | 502 |
+| FMP 外部服务异常 | EXTERNAL_API_ERROR | 502 |
 
 ---
 

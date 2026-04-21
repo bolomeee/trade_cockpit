@@ -393,3 +393,33 @@
   - phase: needs_review → done
   - 验收记录：docs/验收/F105-a2-acceptance.md
   - 佐证：test_fmp_client.py 36/36；下游 a3/a4 已 done
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 23:30] Sprint：F105-b /api/stocks/:ticker/chart on-demand fallback
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - stock_detail_service.get_chart 拆 watchlist / fmp fallback 两分支（共用 _assemble_chart_payload 出口）
+  - fallback 路径：stock is None 或 is_active=False 均走（B2 方案）；空返回→404；HTTPError→502
+  - API-CONTRACT.md 错误码 EXTERNAL_SERVICE_ERROR → EXTERNAL_API_ERROR（方案 A，对齐现网代码）
+  - DECISIONS.md D041 同步更新错误码命名
+  - conftest FakeFMP 追加 daily_bars_exc 字段
+  - test_stock_detail.py 追加 4 条用例：unknown→fallback 成功 / inactive→fallback 成功 / 空→404 / HTTPError→502
+  - 单元/集成测试：tests/test_stock_detail.py 16/16 通过
+  - 全量回归：backend/tests/ 227/227 通过（较 a4 的 223 + 新增 4）
+  - mypy：目标文件 stock_detail_service.py 仅 1 处 Column[date] 遗留错误（b 前已存在）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - （无）等待 acceptance
+
+🔧 系统变更：
+  - 4 文件修改（契约一致）
+
+📊 功能状态：
+  F105-a1/a2/a3/a4：✅ done
+  F105-b：🔍 needs_review
+  F105-c：⬜ planned（前端 widget）
+
+[下一个 Session]
+  验收 F105-b 后进入 F105-c（前端 MarketBreakoutWidget + WidgetRegistry 注册）
