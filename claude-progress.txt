@@ -43,3 +43,41 @@
 
 - F106-a phase：needs_review → done
 - 下一步：按 F106-b contract 进入 Generator 模式
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F106-b 多信号扫描 API 层（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator 模式，业务代码未动）：
+  - 核对：routers/market.py 的 ?type= 解析 + 400 校验、schemas/market.py 的 4 个新字段、fmp_client 的 SMA 35→90 + is_fund/is_etf Optional 改造均匹配 contract
+  - 新增测试（test_market_api.py 6 用例）：
+    · 默认过滤掉 legacy_crossover
+    · ?type=legacy_crossover 只返 legacy
+    · ?type=a1_stage_breakout,b2_ma_pullback 组合过滤
+    · ?type=foo → 400 + detail
+    · ?type= 空串 → 降级默认
+    · items[] 含 signalType/slopeValue/volume/volumeRatio20
+  - 新增测试（test_fmp_client.py 3 用例）：
+    · is_etf=None 不下传 isEtf
+    · is_fund=False/True 正确序列化
+    · get_screener_universe 对 3 个交易所都下发 isFund=false 且不下发 isEtf
+  - 修文档：API-CONTRACT.md GET /api/market/breakouts 错误码 422 → 400（与实现一致，用户选项 C）
+  - 全量回归 252/254（2 失败为 F108 scope）
+  - phase：F106-b → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-b 后进入 F106-c（前端 Tabs + MarketBreakoutWidget 重构）
+
+🔧 系统变更：
+  - 业务代码零改动（反向补 Evaluator）
+  - 新增测试 9 用例
+  - API-CONTRACT.md 错误码修正
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a done / b needs_review / c contract_agreed）
+    F106-a 扫描核心：✅ done
+    F106-b 后端 API：🔍 needs_review
+    F106-c 前端 widget：⬜ contract_agreed
+
+[下一个 Session]
+  验收 F106-b 后进入 F106-c（Evaluator 模式核对前端 Tabs 实现）

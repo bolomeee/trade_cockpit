@@ -17,9 +17,13 @@ class MarketIndexOut(CamelModel):
 class BreakoutItemOut(CamelModel):
     ticker: str
     company_name: str
+    signal_type: str
     close_price: float
     ma150_value: float
     pct_above_ma150: float
+    slope_value: float
+    volume: int | None = None
+    volume_ratio_20: float | None = None
     market_cap: int
 
 

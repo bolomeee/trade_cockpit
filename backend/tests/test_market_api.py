@@ -190,3 +190,112 @@ def test_breakouts_response_envelope_shape(client, db_session):
     assert set(body.keys()) == {"data", "message"}
     assert body["message"] == "success"
     assert set(body["data"].keys()) == {"scanDate", "scannedAt", "items", "total"}
+
+
+# ---------- F106-b: ?type= signal filter ----------
+
+
+def _seed_mixed_signals(db_session, scan_date: date, scanned_at: datetime) -> None:
+    """Write one row per signal_type into the latest snapshot."""
+    MarketBreakoutRepository(db_session).replace_scan(
+        [
+            _row(
+                scan_date=scan_date,
+                ticker="LEG",
+                pct=1.0,
+                scanned_at=scanned_at,
+                signal_type="legacy_crossover",
+            ),
+            _row(
+                scan_date=scan_date,
+                ticker="A1X",
+                pct=2.0,
+                scanned_at=scanned_at,
+                signal_type="a1_stage_breakout",
+            ),
+            _row(
+                scan_date=scan_date,
+                ticker="A2X",
+                pct=3.0,
+                scanned_at=scanned_at,
+                signal_type="a2_slope_flip",
+            ),
+            _row(
+                scan_date=scan_date,
+                ticker="B2X",
+                pct=4.0,
+                scanned_at=scanned_at,
+                signal_type="b2_ma_pullback",
+            ),
+        ]
+    )
+
+
+def test_breakouts_default_excludes_legacy(client, db_session):
+    """No ?type= → default DEFAULT_API_SIGNAL_TYPES (a1/a2/b2), legacy filtered out."""
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 13, 0, tzinfo=timezone.utc)
+    _seed_mixed_signals(db_session, scan_date, scanned_at)
+
+    data = client.get("/api/market/breakouts").json()["data"]
+    types = {it["signalType"] for it in data["items"]}
+    assert "legacy_crossover" not in types
+    assert types == {"a1_stage_breakout", "a2_slope_flip", "b2_ma_pullback"}
+    assert data["total"] == 3
+
+
+def test_breakouts_type_legacy_returns_only_legacy(client, db_session):
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 13, 0, tzinfo=timezone.utc)
+    _seed_mixed_signals(db_session, scan_date, scanned_at)
+
+    data = client.get("/api/market/breakouts?type=legacy_crossover").json()["data"]
+    assert [it["ticker"] for it in data["items"]] == ["LEG"]
+    assert data["items"][0]["signalType"] == "legacy_crossover"
+
+
+def test_breakouts_type_multi_filters_to_requested_set(client, db_session):
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 13, 0, tzinfo=timezone.utc)
+    _seed_mixed_signals(db_session, scan_date, scanned_at)
+
+    data = client.get(
+        "/api/market/breakouts?type=a1_stage_breakout,b2_ma_pullback"
+    ).json()["data"]
+    returned = {(it["ticker"], it["signalType"]) for it in data["items"]}
+    assert returned == {
+        ("A1X", "a1_stage_breakout"),
+        ("B2X", "b2_ma_pullback"),
+    }
+
+
+def test_breakouts_type_invalid_returns_400(client, db_session):
+    resp = client.get("/api/market/breakouts?type=foo")
+    assert resp.status_code == 400
+    assert "invalid signal_type: foo" in resp.json()["detail"]
+
+
+def test_breakouts_type_empty_string_falls_back_to_default(client, db_session):
+    """?type= (empty) → treated as default, returns a1/a2/b2 only."""
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 13, 0, tzinfo=timezone.utc)
+    _seed_mixed_signals(db_session, scan_date, scanned_at)
+
+    resp = client.get("/api/market/breakouts?type=")
+    assert resp.status_code == 200
+    types = {it["signalType"] for it in resp.json()["data"]["items"]}
+    assert types == {"a1_stage_breakout", "a2_slope_flip", "b2_ma_pullback"}
+
+
+def test_breakouts_items_expose_f106_fields(client, db_session):
+    """Items include signalType / slopeValue / volume / volumeRatio20."""
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 13, 0, tzinfo=timezone.utc)
+    _seed_mixed_signals(db_session, scan_date, scanned_at)
+
+    item = client.get("/api/market/breakouts").json()["data"]["items"][0]
+    assert {"signalType", "slopeValue", "volume", "volumeRatio20"} <= set(item.keys())
+    assert isinstance(item["slopeValue"], float)
+    # Helper _row leaves volume/volumeRatio20 as defaults (None).
+    assert item["volume"] is None
+    assert item["volumeRatio20"] is None

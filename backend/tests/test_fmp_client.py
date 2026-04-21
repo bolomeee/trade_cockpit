@@ -396,6 +396,67 @@ def test_get_company_screener_page_bool_serialization(clock):
     assert captured["isActivelyTrading"] == "false"
 
 
+# ---------- F106-b: is_etf/is_fund None omission + is_fund serialization ----------
+
+
+def test_get_company_screener_page_is_etf_none_omits_param(clock):
+    """F106-b: is_etf=None means 'don't filter' — no isEtf key in outgoing params."""
+    captured: dict[str, str] = {}
+
+    def handler(req):
+        captured.update(req.url.params)
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    client.get_company_screener_page(
+        market_cap_gte=1, exchange="NYSE"
+    )  # is_etf default now None
+    assert "isEtf" not in captured
+    assert "isFund" not in captured
+    assert captured["exchange"] == "NYSE"
+
+
+def test_get_company_screener_page_is_fund_serialization(clock):
+    """F106-b: is_fund=False/True emits isFund=false/true; None omits."""
+    captured: dict[str, str] = {}
+
+    def handler(req):
+        captured.clear()
+        captured.update(req.url.params)
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+
+    client.get_company_screener_page(
+        market_cap_gte=1, exchange="NYSE", is_fund=False
+    )
+    assert captured["isFund"] == "false"
+    assert "isEtf" not in captured
+
+    client.get_company_screener_page(
+        market_cap_gte=1, exchange="NYSE", is_fund=True
+    )
+    assert captured["isFund"] == "true"
+
+
+def test_get_screener_universe_sends_is_fund_false_per_exchange(clock):
+    """F106-b: universe merge must send isFund=false to exclude mutual funds."""
+    responses = iter([ok([]), ok([]), ok([])])
+
+    def handler(req):
+        return next(responses)
+
+    client, calls = make_client(handler, clock)
+    client.get_screener_universe()
+
+    assert len(calls) == 3
+    for c in calls:
+        params = c.url.params
+        assert params["isFund"] == "false"
+        # Must NOT constrain isEtf (universe should keep ETFs)
+        assert "isEtf" not in params
+
+
 def test_get_screener_universe_merges_three_exchanges_and_dedupes(clock):
     # Per-exchange payloads: NYSE→[AAPL, MSFT], NASDAQ→[AAPL, GOOG], AMEX→[TSLA]
     responses = iter([

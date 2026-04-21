@@ -40,8 +40,10 @@ FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
 # upstream problems and must surface rather than mask behind a data-path switch.
 _SMA_FALLBACK_STATUS_CODES: frozenset[int] = frozenset({402, 403, 404})
 
-# F105 default SMA window: 35 calendar days ≈ 25 trading days (D039 "最近 25 交易日窗口").
-_SMA_DEFAULT_WINDOW_DAYS: int = 35
+# F105 default SMA window was 35 days (25 trading days) — enough for legacy
+# crossover + 20-day slope. F106 A1 requires 60-trading-day MA150 horizontality
+# check, so bumped to 90 calendar days (~63 trading days with buffer).
+_SMA_DEFAULT_WINDOW_DAYS: int = 90
 # F105 EOD fallback window: 260 calendar days ≈ 180 trading days, enough for
 # MA150 + 20-day slope even after weekends/holidays.
 _EOD_FALLBACK_WINDOW_DAYS: int = 260
@@ -267,23 +269,28 @@ class FmpClient:
         market_cap_gte: int,
         exchange: str,
         *,
-        is_etf: bool = False,
+        is_etf: bool | None = None,
+        is_fund: bool | None = None,
         is_actively_trading: bool = True,
         limit: int = 500,
     ) -> list[Any]:
         """Single-exchange FMP company screener call (F105 universe, D038).
 
-        Returns FMP's raw list of screener rows (each item typically contains
-        `symbol`, `companyName`, `exchange`, `marketCap`, etc.). Caller should
-        use `get_screener_universe` for the three-exchange merge.
+        `is_etf` / `is_fund`: `True` includes only, `False` excludes, `None`
+        omits the filter (both allowed). Returns FMP's raw list of screener
+        rows. Caller should use `get_screener_universe` for the three-exchange
+        merge.
         """
-        params = {
+        params: dict[str, Any] = {
             "marketCapMoreThan": market_cap_gte,
             "exchange": exchange,
-            "isEtf": "true" if is_etf else "false",
             "isActivelyTrading": "true" if is_actively_trading else "false",
             "limit": limit,
         }
+        if is_etf is not None:
+            params["isEtf"] = "true" if is_etf else "false"
+        if is_fund is not None:
+            params["isFund"] = "true" if is_fund else "false"
         body = self._request(FMP_EP_SCREENER, params)
         return list(body or [])
 
@@ -295,10 +302,9 @@ class FmpClient:
     ) -> list[dict[str, Any]]:
         """Merged, de-duplicated screener universe across US exchanges (F105, D038).
 
-        Calls `get_company_screener_page` once per exchange and merges results,
-        de-duplicating by `symbol` with first-seen wins (stable ordering for
-        downstream consumers). Any per-exchange error propagates — the caller
-        is responsible for retrying the whole refresh.
+        Includes common stocks, ADRs, and ETFs (what the user trades);
+        excludes mutual funds via `isFund=false`. De-duplicates by `symbol`,
+        first-seen wins. Any per-exchange error propagates.
         """
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
@@ -306,6 +312,7 @@ class FmpClient:
             rows = self.get_company_screener_page(
                 market_cap_gte=market_cap_gte,
                 exchange=exchange,
+                is_fund=False,
                 limit=limit_per_exchange,
             )
             for row in rows:

@@ -542,24 +542,40 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 ---
 
 ### GET /api/market/breakouts
-> Feature：F105 Market Breakout Scanner Widget
+> Feature：F105 Market Breakout Scanner Widget；F106 扩展为多信号（A1/A2/B2 + legacy）
 
-**用途**：读取最新一次扫描快照（市值≥500亿且今日 MA150 breakout 候选）。纯读端点，不触发扫描；扫描由调度器（`SCANNER_CRON_*`）每日盘后自动执行。
+**用途**：读取最新一次扫描快照。F106 起一次扫描会按多种 signal_type 各自评估并写入多行，本端点可按类型过滤返回。纯读端点，不触发扫描。
 **认证**：不需要
+
+**查询参数**：
+
+| 参数 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| `type` | string (逗号分隔) | `a1_stage_breakout,a2_slope_flip,b2_ma_pullback` | 返回哪些 signal_type；合法值见下方枚举；未指定时**不包含 legacy_crossover**（v1.2 旧规则保留入库但默认隐藏） |
+
+**signal_type 枚举**：
+- `legacy_crossover`（F105 原规则；默认不返回，需显式请求）
+- `a1_stage_breakout`
+- `a2_slope_flip`
+- `b2_ma_pullback`
 
 **成功响应（200）**：
 ```json
 {
   "data": {
-    "scanDate": "2026-04-20",
-    "scannedAt": "2026-04-20T22:15:03Z",
+    "scanDate": "2026-04-21",
+    "scannedAt": "2026-04-21T05:05:10Z",
     "items": [
       {
         "ticker": "NVDA",
         "companyName": "NVIDIA Corp",
+        "signalType": "a1_stage_breakout",
         "closePrice": 850.50,
         "ma150Value": 812.30,
         "pctAboveMa150": 4.70,
+        "slopeValue": 0.85,
+        "volume": 31250000,
+        "volumeRatio20": 1.78,
         "marketCap": 2100000000000
       }
     ],
@@ -570,17 +586,20 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 ```
 
 **说明**：
-- `scanDate`：扫描所依据的交易日（美东日历）。首次部署 / 尚未有任何扫描完成时为 `null`
-- `scannedAt`：扫描任务执行完成的 UTC 时间；`scanDate` 为 `null` 时本字段也为 `null`
-- `items`：按 `pctAboveMa150` 升序排列（最贴近 MA150 的 breakout 排在前）
-- 无命中标的时返回 `{scanDate: "<date>", scannedAt: "<ts>", items: [], total: 0}`（前端据此显示"No breakouts today"）
-- 尚无任何扫描快照时返回 `{scanDate: null, scannedAt: null, items: [], total: 0}`（前端据此显示"Waiting for today's scan"）
-- 所有金额 / 价格数值按 2 位小数四舍五入返回；`marketCap` 以原始整数返回
+- `scanDate` / `scannedAt`：整个快照共享一套时间戳（同一次扫描产生，所有 signal_type 共享）
+- `items`：按 `pctAboveMa150` 升序；同一 ticker 可能出现多次（对应不同 signalType）
+- `signalType`：F106 起新增，取值为上述枚举；F105 历史行为 `legacy_crossover`
+- `slopeValue`：对应 MA150 最近 20 日线性回归斜率；各 signal_type 下含义一致
+- `volume` / `volumeRatio20`：F106 起每次扫描都填充；legacy_crossover 历史行可能为 `null`
+- 无命中标的时返回 `{scanDate: "<date>", scannedAt: "<ts>", items: [], total: 0}`
+- 尚无任何扫描快照时返回 `{scanDate: null, scannedAt: null, items: [], total: 0}`
+- 所有金额 / 价格数值按 2 位小数四舍五入返回；`marketCap` 与 `volume` 以原始整数返回
 
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
+| `type` 含非法值 | VALIDATION_ERROR | 400 |
 | 数据库异常 | INTERNAL_SERVER_ERROR | 500 |
 
 **不提供**：
