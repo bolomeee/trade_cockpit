@@ -66,6 +66,21 @@ export function ChartWidget() {
             {companyName}
           </span>
         )}
+        <div
+          style={{
+            marginTop: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            fontSize: 11,
+            fontFamily: 'var(--font-family-numeric)',
+            lineHeight: 1.2,
+          }}
+        >
+          <span style={{ color: '#f59e0b' }}>— MA5</span>
+          <span style={{ color: '#8b5cf6' }}>— MA20</span>
+          <span style={{ color: 'var(--color-signal-breakout, #2962ff)' }}>— MA150</span>
+        </div>
       </div>
       <PriceChart data={data as ChartData} />
     </div>

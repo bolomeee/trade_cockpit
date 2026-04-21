@@ -1471,7 +1471,7 @@
       "user_story": "作为投资者，光看收盘价和 MA150 不足以判断短线进出场——我需要同时看到 MA5 / MA20 的走势关系和成交量柱，来判断当日突破是否放量、是否处于短周期背离区。",
       "priority": "P1",
       "status": "in_progress",
-      "phase": "contract_agreed",
+      "phase": "needs_review",
       "dependencies": ["F102"],
       "estimated_sessions": 1,
       "estimated_files_changed": [

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import {
   createChart,
   CandlestickSeries,
+  HistogramSeries,
   LineSeries,
   createSeriesMarkers,
   type IChartApi,
@@ -37,6 +38,8 @@ export function PriceChart({ data }: PriceChartProps) {
 
     const upColor = readToken('--color-change-positive', '#10b981')
     const downColor = readToken('--color-change-negative', '#ef4444')
+    const volumeUp = `${upColor}66`
+    const volumeDown = `${downColor}66`
     const maColor = readToken('--color-signal-breakout', '#2962ff')
     const markerColor = readToken('--color-signal-buyzone', '#10b981')
     const textColor = readToken('--color-text-secondary', '#717182')
@@ -83,6 +86,30 @@ export function PriceChart({ data }: PriceChartProps) {
       }))
     )
 
+    candleSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.05, bottom: 0.25 },
+    })
+
+    const volumeSeries: ISeriesApi<'Histogram'> = chart.addSeries(
+      HistogramSeries,
+      {
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+        priceLineVisible: false,
+        lastValueVisible: false,
+      },
+    )
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    })
+    volumeSeries.setData(
+      data.bars.map((b) => ({
+        time: toUtcTimestamp(b.date),
+        value: b.volume,
+        color: b.close >= b.open ? volumeUp : volumeDown,
+      })),
+    )
+
     if (data.ma150.length > 0) {
       const maSeries: ISeriesApi<'Line'> = chart.addSeries(LineSeries, {
         color: maColor,
@@ -97,6 +124,32 @@ export function PriceChart({ data }: PriceChartProps) {
         }))
       )
     }
+
+    const shortMaData = (window: number, color: string) => {
+      const closes = data.bars.map((b) => b.close)
+      const points: { time: UTCTimestamp; value: number }[] = []
+      let running = 0
+      for (let i = 0; i < closes.length; i++) {
+        running += closes[i]
+        if (i >= window) running -= closes[i - window]
+        if (i + 1 >= window) {
+          points.push({
+            time: toUtcTimestamp(data.bars[i].date),
+            value: running / window,
+          })
+        }
+      }
+      if (points.length === 0) return
+      const series: ISeriesApi<'Line'> = chart.addSeries(LineSeries, {
+        color,
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+      series.setData(points)
+    }
+    shortMaData(5, '#f59e0b')
+    shortMaData(20, '#8b5cf6')
 
     if (data.pullbackMarkers.length > 0) {
       const markers: SeriesMarker<Time>[] = data.pullbackMarkers.map((m) => ({
@@ -131,6 +184,7 @@ export function PriceChart({ data }: PriceChartProps) {
       ref={containerRef}
       data-testid="price-chart"
       style={{
+        position: 'relative',
         width: '100%',
         height: '100%',
         borderRadius: 'var(--radius-card)',

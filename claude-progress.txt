@@ -136,3 +136,44 @@
 - F106 status：in_progress → done
 - v1.3 Multi-Signal Scanner 核心（P0：A1/A2/B2）落地完成
 - 下一步：F107 反向补契约 Evaluator（PriceChart 成交量 + MA5/20 短均线叠加）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F107 股价图成交量 + MA5/MA20 叠加（反向补契约 Evaluator）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator，未改业务代码）：
+  - 核对 PriceChart.tsx 与 Contract 逐条对齐：
+    · HistogramSeries（priceScaleId='volume'，scaleMargins top 0.8 / bottom 0）
+    · Candlestick scaleMargins {top:0.05, bottom:0.25}（为 volume 腾底部 20%）
+    · 成交量颜色 upColor+'66'/downColor+'66'（40% 透明）
+    · shortMaData rolling window O(N)，前 N-1 天跳过
+    · MA5 #f59e0b / MA20 #8b5cf6（TradingView 社区约定）
+    · ResizeObserver + chart.remove() cleanup 正确
+  - 核对 ChartWidget.tsx 与 Contract 逐条对齐：
+    · 左上 absolute 图例 3 行（MA5/MA20/MA150 各色）
+    · flex column gap 2 fontSize 11 --font-family-numeric
+  - 补 design-spec.md 第 250-258 行 F107 增强小节（MA5/MA20 / Volume histogram / 主图下移 / 图例 / 短均线颜色约定）
+  - 硬门禁全通过：
+    · tsc -b + vite build：371ms ✅
+    · docker 后端 /api/stocks/AAPL/chart：250 bars 带 volume + 101 MA150 points ✅
+  - Evaluator 自检清单 7/9 打勾（浏览器手工视觉 2 条交给用户验收阶段，D048 降级为手工）
+  - phase：F107 → needs_review
+
+⚠️ 待你决策：
+  - 验收 F107 后进入 F107-b（plan file: ~/.claude/plans/tingly-jumping-pebble.md）
+  - F107-b 拆分：F107-b1 后端 shares_float 数据链路 + F107-b2 前端 Vol/Float 比率显示
+
+🔧 系统变更：
+  - 业务代码零改动（PriceChart.tsx / ChartWidget.tsx 均为用户预先未 staged 的手改，此次作为 F107 commit 纳入轨道）
+  - design-spec.md PriceChart 小节补 F107 视觉说明
+  - F107-contract.md Evaluator 自检清单更新
+
+📊 功能状态：
+  F106 Multi-Signal Scanner：✅ done
+  F107 股价图成交量 + MA5/20：🔍 needs_review
+  F107-b Vol/Float 比率（plan 已定）：⬜ contract_needed（b1 + b2 两 sprint）
+  F108 Fundamentals 放开：⬜ contract_agreed
+  F109 Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+[下一个 Session]
+  验收 F107 后协商 F107-b1 Sprint Contract（后端 shares_float 链路，Generator 模式）
