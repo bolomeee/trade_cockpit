@@ -1264,7 +1264,7 @@
         },
         "F105-a3": {
           "scope": "UniverseRefreshService + MarketScannerService + refresh_job 挂独立 cron + 服务层测试",
-          "phase": "needs_review",
+          "phase": "done",
           "depends_on": [
             "F105-a1",
             "F105-a2"
@@ -1273,7 +1273,7 @@
         },
         "F105-a4": {
           "scope": "GET /api/market/breakouts router + schema + test_market_api 追加",
-          "phase": "planned",
+          "phase": "needs_review",
           "depends_on": [
             "F105-a3"
           ]

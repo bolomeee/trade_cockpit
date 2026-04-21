@@ -352,3 +352,30 @@
 
 [下一个 Session]
   开发 F105-a4（GET /api/market/breakouts router + schema + test_market_api 追加），复用 MarketBreakoutRepository.get_latest_snapshot。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 22:30] Sprint：F105-a4 Breakouts 读端点
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - schemas/market.py 新增 BreakoutItemOut + BreakoutSnapshotOut（CamelModel）
+  - routers/market.py 新增 GET /api/market/breakouts（ResponseEnvelope 包装，空态 null）
+  - tests/test_market_api.py 追加 5 条用例：空态/升序/仅最新scan_date/取整/envelope 形态
+  - 单元/集成测试：tests/test_market_api.py 9/9 通过
+  - 全量回归：backend/tests/ 223/223 通过
+  - mypy：目标文件（routers/market.py、schemas/market.py）0 错；仅 2 处预先存在错误在 repositories/* 中（F105-a1/a3 历史遗留，非本 Sprint 引入）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - （无）等待 acceptance 验收
+
+🔧 系统变更：
+  - 3 文件修改（契约一致）
+
+📊 功能状态：
+  F105-a1/a2/a3：✅ done / needs_review / done
+  F105-a4：🔍 needs_review
+  F105-b/c：⬜ planned
+
+[下一个 Session]
+  运行 acceptance 验收 F105-a4；通过后进入 F105-b（on-demand chart fallback）。
