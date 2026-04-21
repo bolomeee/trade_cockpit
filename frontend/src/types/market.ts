@@ -9,12 +9,22 @@ export interface MarketIndexItem {
   date: string
 }
 
+export type SignalType =
+  | 'legacy_crossover'
+  | 'a1_stage_breakout'
+  | 'a2_slope_flip'
+  | 'b2_ma_pullback'
+
 export interface BreakoutItem {
   ticker: string
   companyName: string
+  signalType: SignalType
   closePrice: number
   ma150Value: number
   pctAboveMa150: number
+  slopeValue: number
+  volume: number | null
+  volumeRatio20: number | null
   marketCap: number
 }
 

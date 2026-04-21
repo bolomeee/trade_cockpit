@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, Plus } from 'lucide-react'
 
@@ -18,13 +18,72 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { BreakoutItem } from '@/types/market'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { BreakoutItem, SignalType } from '@/types/market'
+
+type TabKey = 'stage' | 'pullback'
+
+const TAB_SIGNALS: Record<TabKey, readonly SignalType[]> = {
+  stage: ['a1_stage_breakout', 'a2_slope_flip'],
+  pullback: ['b2_ma_pullback'],
+}
+
+const SIGNAL_LABEL: Record<SignalType, string> = {
+  legacy_crossover: 'Legacy',
+  a1_stage_breakout: 'A1 Breakout',
+  a2_slope_flip: 'A2 Slope Flip',
+  b2_ma_pullback: 'B2 Pullback',
+}
 
 export function MarketBreakoutWidget() {
+  const [tab, setTab] = useState<TabKey>('stage')
+
+  return (
+    <Tabs
+      value={tab}
+      onValueChange={(v) => setTab(v as TabKey)}
+      className="flex h-full flex-col gap-1"
+      style={{ marginTop: '-5px', marginLeft: '-5px' }}
+    >
+      <TabsList
+        className="rounded-full p-[2px] text-[10px]"
+        style={{ height: 29 }}
+      >
+        <TabsTrigger
+          value="stage"
+          className="rounded-full px-[4px] py-0 text-[10px]"
+        >
+          Breakout
+        </TabsTrigger>
+        <TabsTrigger
+          value="pullback"
+          className="rounded-full px-[4px] py-0 text-[10px]"
+        >
+          Pullback
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="stage" className="min-h-0 flex-1">
+        <BreakoutPane signalTypes={TAB_SIGNALS.stage} emptyLabel="No stage breakouts today" />
+      </TabsContent>
+      <TabsContent value="pullback" className="min-h-0 flex-1">
+        <BreakoutPane signalTypes={TAB_SIGNALS.pullback} emptyLabel="No pullback bounces today" />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+function BreakoutPane({
+  signalTypes,
+  emptyLabel,
+}: {
+  signalTypes: readonly SignalType[]
+  emptyLabel: string
+}) {
   const setSelectedSymbol = useAppStore((s) => s.setSelectedSymbol)
+  const typesKey = useMemo(() => [...signalTypes].sort().join(','), [signalTypes])
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['breakouts'],
-    queryFn: getBreakouts,
+    queryKey: ['breakouts', typesKey],
+    queryFn: () => getBreakouts(signalTypes),
     staleTime: 5 * 60 * 1000,
   })
 
@@ -38,17 +97,15 @@ export function MarketBreakoutWidget() {
     )
   }
 
-  if (isError) {
-    return <ErrorState onRetry={() => refetch()} />
-  }
+  if (isError) return <ErrorState onRetry={() => refetch()} />
 
   if (!data || data.scanDate === null) {
     return <EmptyState title="Waiting for today's scan" />
   }
 
-  if (data.items.length === 0) {
-    return <EmptyState title="No breakouts today" />
-  }
+  if (data.items.length === 0) return <EmptyState title={emptyLabel} />
+
+  const showSignalCol = signalTypes.length > 1
 
   return (
     <div className="h-full overflow-x-auto">
@@ -57,16 +114,19 @@ export function MarketBreakoutWidget() {
           <TableRow>
             <TableHead>Ticker</TableHead>
             <TableHead>Company</TableHead>
+            {showSignalCol && <TableHead>Signal</TableHead>}
             <TableHead className="text-right">Close</TableHead>
             <TableHead className="text-right">% Above MA150</TableHead>
+            <TableHead className="text-right">Vol×20d</TableHead>
             <TableHead className="w-8" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.items.map((item) => (
             <BreakoutRow
-              key={item.ticker}
+              key={`${item.ticker}-${item.signalType}`}
               item={item}
+              showSignalCol={showSignalCol}
               onSelect={() => setSelectedSymbol(item.ticker)}
             />
           ))}
@@ -78,12 +138,14 @@ export function MarketBreakoutWidget() {
 
 function BreakoutRow({
   item,
+  showSignalCol,
   onSelect,
 }: {
   item: BreakoutItem
+  showSignalCol: boolean
   onSelect: () => void
 }) {
-  const { ticker, companyName, closePrice, pctAboveMa150 } = item
+  const { ticker, companyName, signalType, closePrice, pctAboveMa150, volumeRatio20 } = item
   const queryClient = useQueryClient()
   const [added, setAdded] = useState(false)
 
@@ -104,9 +166,14 @@ function BreakoutRow({
   const isPending = addMutation.isPending
 
   return (
-    <TableRow onClick={onSelect} className="cursor-pointer">
+    <TableRow onClick={onSelect} className="cursor-pointer [&>td]:py-[7px]">
       <TableCell className="font-bold">{ticker}</TableCell>
       <TableCell className="text-muted-foreground">{companyName}</TableCell>
+      {showSignalCol && (
+        <TableCell className="text-xs text-muted-foreground">
+          {SIGNAL_LABEL[signalType]}
+        </TableCell>
+      )}
       <TableCell
         className="text-right"
         style={{ fontFamily: 'var(--font-family-numeric)' }}
@@ -122,12 +189,18 @@ function BreakoutRow({
       >
         +{pctAboveMa150.toFixed(1)}%
       </TableCell>
+      <TableCell
+        className="text-right text-muted-foreground"
+        style={{ fontFamily: 'var(--font-family-numeric)' }}
+      >
+        {volumeRatio20 != null ? `${volumeRatio20.toFixed(2)}×` : '—'}
+      </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-6 w-6 rounded-full"
+          className="h-5 w-5 rounded-full"
           aria-label={added ? `${ticker} 已加入 watchlist` : `添加 ${ticker} 到 watchlist`}
           disabled={isPending || added}
           onClick={() => addMutation.mutate()}

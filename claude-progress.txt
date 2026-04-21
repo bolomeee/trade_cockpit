@@ -81,3 +81,48 @@
 
 [下一个 Session]
   验收 F106-b 后进入 F106-c（Evaluator 模式核对前端 Tabs 实现）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-b 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-b phase：needs_review → done
+- 下一步：按 F106-c contract 进入 Evaluator 模式（前端 Tabs + MarketBreakoutWidget 反向补契约）
+- 环境说明：5173 Vite dev server 不受 docker 管理；用户本地已重启 pnpm dev，工作树内 F106-c/F107/F108/F109 前端改动为用户既有未提交状态
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F106-c 多信号 Widget（前端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator 模式）：
+  - 核对 4 个目标文件与 Contract 逐条对齐：
+    · tabs.tsx（shadcn 官方 radix-ui barrel + cva default/line variants + data-slot/group 模式，Context7 核验）
+    · types/market.ts（SignalType 联合类型 + BreakoutItem 4 新字段）
+    · lib/api/market.ts（getBreakouts(types?) 可选过滤，空数组/undefined → 不带 qs 走后端默认）
+    · MarketBreakoutWidget.tsx（Tabs 两栏 / BreakoutPane 抽子组件 / TAB_SIGNALS / typesKey 排序拼接 / key=${ticker}-${signalType} / 动态 Signal 列 / volumeRatio20 空值 — 非空 N.NN× / 空态分 Tab 文案 / + 按钮 h-5 w-5 + stopPropagation / 容器 marginTop -5 marginLeft -5 gap-1）
+  - Lint 修复：tabs.tsx 移除 `tabsListVariants` 导出（react-refresh/only-export-components，用户选项 A，仅内部引用、零外部消费者）
+  - 降级 Contract（D048）：项目无 vitest/@testing-library 基建，Contract #3–#8 的 6 条 RTL 单测改为代码审查 + 手工回归；#9–#11 保留为硬门禁（用户选项 B）
+  - 硬门禁全部通过：
+    · tsc -b 通过
+    · vite build 通过（483ms，bundle 正常）
+    · docker compose E2E：frontend 8080 → 200；stage Tab `?type=a1_stage_breakout,a2_slope_flip` → 19 命中；pullback Tab `?type=b2_ma_pullback` → 45 命中（2026-04-21 真实扫描数据）
+  - 全量 lint：3 problems（2 errors + 1 warning），均为 pre-F106-c 预先存在（button.tsx buttonVariants 导出 / JournalEntryForm / MarketSignalSearch）
+  - phase：F106-c → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-c 后，F106 主 feature（a/b/c 三子任务均 done）可整体流转到 done
+
+🔧 系统变更：
+  - frontend 业务代码仅 1 处改动：tabs.tsx export 清单（移除 tabsListVariants）
+  - F106-c-contract.md 测试门禁降级 + Evaluator 自检清单全部打勾
+  - DECISIONS.md 新增 D048：前端单测基建延迟到 v1.4（F107/F108/F109 按同样路径降级）
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a/b done, c needs_review）
+    F106-a 扫描核心：✅ done
+    F106-b 后端 API：✅ done
+    F106-c 前端 widget：🔍 needs_review
+  v1.4 待规划：前端测试基建（vitest + @testing-library/react + jsdom）
+
+[下一个 Session]
+  验收 F106-c 后，F106 整体 done；下一个反向补契约：F107（股价图成交量 + MA5/20 短均线）

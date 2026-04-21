@@ -1398,8 +1398,8 @@
       "phase": "contract_agreed",
       "subtasks": {
         "F106-a": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-a-contract.md", "scope": "后端扫描核心（scanner_params 新 + service 4 detector + model + repo + alembic 003）" },
-        "F106-b": { "phase": "needs_review", "contract": "docs/开发/sprint-contracts/F106-b-contract.md", "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）" },
-        "F106-c": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
+        "F106-b": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-b-contract.md", "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）" },
+        "F106-c": { "phase": "needs_review", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
       },
       "dependencies": [
         "F105"

@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-19
-last_modified_by: system-design (D034 polygon→fmp migration)
+confirmed_at: 2026-04-21
+last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D047 F108 on-demand 语义推广)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -915,3 +915,124 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - 测试侧：`test_fmp_client.py` 现有 40 条保持不变（per-instance 路径）；新增 4 条覆盖共享 limiter、Semaphore(6) 上限、异常释放、单例语义。
 - Scanner 测试侧：新增 3 条覆盖并发加速（ThreadPool 实际并行）、OK 日志含 duration_s/workers、D040 语义在并发下保留。
 - 可观察性：scan OK 日志含 `duration_s` 字段，便于对比并发前后耗时差异。
+
+## D045：F106 Multi-Signal Scanner 的单表多 signal_type 数据模型
+
+**日期**：2026-04-21
+**状态**：accepted
+**Feature**：F106
+
+**决定**：
+- 在 `market_breakout_scans` 表追加 `signal_type String(32)`、`volume BigInteger NULL`、`volume_ratio_20 Float NULL` 三列。
+- 唯一键由 `(scan_date, ticker)` 改为 `(scan_date, ticker, signal_type)`，允许同 ticker 同日对多条规则同时命中各写一行。
+- 所有信号规则参数集中在 `backend/app/services/scanner_params.py`，与业务逻辑分离，便于用户调参而不改代码。
+- `GET /api/market/breakouts` 默认 type 列表为 `a1_stage_breakout,a2_slope_flip,b2_ma_pullback`；F105 legacy crossover 保留入库但不在默认响应中暴露，需显式 `?type=legacy_crossover` 请求。
+- scanner FMP 抓取窗口从 35 天扩至 90 天（A1 需要 60 日 MA150 近似水平的历史序列）；单次调用仍只消耗 1 次 FMP 额度。
+
+**原因**：
+- **单表 vs 新表**：新表会带来两套覆盖写语义 + 两个读端点 + 两个 widget 的维护成本；F106 的业务语义（扫描出的信号集合）与 F105 同质，只是规则更多，数据上属于同一实体的扩展而非新实体。
+- **多行 vs 合并行**：多行是干净的关系模型；合并行（一个 ticker 一行，信号类型数组）会让 API 排序、前端分组、按信号统计等全部复杂化，且不符合 SQLite 的表达习惯。
+- **默认排除 legacy**：现有 F105 规则与 A1 语义部分重叠（都是"今日穿越"），混展会让用户迷惑；保留入库作对照基线，不强迫用户在 UI 中看到两遍。
+- **参数独立文件**：用户明确提出"参数要能方便改"；放 Pydantic Settings / env 过度工程，直接一个 `scanner_params.py` 模块常量即可。
+- **抓取窗口 90 天**：A1 要求 MA150 过去 60 个交易日近似水平，加上斜率窗口缓冲，90 个自然日约 62-65 个交易日，足够覆盖。
+
+**放弃了什么**：
+- **signal_type 作为 Enum 类型**：SQLite 不原生支持 Enum；String + 上层校验足够。
+- **每种 signal_type 独立表**：DDL 爆炸、跨类排序需要 UNION，运维成本远大于收益。
+- **扫描时写"未命中"行**：会让表从 ~10 行膨胀到 ~2000 行 × 4 type，且读端点要过滤，没有价值。
+- **把 volume 拆到独立表**：EOD/SMA 返回已经携带 volume，冗余到本表一列无额外 IO。
+
+**影响**：
+- 新增 Alembic migration `003_f106_signal_type_and_volume.py`：SQLite 通过 batch_alter_table 完成（加列 + 重建唯一键）。
+- `BreakoutScanRow` dataclass 扩字段；`MarketBreakoutRepository.replace_scan` 接受混合 signal_type 的行集合。
+- `MarketScannerService.run_scan` 对每个 ticker 的 bars 序列**并行**跑 4 条规则（legacy + a1 + a2 + b2），无额外 FMP 调用。
+- `_evaluate_breakout` 保留并重命名为 `_detect_legacy_crossover`；新增 `_detect_a1_stage_breakout` / `_detect_a2_slope_flip` / `_detect_b2_ma_pullback`，各自纯函数，参数从 `scanner_params` 常量读。
+- API schema 的 `BreakoutItemOut` 新增 `signal_type / slope_value / volume / volume_ratio_20`，前端类型同步。
+- 前端 widget 改为 shadcn Tabs：Tab "Stage Breakout"（合并展示 A1、A2，每行加 signalType badge）和 Tab "Pullback"（B2）；legacy 不暴露。
+
+---
+
+## D046：Widget 外壳层 UI 规范允许硬编码值（title 底色 / 内部间距）
+
+**日期**：2026-04-21
+**状态**：accepted
+**Feature**：F109
+
+**决定**：
+- widget title bar 底色统一硬编码 `#ebf2fa`（覆盖早期 `--color-surface-muted` token 规格）。
+- widget 内容根元素顶部偏移统一 `marginTop: -5px; marginLeft: -5px`；多子组件 widget 内部间距用 `gap-1`（4px）。
+- 以上三个值**允许硬编码**，不再走 tokens.css。仅适用于 widget **外壳层**（WidgetShell + widget 顶级容器），不得扩散到业务组件内部。
+- design-spec.md §Workbench-Widget-Shell 已备案；任何偏离须在 DECISIONS.md 再开一条。
+
+**原因**：
+- **跨 widget 视觉一致性压倒 token 抽象**：`#ebf2fa` 是经过多轮视觉打磨选出的精确值，试图用 token 名称表达反而语义含糊（`muted` / `surface-alt` / `shell-head-bg` 都不贴切），最终会变成一个只有一处用途的 token，增加抽象成本无收益。
+- **`-5px` 偏移是对 Shell 内容区 padding 的纠正**：既有 Shell 内部 padding 16px 对多数 widget 偏大，-5px 紧贴是目视优化结果，未来若修改 Shell padding 本偏移会被同步调整；用 token 反而让调整路径割裂。
+- **`gap-1` 用 Tailwind 原子类即可**：这是布局原子值，无需进一步抽象。
+
+**放弃了什么**：
+- **用新 token `--color-widget-shell-head-bg`**：会让 tokens.css 有多个只在一处使用的 token，维护反而重。
+- **用 `bg-muted` 继续配合全局 muted token**：muted 本身 token 值已被其它组件复用，若为 widget 单独改动会污染其它使用者。
+- **用 CSS variable in-file 定义**：仍是 token 形式，收益等同于方案 B。
+
+**影响**：
+- `WidgetShell.tsx` 的 handle bar 从 `bg-muted` 换为 `style={{ backgroundColor: '#ebf2fa' }}`。
+- 4 个 widget（Watchlist / Pullback / Fundamentals / QuickAdd）根节点加 inline style `marginTop/marginLeft: -5px` + Tailwind `gap-1`。
+- 新 widget 加入 Workbench 时必须照同规范（已写入 design-spec.md）。
+- `scan build` / linter 不会对 inline style 报错，但需在 code review 注意不要把规范扩散到业务组件内部。
+
+---
+
+## D047：F108 `/fundamentals` `/pullbacks` 沿用 D041 on-demand 语义（不再走 system-design）
+
+**日期**：2026-04-21
+**状态**：accepted
+**Feature**：F108
+
+**决定**：
+- `GET /api/stocks/:ticker/fundamentals` 对非 watchlist / inactive ticker 不再 404，直接打 FMP `get_ratios_ttm` + `get_key_metrics_ttm`，错误路径保留（空 ticker → 404；FMP httpx error → 502 `EXTERNAL_API_ERROR`）。
+- `GET /api/stocks/:ticker/pullbacks` 对非 watchlist / inactive ticker 返回 `200 + items=[]`，不再 404；也不 on-demand 计算（pullback 依赖本地 180 天 daily bars 滚动窗口，on-demand 成本高、语义弱，保持空 list）。
+- **不重新走 system-design**：本变更是 D041（chart on-demand fallback）的同族语义推广，不涉及新的数据源、限流或存储模型变化，只是把 scanner 场景下的 UX 体验延伸到两个邻近端点。
+
+**原因**：
+- **用户侧痛点明确**：scanner 让用户点任意 ticker 看图成为常态（F105），但 Fundamentals / Pullbacks Tab 仍返回 404，造成"图能看基本面看不到"的体验撕裂。
+- **D041 已定义原则**：`/chart` 的 fallback 已确认"Scanner 场景里 ticker 一旦被点，都应能看图"，推广到 fundamentals 是同一原则自然延伸。
+- **pullbacks 不 on-demand**：历史回踩需要本地 180 天 daily bars + signal 引擎的状态计算，on-demand 一次要拉 260 天 bars 并跑完整引擎，成本不成比例；且该数据对非 watchlist ticker 没有强产品价值（"看看基本面"是主诉求，"看历史回踩"属于自选股深度研究场景）。
+
+**放弃了什么**：
+- **pullbacks on-demand 计算**：成本收益不成比例（见上）。
+- **所有非 watchlist 请求都走 FMP**：对 pullbacks 明确划边界，避免把 /pullbacks 变成一个对每个未知 ticker 都要跑 180 天 bars + signal 引擎的重接口。
+- **开新端点 `/fundamentals/on-demand`**：既有 `/fundamentals` 路径对前端语义已自洽，前端 FundamentalsWidget 不需感知 ticker 来源，复用即可。
+
+**影响**：
+- `StockDetailService.get_fundamentals` 移除 `_resolve_active_stock` 前置校验，直接大写 ticker 打 FMP。
+- `StockDetailService.get_pullbacks` 对 `stock is None or not is_active` 返回空 list 而非抛 404。
+- `API-CONTRACT.md` 这两接口的 404 语义收窄：fundamentals 仅对空 ticker 返 404；pullbacks 不再 404。
+- `test_stock_detail.py` 的 `test_detail_endpoints_404_when_ticker_inactive` 需要再次调整（F105-b 已动过 chart 分支），继续收窄到空 ticker 的 404 场景。
+- 前端 FundamentalsWidget / PullbackWidget 代码无需改（既有 loading / empty / error 三态已覆盖新 200-empty 语义）。
+- FMP 共享 bucket（D044）覆盖新调用路径；scanner 场景下用户点击触发的 fundamentals 请求与已有 chart fallback 共享限流，无额外风险。
+
+---
+
+## D048：前端单测基建延迟到 v1.4
+
+**日期**：2026-04-22
+**触发**：F106-c Evaluator 阶段发现 Contract 列了 6 条 RTL 单元测试，但项目无 vitest / @testing-library/react / jsdom 基建
+**决策者**：用户（F106-c Evaluator 选项 B）
+
+**选项对比**：
+- A：本 sprint 引入 vitest + @testing-library/react + jsdom（3 新 dev deps），补 6 条单测后 commit
+- B：降级 F106-c Contract 的测试门禁为"typecheck + build + docker 手工 E2E"，单测基建留到 v1.4 统一规划
+- C：写 `.test.tsx` 但不配框架 → 零价值
+
+**选择**：B
+
+**理由**：
+1. F107/F108/F109 都是反向补契约，都面临同样问题；单独给 F106-c 引 vitest 意义有限
+2. v1.4 规划一个"前端测试基建"sprint 统一做，效率更高：届时 F106-c/F107/F108/F109 的单测一并补
+3. 后端已有 vitest 级别的 pytest 全量覆盖（252/254 绿），前端门禁由 `tsc -b` + `vite build` + docker E2E 三者兜底，v1.3 阶段可接受
+
+**影响**：
+- F106-c Contract 的可测试标准 #3–#8 改为"代码审查/手工回归"，#9–#11 保留为硬门禁
+- v1.4 必须开一个"前端测试基建"feature：装 vitest + @testing-library/react + jsdom，补本迭代漏掉的所有单测
+- F107/F108/F109 的 Contract 按同样路径降级（引用 D048）
+
