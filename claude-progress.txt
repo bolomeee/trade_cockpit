@@ -126,3 +126,13 @@
 
 [下一个 Session]
   验收 F106-c 后，F106 整体 done；下一个反向补契约：F107（股价图成交量 + MA5/20 短均线）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-c 合格 → done（F106 整体 done）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-c phase：needs_review → done
+- F106 主 feature phase：contract_agreed → done（a/b/c 三子任务全绿）
+- F106 status：in_progress → done
+- v1.3 Multi-Signal Scanner 核心（P0：A1/A2/B2）落地完成
+- 下一步：F107 反向补契约 Evaluator（PriceChart 成交量 + MA5/20 短均线叠加）

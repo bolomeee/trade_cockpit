@@ -1394,12 +1394,12 @@
       "description": "在 F105 的 scanner 基础上扩展出多信号类型：A1 Stage 1→2 Breakout（MA150 近似水平 60 日后首次放量上穿）/ A2 Slope Flip（slope(MA150) 近 30 日由 ≤0 翻正且 close>MA150）/ B2 MA5 Pullback Bounce（slope(MA150)>0 且 MA5 近 10 日曾贴 MA150 ≤2% 后今日重新扩大）。legacy F105 crossover 规则保留入库但默认不在 widget 展示（可通过 ?type=legacy_crossover 查询）。scanner 一次 FMP 调用内并行跑 4 条规则（legacy+A1+A2+B2），emission 为多行（同 ticker 同日可同时命中多类）。市场数据引入 volume 字段。市场扫描 fetch window 从 35 天扩到 90 天。参数集中在 backend/app/services/scanner_params.py，方便后续调整。widget 用 shadcn Tabs 分类（Stage Breakout 合并 A1+A2 / Pullback = B2）",
       "user_story": "作为投资者，我不想只看到'今天刚上穿 MA150'这一类信号，还想看到'MA150 本身刚翻正'和'已经在上升趋势中回踩 MA150 后反弹'这两类——前者抓新庄启动，后者抓趋势中的加仓点。",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "contract_agreed",
+      "status": "done",
+      "phase": "done",
       "subtasks": {
         "F106-a": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-a-contract.md", "scope": "后端扫描核心（scanner_params 新 + service 4 detector + model + repo + alembic 003）" },
         "F106-b": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-b-contract.md", "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）" },
-        "F106-c": { "phase": "needs_review", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
+        "F106-c": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
       },
       "dependencies": [
         "F105"
