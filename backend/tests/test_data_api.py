@@ -173,8 +173,11 @@ class TestScheduler:
             autostart=False,
         )
         jobs = sched.get_jobs()
-        assert len(jobs) == 1
-        assert jobs[0].id == SCHEDULER_JOB_ID
+        job_ids = {j.id for j in jobs}
+        # F003 watchlist refresh + F105 scanner + F105 universe refresh (D042/D038)
+        assert SCHEDULER_JOB_ID in job_ids
+        assert "ma150_market_scanner" in job_ids
+        assert "ma150_universe_refresh" in job_ids
         assert DAILY_REFRESH_CRON == "30 21 * * 1-5"
 
     def test_start_scheduler_is_idempotent(self):

@@ -315,3 +315,40 @@
 
 [下一个 Session]
   开发 F105-a3（UniverseRefreshService + MarketScannerService + 独立 cron + 服务层测试）。主路径用 get_ma150_series_or_eod → SMA（已验证可用）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 F105-a3] Sprint：F105-a3 扫描服务层 + 独立 cron
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - UniverseRefreshService：screener → upsert market_scan_universe；无效行跳过计 skipped；FMP 失败记 ERROR 不污染表
+  - MarketScannerService：冷启动自动 refresh universe；SMA 源直读 sma 字段，EOD fallback 本地算 MA150 并记一条 WARN（同次扫描去重）
+  - breakout 规则三条全部落地：prev_close<prev_ma、close≥ma、pct≤10、slope>0；company_name/market_cap 取自 universe 行
+  - D040 全失败保护：len(active)>0 且 scanned_ok=0 时不调 replace_scan（保留旧快照）；0 命中仍覆盖写空
+  - refresh_job.py 追加 scanner（工作日 6:15 UTC）+ universe（每月 1 日 5:00 UTC）两个独立 cron job
+  - 单元测试：test_universe_refresh_service.py 4 条 + test_market_scanner_service.py 13 条 = 17 条全绿
+  - 回归测试：218 passed（9 deselected live smoke），F001–F105-a2 无回归
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - backend/app/services/universe_refresh_service.py（新）
+  - backend/app/services/market_scanner_service.py（新）
+  - backend/app/services/refresh_job.py（+2 cron trigger + 2 tick 函数）
+  - backend/tests/conftest.py（FakeFMP 追加 screener/ma150 字段与方法，trivial edit）
+  - backend/tests/test_universe_refresh_service.py（新）
+  - backend/tests/test_market_scanner_service.py（新）
+  - backend/tests/test_data_api.py（F003 scheduler 测试由 len==1 改为 set-membership，承认 F105 新增两个 job；4 行 regression 修正）
+  - docs/开发/sprint-contracts/F105-a3-contract.md（新）
+
+📊 功能状态：
+  F105-a1 数据层：✅ done
+  F105-a2 FMP 客户端：🔍 needs_review
+  F105-a3 scanner service：🔍 needs_review
+  F105-a4 读端点：⬜ planned
+  F105-b/c：⬜ planned
+
+[下一个 Session]
+  开发 F105-a4（GET /api/market/breakouts router + schema + test_market_api 追加），复用 MarketBreakoutRepository.get_latest_snapshot。

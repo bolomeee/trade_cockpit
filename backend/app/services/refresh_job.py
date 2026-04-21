@@ -24,10 +24,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
+from app.services.market_scanner_service import MarketScannerService
+from app.services.universe_refresh_service import UniverseRefreshService
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,8 @@ logger = logging.getLogger(__name__)
 # 21:00 UTC STD; 21:30 leaves a 30–90 min buffer for EOD data availability.
 DAILY_REFRESH_CRON = "30 21 * * 1-5"
 SCHEDULER_JOB_ID = "ma150_daily_refresh"
+SCANNER_JOB_ID = "ma150_market_scanner"
+UNIVERSE_JOB_ID = "ma150_universe_refresh"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -181,6 +186,32 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F105 D042: independent scanner cron, weekdays, 15m after watchlist refresh
+        sched.add_job(
+            _scanner_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.scanner_cron_hour,
+                minute=settings.scanner_cron_minute,
+                timezone="UTC",
+            ),
+            id=SCANNER_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
+        # F105 D038: monthly universe refresh
+        sched.add_job(
+            _universe_tick,
+            trigger=CronTrigger(
+                day=settings.universe_cron_day,
+                hour=settings.universe_cron_hour,
+                minute=settings.universe_cron_minute,
+                timezone="UTC",
+            ),
+            id=UNIVERSE_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -207,6 +238,30 @@ def _scheduler_tick(
         manager.start_refresh(session_factory, fmp_factory)
     except Exception:  # noqa: BLE001
         logger.error("scheduled refresh tick failed\n%s", traceback.format_exc())
+
+
+def _scanner_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for MarketScannerService (F105 D042)."""
+    try:
+        with _session_scope(session_factory) as db:
+            MarketScannerService(db, fmp=fmp_factory()).run_scan()
+    except Exception:  # noqa: BLE001 — service logs its own errors; this is the belt
+        logger.error("scanner tick failed\n%s", traceback.format_exc())
+
+
+def _universe_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for UniverseRefreshService (F105 D038)."""
+    try:
+        with _session_scope(session_factory) as db:
+            UniverseRefreshService(db, fmp=fmp_factory()).refresh()
+    except Exception:  # noqa: BLE001
+        logger.error("universe tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

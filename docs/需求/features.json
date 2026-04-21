@@ -1264,11 +1264,12 @@
         },
         "F105-a3": {
           "scope": "UniverseRefreshService + MarketScannerService + refresh_job 挂独立 cron + 服务层测试",
-          "phase": "planned",
+          "phase": "needs_review",
           "depends_on": [
             "F105-a1",
             "F105-a2"
-          ]
+          ],
+          "completed_at": "2026-04-21"
         },
         "F105-a4": {
           "scope": "GET /api/market/breakouts router + schema + test_market_api 追加",

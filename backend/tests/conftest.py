@@ -47,6 +47,15 @@ class FakeFMP:
         self.key_metrics_results: dict[str, dict[str, Any] | None] = {}
         self.key_metrics_calls: list[str] = []
 
+        # F105: screener universe + MA150 series/fallback
+        self.screener_universe_result: list[dict[str, Any]] = []
+        self.screener_universe_calls: int = 0
+        self.screener_universe_exc: Exception | None = None
+
+        self.ma150_results: dict[str, dict[str, Any]] = {}
+        self.ma150_exc: dict[str, Exception] = {}
+        self.ma150_calls: list[str] = []
+
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
         self.search_calls.append((query, limit))
         if self.search_exc is not None:
@@ -76,6 +85,23 @@ class FakeFMP:
     def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
         self.key_metrics_calls.append(symbol)
         return self.key_metrics_results.get(symbol)
+
+    def get_screener_universe(
+        self,
+        market_cap_gte: int = 50_000_000_000,
+        exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
+        limit_per_exchange: int = 500,
+    ) -> list[dict[str, Any]]:
+        self.screener_universe_calls += 1
+        if self.screener_universe_exc is not None:
+            raise self.screener_universe_exc
+        return list(self.screener_universe_result)
+
+    def get_ma150_series_or_eod(self, symbol: str) -> dict[str, Any]:
+        self.ma150_calls.append(symbol)
+        if symbol in self.ma150_exc:
+            raise self.ma150_exc[symbol]
+        return dict(self.ma150_results.get(symbol, {"source": "sma", "bars": []}))
 
 
 @pytest.fixture
