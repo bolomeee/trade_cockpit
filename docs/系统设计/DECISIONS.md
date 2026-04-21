@@ -887,3 +887,31 @@ last_modified_by: system-design (D034 polygon→fmp migration)
 - 未来新增 widget-only feature 可援引 D043 同样跳过 design-bridge
 - 若 feature 引入新页面、新布局模式或框架级视觉变更，仍必须走 design-bridge
 - feature-dev skill 的前置条件检查中，widget-only feature 允许 design-spec.md 不含该 feature 章节，以 `notes` 中"视觉沿用清单"为准
+
+---
+
+## D044：FMP 共享限流器 + Scanner 6 并发
+**日期**：2026-04-21
+**决策**：
+- 将 `FmpClient` 的 token-bucket 从 per-instance 提升为**进程级共享限流器** `_FmpRateLimiter`，通过模块级单例 `default_rate_limiter()` 注入所有生产 `FmpClient` 实例；DI 工厂 (`dependencies.py`、`main.py::_fmp_factory`) 均走该单例。
+- 在限流器中增加 `threading.BoundedSemaphore(6)` 并发上限；`FmpClient._request` 先获取 semaphore、再获取 token、finally 释放 semaphore。
+- `MarketScannerService.run_scan` 改为 `ThreadPoolExecutor(max_workers=6)` 并发执行 per-ticker FMP 调用；主线程聚合 hits/计数器 并串行写入 `SystemLog`（SQLite single-writer 约束）。
+- OK 日志追加 `duration_s=X.XX workers=6` 字段便于观测。
+
+**原因**：
+- **共享限流**：scanner 每日扫 ~250 ticker；watchlist refresh ~30 次；用户手动触发 chart/fundamentals 数十次。三路并行时若各自独立 bucket（50 tokens、5 rps）会叠加冲破 FMP 300 rpm 上限，存在被限流/封禁风险。
+- **并发上限 6（Semaphore）**：token bucket 只控"长期速率"，burst 50 在 200ms 内可瞬时发出 50 个 in-flight 请求，对单端点（如 SMA）不友好；Semaphore(6) 匹配用户实测的安全并发边界（~5 rps × 1.2s 平均延迟）。
+- **ThreadPoolExecutor（非 asyncio）**：`FmpClient` 基于 sync `httpx.Client`；改 async 会传染到所有 11 个 caller。线程池方案把并发改动局部化在 scanner。
+- **主线程写日志**：per-ticker 失败/fallback 日志在 worker 中仅收集到 `pending_logs` 列表，主线程在 ThreadPoolExecutor 结束后串行写入 SystemLogRepository，避开 SQLite `check_same_thread=True`。
+
+**放弃了什么**：
+- **进程外限流器（Redis / 中间件）**：单进程 SQLite 部署下属于过度设计，引入额外运维面。
+- **asyncio 全线改造**：ROI 低；当前同步链路清晰，引入 async 会同时改动 DI、scheduler、所有 service，超出 F105-a5 范围。
+- **per-worker session**：ThreadPoolExecutor worker 不直接访问 DB，避免 SQLite 多线程约束，也简化实现。
+
+**影响**：
+- 新增模块级单例 `default_rate_limiter()` + `reset_default_rate_limiter()`（test-only）。
+- `FmpClient.__init__` 新增 `rate_limiter` 参数（可选注入，默认每实例一个私有 limiter 以保持测试隔离）。
+- 测试侧：`test_fmp_client.py` 现有 40 条保持不变（per-instance 路径）；新增 4 条覆盖共享 limiter、Semaphore(6) 上限、异常释放、单例语义。
+- Scanner 测试侧：新增 3 条覆盖并发加速（ThreadPool 实际并行）、OK 日志含 duration_s/workers、D040 语义在并发下保留。
+- 可观察性：scan OK 日志含 `duration_s` 字段，便于对比并发前后耗时差异。

@@ -12,7 +12,10 @@ preserved (D040); the only "clear" paths are:
 """
 from __future__ import annotations
 
+import threading
+import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Protocol
@@ -33,6 +36,9 @@ from app.services.universe_refresh_service import UniverseRefreshService
 
 LOG_SOURCE = "market_scanner"
 PCT_ABOVE_MA_LIMIT = 10.0
+# F105-a5: worker count must not exceed FmpClient's concurrency semaphore (6).
+# Each worker holds the semaphore for the duration of one FMP call.
+SCAN_WORKER_COUNT = 6
 
 
 class _FmpClientLike(Protocol):
@@ -101,43 +107,79 @@ class MarketScannerService:
                 fallback_used=False, scan_date=today, scanned_at=scanned_at,
             )
         active = self.universe_repo.list_active(since=latest)
+        scan_start = time.monotonic()
 
+        # F105-a5: concurrent per-ticker fetch. Workers share FmpClient's
+        # process-level rate limiter (bucket + Semaphore), so worker count
+        # only gates parallelism; 300 rpm / 6 in-flight is enforced inside
+        # the client regardless of pool size.
         hits: list[BreakoutScanRow] = []
         scanned_ok = 0
         failed = 0
         fallback_used = False
         fallback_logged = False
+        pending_logs: list[tuple[str, str, str | None]] = []
+        agg_lock = threading.Lock()
 
-        for row in active:
+        def _fetch_and_eval(row: MarketScanUniverse) -> tuple[
+            str, BreakoutScanRow | None, str | None, str | None
+        ]:
+            """Return (ticker, hit|None, source|None, error|None). Thread-safe: no DB writes."""
+            ticker = str(row.ticker)
             try:
-                payload = self.fmp.get_ma150_series_or_eod(row.ticker)
+                payload = self.fmp.get_ma150_series_or_eod(ticker)
                 source = payload.get("source")
                 bars = payload.get("bars") or []
-                if source == "eod_fallback":
-                    fallback_used = True
-                    if not fallback_logged:
-                        self.log_repo.create(
-                            level="WARN",
-                            source=LOG_SOURCE,
-                            message="SMA endpoint unavailable, falling back to EOD",
-                        )
-                        fallback_logged = True
-
-                hit = _evaluate_breakout(row, bars, source, scan_date=today, scanned_at=scanned_at)
-                if hit is not None:
-                    hits.append(hit)
-                scanned_ok += 1
-            except Exception as exc:  # noqa: BLE001 — isolate per-ticker
-                self.log_repo.create(
-                    level="ERROR",
-                    source=LOG_SOURCE,
-                    message=f"{row.ticker} scan failed: {exc}",
-                    detail=traceback.format_exc(),
+                hit = _evaluate_breakout(
+                    row, bars, source, scan_date=today, scanned_at=scanned_at
                 )
-                failed += 1
-                continue
+                return (ticker, hit, source, None)
+            except Exception as exc:  # noqa: BLE001 — isolate per-ticker
+                return (ticker, None, None, f"{exc}\n{traceback.format_exc()}")
+
+        if active:
+            with ThreadPoolExecutor(
+                max_workers=SCAN_WORKER_COUNT,
+                thread_name_prefix="market-scanner",
+            ) as pool:
+                futures = [pool.submit(_fetch_and_eval, row) for row in active]
+                for fut in as_completed(futures):
+                    ticker, hit, source, err = fut.result()
+                    with agg_lock:
+                        if err is not None:
+                            failed += 1
+                            pending_logs.append(
+                                (
+                                    "ERROR",
+                                    f"{ticker} scan failed: {err.splitlines()[0]}",
+                                    err,
+                                )
+                            )
+                            continue
+                        if source == "eod_fallback":
+                            fallback_used = True
+                            if not fallback_logged:
+                                pending_logs.append(
+                                    (
+                                        "WARN",
+                                        "SMA endpoint unavailable, falling back to EOD",
+                                        None,
+                                    )
+                                )
+                                fallback_logged = True
+                        if hit is not None:
+                            hits.append(hit)
+                        scanned_ok += 1
 
         # D040: if every active ticker failed, do NOT clear old snapshot.
+        duration_s = time.monotonic() - scan_start
+
+        # Flush per-ticker logs from the main thread (SQLite is single-writer).
+        for level, message, detail in pending_logs:
+            self.log_repo.create(
+                level=level, source=LOG_SOURCE, message=message, detail=detail
+            )
+
         if len(active) > 0 and scanned_ok == 0:
             self.log_repo.create(
                 level="ERROR",
@@ -159,7 +201,8 @@ class MarketScannerService:
             source=LOG_SOURCE,
             message=(
                 f"scan complete: hits={len(hits)} scanned={scanned_ok} "
-                f"failed={failed} fallback={fallback_used}"
+                f"failed={failed} fallback={fallback_used} "
+                f"duration_s={duration_s:.2f} workers={SCAN_WORKER_COUNT}"
             ),
         )
         return ScannerResult(

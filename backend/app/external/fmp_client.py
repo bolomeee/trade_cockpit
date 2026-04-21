@@ -4,9 +4,12 @@ D034 (2026-04-19): primary external data source, replacing Polygon.io.
 Endpoint paths are declared as module-level constants so future FMP path
 changes touch only this file.
 
-Rate limit policy (ARCHITECTURE.md):
+Rate limit policy (ARCHITECTURE.md, D044):
 - FMP Starter: 300 req/min documented
-- Token bucket: capacity 50 (burst), refill 1 token / 0.2s
+- Token bucket: capacity 50 (burst), refill 1 token / 0.2s → 5 rps steady
+- Concurrency cap: Semaphore(6) — prevents burst-stacking against a single endpoint
+- Both limits are process-shared via a module-level default limiter so that
+  scanner / watchlist refresh / user-triggered calls cannot aggregate past 300 rpm
 - On 429: backoff 1s, retry once; further 429 raises HTTPStatusError
 """
 from __future__ import annotations
@@ -14,7 +17,7 @@ from __future__ import annotations
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
@@ -44,42 +47,47 @@ _SMA_DEFAULT_WINDOW_DAYS: int = 35
 _EOD_FALLBACK_WINDOW_DAYS: int = 260
 
 
-class FmpClient:
-    """Thread-safe FMP client with token-bucket rate limiter and 429 retry."""
+class _FmpRateLimiter:
+    """Process-shareable FMP rate limiter (D044).
+
+    Combines:
+    - Token bucket (capacity=RATE_CAPACITY, refill=1/REFILL_INTERVAL_S) — long-run rate cap
+    - Semaphore(CONCURRENCY_LIMIT) — in-flight cap to prevent burst-stacking
+
+    Acquire order in `_request`: concurrency semaphore first (blocks at 6 in-flight),
+    then token bucket (blocks at 300 rpm). Release semaphore in `finally`.
+
+    A module-level singleton (see `default_rate_limiter()`) backs production
+    FmpClient instances so multiple DI factories share one bucket. Tests can
+    construct fresh limiters to avoid cross-test state.
+    """
 
     RATE_CAPACITY: int = 50  # burst
     WINDOW_S: float = 60.0
     RATE_PER_WINDOW: int = 300
     REFILL_INTERVAL_S: float = WINDOW_S / RATE_PER_WINDOW  # 0.2s
-    RETRY_BACKOFF_S: float = 1.0
+    CONCURRENCY_LIMIT: int = 6  # F105-a5
 
     def __init__(
         self,
-        api_key: str | None = None,
-        _time_source=time.monotonic,
-        _sleep=time.sleep,
-        _http_client: httpx.Client | None = None,
-    ):
-        key = api_key if api_key is not None else settings.fmp_api_key
-        if not key:
-            raise RuntimeError("FMP_API_KEY not set")
-
-        self._api_key = key
-        self._http = (
-            _http_client
-            if _http_client is not None
-            else httpx.Client(base_url=FMP_BASE, timeout=10.0)
-        )
+        *,
+        time_source: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self._time = time_source
+        self._sleep = sleep
         self._lock = threading.Lock()
-        self._time = _time_source
-        self._sleep = _sleep
-
         self._tokens: float = float(self.RATE_CAPACITY)
         self._last_refill: float = self._time()
+        self._semaphore = threading.BoundedSemaphore(self.CONCURRENCY_LIMIT)
 
-    # --- rate limiter ---------------------------------------------------
+    def acquire_concurrency(self) -> None:
+        self._semaphore.acquire()
 
-    def _acquire(self) -> None:
+    def release_concurrency(self) -> None:
+        self._semaphore.release()
+
+    def acquire_token(self) -> None:
         while True:
             with self._lock:
                 now = self._time()
@@ -99,19 +107,91 @@ class FmpClient:
 
             self._sleep(wait)
 
+
+_default_limiter: _FmpRateLimiter | None = None
+_default_limiter_lock = threading.Lock()
+
+
+def default_rate_limiter() -> _FmpRateLimiter:
+    """Return the process-shared FMP rate limiter singleton (D044)."""
+    global _default_limiter
+    if _default_limiter is None:
+        with _default_limiter_lock:
+            if _default_limiter is None:
+                _default_limiter = _FmpRateLimiter()
+    return _default_limiter
+
+
+def reset_default_rate_limiter() -> None:
+    """Reset the module-level singleton. Test-only helper."""
+    global _default_limiter
+    with _default_limiter_lock:
+        _default_limiter = None
+
+
+class FmpClient:
+    """Thread-safe FMP client.
+
+    Rate limiting is delegated to an injected `_FmpRateLimiter` (D044). By
+    default this is the process-wide singleton so all FmpClient instances
+    share one bucket + one semaphore. Tests may inject a fresh limiter.
+    """
+
+    # Kept for backwards-compat test references (test_fmp_client.py reads these).
+    RATE_CAPACITY: int = _FmpRateLimiter.RATE_CAPACITY
+    WINDOW_S: float = _FmpRateLimiter.WINDOW_S
+    RATE_PER_WINDOW: int = _FmpRateLimiter.RATE_PER_WINDOW
+    REFILL_INTERVAL_S: float = _FmpRateLimiter.REFILL_INTERVAL_S
+    CONCURRENCY_LIMIT: int = _FmpRateLimiter.CONCURRENCY_LIMIT
+    RETRY_BACKOFF_S: float = 1.0
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        _time_source: Callable[[], float] = time.monotonic,
+        _sleep: Callable[[float], None] = time.sleep,
+        _http_client: httpx.Client | None = None,
+        rate_limiter: _FmpRateLimiter | None = None,
+    ):
+        key = api_key if api_key is not None else settings.fmp_api_key
+        if not key:
+            raise RuntimeError("FMP_API_KEY not set")
+
+        self._api_key = key
+        self._http = (
+            _http_client
+            if _http_client is not None
+            else httpx.Client(base_url=FMP_BASE, timeout=10.0)
+        )
+        self._sleep = _sleep
+        self._limiter = (
+            rate_limiter
+            if rate_limiter is not None
+            else _FmpRateLimiter(time_source=_time_source, sleep=_sleep)
+        )
+
+    # --- rate limiter shims (kept for test compat) ---------------------
+
+    def _acquire(self) -> None:
+        self._limiter.acquire_token()
+
     # --- request helper -------------------------------------------------
 
     def _request(self, path: str, params: dict[str, Any]) -> Any:
         merged = {**params, "apikey": self._api_key}
 
-        self._acquire()
-        resp = self._http.get(path, params=merged)
-        if resp.status_code == 429:
-            self._sleep(self.RETRY_BACKOFF_S)
-            self._acquire()
+        self._limiter.acquire_concurrency()
+        try:
+            self._limiter.acquire_token()
             resp = self._http.get(path, params=merged)
-        resp.raise_for_status()
-        return resp.json()
+            if resp.status_code == 429:
+                self._sleep(self.RETRY_BACKOFF_S)
+                self._limiter.acquire_token()
+                resp = self._http.get(path, params=merged)
+            resp.raise_for_status()
+            return resp.json()
+        finally:
+            self._limiter.release_concurrency()
 
     # --- public API -----------------------------------------------------
 

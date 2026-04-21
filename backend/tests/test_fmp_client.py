@@ -25,6 +25,7 @@ from app.external.fmp_client import (
     FMP_EP_SMA,
     FMP_EP_TREASURY,
     FmpClient,
+    _FmpRateLimiter,
 )
 
 
@@ -552,6 +553,136 @@ def test_get_ma150_series_or_eod_no_fallback_on_500(clock):
         client.get_ma150_series_or_eod("AAPL")
     assert len(calls) == 1
     assert calls[0].url.path.endswith(FMP_EP_SMA)
+
+
+# --- F105-a5: shared limiter + concurrency cap --------------------------
+
+def _make_client_with_limiter(
+    handler: Callable[[httpx.Request], httpx.Response],
+    limiter: _FmpRateLimiter,
+) -> tuple[FmpClient, list[httpx.Request]]:
+    captured: list[httpx.Request] = []
+
+    def wrapped(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return handler(request)
+
+    transport = httpx.MockTransport(wrapped)
+    http = httpx.Client(base_url=FMP_BASE, transport=transport, timeout=10.0)
+    return (
+        FmpClient(
+            api_key="test-key",
+            _http_client=http,
+            rate_limiter=limiter,
+        ),
+        captured,
+    )
+
+
+def test_shared_limiter_depletes_across_instances(clock):
+    """Two FmpClient instances sharing one limiter deplete the same bucket."""
+    limiter = _FmpRateLimiter(time_source=clock.time, sleep=clock.sleep)
+
+    def handler(req):
+        return ok([])
+
+    client_a, _ = _make_client_with_limiter(handler, limiter)
+    client_b, _ = _make_client_with_limiter(handler, limiter)
+
+    # Client A drains the bucket.
+    for _ in range(_FmpRateLimiter.RATE_CAPACITY):
+        client_a.get_ratios_ttm("AAPL")
+    assert clock.sleeps == []
+
+    # Client B's next call must wait on the shared bucket.
+    client_b.get_ratios_ttm("MSFT")
+    assert len(clock.sleeps) == 1
+    assert clock.sleeps[0] == pytest.approx(
+        _FmpRateLimiter.REFILL_INTERVAL_S, rel=1e-6
+    )
+
+
+def test_concurrency_semaphore_caps_inflight_at_limit():
+    """Semaphore(CONCURRENCY_LIMIT) blocks the (LIMIT+1)-th concurrent caller."""
+    import threading
+
+    limiter = _FmpRateLimiter()
+    acquired = threading.Barrier(_FmpRateLimiter.CONCURRENCY_LIMIT + 1, timeout=2.0)
+    release_event = threading.Event()
+    inflight_peak = {"n": 0}
+    inflight_lock = threading.Lock()
+    inflight_now = {"n": 0}
+
+    def worker() -> None:
+        limiter.acquire_concurrency()
+        try:
+            with inflight_lock:
+                inflight_now["n"] += 1
+                if inflight_now["n"] > inflight_peak["n"]:
+                    inflight_peak["n"] = inflight_now["n"]
+            release_event.wait(timeout=1.5)
+        finally:
+            with inflight_lock:
+                inflight_now["n"] -= 1
+            limiter.release_concurrency()
+
+    threads = [
+        threading.Thread(target=worker)
+        for _ in range(_FmpRateLimiter.CONCURRENCY_LIMIT)
+    ]
+    for t in threads:
+        t.start()
+
+    # Give the N workers a moment to acquire.
+    import time as _t
+
+    deadline = _t.monotonic() + 1.0
+    while inflight_now["n"] < _FmpRateLimiter.CONCURRENCY_LIMIT and _t.monotonic() < deadline:
+        _t.sleep(0.01)
+
+    assert inflight_now["n"] == _FmpRateLimiter.CONCURRENCY_LIMIT
+
+    # Attempting one more must block (non-blocking acquire returns False).
+    assert limiter._semaphore.acquire(blocking=False) is False
+
+    release_event.set()
+    for t in threads:
+        t.join(timeout=2.0)
+        assert not t.is_alive()
+
+    assert inflight_peak["n"] == _FmpRateLimiter.CONCURRENCY_LIMIT
+
+
+def test_semaphore_released_even_on_http_error(clock):
+    """_request must release the semaphore on 5xx so future calls aren't blocked."""
+    limiter = _FmpRateLimiter(time_source=clock.time, sleep=clock.sleep)
+
+    def handler(req):
+        return httpx.Response(500)
+
+    client, _ = _make_client_with_limiter(handler, limiter)
+
+    # Exhaust nothing — just verify that after CONCURRENCY_LIMIT failed calls
+    # the semaphore still has capacity available.
+    for _ in range(_FmpRateLimiter.CONCURRENCY_LIMIT):
+        with pytest.raises(httpx.HTTPStatusError):
+            client.get_ratios_ttm("AAPL")
+
+    # If release_concurrency() was skipped, this non-blocking acquire would fail.
+    assert limiter._semaphore.acquire(blocking=False) is True
+    limiter._semaphore.release()
+
+
+def test_default_rate_limiter_is_process_singleton():
+    from app.external.fmp_client import default_rate_limiter, reset_default_rate_limiter
+
+    reset_default_rate_limiter()
+    try:
+        a = default_rate_limiter()
+        b = default_rate_limiter()
+        assert a is b
+    finally:
+        reset_default_rate_limiter()
 
 
 # --- deprecated guard ----------------------------------------------------

@@ -6,7 +6,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
-from app.external.fmp_client import FmpClient
+from app.external.fmp_client import FmpClient, default_rate_limiter
 from app.repositories.journal_repository import JournalRepository
 from app.repositories.stock_repository import StockRepository
 from app.repositories.system_log_repository import SystemLogRepository
@@ -15,7 +15,7 @@ from app.services.watchlist_service import WatchlistService
 
 
 def get_fmp_client() -> FmpClient:
-    return FmpClient()
+    return FmpClient(rate_limiter=default_rate_limiter())
 
 
 def get_session_factory() -> Callable[[], Session]:

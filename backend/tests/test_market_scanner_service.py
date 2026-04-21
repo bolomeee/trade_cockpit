@@ -341,3 +341,116 @@ def test_refresh_job_registers_scanner_and_universe_jobs(session_engine):
             rj_mod.shutdown_scheduler()
     finally:
         rj_mod.shutdown_scheduler()
+
+
+# ---------- F105-a5: concurrency ----------
+
+
+def test_scan_runs_workers_in_parallel(db_session):
+    """Concurrent scan must be measurably faster than serial for a slow FMP mock.
+
+    Each ticker's fake FMP call sleeps 200ms. With 6 workers, 12 tickers
+    should finish in ~400ms (2 waves × 200ms), well under the serial 2400ms.
+    Also asserts observed concurrency peak equals SCAN_WORKER_COUNT.
+    """
+    import threading
+    import time
+
+    from app.services.market_scanner_service import (
+        MarketScannerService,
+        SCAN_WORKER_COUNT,
+    )
+
+    tickers = [(f"T{i:02d}", f"Co {i}", 100_000_000_000) for i in range(12)]
+    _seed_universe(db_session, tickers)
+
+    inflight = {"n": 0, "peak": 0}
+    lock = threading.Lock()
+
+    class SlowFMP:
+        def __init__(self) -> None:
+            self.ma150_calls: list[str] = []
+
+        def get_ma150_series_or_eod(self, symbol: str) -> dict:
+            with lock:
+                inflight["n"] += 1
+                inflight["peak"] = max(inflight["peak"], inflight["n"])
+                self.ma150_calls.append(symbol)
+            try:
+                time.sleep(0.2)
+            finally:
+                with lock:
+                    inflight["n"] -= 1
+            return _sma_series_no_cross()  # no hit — keeps assertions simple
+
+    fmp = SlowFMP()
+    start = time.monotonic()
+    result = MarketScannerService(db_session, fmp).run_scan()
+    elapsed = time.monotonic() - start
+
+    assert result.status == "ok"
+    assert result.scanned == 12
+    assert result.hits == 0
+    assert inflight["peak"] == SCAN_WORKER_COUNT, (
+        f"expected concurrency peak {SCAN_WORKER_COUNT}, got {inflight['peak']}"
+    )
+    # Serial bound: 12 × 200ms = 2.4s; concurrent bound: 2 waves × 200ms ≈ 0.4s.
+    # Give generous headroom for CI jitter.
+    assert elapsed < 1.2, f"scan took {elapsed:.2f}s, expected <1.2s"
+
+
+def test_scan_ok_log_includes_duration_and_workers(db_session, fake_fmp):
+    """OK log line carries duration_s and workers=... for observability (F105-a5)."""
+    _seed_universe(db_session, [("AAPL", "Apple", 3_000_000_000_000)])
+    fake_fmp.ma150_results["AAPL"] = _sma_series_breakout(pct_above=2.0)
+
+    MarketScannerService(db_session, fake_fmp).run_scan()
+
+    ok_logs = SystemLogRepository(db_session).list_recent(level="OK")
+    scanner_ok = [l for l in ok_logs if l.source == "market_scanner"]
+    assert scanner_ok, "expected OK log from market_scanner"
+    msg = scanner_ok[0].message
+    assert "duration_s=" in msg
+    assert "workers=6" in msg
+
+
+def test_scan_preserves_d040_semantics_under_concurrency(db_session):
+    """All 6 tickers raise → no snapshot clear, status=error."""
+    tickers = [(f"X{i}", f"X {i}", 100_000_000_000) for i in range(6)]
+    _seed_universe(db_session, tickers)
+
+    class FailingFMP:
+        def __init__(self) -> None:
+            self.ma150_calls: list[str] = []
+
+        def get_ma150_series_or_eod(self, symbol: str) -> dict:
+            self.ma150_calls.append(symbol)
+            raise RuntimeError(f"boom {symbol}")
+
+    # Seed a prior snapshot so we can confirm it survives.
+    scan_date = date(2026, 4, 20)
+    scanned_at = datetime(2026, 4, 20, 6, 20, tzinfo=timezone.utc)
+    MarketBreakoutRepository(db_session).replace_scan([
+        BreakoutScanRow(
+            scan_date=scan_date,
+            ticker="OLD",
+            company_name="Old Co",
+            close_price=10.0,
+            ma150_value=9.0,
+            pct_above_ma150=11.0,
+            slope_value=0.1,
+            market_cap=100_000_000_000,
+            scanned_at=scanned_at,
+        )
+    ])
+
+    from app.services.market_scanner_service import MarketScannerService
+
+    result = MarketScannerService(db_session, FailingFMP()).run_scan()
+
+    assert result.status == "error"
+    assert result.failed == 6
+    # Old snapshot preserved (D040).
+    remaining = db_session.execute(select(MarketBreakoutScan)).scalars().all()
+    assert len(remaining) == 1
+    assert remaining[0].ticker == "OLD"

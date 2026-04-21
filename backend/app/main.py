@@ -6,14 +6,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.database import SessionLocal
-from app.external.fmp_client import FmpClient
+from app.external.fmp_client import FmpClient, default_rate_limiter
 from app.routers import data, journal, logs, market, signals, stocks, watchlist
 from app.services.refresh_job import shutdown_scheduler, start_scheduler
 from app.services.watchlist_service import APIError
 
 
 def _fmp_factory() -> FmpClient:
-    return FmpClient()
+    return FmpClient(rate_limiter=default_rate_limiter())
 
 
 @asynccontextmanager
