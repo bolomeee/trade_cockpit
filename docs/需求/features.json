@@ -1273,10 +1273,11 @@
         },
         "F105-a4": {
           "scope": "GET /api/market/breakouts router + schema + test_market_api 追加",
-          "phase": "needs_review",
+          "phase": "done",
           "depends_on": [
             "F105-a3"
-          ]
+          ],
+          "completed_at": "2026-04-21"
         },
         "F105-b": {
           "scope": "后端 on-demand chart fallback（扩展 /api/stocks/:ticker/chart）",

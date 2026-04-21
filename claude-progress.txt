@@ -379,3 +379,10 @@
 
 [下一个 Session]
   运行 acceptance 验收 F105-a4；通过后进入 F105-b（on-demand chart fallback）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21 22:50] 验收：F105-a4 ✅ 通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - phase: needs_review → done
+  - 验收记录：docs/验收/F105-a4-acceptance.md
+  - 下一步：F105-b（/api/stocks/:ticker/chart on-demand fallback）
