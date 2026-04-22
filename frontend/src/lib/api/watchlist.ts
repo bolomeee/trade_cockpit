@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { WatchlistItem } from '@/types/watchlist'
+import type { BulkAddResult, WatchlistItem } from '@/types/watchlist'
 import type { WatchlistCreatedItem } from '@/types/stocks'
 
 export function getWatchlist(): Promise<WatchlistItem[]> {
@@ -17,5 +17,13 @@ export function addStock(ticker: string): Promise<WatchlistCreatedItem> {
 export function removeStock(ticker: string): Promise<{ ticker: string; removed: boolean }> {
   return apiFetch<{ ticker: string; removed: boolean }>(`/watchlist/${encodeURIComponent(ticker)}`, {
     method: 'DELETE',
+  })
+}
+
+export function bulkAddStocks(tickers: string[]): Promise<BulkAddResult> {
+  return apiFetch<BulkAddResult>('/watchlist/bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tickers }),
   })
 }

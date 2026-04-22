@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, X } from 'lucide-react'
+import { Download, Loader2, Upload, X } from 'lucide-react'
 
 import { getSignals } from '@/lib/api/signals'
 import { removeStock } from '@/lib/api/watchlist'
 import { useAppStore } from '@/store/useAppStore'
 import { AddStockCard } from '@/components/features/dashboard/AddStockCard'
+import { CsvImportDialog } from '@/components/features/dashboard/CsvImportDialog'
 import { SignalBadge } from '@/components/features/dashboard/SignalBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api/client'
 import type { SignalBoardItem, SignalType } from '@/types/signal'
@@ -39,8 +41,23 @@ const SIGNAL_PRIORITY: Record<SignalType, number> = {
   INSUFFICIENT: 3,
 }
 
+function exportCsv(stocks: SignalBoardItem[]) {
+  const rows = stocks.map((s) => `${s.ticker},"${s.name.replace(/"/g, '""')}"`)
+  const csv = ['ticker,name', ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `watchlist-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function WatchlistWidget() {
   const setSelectedSymbol = useAppStore((s) => s.setSelectedSymbol)
+  const queryClient = useQueryClient()
+  const [importOpen, setImportOpen] = useState(false)
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['signals'],
     queryFn: getSignals,
@@ -53,9 +70,40 @@ export function WatchlistWidget() {
       )
     : []
 
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['signals'] })
+    queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+  }
+
   return (
     <div className="flex h-full flex-col gap-1" style={{ marginTop: '-5px', marginLeft: '-5px' }}>
-      <AddStockCard />
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <AddStockCard />
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="批量导入 CSV"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload size={14} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="导出 CSV"
+          disabled={sorted.length === 0}
+          onClick={() => exportCsv(sorted)}
+        >
+          <Download size={14} />
+        </Button>
+      </div>
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onSuccess={handleImportSuccess}
+      />
       {isLoading && (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 4 }).map((_, i) => (

@@ -533,6 +533,8 @@ Figma 中使用的图标均为单色，推荐用 `lucide-react`：
 |---------|-------------|
 | Refresh Data | `RefreshCw` |
 | Add to Watchlist (+) | `Plus` |
+| WatchlistWidget CSV 导入 | `Upload` |
+| WatchlistWidget CSV 导出 | `Download` |
 | Trade Journal + Add Entry | `Plus` |
 | Slope UP / DOWN | `TrendingUp` / `TrendingDown` |
 | JournalTable Expand | `ChevronRight` |
@@ -555,6 +557,54 @@ Figma 中使用的图标均为单色，推荐用 `lucide-react`：
 | Badge | `--font-size-badge` (10px) |
 | 价格 / 金额（等宽风格） | `--font-family-numeric` + `--font-size-subtitle` 以上 |
 | 日志时间戳 | `--font-family-mono` |
+
+---
+
+## F110-b：WatchlistWidget CSV 导入/导出（2026-04-22）
+
+### 触发入口
+
+WatchlistWidget 顶部搜索栏行右侧两个 ghost icon 按钮（size="icon-sm"，14px 图标）：
+
+```
+[ Search ticker or name... ] [Upload↑] [Download↓]
+```
+
+- `Upload`（导入）：点击弹出 `CsvImportDialog`
+- `Download`（导出）：直接触发浏览器下载；watchlist 为空时 disabled
+
+### CsvImportDialog 规格
+
+**组件**：`src/components/features/dashboard/CsvImportDialog.tsx`
+
+**阶段状态机**：`input` → `importing` → `done` / `error`
+
+**输入阶段**：
+- Tabs 切换：「文件上传」/ 「文本粘贴」
+- 文件上传：点击区域弹出文件选择框（`accept=".csv,.txt"`），选中后自动解析
+- 文本粘贴：Textarea，实时解析（换行 / 逗号 / Tab 分隔，自动去重去首行标题）
+- 解析预览：最多展示 8 个 ticker，超出显示"还有 N 个"；上限 200 个自动截断
+- 「导入 (N)」按钮：解析 0 个时 disabled
+
+**结果阶段**：
+- ✅ 已添加：N 个（列出 ticker，最多 5 个）
+- ⏭ 跳过（重复）：M 个
+- ❌ 未找到：P 个
+- 「完成」按钮关闭 Dialog
+
+**错误阶段（502 EXTERNAL_API_ERROR）**：
+- "导入失败（FMP 服务异常），请重试"
+- 「返回」/ 「重试」按钮
+
+### 导出格式
+
+```csv
+ticker,name
+AAPL,"Apple Inc."
+MSFT,"Microsoft Corporation"
+```
+
+文件名：`watchlist-YYYY-MM-DD.csv`
 
 ---
 

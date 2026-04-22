@@ -89,3 +89,35 @@ F110-b（下下个 Sprint）范围（不在 F110-a）：
   - 验收 F110-a：curl POST /api/watchlist/bulk 手工验证
   - 继续 F108：修复 /pullbacks 非 watchlist 返回行为 + 修复 2 个测试
   - 或开始 F110-b：前端 CSV 导入 UI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F110-b Watchlist CSV 导入/导出（前端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - CsvImportDialog（shadcn Dialog + Tabs）：文件上传 / 文本粘贴两种模式
+  - parseTickers：换行/逗号/Tab 分隔，自动去重、大写、跳过标题行，上限 200
+  - 导入结果三桶展示：已添加 / 跳过重复 / 未找到
+  - exportCsv：从已有 signals 数据生成 CSV，触发浏览器下载
+  - Upload / Download icon 按钮嵌入 WatchlistWidget 搜索栏行右侧
+  - BulkAddResult 类型 + bulkAddStocks() API 函数
+  - pnpm tsc --noEmit 通过，无 console.error
+  - design-spec.md 补充 F110-b UI 规格段落
+  - F110-b phase → needs_review
+
+🔧 系统变更：
+  - 新增：frontend/src/components/features/dashboard/CsvImportDialog.tsx
+  - 修改：frontend/src/types/watchlist.ts（+BulkAddResult）
+  - 修改：frontend/src/lib/api/watchlist.ts（+bulkAddStocks）
+  - 修改：frontend/src/workbench/widgets/WatchlistWidget.tsx
+  - 修改：docs/设计/design-spec.md（F110-b 规格）
+  - 修改：docs/需求/features.json（F110-b phase）
+
+📊 功能状态：
+  F110-a [后端 bulk 接口]：✅ done（needs_review）
+  F110-b [前端 CSV UI]：🔍 needs_review
+  F108 [fundamentals/pullbacks 放开]：🔄 contract_agreed（2 个测试待修复）
+
+[下一个 Session]
+  - 验收 F110（导入/导出端到端测试）
+  - 继续 F108 或 F109
