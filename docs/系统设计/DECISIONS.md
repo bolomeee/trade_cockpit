@@ -1173,3 +1173,20 @@ last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D04
 **影响**：
 - `bulk_add_stocks` 仅捕获 `DUPLICATE` 和 `NOT_FOUND`，其他 `APIError` 冒泡至 router → 502
 - 前端（F110-b）应在收到 502 时提示"导入失败，请重试"，而非展示部分成功列表
+
+
+## D047：F108 `/fundamentals` / `/pullbacks` 沿用 D041 on-demand 语义
+
+**日期**：2026-04-22
+**触发**：Scanner 场景用户点击任意 ticker → 切 Fundamentals / Pullbacks 标签 → 原逻辑走 `_resolve_active_stock` → 404，体验割裂
+
+**决策**：
+1. `/fundamentals`：直接调 FMP `ratios-ttm` + `key-metrics-ttm`，不再要求 ticker 在 watchlist。只对空 ticker（trim 后空串）返回 404；FMP 网络失败返回 502。
+2. `/pullbacks`：非 watchlist / inactive ticker → 返回 200 + 空列表（不走 FMP on-demand）。pullback 计算依赖本地 180 天 daily bars 滚动窗口，非 watchlist ticker 无历史，on-demand 成本高且语义不强；返回空列表与 `/chart` fallback 的 `pullbackMarkers: []` 语义一致（D041 族决策）。
+3. `_resolve_active_stock` 仍由 `/chart` 使用（chart 需要 DB bars → inactive / 不在 DB 的 ticker 走 on-demand FMP fallback），不删除。
+
+**为何不重新走 system-design**：与 D041 同族决策（on-demand fallback 语义推广），D041 已通过系统设计确认。API-CONTRACT.md 的 404 语义范围收窄，不涉及新 endpoint 或 schema 变更。
+
+**影响**：
+- API-CONTRACT.md：`/fundamentals` 404 仅限空 ticker；`/pullbacks` 非 watchlist → 200+[]
+- `test_detail_endpoints_404_when_ticker_missing` / `_inactive`：pullbacks + fundamentals 分支从 404 改为 200

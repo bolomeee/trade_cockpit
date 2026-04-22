@@ -425,11 +425,17 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 
 **说明**：按日期倒序。`return30d: null` 表示数据不足 30 个交易日，尚无法计算。
 
+**说明（F108 更新）**：
+- `ticker` 不在 watchlist 或 is_active=False → 返回 200 + 空列表（`data: []`），不再 404
+- pullback 计算依赖 180 天本地滚动窗口，非 watchlist ticker 无历史数据，语义与 chart fallback 的 `pullbackMarkers: []` 一致
+
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
-| ticker 不在 watchlist 中 | NOT_FOUND | 404 |
+| ~~ticker 不在 watchlist 中~~ ~~NOT_FOUND~~ ~~404~~ | — | — |
+
+> F108（2026-04-22）：非 watchlist / inactive ticker 不再 404，改为 200+空列表。
 
 ---
 
@@ -480,12 +486,19 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 - FCF 计算：FMP `/stable/` 系列无直出 absolute FCF 字段，按 `FCF = marketCap × freeCashFlowYieldTTM` 反推（精度对齐到 B 级）
 - 前端 `Fundamentals` 类型保持不变（D034 约束：不改前端类型）；`FundamentalsCard` 已对 null 字段容错显示 `—`
 
+**说明（F108 更新）**：
+- 任意 ticker 均可调用，无需在 watchlist 中（D047）
+- `sharesFloat` 仍仅对 watchlist active ticker 有值，非 watchlist / inactive → null（D054 不变）
+
 **错误响应**：
 
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
-| ticker 不在 watchlist 中 | NOT_FOUND | 404 |
+| ticker 为空字符串（trim 后） | NOT_FOUND | 404 |
 | FMP 接口失败（ratios-ttm 或 key-metrics-ttm 任一） | EXTERNAL_API_ERROR | 502 |
+| ~~ticker 不在 watchlist 中~~ | — | ~~404~~ |
+
+> F108（2026-04-22）：移除 watchlist 限制；任意 ticker 直接打 FMP。
 
 ---
 

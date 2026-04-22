@@ -127,3 +127,31 @@ F110-b（下下个 Sprint）范围（不在 F110-a）：
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ 用户验收通过，phase → done
 验收记录：docs/验收/F110-acceptance.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F108 /fundamentals /pullbacks 放开到任意 ticker
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 反向补契约：服务层代码已存在，本次补测试 + 文档
+  - 修复 2 个旧测试（pullbacks/fundamentals 不再期望 404）
+  - 新增 5 个测试：fundamentals 打 FMP、FMP 报错返 502、空 ticker→404、pullbacks 任意 ticker 返空
+  - 全量测试：280/280 通过（0 失败）
+  - API-CONTRACT.md：更新 fundamentals/pullbacks 404 语义
+  - DECISIONS.md：追加 D047（D041 on-demand 语义延伸到 fundamentals/pullbacks）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无
+
+🔧 系统变更：
+  - backend/tests/test_stock_detail.py（7 个测试变更）
+  - docs/系统设计/API-CONTRACT.md
+  - docs/系统设计/DECISIONS.md
+
+📊 功能状态：
+  F108：🔍 needs_review
+  F109-a/b：📋 contract_agreed（待开发）
+
+[下一个 Session]
+  /acceptance F108 验收，或继续开发 F109

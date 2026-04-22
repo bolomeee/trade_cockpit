@@ -227,19 +227,25 @@ def test_fundamentals_502_when_fmp_http_error(
 
 
 def test_detail_endpoints_404_when_ticker_missing(client: TestClient) -> None:
-    for path in ("chart", "pullbacks", "fundamentals"):
-        resp = client.get(f"/api/stocks/ZZZZ/{path}")
-        assert resp.status_code == 404, path
-        assert resp.json()["error"]["code"] == "NOT_FOUND"
+    # chart: non-watchlist + no FMP bars → still 404
+    resp = client.get("/api/stocks/ZZZZ/chart")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+    # F108: pullbacks + fundamentals are now open to any ticker
+    assert client.get("/api/stocks/ZZZZ/pullbacks").status_code == 200
+    assert client.get("/api/stocks/ZZZZ/fundamentals").status_code == 200
 
 
 def test_detail_endpoints_404_when_ticker_inactive(
     client: TestClient, db_session: Session
 ) -> None:
     _seed_stock(db_session, "INAC", is_active=False)
-    for path in ("chart", "pullbacks", "fundamentals"):
-        resp = client.get(f"/api/stocks/INAC/{path}")
-        assert resp.status_code == 404, path
+    # chart: inactive ticker → still 404
+    resp = client.get("/api/stocks/INAC/chart")
+    assert resp.status_code == 404
+    # F108: pullbacks + fundamentals return 200 for inactive tickers
+    assert client.get("/api/stocks/INAC/pullbacks").status_code == 200
+    assert client.get("/api/stocks/INAC/fundamentals").status_code == 200
 
 
 def test_detail_endpoints_are_case_insensitive(
@@ -503,3 +509,53 @@ def test_pullback_repository_returns_rows_desc(
     rows = repo.list_by_stock(stock.id)
     dates = [r.date for r in rows]
     assert dates == sorted(dates, reverse=True)
+
+
+# ---------- F108: /fundamentals + /pullbacks open to any ticker ----------
+
+
+def test_fundamentals_for_unknown_ticker_hits_fmp(
+    client: TestClient, fake_fmp
+) -> None:
+    fake_fmp.ratios_results["UKWN"] = {"priceToEarningsRatioTTM": 25.5}
+    fake_fmp.key_metrics_results["UKWN"] = {"marketCap": 1_000_000_000}
+    resp = client.get("/api/stocks/UKWN/fundamentals")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["priceToEarnings"] == pytest.approx(25.5)
+    assert data["marketCap"] == pytest.approx(1_000_000_000)
+    assert data["ticker"] == "UKWN"
+    assert "UKWN" in fake_fmp.ratios_calls
+
+
+def test_fundamentals_fmp_http_error_for_unknown_ticker(
+    client: TestClient, fake_fmp
+) -> None:
+    def _boom(symbol: str) -> None:
+        raise httpx.ConnectError("network down")
+
+    fake_fmp.get_ratios_ttm = _boom  # type: ignore[assignment]
+    resp = client.get("/api/stocks/UKWN2/fundamentals")
+    assert resp.status_code == 502
+    assert resp.json()["error"]["code"] == "EXTERNAL_API_ERROR"
+
+
+def test_fundamentals_empty_ticker_returns_404(client: TestClient) -> None:
+    resp = client.get("/api/stocks/%20/fundamentals")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_pullbacks_for_unknown_ticker_returns_empty(client: TestClient) -> None:
+    resp = client.get("/api/stocks/NOTHERE/pullbacks")
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []
+
+
+def test_pullbacks_for_inactive_ticker_returns_empty(
+    client: TestClient, db_session: Session
+) -> None:
+    _seed_stock(db_session, "INAC2", is_active=False)
+    resp = client.get("/api/stocks/INAC2/pullbacks")
+    assert resp.status_code == 200
+    assert resp.json()["data"] == []

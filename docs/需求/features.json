@@ -1726,7 +1726,7 @@
       "user_story": "作为投资者，我在 scanner 里点击一个不在 watchlist 的 ticker 时，除了看图，还想切到 Fundamentals Tab 看估值 —— 而不是被 404 挡住，逼我先把它加进 watchlist。",
       "priority": "P1",
       "status": "in_progress",
-      "phase": "contract_agreed",
+      "phase": "needs_review",
       "dependencies": [
         "F105-b"
       ],
