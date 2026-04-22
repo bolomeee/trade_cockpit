@@ -1,0 +1,310 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-21] Sprint：F106-a 多信号扫描核心（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - scanner_params.py 新增：4 种 signal_type 枚举 + A1/A2/B2 阈值 + 共享参数（FETCH_WINDOW=90 / SCAN_WORKER_COUNT=6）
+  - market_scanner_service.py 重构：_BarCtx 不可变 dataclass + 4 个独立 detector（legacy / a1_stage_breakout / a2_slope_flip / b2_ma_pullback）+ hits_by_type 聚合
+  - market_breakout_scan 模型：加 signal_type / volume / volume_ratio_20；唯一键改 (scan_date, ticker, signal_type)
+  - repository：get_latest_snapshot 支持 signal_types 过滤
+  - alembic 003 迁移：batch_alter_table 改唯一键 + 三字段，默认回填 legacy_crossover
+  - 新增测试：test_market_scanner_detectors.py（10 用例覆盖 legacy/A1/A2/B2 正向+边界）
+  - 新增测试：test_schema.py::test_migration_003_... （upgrade→downgrade 往返验证）
+  - 修复：测试文件 8 处因 BreakoutScanRow/API 字段扩展引入的 schema 不一致
+  - F106-a scope 测试：48/48 全绿
+  - 全量回归：243/245（2 失败均为 F108 scope：test_stock_detail.py 的 pullbacks 404 期望，已在 F108-contract 中计入）
+  - phase：F106-a → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-a（Evaluator 自检已通过；2 个 F108-scope 回归失败由 F108 sprint 修复）
+  - F106-a 验收后，按 F106-b contract 进入（router ?type= + schemas + fmp_client SMA 窗口）
+
+🔧 系统变更：
+  - 新文件：backend/app/services/scanner_params.py
+  - 新文件：backend/alembic/versions/003_f106_signal_type_and_volume.py
+  - 新文件：backend/tests/test_market_scanner_detectors.py
+  - 表结构：market_breakout_scans 加 signal_type(NN)/volume/volume_ratio_20，唯一键 uq_breakout_scan_date_ticker → uq_breakout_scan_date_ticker_signal
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a done / b,c contract_agreed）
+    F106-a 扫描核心：🔍 needs_review
+    F106-b 后端 API：⬜ contract_agreed
+    F106-c 前端 widget：⬜ contract_agreed
+  F107  Chart volume + MA5/20：⬜ ready_to_dev（design-spec 需更新）
+  F108  Fundamentals 放开：⬜ contract_agreed（D047）
+  F109  Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+[下一个 Session]
+  验收 F106-a 后继续 F106-b（Generator 模式）：改 router /api/market/breakouts ?type= / 扩 schemas / fmp_client SMA 窗口 35→90
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-a 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-a phase：needs_review → done
+- 下一步：按 F106-b contract 进入 Generator 模式
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F106-b 多信号扫描 API 层（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator 模式，业务代码未动）：
+  - 核对：routers/market.py 的 ?type= 解析 + 400 校验、schemas/market.py 的 4 个新字段、fmp_client 的 SMA 35→90 + is_fund/is_etf Optional 改造均匹配 contract
+  - 新增测试（test_market_api.py 6 用例）：
+    · 默认过滤掉 legacy_crossover
+    · ?type=legacy_crossover 只返 legacy
+    · ?type=a1_stage_breakout,b2_ma_pullback 组合过滤
+    · ?type=foo → 400 + detail
+    · ?type= 空串 → 降级默认
+    · items[] 含 signalType/slopeValue/volume/volumeRatio20
+  - 新增测试（test_fmp_client.py 3 用例）：
+    · is_etf=None 不下传 isEtf
+    · is_fund=False/True 正确序列化
+    · get_screener_universe 对 3 个交易所都下发 isFund=false 且不下发 isEtf
+  - 修文档：API-CONTRACT.md GET /api/market/breakouts 错误码 422 → 400（与实现一致，用户选项 C）
+  - 全量回归 252/254（2 失败为 F108 scope）
+  - phase：F106-b → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-b 后进入 F106-c（前端 Tabs + MarketBreakoutWidget 重构）
+
+🔧 系统变更：
+  - 业务代码零改动（反向补 Evaluator）
+  - 新增测试 9 用例
+  - API-CONTRACT.md 错误码修正
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a done / b needs_review / c contract_agreed）
+    F106-a 扫描核心：✅ done
+    F106-b 后端 API：🔍 needs_review
+    F106-c 前端 widget：⬜ contract_agreed
+
+[下一个 Session]
+  验收 F106-b 后进入 F106-c（Evaluator 模式核对前端 Tabs 实现）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-b 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-b phase：needs_review → done
+- 下一步：按 F106-c contract 进入 Evaluator 模式（前端 Tabs + MarketBreakoutWidget 反向补契约）
+- 环境说明：5173 Vite dev server 不受 docker 管理；用户本地已重启 pnpm dev，工作树内 F106-c/F107/F108/F109 前端改动为用户既有未提交状态
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F106-c 多信号 Widget（前端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator 模式）：
+  - 核对 4 个目标文件与 Contract 逐条对齐：
+    · tabs.tsx（shadcn 官方 radix-ui barrel + cva default/line variants + data-slot/group 模式，Context7 核验）
+    · types/market.ts（SignalType 联合类型 + BreakoutItem 4 新字段）
+    · lib/api/market.ts（getBreakouts(types?) 可选过滤，空数组/undefined → 不带 qs 走后端默认）
+    · MarketBreakoutWidget.tsx（Tabs 两栏 / BreakoutPane 抽子组件 / TAB_SIGNALS / typesKey 排序拼接 / key=${ticker}-${signalType} / 动态 Signal 列 / volumeRatio20 空值 — 非空 N.NN× / 空态分 Tab 文案 / + 按钮 h-5 w-5 + stopPropagation / 容器 marginTop -5 marginLeft -5 gap-1）
+  - Lint 修复：tabs.tsx 移除 `tabsListVariants` 导出（react-refresh/only-export-components，用户选项 A，仅内部引用、零外部消费者）
+  - 降级 Contract（D048）：项目无 vitest/@testing-library 基建，Contract #3–#8 的 6 条 RTL 单测改为代码审查 + 手工回归；#9–#11 保留为硬门禁（用户选项 B）
+  - 硬门禁全部通过：
+    · tsc -b 通过
+    · vite build 通过（483ms，bundle 正常）
+    · docker compose E2E：frontend 8080 → 200；stage Tab `?type=a1_stage_breakout,a2_slope_flip` → 19 命中；pullback Tab `?type=b2_ma_pullback` → 45 命中（2026-04-21 真实扫描数据）
+  - 全量 lint：3 problems（2 errors + 1 warning），均为 pre-F106-c 预先存在（button.tsx buttonVariants 导出 / JournalEntryForm / MarketSignalSearch）
+  - phase：F106-c → needs_review
+
+⚠️ 待你决策：
+  - 验收 F106-c 后，F106 主 feature（a/b/c 三子任务均 done）可整体流转到 done
+
+🔧 系统变更：
+  - frontend 业务代码仅 1 处改动：tabs.tsx export 清单（移除 tabsListVariants）
+  - F106-c-contract.md 测试门禁降级 + Evaluator 自检清单全部打勾
+  - DECISIONS.md 新增 D048：前端单测基建延迟到 v1.4（F107/F108/F109 按同样路径降级）
+
+📊 功能状态：
+  F106  Multi-Signal Scanner：🔄 in_progress（a/b done, c needs_review）
+    F106-a 扫描核心：✅ done
+    F106-b 后端 API：✅ done
+    F106-c 前端 widget：🔍 needs_review
+  v1.4 待规划：前端测试基建（vitest + @testing-library/react + jsdom）
+
+[下一个 Session]
+  验收 F106-c 后，F106 整体 done；下一个反向补契约：F107（股价图成交量 + MA5/20 短均线）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F106-c 合格 → done（F106 整体 done）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F106-c phase：needs_review → done
+- F106 主 feature phase：contract_agreed → done（a/b/c 三子任务全绿）
+- F106 status：in_progress → done
+- v1.3 Multi-Signal Scanner 核心（P0：A1/A2/B2）落地完成
+- 下一步：F107 反向补契约 Evaluator（PriceChart 成交量 + MA5/20 短均线叠加）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F107 股价图成交量 + MA5/MA20 叠加（反向补契约 Evaluator）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（反向补契约 Evaluator，未改业务代码）：
+  - 核对 PriceChart.tsx 与 Contract 逐条对齐：
+    · HistogramSeries（priceScaleId='volume'，scaleMargins top 0.8 / bottom 0）
+    · Candlestick scaleMargins {top:0.05, bottom:0.25}（为 volume 腾底部 20%）
+    · 成交量颜色 upColor+'66'/downColor+'66'（40% 透明）
+    · shortMaData rolling window O(N)，前 N-1 天跳过
+    · MA5 #f59e0b / MA20 #8b5cf6（TradingView 社区约定）
+    · ResizeObserver + chart.remove() cleanup 正确
+  - 核对 ChartWidget.tsx 与 Contract 逐条对齐：
+    · 左上 absolute 图例 3 行（MA5/MA20/MA150 各色）
+    · flex column gap 2 fontSize 11 --font-family-numeric
+  - 补 design-spec.md 第 250-258 行 F107 增强小节（MA5/MA20 / Volume histogram / 主图下移 / 图例 / 短均线颜色约定）
+  - 硬门禁全通过：
+    · tsc -b + vite build：371ms ✅
+    · docker 后端 /api/stocks/AAPL/chart：250 bars 带 volume + 101 MA150 points ✅
+  - Evaluator 自检清单 7/9 打勾（浏览器手工视觉 2 条交给用户验收阶段，D048 降级为手工）
+  - phase：F107 → needs_review
+
+⚠️ 待你决策：
+  - 验收 F107 后进入 F107-b（plan file: ~/.claude/plans/tingly-jumping-pebble.md）
+  - F107-b 拆分：F107-b1 后端 shares_float 数据链路 + F107-b2 前端 Vol/Float 比率显示
+
+🔧 系统变更：
+  - 业务代码零改动（PriceChart.tsx / ChartWidget.tsx 均为用户预先未 staged 的手改，此次作为 F107 commit 纳入轨道）
+  - design-spec.md PriceChart 小节补 F107 视觉说明
+  - F107-contract.md Evaluator 自检清单更新
+
+📊 功能状态：
+  F106 Multi-Signal Scanner：✅ done
+  F107 股价图成交量 + MA5/20：🔍 needs_review
+  F107-b Vol/Float 比率（plan 已定）：⬜ contract_needed（b1 + b2 两 sprint）
+  F108 Fundamentals 放开：⬜ contract_agreed
+  F109 Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+[下一个 Session]
+  验收 F107 后协商 F107-b1 Sprint Contract（后端 shares_float 链路，Generator 模式）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F107 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F107 phase：needs_review → done（反向补契约完成）
+- 本 session 三次 commit：
+  · 1c53f88 feat(F106-c): multi-signal widget — shadcn Tabs + stage/pullback split
+  · 10c2e19 chore(F106): accept F106-c — F106 Multi-Signal Scanner done
+  · 3b923a0 feat(F107): chart volume histogram + MA5/MA20 overlay
+- 下一步：Session 暂停，更新 SESSION-HANDOFF.md；新 session 协商 F107-b1 Sprint Contract
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Session 暂停（handoff）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 当前功能状态：
+  F106 Multi-Signal Scanner：✅ done
+  F107 股价图 Vol + MA5/20：✅ done
+  F107-b Vol/Float 比率：⬜ plan_agreed（plan 文件：~/.claude/plans/tingly-jumping-pebble.md）
+    F107-b1 后端 shares_float 链路：⬜ contract_needed（5 业务文件）
+    F107-b2 前端 Vol/Float 显示：⬜ contract_needed（3 业务文件）
+  F108 /fundamentals & /pullbacks 放开：⬜ contract_agreed（反向补）
+  F109 Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+📝 工作树未提交（pre-session 用户手改，留到各自 sprint 落地）：
+  - frontend/src/App.tsx / TopNav.tsx / WidgetShell.tsx / FundamentalsWidget.tsx / PullbackWidget.tsx / QuickAddWidget.tsx / WatchlistWidget.tsx / AddStockCard.tsx → F109 反向补契约
+  - backend/app/services/stock_detail_service.py + docs/系统设计/DATA-MODEL.md → F108 反向补契约
+  - backend/uv.lock → 待确认
+  - Untracked：README.md、F108/F109-a/F109-b contract 草案、docs/需求/SIGNAL-CATALOG.md
+
+[下一个 Session]
+  协商 F107-b1 Sprint Contract — Generator 模式，后端 shares_float 链路。参考 ~/.claude/plans/tingly-jumping-pebble.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 09:20] Sprint：F107-b1 后端 shares_float 数据链路
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Stock 表新增 shares_float / shares_float_refreshed_at 两列（alembic 004）
+  - FmpClient.get_shares_float (端点 /stable/shares-float)
+  - stock_detail_service 24h DB-first TTL 缓存 + /chart 注入 sharesFloat
+  - 单元测试：80/80 通过（test_fmp_client + test_stock_detail + test_schema）
+  - 全量回归：262/264（2 失败为 F108 预先存在，不阻塞）
+  - alembic 三往返绿
+  - docker E2E：AAPL /chart 返回 sharesFloat=14664480994（FMP 实际值）；二次调用命中 24h 缓存
+  - D051 回写修订：端点 /profile → /shares-float（Starter 档 /profile 不含该字段）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - Evaluator 通过，请验收 F107-b1
+
+🔧 系统变更：
+  - alembic/versions/004_f107b1_shares_float.py（新增）
+  - app/external/fmp_client.py（+ /shares-float 端点 + get_shares_float 方法）
+  - app/models/stock.py（+ 2 列）
+  - app/schemas/stock_detail.py（ChartData + sharesFloat）
+  - app/services/stock_detail_service.py（24h DB 缓存 + 两条路径 resolve）
+  - tests/conftest.py, test_fmp_client.py, test_stock_detail.py, test_schema.py
+  - DATA-MODEL.md / API-CONTRACT.md / DECISIONS.md D049–D052 (D051 修订)
+
+📊 功能状态：
+  F107-b1 后端 shares_float：🔍 needs_review
+  F107-b2 前端 Vol/Float：⬜ contract_needed
+
+[下一个 Session]
+  用户验收 F107-b1 → 进入 F107-b2 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 09:35] F107-b1 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+phase: needs_review → done
+下一步：F107-b2 前端 Vol/Float 图例（contract_needed）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F107-b2 前端 ChartWidget Vol/Float 比率显示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - ChartData 类型加 sharesFloat: number | null
+  - lib/format.ts 新增共用 formatPercent（入参为已 ×100 百分比值，fallback='—'）
+  - PriceChart 内置浮动气泡 + subscribeCrosshairMove（v5 API，Context7 核验）
+  - ChartWidget 数据流内聚，移除过渡版图例 Vol/Float 行
+  - FundamentalsCard 复用 formatPercent（展示等价）
+  - Evaluator：pnpm build ✅ / preview E2E ✅ / console 无 error / 用户实机验收 ✅
+  - phase → done
+
+🎨 交互迭代（用户反馈驱动）：
+  1. 图例行显示（最小实现）
+  2. volume 柱上方浮动气泡（重构为柱内置 tooltip）
+  3. 底边固定偏移 80px（避免不同柱高导致气泡跳动）
+
+🔧 系统变更：无（纯前端，不改后端 / 合约 / DB）
+
+📊 功能状态：
+  F107-b1 后端 shares_float 链路：✅ done
+  F107-b2 前端 Vol/Float 气泡：✅ done
+  F107-b3 Fundamentals Float 绝对值：⬜ contract_needed
+
+[下一个 Session]
+  准备开发 F107-b3（Fundamentals 加 Float 绝对值显示，单位格式协商阶段敲定）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 04:00] Sprint：F107-b3 Fundamentals 增加 Float 绝对值显示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - /api/stocks/:ticker/fundamentals 响应增 sharesFloat（复用 F107-b1 24h DB 缓存）
+  - FundamentalsCard 右列末位增 Float 行，单位 15.23B / 987.65M
+  - 集成测试：6/6 通过（含新增 2 用例）
+  - 后端全量回归：264/266（2 个失败为 F108 引入的 pullbacks pre-existing）
+  - 前端 build 通过；E2E 浏览器实测 AAPL Float 14.66B 正确渲染
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无（acceptance 验收）
+
+🔧 系统变更：
+  - DECISIONS.md 新增 D054
+  - API-CONTRACT.md /fundamentals 字段表 + 响应示例追加 sharesFloat
+  - sprint contract: docs/开发/sprint-contracts/F107-b3-contract.md
+
+📊 功能状态：
+  F107-b1：✅ done
+  F107-b2：✅ done
+  F107-b3：🔍 needs_review
+
+[下一个 Session]
+  触发 acceptance 验收 F107-b3，或继续 F108
+
+[2026-04-22] F107-b3 验收通过 → done。验收记录：docs/验收/F107-b3-acceptance.md

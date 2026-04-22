@@ -4,6 +4,19 @@
 
 ---
 
+## [v1.3.0] - 2026-04-22
+
+ChartWidget 叠加层（volume / MA5 / MA20 / Vol/Float 气泡）+ Fundamentals Float 绝对值 + 多信号扫描器分类 Tabs。
+
+### ✨ 新增
+- **多信号扫描器 (F106-a/b/c)**：扫描器扩展为多类信号探测器，schema 增 `signal_type`；`/api/market/breakouts` 支持 `?type=` 过滤；MarketBreakoutWidget 改 shadcn Tabs 分栏 stage / pullback；FMP screener 增 `is_fund` 过滤剔除基金
+- **图表叠加层 (F107)**：ChartWidget 增 volume 柱状图 + MA5 / MA20 双均线叠加（与既有 MA150 共存）
+- **shares_float 后端数据链路 (F107-b1)**：stocks 表新增 `shares_float` / `shares_float_refreshed_at`（24h TTL DB 缓存，D050）；FMP `/stable/shares-float` 双字段兼容（D051）；`/chart` 响应顶层带 `sharesFloat`
+- **Vol/Float 比率气泡 (F107-b2)**：ChartWidget volume 柱上方浮动气泡显示当日 Vol/Float 比率，hover 图例联动；历史 bar 统一用当前快照 float（D052，标注"近似"）
+- **Fundamentals Float 行 (F107-b3)**：FundamentalsCard 右列末位新增 Float 绝对值（单位 15.23B / 987.65M）；`/fundamentals` 响应增 `sharesFloat`，复用 F107-b1 缓存路径（D054）
+
+---
+
 ## [v1.2.0] - 2026-04-21
 
 Market Breakout Scanner — Workbench 新增 scanner 类别，每日盘后扫描全美大市值股票池的 MA150 穿越候选；配套 FMP 并发调度重构。
