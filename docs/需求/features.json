@@ -1857,8 +1857,8 @@
       "description": "Watchlist 支持 CSV 批量导入（in 图标）和导出（out 图标）。拆分为 F110-a（后端批量添加接口）+ F110-b（前端 CSV UI）。",
       "user_story": "作为投资者，我希望能一次性把我的选股名单批量导入 watchlist，而不是一个个手动输入。",
       "priority": "P1",
-      "status": "needs_review",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F001"
       ],
@@ -1866,12 +1866,12 @@
       "estimated_files_changed": [],
       "subtasks": {
         "F110-a": {
-          "phase": "needs_review",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F110-a-contract.md",
           "scope": "后端批量添加接口 POST /api/watchlist/bulk"
         },
         "F110-b": {
-          "phase": "needs_review",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F110-a-contract.md",
           "scope": "前端 CSV 解析 / 文件选择 / 结果 toast"
         }
@@ -1912,7 +1912,7 @@
       },
       "iteration_history": [],
       "notes": "F110-a 完成后即可开始 F110-b。",
-      "completed_at": null
+      "completed_at": "2026-04-22"
     }
   ]
 }
