@@ -1,6 +1,7 @@
 import type { Fundamentals } from '@/types/stockDetail'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common/ErrorState'
+import { formatPercent } from '@/lib/format'
 import {
   Table,
   TableBody,
@@ -31,11 +32,8 @@ function formatRatio(v: number | null | undefined): string | null {
   return v == null ? null : v.toFixed(2)
 }
 
-function formatPercent(v: number | null | undefined): string | null {
-  return v == null ? null : `${(v * 100).toFixed(2)}%`
-}
-
 function buildMetrics(f: Fundamentals | undefined): { left: Metric[]; right: Metric[] } {
+  const roce = f?.roce
   return {
     left: [
       { label: 'P/E', value: formatRatio(f?.priceToEarnings) },
@@ -43,7 +41,7 @@ function buildMetrics(f: Fundamentals | undefined): { left: Metric[]; right: Met
       { label: 'PEG', value: formatRatio(f?.peg) },
     ],
     right: [
-      { label: 'ROCE', value: formatPercent(f?.roce) },
+      { label: 'ROCE', value: roce == null ? null : formatPercent(roce * 100) },
       { label: 'FCF', value: f ? formatCurrency(f.freeCashFlow) : null },
     ],
   }

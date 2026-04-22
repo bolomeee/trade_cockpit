@@ -11,10 +11,11 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import type { ChartData } from '@/types/stockDetail'
+import type { ChartBar, ChartData } from '@/types/stockDetail'
 
 interface PriceChartProps {
   data: ChartData
+  onHoverChange?: (bar: ChartBar | null) => void
 }
 
 function toUtcTimestamp(dateStr: string): UTCTimestamp {
@@ -29,8 +30,10 @@ function readToken(name: string, fallback: string): string {
   return v || fallback
 }
 
-export function PriceChart({ data }: PriceChartProps) {
+export function PriceChart({ data, onHoverChange }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const onHoverChangeRef = useRef(onHoverChange)
+  onHoverChangeRef.current = onHoverChange
 
   useEffect(() => {
     const container = containerRef.current
@@ -163,6 +166,22 @@ export function PriceChart({ data }: PriceChartProps) {
 
     chart.timeScale().fitContent()
 
+    const barByTime = new Map<UTCTimestamp, ChartBar>()
+    for (const b of data.bars) {
+      barByTime.set(toUtcTimestamp(b.date), b)
+    }
+    const handleCrosshair = (param: { time?: Time; point?: { x: number; y: number } }) => {
+      const cb = onHoverChangeRef.current
+      if (!cb) return
+      if (!param.point || param.time == null) {
+        cb(null)
+        return
+      }
+      const bar = barByTime.get(param.time as UTCTimestamp) ?? null
+      cb(bar)
+    }
+    chart.subscribeCrosshairMove(handleCrosshair)
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height: h } = entry.contentRect
@@ -175,6 +194,8 @@ export function PriceChart({ data }: PriceChartProps) {
 
     return () => {
       observer.disconnect()
+      chart.unsubscribeCrosshairMove(handleCrosshair)
+      onHoverChangeRef.current?.(null)
       chart.remove()
     }
   }, [data])

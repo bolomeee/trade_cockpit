@@ -10,7 +10,10 @@ type WidgetShellProps = {
 export function WidgetShell({ title, children, onClose }: WidgetShellProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
-      <div className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center justify-between border-b border-border bg-muted px-2 active:cursor-grabbing">
+      <div
+        className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
+        style={{ backgroundColor: '#ebf2fa' }}
+      >
         <span className="text-xs text-foreground">{title}</span>
         {onClose && (
           <button

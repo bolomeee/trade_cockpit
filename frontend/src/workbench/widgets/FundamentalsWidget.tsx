@@ -18,11 +18,13 @@ export function FundamentalsWidget() {
   if (symbol === null) return <EmptySymbol />
 
   return (
-    <FundamentalsCard
-      fundamentals={data as Fundamentals | undefined}
-      loading={isLoading}
-      error={isError}
-      onRetry={() => refetch()}
-    />
+    <div style={{ marginTop: '-5px', marginLeft: '-5px' }}>
+      <FundamentalsCard
+        fundamentals={data as Fundamentals | undefined}
+        loading={isLoading}
+        error={isError}
+        onRetry={() => refetch()}
+      />
+    </div>
   )
 }

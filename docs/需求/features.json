@@ -1566,8 +1566,8 @@
       "description": "依赖 F107-b1 done。ChartWidget 左上角图例（MA5/MA20/MA150 三行下方）新增 'Vol/Float: X.XX%' 一行；默认显示最新交易日；鼠标悬停任意 bar 时联动更新；离开图表回到最新；shares_float=null（ETF / FMP 404）时显 '—'。技术点：PriceChart 新增 onHoverChange prop + chart.subscribeCrosshairMove；FundamentalsCard formatPercent 抽到 lib/format.ts 共用。",
       "user_story": "Vol bar 能看到但看不到数字；真正能判断'今天的量算不算大'的是当日成交量占流通股的百分比——我要在图例看到这个数字，并能 hover 任一天查历史。",
       "priority": "P1",
-      "status": "todo",
-      "phase": "contract_needed",
+      "status": "testing",
+      "phase": "needs_review",
       "dependencies": ["F107-b1"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -1599,6 +1599,49 @@
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
       "notes": "D048 降级：前端单测延至 v1.4；本 sprint 硬门禁 = typecheck + build + docker E2E + 代码审查。crosshair 节流方案（useRef 或 state）Generator 阶段需查 context7 /tradingview/lightweight-charts v5 subscribeCrosshairMove 签名。",
+      "completed_at": null
+    },
+    {
+      "id": "F107-b3",
+      "name": "Fundamentals 增加 Float 绝对值显示",
+      "description": "在 FundamentalsCard 新增一行 'Float' 显示流通股绝对值（单位待定：15.23B / 15,234M / 中文单位，b3 contract 协商时敲定）。后端 /api/stocks/:ticker/fundamentals 响应顶层扩展 sharesFloat: int | null，复用 F107-b1 已有的 stocks.shares_float 24h TTL 缓存（D050）；miss 时走共享 get_shares_float 回源 FMP /stable/shares-float。由 F107-b2 的拆分（单次 Sprint 6 文件上限）产生。",
+      "user_story": "作为投资者，除了图例里的 Vol/Float 比率，我还想在 Fundamentals 面板看到 Float 的绝对值，判断这只股票的流通盘大小本身。",
+      "priority": "P1",
+      "status": "todo",
+      "phase": "contract_needed",
+      "dependencies": ["F107-b1", "F107-b2"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/services/fundamentals_service.py",
+        "backend/app/schemas/fundamentals.py",
+        "frontend/src/types/stockDetail.ts",
+        "frontend/src/components/features/stock-detail/FundamentalsCard.tsx",
+        "docs/系统设计/API-CONTRACT.md",
+        "docs/系统设计/DECISIONS.md"
+      ],
+      "scope": {
+        "pages": ["Workbench / FundamentalsWidget"],
+        "api_endpoints": ["GET /api/stocks/:ticker/fundamentals (add sharesFloat)"],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/fundamentals"],
+        "data_model_refs": ["DATA-MODEL.md#Stock.shares_float"],
+        "decision_refs": ["D050", "D051", "D054 (待写入：fundamentals 响应携带 sharesFloat)"],
+        "acceptance_type": "visual+functional",
+        "sprint_contract": null
+      },
+      "acceptance_criteria": [
+        "/fundamentals 响应顶层新增 sharesFloat: int | null，复用 stocks.shares_float 24h TTL 缓存",
+        "FundamentalsCard 新增一行 'Float'，格式按 b3 contract 敲定（默认倾向 15.23B 口径）",
+        "shares_float=null 时显 '—'，无 console.error",
+        "pnpm typecheck + build 通过；docker E2E /fundamentals 返回 sharesFloat 一致",
+        "全量 pytest 回归不降级（相对 b2 完成时的基线）"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "单位格式（15.23B / 15,234M / 中文亿）在 b3 contract 协商阶段由用户敲定；b3 contract 需读取 fundamentals_service 现有实现，确认 stocks.shares_float 读取 + 回源 fallback 的改动边界。",
       "completed_at": null
     },
     {

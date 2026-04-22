@@ -1,6 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
+import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
@@ -23,6 +24,8 @@ function formatLastRefresh(iso: string | null): string {
 
 export function TopNav() {
   const { lastRefreshedAt, isRefreshing, refresh } = useRefreshStatus()
+  const { pathname } = useLocation()
+  const showResetLayout = pathname === '/'
 
   return (
     <nav
@@ -38,15 +41,18 @@ export function TopNav() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-6)' }}>
-        <span
+        <NavLink
+          to="/"
+          end
           style={{
             fontSize: 'var(--font-size-title)',
             fontWeight: 'var(--font-weight-bold)',
             color: 'var(--color-text-primary)',
+            textDecoration: 'none',
           }}
         >
           MA150 Tracker
-        </span>
+        </NavLink>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-4)' }}>
           {NAV_LINKS.map((link) => (
             <NavLink
@@ -76,6 +82,7 @@ export function TopNav() {
           {formatLastRefresh(lastRefreshedAt)}
         </span>
         <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
+        {showResetLayout && <ResetLayoutButton />}
       </div>
     </nav>
   )

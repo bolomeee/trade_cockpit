@@ -1,15 +1,18 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/store/useAppStore'
 import { getStockChart } from '@/lib/api/stocks'
 import { getSignals } from '@/lib/api/signals'
-import type { ChartData } from '@/types/stockDetail'
+import type { ChartBar, ChartData } from '@/types/stockDetail'
 import { PriceChart } from '@/components/features/stock-detail/PriceChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common/ErrorState'
+import { formatPercent } from '@/lib/format'
 import { EmptySymbol } from './EmptySymbol'
 
 export function ChartWidget() {
   const symbol = useAppStore((s) => s.selectedSymbol)
+  const [hoveredBar, setHoveredBar] = useState<ChartBar | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['chart', symbol],
@@ -24,6 +27,22 @@ export function ChartWidget() {
     staleTime: 30 * 1000,
   })
   const companyName = signals?.find((s) => s.ticker === symbol)?.name ?? null
+
+  useEffect(() => {
+    setHoveredBar(null)
+  }, [symbol])
+
+  const displayBar = useMemo<ChartBar | null>(() => {
+    if (hoveredBar) return hoveredBar
+    const bars = (data as ChartData | undefined)?.bars
+    return bars && bars.length > 0 ? bars[bars.length - 1] : null
+  }, [hoveredBar, data])
+
+  const volFloatPct = useMemo(() => {
+    const sharesFloat = (data as ChartData | undefined)?.sharesFloat
+    if (!displayBar || sharesFloat == null || sharesFloat <= 0) return null
+    return (displayBar.volume / sharesFloat) * 100
+  }, [displayBar, data])
 
   if (symbol === null) return <EmptySymbol />
   if (isLoading) return <Skeleton style={{ width: '100%', height: '100%' }} />
@@ -80,9 +99,12 @@ export function ChartWidget() {
           <span style={{ color: '#f59e0b' }}>— MA5</span>
           <span style={{ color: '#8b5cf6' }}>— MA20</span>
           <span style={{ color: 'var(--color-signal-breakout, #2962ff)' }}>— MA150</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            Vol/Float: {formatPercent(volFloatPct)}
+          </span>
         </div>
       </div>
-      <PriceChart data={data as ChartData} />
+      <PriceChart data={data as ChartData} onHoverChange={setHoveredBar} />
     </div>
   )
 }

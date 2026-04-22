@@ -18,11 +18,13 @@ export function PullbackWidget() {
   if (symbol === null) return <EmptySymbol />
 
   return (
-    <PullbackHistoryCard
-      pullbacks={data as PullbackEntry[] | undefined}
-      loading={isLoading}
-      error={isError}
-      onRetry={() => refetch()}
-    />
+    <div style={{ marginTop: '-5px', marginLeft: '-5px' }}>
+      <PullbackHistoryCard
+        pullbacks={data as PullbackEntry[] | undefined}
+        loading={isLoading}
+        error={isError}
+        onRetry={() => refetch()}
+      />
+    </div>
   )
 }

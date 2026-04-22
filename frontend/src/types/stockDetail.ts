@@ -44,4 +44,5 @@ export interface ChartData {
   bars: ChartBar[]
   ma150: ChartMa150Point[]
   pullbackMarkers: ChartPullbackMarker[]
+  sharesFloat: number | null
 }

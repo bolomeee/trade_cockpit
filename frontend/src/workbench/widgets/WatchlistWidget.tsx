@@ -54,7 +54,7 @@ export function WatchlistWidget() {
     : []
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full flex-col gap-1" style={{ marginTop: '-5px', marginLeft: '-5px' }}>
       <AddStockCard />
       {isLoading && (
         <div className="flex flex-col gap-2">
