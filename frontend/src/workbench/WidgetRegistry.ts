@@ -3,11 +3,12 @@ import type { LayoutItem } from 'react-grid-layout'
 import { ChartWidget } from './widgets/ChartWidget'
 import { FundamentalsWidget } from './widgets/FundamentalsWidget'
 import { MarketBreakoutWidget } from './widgets/MarketBreakoutWidget'
+import { NewsWidget } from './widgets/NewsWidget'
 import { PullbackWidget } from './widgets/PullbackWidget'
 import { WatchlistWidget } from './widgets/WatchlistWidget'
 import { QuickAddWidget } from './widgets/QuickAddWidget'
 
-export type WidgetCategory = 'sma150' | 'journal' | 'scanner'
+export type WidgetCategory = 'sma150' | 'journal' | 'scanner' | 'news'
 
 export type WidgetManifest = {
   id: string
@@ -59,6 +60,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     component: MarketBreakoutWidget,
     defaultLayout: { x: 0, y: 16, w: 8, h: 8, minW: 5, minH: 5 },
     category: 'scanner',
+  },
+  'news.articles': {
+    id: 'news.articles',
+    title: 'Market News',
+    component: NewsWidget,
+    defaultLayout: { x: 0, y: 24, w: 4, h: 10, minW: 3, minH: 6 },
+    category: 'news',
   },
 }
 

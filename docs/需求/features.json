@@ -1935,14 +1935,14 @@
           "completed_at": "2026-04-22"
         },
         "F112-b": {
-          "phase": "design_needed",
-          "contract": null,
-          "scope": "前端导航增加 /news；NewsPage 骨架 + NewsWidget 卡片列表（标题 / 摘要 / 日期 / tickers）"
+          "phase": "needs_review",
+          "contract": "docs/开发/sprint-contracts/F112-b-contract.md",
+          "scope": "Workbench 注册 NewsWidget（卡片列表：缩略图+标题+site·时间+最多3个ticker徽章）；无新路由、无TopNav改动；点击卡片新 tab 打开 FMP 原文 URL（F112-c 替换为 ArticleModal）"
         },
         "F112-c": {
           "phase": "design_needed",
           "contract": null,
-          "scope": "ArticleModal 详情组件（全文 HTML sanitize）+ 点击 ticker 联动跳转股票详情"
+          "scope": "ArticleModal 详情组件（全文 HTML sanitize）+ 点击 ticker 联动跳转股票详情；同时替换 F112-b 中卡片点击的 URL 外跳为 ArticleModal 内渲染"
         }
       },
       "scope": {
