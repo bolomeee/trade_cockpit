@@ -12,11 +12,13 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import type { ChartBar, ChartData } from '@/types/stockDetail'
+import { formatPercent } from '@/lib/format'
 
 interface PriceChartProps {
   data: ChartData
-  onHoverChange?: (bar: ChartBar | null) => void
 }
+
+const VOL_TOOLTIP_OFFSET_Y = 6
 
 function toUtcTimestamp(dateStr: string): UTCTimestamp {
   return (Date.parse(`${dateStr}T00:00:00Z`) / 1000) as UTCTimestamp
@@ -30,14 +32,14 @@ function readToken(name: string, fallback: string): string {
   return v || fallback
 }
 
-export function PriceChart({ data, onHoverChange }: PriceChartProps) {
+export function PriceChart({ data }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const onHoverChangeRef = useRef(onHoverChange)
-  onHoverChangeRef.current = onHoverChange
+  const tooltipRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    const tooltip = tooltipRef.current
+    if (!container || !tooltip) return
 
     const upColor = readToken('--color-change-positive', '#10b981')
     const downColor = readToken('--color-change-negative', '#ef4444')
@@ -170,15 +172,33 @@ export function PriceChart({ data, onHoverChange }: PriceChartProps) {
     for (const b of data.bars) {
       barByTime.set(toUtcTimestamp(b.date), b)
     }
-    const handleCrosshair = (param: { time?: Time; point?: { x: number; y: number } }) => {
-      const cb = onHoverChangeRef.current
-      if (!cb) return
+    const hideTooltip = () => {
+      tooltip.style.display = 'none'
+    }
+    const handleCrosshair = (param: {
+      time?: Time
+      point?: { x: number; y: number }
+    }) => {
       if (!param.point || param.time == null) {
-        cb(null)
+        hideTooltip()
         return
       }
-      const bar = barByTime.get(param.time as UTCTimestamp) ?? null
-      cb(bar)
+      const bar = barByTime.get(param.time as UTCTimestamp)
+      const sharesFloat = data.sharesFloat
+      if (!bar || sharesFloat == null || sharesFloat <= 0) {
+        hideTooltip()
+        return
+      }
+      const pct = (bar.volume / sharesFloat) * 100
+      const y = volumeSeries.priceToCoordinate(bar.volume)
+      if (y == null) {
+        hideTooltip()
+        return
+      }
+      tooltip.textContent = formatPercent(pct)
+      tooltip.style.display = 'block'
+      tooltip.style.left = `${param.point.x}px`
+      tooltip.style.top = `${y - VOL_TOOLTIP_OFFSET_Y}px`
     }
     chart.subscribeCrosshairMove(handleCrosshair)
 
@@ -195,7 +215,7 @@ export function PriceChart({ data, onHoverChange }: PriceChartProps) {
     return () => {
       observer.disconnect()
       chart.unsubscribeCrosshairMove(handleCrosshair)
-      onHoverChangeRef.current?.(null)
+      hideTooltip()
       chart.remove()
     }
   }, [data])
@@ -211,6 +231,26 @@ export function PriceChart({ data, onHoverChange }: PriceChartProps) {
         borderRadius: 'var(--radius-card)',
         overflow: 'hidden',
       }}
-    />
+    >
+      <div
+        ref={tooltipRef}
+        data-testid="vol-float-tooltip"
+        style={{
+          position: 'absolute',
+          display: 'none',
+          transform: 'translate(-50%, -100%)',
+          padding: '2px 6px',
+          borderRadius: 4,
+          background: 'rgba(17, 24, 39, 0.85)',
+          color: '#fff',
+          fontSize: 11,
+          fontFamily: 'var(--font-family-numeric)',
+          lineHeight: 1.2,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          zIndex: 3,
+        }}
+      />
+    </div>
   )
 }
