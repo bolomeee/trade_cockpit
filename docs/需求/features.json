@@ -1510,8 +1510,8 @@
       "description": "F107-b 的后端分片：Stock 表新增 shares_float / shares_float_refreshed_at 两列；FMP 客户端新增 get_shares_float(ticker) 打 /stable/shares-float（D051 修订，原计划 /profile Starter 档不携带字段），取 floatShares 整数；stock_detail_service.get_chart 接入 DB-first 24h TTL 缓存（miss 则回源 FMP 并写回）；/chart 响应顶层新增 sharesFloat: int | null。服务 F107-b2 前端 Vol/Float 比率显示。",
       "user_story": "作为投资者，我需要后端一次性把 shares_float 跟 /chart 数据一起给我，前端才能在图例里算出 Vol/Float 百分比——而不是为一个数字再开一个 useQuery。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F107"],
       "estimated_sessions": 1,
       "estimated_files_changed": [

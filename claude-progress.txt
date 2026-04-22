@@ -244,3 +244,9 @@
 
 [下一个 Session]
   用户验收 F107-b1 → 进入 F107-b2 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 09:35] F107-b1 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+phase: needs_review → done
+下一步：F107-b2 前端 Vol/Float 图例（contract_needed）
