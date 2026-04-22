@@ -16,6 +16,7 @@ export interface Fundamentals {
   roce?: number | null
   freeCashFlow: number
   marketCap: number
+  sharesFloat: number | null
   source: string
   updatedAt: string
 }

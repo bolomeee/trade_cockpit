@@ -32,6 +32,13 @@ function formatRatio(v: number | null | undefined): string | null {
   return v == null ? null : v.toFixed(2)
 }
 
+function formatShares(v: number | null | undefined): string | null {
+  if (v == null) return null
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`
+  return v.toLocaleString()
+}
+
 function buildMetrics(f: Fundamentals | undefined): { left: Metric[]; right: Metric[] } {
   const roce = f?.roce
   return {
@@ -43,6 +50,7 @@ function buildMetrics(f: Fundamentals | undefined): { left: Metric[]; right: Met
     right: [
       { label: 'ROCE', value: roce == null ? null : formatPercent(roce * 100) },
       { label: 'FCF', value: f ? formatCurrency(f.freeCashFlow) : null },
+      { label: 'Float', value: formatShares(f?.sharesFloat) },
     ],
   }
 }

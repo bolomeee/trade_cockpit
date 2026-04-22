@@ -52,5 +52,6 @@ class Fundamentals(CamelModel):
     roce: float | None = None
     free_cash_flow: float | None = None
     market_cap: float | None = None
+    shares_float: int | None = None
     source: str
     updated_at: date

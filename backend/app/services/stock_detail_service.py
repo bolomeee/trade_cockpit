@@ -221,6 +221,15 @@ class StockDetailService:
             else None
         )
 
+        # F107-b3 / D054: reuse F107-b1 24h DB cache for watchlist tickers;
+        # non-watchlist / inactive → null (no on-demand fetch in this Sprint).
+        stock = self.stocks.get_by_ticker(ticker)
+        shares_float = (
+            self._resolve_shares_float_for_watchlist(stock)
+            if stock is not None and stock.is_active
+            else None
+        )
+
         return {
             "ticker": ticker,
             "priceToEarnings": _as_float(ratios.get("priceToEarningsRatioTTM")),
@@ -229,6 +238,7 @@ class StockDetailService:
             "roce": _as_float(km.get("returnOnCapitalEmployedTTM")),
             "freeCashFlow": free_cash_flow,
             "marketCap": market_cap,
+            "sharesFloat": shares_float,
             "source": FUNDAMENTALS_SOURCE_FMP,
             "updatedAt": date.today(),
         }

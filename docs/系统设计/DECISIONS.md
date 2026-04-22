@@ -1134,3 +1134,24 @@ last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D04
 **影响**：
 - design-spec.md ChartWidget 小节标注"Vol/Float 近似值，未追踪历史 float"（F107-b2 阶段写入）
 - 避免了 Stock × date 的新维度表
+
+## D054：/fundamentals 响应携带 sharesFloat，复用 F107-b1 缓存路径（F107-b3）
+
+**日期**：2026-04-22
+**触发**：F107-b3 要在 FundamentalsCard 显示 Float 绝对值；后端需暴露字段
+**决策者**：用户（b3 contract 协商）
+
+**选择**：
+1. 在 `get_fundamentals` 内调用 `_resolve_shares_float_for_watchlist`（F107-b1 已有 24h TTL DB 缓存 + FMP `/stable/shares-float` 回源），不新增 service / 缓存层
+2. 非 watchlist / inactive ticker → `sharesFloat: null`，不做 on-demand 回源（与 b3 边界一致；F108 再放开）
+3. 前端单位格式：`15.23B / 987.65M`（无 `$` 前缀，与 marketCap/FCF 区分）
+
+**理由**：
+1. F107-b1 已建好缓存路径，再走一遍是零成本复用；不复用就会重复抓 FMP
+2. /chart 与 /fundamentals 共享同一 Stock.shares_float 缓存项 → 同一 ticker 两个 widget 命中同一份数据，TTL 协同
+3. 不带 `$` 前缀避免误读为美元金额（Float 是股数）
+
+**影响**：
+- API-CONTRACT.md /fundamentals 字段表 + 响应示例已追加
+- 前端 `Fundamentals` 类型 + FundamentalsCard 增 'Float' 行（右列末位）
+- F108 放开 watchlist 限制后，可在 b3 基础上加 `_resolve_shares_float_for_fallback`，不影响本次决策

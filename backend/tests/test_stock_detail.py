@@ -450,6 +450,45 @@ def test_chart_swallows_fmp_profile_http_error(
     assert resp.json()["data"]["sharesFloat"] is None
 
 
+# ---------- F107-b3: shares_float on /fundamentals ----------
+
+
+def test_fundamentals_uses_db_cache_within_24h(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    stock = _seed_stock(db_session, "CSCO")
+    stock.shares_float = 4_100_000_000
+    stock.shares_float_refreshed_at = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=2)
+    )
+    db_session.commit()
+
+    resp = client.get("/api/stocks/CSCO/fundamentals")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 4_100_000_000
+    assert fake_fmp.shares_float_calls == []  # cache hit, no FMP call
+
+
+def test_fundamentals_misses_cache_then_fetches_fmp(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    _seed_stock(db_session, "ORCL")
+    fake_fmp.shares_float_results["ORCL"] = {
+        "symbol": "ORCL",
+        "floatShares": 2_700_000_000,
+    }
+
+    resp = client.get("/api/stocks/ORCL/fundamentals")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 2_700_000_000
+    assert fake_fmp.shares_float_calls == ["ORCL"]
+
+    db_session.expire_all()
+    refreshed = db_session.query(Stock).filter_by(ticker="ORCL").one()
+    assert refreshed.shares_float == 2_700_000_000
+    assert refreshed.shares_float_refreshed_at is not None
+
+
 def test_pullback_repository_returns_rows_desc(
     db_session: Session,
 ) -> None:

@@ -400,6 +400,7 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
     "roce": 0.6503,
     "freeCashFlow": 104000000000,
     "marketCap": 3200000000000,
+    "sharesFloat": 15200000000,
     "source": "fmp",
     "updatedAt": "2026-04-18"
   },
@@ -407,7 +408,7 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 }
 ```
 
-**字段语义（D034 / D036 / F104-S3）**：
+**字段语义（D034 / D036 / F104-S3 / D054）**：
 
 | 字段 | 类型 | 来源 / 计算 | null 语义 |
 |------|------|------------|----------|
@@ -417,6 +418,7 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 | roce | number \| null | FMP `key-metrics-ttm.returnOnCapitalEmployedTTM`，比例（0.65 表示 65%） | 资本分母 ≤ 0 或缺失 → null |
 | freeCashFlow | number \| null | FMP `key-metrics-ttm.marketCap × key-metrics-ttm.freeCashFlowYieldTTM` | 任一分量缺失 → null |
 | marketCap | number \| null | FMP `key-metrics-ttm.marketCap`（无 TTM 后缀） | 缺失 → null |
+| sharesFloat | int \| null | F107-b1 `stocks.shares_float` 24h DB 缓存（D050），miss / 过期 → FMP `/stable/shares-float` 回源；非 watchlist / inactive ticker → null（D054） | FMP 字段缺失 / 非 watchlist / FMP HTTP 失败 → null |
 | source | string | 取值 `"fmp"`（D034 前为 `"mock"`） | — |
 | updatedAt | string (YYYY-MM-DD) | 后端拉取日期 | — |
 
