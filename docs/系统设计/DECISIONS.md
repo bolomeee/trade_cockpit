@@ -1036,3 +1036,101 @@ last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D04
 - v1.4 必须开一个"前端测试基建"feature：装 vitest + @testing-library/react + jsdom，补本迭代漏掉的所有单测
 - F107/F108/F109 的 Contract 按同样路径降级（引用 D048）
 
+
+---
+
+## D049：/chart 响应携带 sharesFloat（F107-b1）
+
+**日期**：2026-04-22
+**触发**：F107-b 需要在 ChartWidget 计算并展示"当日成交量 ÷ 流通股"的百分比；前端必须拿到 shares_float 才能算
+**决策者**：用户（plan 协商阶段，AskUserQuestion A1 vs A2）
+
+**选项对比**：
+- A1：`/chart` 响应顶层加 `sharesFloat: int | null`，一次请求搞定
+- A2：新开 `/api/stocks/{ticker}/float` 端点，前端并行 useQuery 拉
+- A3：塞进 `/fundamentals`（但 shares_float 不在估值维度，语义错位）
+
+**选择**：A1
+
+**理由**：shares_float 是图表计算上下文（每根 bar 的 volume 都要用），与 /chart 的语义同源；前端不必维护第二个 useQuery + 状态协调；/fundamentals 维持 PE/PS/PEG/FCF 聚焦。
+
+**影响**：
+- `backend/app/schemas/stock_detail.py` 的 `ChartData` 加 `shares_float: int | None = None`（camelCase 别名 `sharesFloat`）
+- `backend/app/services/stock_detail_service.py` `_assemble_chart_payload` 签名加 `shares_float`
+- `API-CONTRACT.md` /chart 响应补字段说明
+- 旧前端兼容：字段可缺省，v1.2.x 前端读不到也不炸
+
+---
+
+## D050：shares_float 落 Stock 表 + 24h TTL DB 缓存（F107-b1）
+
+**日期**：2026-04-22
+**触发**：每次 /chart 都打 FMP /profile 既浪费 300rpm bucket，也慢；必须缓存
+**决策者**：用户（plan 协商，B2 内存 vs B3 DB）
+
+**选项对比**：
+- B1：无缓存，每次 /chart 都打 FMP
+- B2：进程内存字典 + TTL
+- B3：Stock 表加两列 `shares_float` + `shares_float_refreshed_at`，24h TTL
+
+**选择**：B3
+
+**理由**：
+1. 跨实例一致（docker 多进程 / 未来 worker / 开发重启都不丢缓存）
+2. shares_float 日级变化，24h TTL 够用
+3. 与 Stock 表既有 last_refreshed_at 一致风格
+4. 代价仅两列 nullable，在线 add column 安全
+
+**实现**：
+- Alembic 004 加两列，均 nullable 默认 null
+- 常量 `_SHARES_FLOAT_TTL = timedelta(hours=24)`
+- 判定：`refreshed_at is None or (now - refreshed_at) > _SHARES_FLOAT_TTL` → miss，打 FMP
+- 即使 FMP 返回 null，也写回 `refreshed_at = now` 以避免 24h 内反复请求空数据
+
+**未决 / 候选**：
+- 日后遇到 split / IPO 导致 float 跳变的 bug，再加主动失效（reactivate 或事件触发）
+
+**影响**：
+- Stock 模型 + DATA-MODEL.md + 003→004 migration chain
+- 仅 watchlist 路径（`_chart_from_watchlist`）用缓存；fallback 路径（非 watchlist）直接打 FMP，不写 DB（无 Stock 行）
+
+---
+
+## D051：FMP /shares-float（D051 修订，原计划 /profile）+ floatShares 字段（F107-b1）
+
+**日期**：2026-04-22
+**触发**：Context7 官方文档 `/stable/shares-float-all` 用字段名 `floatShares`；社区与旧版 `/profile` 历史上返 `sharesFloat`；需要稳定兜底
+**决策者**：Claude（Generator 阶段 Context7 查询结果 → Evaluator 阶段 docker E2E 回写）
+
+**数据源选择（最终）**：
+- 端点：`GET /stable/shares-float?symbol={ticker}&apikey=...`
+- 响应：list，首记录含 `{symbol, date, freeFloat, floatShares, outstandingShares, source}`
+- 字段提取：`record.get("floatShares") or record.get("sharesFloat")`（后者仅做前向兜底）
+- 共享 rate limiter（D044，300rpm bucket + concurrency 6）
+
+**理由（修订）**：原选 `/profile` 预期顺带拿到 sharesFloat；Generator E2E 阶段实测 FMP Starter 档 `/stable/profile` 响应不含 `floatShares` / `sharesFloat` 任一字段（无论拼写），AAPL 返回 `price / marketCap / sector / ...` 但两个 float 字段为 None。改走专用 `/stable/shares-float` 端点，字段 `floatShares` 以整数返回，语义干净。
+
+**影响**：
+- `fmp_client.py`：`FMP_EP_SHARES_FLOAT = "/shares-float"` + `get_shares_float(symbol)` 方法（替换原 `FMP_EP_PROFILE` / `get_company_profile`）
+- 走 `_request` 共享限流
+- 单元测试 fixture 改为真实 shares-float payload 形态；`sharesFloat` 别名分支保留作兜底
+- 契约合规性：合约原写 `/stable/profile`，Evaluator 阶段按 feature-dev Rule 8 回写文档（本条 + API-CONTRACT.md + DATA-MODEL.md）
+
+---
+
+## D052：历史 bar 的 Vol/Float 比率统一用当前快照 float（F107-b1 + b2）
+
+**日期**：2026-04-22
+**触发**：stocks 表只存当前 shares_float，不存每日历史 float；若要精准则需新表 + 每日抓取
+**决策者**：用户（plan 协商）
+
+**选择**：所有历史 bar 的分母统一用当前 shares_float；UI 标注"近似"
+
+**理由**：
+1. FMP 不提供按日 shares_float 历史 API
+2. 自建历史表：空间 × 刷新成本 × 用户心智收益比过低
+3. shares_float 年级变化，"近似"误差对投资判断几乎无影响（split 会跳变，已记入未决候选）
+
+**影响**：
+- design-spec.md ChartWidget 小节标注"Vol/Float 近似值，未追踪历史 float"（F107-b2 阶段写入）
+- 避免了 Stock × date 的新维度表

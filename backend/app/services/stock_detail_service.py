@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -18,6 +18,8 @@ CHART_WINDOW_DAYS = 250
 MA150_PERIOD = 150
 CHART_FALLBACK_LOOKBACK_DAYS = 400
 FUNDAMENTALS_SOURCE_FMP = "fmp"
+# F107-b1 / D050: shares_float DB cache TTL. miss / expired → refetch FMP /shares-float.
+_SHARES_FLOAT_TTL = timedelta(hours=24)
 
 
 class StockDetailService:
@@ -40,6 +42,41 @@ class StockDetailService:
         if stock is not None and stock.is_active:
             return self._chart_from_watchlist(stock)
         return self._chart_from_fmp_fallback(ticker)
+
+    def _resolve_shares_float_for_watchlist(self, stock: Any) -> int | None:
+        """DB-first 24h TTL cache for watchlist stocks (F107-b1, D050).
+
+        Miss / expired → FMP `/shares-float` → write back (`shares_float` +
+        `shares_float_refreshed_at`). Even a null result updates
+        `refreshed_at` to avoid reflooding FMP on known-empty tickers.
+        FMP HTTP errors swallow → returns current DB value (possibly None);
+        /chart itself stays 200.
+        """
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        refreshed_at = stock.shares_float_refreshed_at
+        if refreshed_at is not None and (now - refreshed_at) <= _SHARES_FLOAT_TTL:
+            return stock.shares_float
+        try:
+            profile = self.fmp.get_shares_float(stock.ticker)
+        except httpx.HTTPError:
+            return stock.shares_float
+        stock.shares_float = _extract_float_shares(profile)
+        stock.shares_float_refreshed_at = now
+        self.db.commit()
+        self.db.refresh(stock)
+        return stock.shares_float
+
+    def _resolve_shares_float_for_fallback(self, ticker: str) -> int | None:
+        """On-demand shares_float for non-watchlist tickers (F107-b1).
+
+        No DB row → no cache. Swallow FMP errors — /chart is the product, not
+        this sidecar. Callers on scanner flow will tolerate null.
+        """
+        try:
+            profile = self.fmp.get_shares_float(ticker)
+        except httpx.HTTPError:
+            return None
+        return _extract_float_shares(profile)
 
     def _chart_from_watchlist(self, stock: Any) -> dict[str, Any]:
         bars_stmt = (
@@ -85,8 +122,14 @@ class StockDetailService:
                 {"date": p.date, "distancePct": p.distance_pct} for p in pullbacks
             ]
 
+        shares_float = self._resolve_shares_float_for_watchlist(stock)
+
         return self._assemble_chart_payload(
-            stock.ticker, bars_payload, ma150_points, pullback_markers
+            stock.ticker,
+            bars_payload,
+            ma150_points,
+            pullback_markers,
+            shares_float,
         )
 
     def _chart_from_fmp_fallback(self, ticker: str) -> dict[str, Any]:
@@ -115,7 +158,11 @@ class StockDetailService:
             if v is not None
         ]
 
-        return self._assemble_chart_payload(ticker, bars_asc, ma150_points, [])
+        shares_float = self._resolve_shares_float_for_fallback(ticker)
+
+        return self._assemble_chart_payload(
+            ticker, bars_asc, ma150_points, [], shares_float
+        )
 
     @staticmethod
     def _assemble_chart_payload(
@@ -123,16 +170,21 @@ class StockDetailService:
         bars: list[dict[str, Any]],
         ma150: list[dict[str, Any]],
         pullback_markers: list[dict[str, Any]],
+        shares_float: int | None,
     ) -> dict[str, Any]:
         return {
             "ticker": ticker,
             "bars": bars,
             "ma150": ma150,
             "pullbackMarkers": pullback_markers,
+            "sharesFloat": shares_float,
         }
 
     def get_pullbacks(self, raw_ticker: str) -> list[dict[str, Any]]:
-        stock = self._resolve_active_stock(raw_ticker)
+        ticker = raw_ticker.strip().upper()
+        stock = self.stocks.get_by_ticker(ticker)
+        if stock is None or not stock.is_active:
+            return []
         rows = self.pullbacks.list_by_stock(stock.id)
         return [
             {
@@ -148,10 +200,12 @@ class StockDetailService:
         ]
 
     def get_fundamentals(self, raw_ticker: str) -> dict[str, Any]:
-        stock = self._resolve_active_stock(raw_ticker)
+        ticker = raw_ticker.strip().upper()
+        if not ticker:
+            raise APIError("NOT_FOUND", "empty ticker", 404)
         try:
-            ratios = self.fmp.get_ratios_ttm(stock.ticker) or {}
-            km = self.fmp.get_key_metrics_ttm(stock.ticker) or {}
+            ratios = self.fmp.get_ratios_ttm(ticker) or {}
+            km = self.fmp.get_key_metrics_ttm(ticker) or {}
         except httpx.HTTPError as exc:
             raise APIError(
                 "EXTERNAL_API_ERROR",
@@ -168,7 +222,7 @@ class StockDetailService:
         )
 
         return {
-            "ticker": stock.ticker,
+            "ticker": ticker,
             "priceToEarnings": _as_float(ratios.get("priceToEarningsRatioTTM")),
             "priceToSales": _as_float(ratios.get("priceToSalesRatioTTM")),
             "peg": _as_float(ratios.get("priceToEarningsGrowthRatioTTM")),
@@ -191,6 +245,21 @@ def _normalize_fmp_bar(b: dict[str, Any]) -> dict[str, Any]:
         "close": float(b["close"]),
         "volume": int(b.get("volume") or 0),
     }
+
+
+def _extract_float_shares(profile: dict[str, Any] | None) -> int | None:
+    """D051: FMP profile payload → int shares_float with double-field fallback."""
+    if not profile:
+        return None
+    raw = profile.get("floatShares")
+    if raw is None:
+        raw = profile.get("sharesFloat")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 def _as_float(v: Any) -> float | None:

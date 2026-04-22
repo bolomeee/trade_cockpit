@@ -210,3 +210,37 @@
 
 [下一个 Session]
   协商 F107-b1 Sprint Contract — Generator 模式，后端 shares_float 链路。参考 ~/.claude/plans/tingly-jumping-pebble.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 09:20] Sprint：F107-b1 后端 shares_float 数据链路
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Stock 表新增 shares_float / shares_float_refreshed_at 两列（alembic 004）
+  - FmpClient.get_shares_float (端点 /stable/shares-float)
+  - stock_detail_service 24h DB-first TTL 缓存 + /chart 注入 sharesFloat
+  - 单元测试：80/80 通过（test_fmp_client + test_stock_detail + test_schema）
+  - 全量回归：262/264（2 失败为 F108 预先存在，不阻塞）
+  - alembic 三往返绿
+  - docker E2E：AAPL /chart 返回 sharesFloat=14664480994（FMP 实际值）；二次调用命中 24h 缓存
+  - D051 回写修订：端点 /profile → /shares-float（Starter 档 /profile 不含该字段）
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - Evaluator 通过，请验收 F107-b1
+
+🔧 系统变更：
+  - alembic/versions/004_f107b1_shares_float.py（新增）
+  - app/external/fmp_client.py（+ /shares-float 端点 + get_shares_float 方法）
+  - app/models/stock.py（+ 2 列）
+  - app/schemas/stock_detail.py（ChartData + sharesFloat）
+  - app/services/stock_detail_service.py（24h DB 缓存 + 两条路径 resolve）
+  - tests/conftest.py, test_fmp_client.py, test_stock_detail.py, test_schema.py
+  - DATA-MODEL.md / API-CONTRACT.md / DECISIONS.md D049–D052 (D051 修订)
+
+📊 功能状态：
+  F107-b1 后端 shares_float：🔍 needs_review
+  F107-b2 前端 Vol/Float：⬜ contract_needed
+
+[下一个 Session]
+  用户验收 F107-b1 → 进入 F107-b2 Sprint Contract 协商

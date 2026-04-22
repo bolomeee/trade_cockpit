@@ -31,6 +31,7 @@ class ChartData(CamelModel):
     bars: list[ChartBar]
     ma150: list[ChartMa150Point]
     pullback_markers: list[ChartPullbackMarker]
+    shares_float: int | None = None
 
 
 class PullbackEntry(CamelModel):

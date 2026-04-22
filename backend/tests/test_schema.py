@@ -23,7 +23,10 @@ EXPECTED_TABLES = {
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {
-    "stocks": {"id", "ticker", "name", "exchange", "is_active", "added_at", "last_refreshed_at"},
+    "stocks": {
+        "id", "ticker", "name", "exchange", "is_active", "added_at", "last_refreshed_at",
+        "shares_float", "shares_float_refreshed_at",
+    },
     "daily_bars": {"id", "stock_id", "date", "open", "high", "low", "close", "volume"},
     "signals": {
         "id", "stock_id", "date", "signal_type", "ma150_value",

@@ -19,6 +19,7 @@ from app.external.fmp_client import (
     FMP_EP_HIST_EOD,
     FMP_EP_KEY_METRICS_TTM,
     FMP_EP_RATIOS_TTM,
+    FMP_EP_SHARES_FLOAT,
     FMP_EP_SCREENER,
     FMP_EP_SEARCH_NAME,
     FMP_EP_SEARCH_SYMBOL,
@@ -755,3 +756,45 @@ def test_polygon_client_module_marked_deprecated():
     assert polygon_client.__doc__ is not None
     assert "DEPRECATED" in polygon_client.__doc__
     assert "D034" in polygon_client.__doc__
+
+
+# --- F107-b1 get_shares_float (D051 rev) --------------------------------
+
+def test_get_shares_float_returns_first_record(clock):
+    def handler(req):
+        return ok([
+            {
+                "symbol": "AAPL",
+                "date": "2026-04-20 03:23:10",
+                "freeFloat": 99.77,
+                "floatShares": 14_664_480_994,
+                "outstandingShares": 14_697_926_034,
+                "source": "https://sec.gov/...",
+            }
+        ])
+
+    client, calls = make_client(handler, clock)
+    record = client.get_shares_float("AAPL")
+
+    assert record is not None
+    assert record["symbol"] == "AAPL"
+    assert record["floatShares"] == 14_664_480_994
+    assert calls[0].url.path.endswith(FMP_EP_SHARES_FLOAT)
+    assert calls[0].url.params["symbol"] == "AAPL"
+    assert calls[0].url.params["apikey"] == "test-key"
+
+
+def test_get_shares_float_returns_none_on_empty_array(clock):
+    def handler(req):
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    assert client.get_shares_float("ZZZZ") is None
+
+
+def test_get_shares_float_returns_none_on_json_null(clock):
+    def handler(req):
+        return httpx.Response(200, content="null")
+
+    client, _ = make_client(handler, clock)
+    assert client.get_shares_float("ZZZZ") is None

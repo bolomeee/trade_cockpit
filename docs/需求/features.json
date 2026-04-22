@@ -1505,6 +1505,103 @@
       "completed_at": "2026-04-22"
     },
     {
+      "id": "F107-b1",
+      "name": "后端 shares_float 数据链路",
+      "description": "F107-b 的后端分片：Stock 表新增 shares_float / shares_float_refreshed_at 两列；FMP 客户端新增 get_shares_float(ticker) 打 /stable/shares-float（D051 修订，原计划 /profile Starter 档不携带字段），取 floatShares 整数；stock_detail_service.get_chart 接入 DB-first 24h TTL 缓存（miss 则回源 FMP 并写回）；/chart 响应顶层新增 sharesFloat: int | null。服务 F107-b2 前端 Vol/Float 比率显示。",
+      "user_story": "作为投资者，我需要后端一次性把 shares_float 跟 /chart 数据一起给我，前端才能在图例里算出 Vol/Float 百分比——而不是为一个数字再开一个 useQuery。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": ["F107"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/external/fmp_client.py",
+        "backend/app/models/stock.py",
+        "backend/alembic/versions/004_f107b1_shares_float.py",
+        "backend/app/services/stock_detail_service.py",
+        "backend/app/schemas/stock_detail.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": ["GET /api/stocks/:ticker/chart"],
+        "db_tables": ["stocks"],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/chart"],
+        "data_model_refs": ["DATA-MODEL.md#Stock"],
+        "decision_refs": ["D049", "D050", "D051", "D052"],
+        "acceptance_type": "functional",
+        "sprint_contract": "docs/开发/sprint-contracts/F107-b1-contract.md"
+      },
+      "acceptance_criteria": [
+        "FMP /stable/shares-float 成功 → sharesFloat 写入 stocks 表且 /chart 响应含非 null 值",
+        "DB 中 shares_float_refreshed_at < 24h → 二次调用 /chart 不打 FMP shares-float",
+        "FMP 返回空 / 404 / 字段缺失 → sharesFloat=null，/chart 仍 200",
+        "双字段名兜底：FMP 给 floatShares 或兜底 sharesFloat 均能解出",
+        "Alembic 004 upgrade→downgrade→upgrade 三次往返绿",
+        "全量 pytest 回归 ≥ 252/254（F108 预先 2 失败不阻塞）",
+        "get_shares_float 走共享 rate limiter（D044），不突破 bucket"
+      ],
+      "test_cases": {
+        "unit": [
+          "test_fmp_client.test_get_company_profile_prefers_floatShares",
+          "test_fmp_client.test_get_company_profile_falls_back_to_sharesFloat",
+          "test_fmp_client.test_get_company_profile_returns_none_on_empty",
+          "test_stock_detail.test_chart_returns_shares_float_from_fmp_and_caches",
+          "test_stock_detail.test_chart_uses_db_cache_within_24h",
+          "test_stock_detail.test_chart_refreshes_shares_float_after_24h",
+          "test_stock_detail.test_chart_shares_float_null_when_fmp_empty"
+        ],
+        "integration": ["test_schema.test_alembic_upgrade_downgrade_roundtrip"],
+        "e2e": ["docker /api/stocks/AAPL/chart sharesFloat non-null, 二次不打 FMP"]
+      },
+      "iteration_history": [],
+      "notes": "Context7 已核验：FMP /stable/profile?symbol=X；shares-float-all 官方字段为 floatShares，profile 端点历史返 floatShares + sharesFloat 两种，实装做双字段兜底。24h TTL 硬编码为常量 _SHARES_FLOAT_TTL（D050）。",
+      "completed_at": null
+    },
+    {
+      "id": "F107-b2",
+      "name": "前端 ChartWidget Vol/Float 比率显示",
+      "description": "依赖 F107-b1 done。ChartWidget 左上角图例（MA5/MA20/MA150 三行下方）新增 'Vol/Float: X.XX%' 一行；默认显示最新交易日；鼠标悬停任意 bar 时联动更新；离开图表回到最新；shares_float=null（ETF / FMP 404）时显 '—'。技术点：PriceChart 新增 onHoverChange prop + chart.subscribeCrosshairMove；FundamentalsCard formatPercent 抽到 lib/format.ts 共用。",
+      "user_story": "Vol bar 能看到但看不到数字；真正能判断'今天的量算不算大'的是当日成交量占流通股的百分比——我要在图例看到这个数字，并能 hover 任一天查历史。",
+      "priority": "P1",
+      "status": "todo",
+      "phase": "contract_needed",
+      "dependencies": ["F107-b1"],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/types/stockDetail.ts",
+        "frontend/src/components/features/stock-detail/PriceChart.tsx",
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "frontend/src/lib/format.ts"
+      ],
+      "scope": {
+        "pages": ["Workbench / ChartWidget"],
+        "api_endpoints": ["GET /api/stocks/:ticker/chart (consume sharesFloat)"],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/chart"],
+        "data_model_refs": [],
+        "decision_refs": ["D049", "D052", "D053"],
+        "acceptance_type": "visual+functional",
+        "sprint_contract": null
+      },
+      "acceptance_criteria": [
+        "图例新增一行 'Vol/Float: X.XX%'，默认最新交易日",
+        "hover 历史 bar → 比率更新；移出 → 回到最新",
+        "shares_float=null 时显 '—'，无 console.error",
+        "切换 ticker 无 stale 残影",
+        "pnpm typecheck + build 通过；docker E2E 与后端 sharesFloat 一致"
+      ],
+      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "iteration_history": [],
+      "notes": "D048 降级：前端单测延至 v1.4；本 sprint 硬门禁 = typecheck + build + docker E2E + 代码审查。crosshair 节流方案（useRef 或 state）Generator 阶段需查 context7 /tradingview/lightweight-charts v5 subscribeCrosshairMove 签名。",
+      "completed_at": null
+    },
+    {
       "id": "F108",
       "name": "/fundamentals 与 /pullbacks 放开到任意 ticker",
       "description": "延伸 D041 on-demand 语义：`/api/stocks/:ticker/fundamentals` 不再要求 ticker 在 watchlist，直接打 FMP get_ratios_ttm + get_key_metrics_ttm；`/api/stocks/:ticker/pullbacks` 对非 watchlist / inactive ticker 返回空 list（而非 404），与 chart fallback 语义一致。Scanner 场景下用户点任意 ticker 切换 Fundamentals / Pullbacks Tab 不再报 404。",

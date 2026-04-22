@@ -33,6 +33,7 @@ FMP_EP_SEARCH_NAME = "/search-name"
 FMP_EP_QUOTE = "/quote"
 FMP_EP_SCREENER = "/company-screener"  # F105 universe (D038)
 FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
+FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -259,6 +260,26 @@ class FmpClient:
     def get_ratios_ttm(self, symbol: str) -> dict[str, Any] | None:
         """TTM financial ratios for a single symbol. Returns first record, or None if empty."""
         body = self._request(FMP_EP_RATIOS_TTM, {"symbol": symbol})
+        results = list(body or [])
+        if not results:
+            return None
+        return results[0]
+
+    def get_shares_float(self, symbol: str) -> dict[str, Any] | None:
+        """FMP `/stable/shares-float` for a single symbol (F107-b1, D051 rev).
+
+        The `/profile` endpoint does not carry float share data on the Starter
+        tier; the dedicated `/shares-float` endpoint returns
+        `{symbol, date, freeFloat, floatShares, outstandingShares, source}`.
+        Callers should read `floatShares` (canonical), with a defensive
+        fallback to legacy `sharesFloat` for forward-compat. Shares the D044
+        rate limiter via `_request`.
+
+        Returns the first record dict, or None if FMP returns an empty array /
+        absent record (e.g. ETF, unknown ticker). HTTP errors propagate — the
+        service layer decides whether to swallow or surface.
+        """
+        body = self._request(FMP_EP_SHARES_FLOAT, {"symbol": symbol})
         results = list(body or [])
         if not results:
             return None

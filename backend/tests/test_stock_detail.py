@@ -323,6 +323,133 @@ def test_chart_fallback_fmp_http_error_returns_502(
     assert resp.json()["error"]["code"] == "EXTERNAL_API_ERROR"
 
 
+# ---------- F107-b1: shares_float on /chart ----------
+
+
+def test_chart_includes_shares_float_from_fmp_profile_and_caches(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    """Watchlist path: first /chart call hits FMP /shares-float and writes DB cache."""
+    stock = _seed_stock(db_session, "AAPL")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    fake_fmp.shares_float_results["AAPL"] = {
+        "symbol": "AAPL",
+        "floatShares": 15_200_000_000,
+    }
+
+    resp = client.get("/api/stocks/AAPL/chart")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["sharesFloat"] == 15_200_000_000
+    assert fake_fmp.shares_float_calls == ["AAPL"]
+
+    db_session.expire_all()
+    refreshed = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert refreshed.shares_float == 15_200_000_000
+    assert refreshed.shares_float_refreshed_at is not None
+
+
+def test_chart_uses_db_cache_within_24h(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    stock = _seed_stock(db_session, "MSFT")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    # Seed a fresh cache (1 hour old)
+    stock.shares_float = 7_400_000_000
+    stock.shares_float_refreshed_at = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    )
+    db_session.commit()
+
+    resp = client.get("/api/stocks/MSFT/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 7_400_000_000
+    assert fake_fmp.shares_float_calls == []  # cache hit, no FMP call
+
+
+def test_chart_refreshes_shares_float_after_24h(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    stock = _seed_stock(db_session, "TSLA")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    stock.shares_float = 3_000_000_000  # stale value
+    stock.shares_float_refreshed_at = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=25)
+    )
+    db_session.commit()
+    fake_fmp.shares_float_results["TSLA"] = {
+        "symbol": "TSLA",
+        "floatShares": 2_900_000_000,  # updated value
+    }
+
+    resp = client.get("/api/stocks/TSLA/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 2_900_000_000
+    assert fake_fmp.shares_float_calls == ["TSLA"]
+
+
+def test_chart_falls_back_to_sharesFloat_field_name(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    """D051 double-field: legacy payload shipping `sharesFloat` still resolves."""
+    stock = _seed_stock(db_session, "NVDA")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    fake_fmp.shares_float_results["NVDA"] = {
+        "symbol": "NVDA",
+        "sharesFloat": 24_500_000_000,  # only legacy field present
+    }
+
+    resp = client.get("/api/stocks/NVDA/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 24_500_000_000
+
+
+def test_chart_shares_float_null_when_fmp_empty(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    stock = _seed_stock(db_session, "SPY")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    # fake_fmp.shares_float_results["SPY"] omitted → returns None (FMP empty)
+
+    resp = client.get("/api/stocks/SPY/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] is None
+    assert fake_fmp.shares_float_calls == ["SPY"]
+
+    # Even on null, refreshed_at is stamped so we don't re-hit FMP next call.
+    db_session.expire_all()
+    refreshed = db_session.query(Stock).filter_by(ticker="SPY").one()
+    assert refreshed.shares_float is None
+    assert refreshed.shares_float_refreshed_at is not None
+
+
+def test_chart_fallback_path_includes_shares_float(
+    client: TestClient, fake_fmp
+) -> None:
+    """Non-watchlist ticker fallback: shares_float via FMP, no DB cache."""
+    closes = [100.0 + i * 0.2 for i in range(200)]
+    fake_fmp.daily_bars_results = _make_fmp_bars(date(2025, 1, 1), closes)
+    fake_fmp.shares_float_results["PLTR"] = {"floatShares": 2_100_000_000}
+
+    resp = client.get("/api/stocks/pltr/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] == 2_100_000_000
+    assert fake_fmp.shares_float_calls == ["PLTR"]
+
+
+def test_chart_swallows_fmp_profile_http_error(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    """FMP profile HTTP failure must not break /chart — sharesFloat goes null."""
+    stock = _seed_stock(db_session, "AMD")
+    _seed_bars(db_session, stock.id, [100.0 + i * 0.1 for i in range(10)])
+    fake_fmp.shares_float_exc = httpx.ConnectError("shares-float network down")
+
+    resp = client.get("/api/stocks/AMD/chart")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["sharesFloat"] is None
+
+
 def test_pullback_repository_returns_rows_desc(
     db_session: Session,
 ) -> None:

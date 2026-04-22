@@ -48,6 +48,11 @@ class FakeFMP:
         self.key_metrics_results: dict[str, dict[str, Any] | None] = {}
         self.key_metrics_calls: list[str] = []
 
+        # F107-b1: FMP /stable/shares-float source of shares_float
+        self.shares_float_results: dict[str, dict[str, Any] | None] = {}
+        self.shares_float_calls: list[str] = []
+        self.shares_float_exc: Exception | None = None
+
         # F105: screener universe + MA150 series/fallback
         self.screener_universe_result: list[dict[str, Any]] = []
         self.screener_universe_calls: int = 0
@@ -88,6 +93,12 @@ class FakeFMP:
     def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
         self.key_metrics_calls.append(symbol)
         return self.key_metrics_results.get(symbol)
+
+    def get_shares_float(self, symbol: str) -> dict[str, Any] | None:
+        self.shares_float_calls.append(symbol)
+        if self.shares_float_exc is not None:
+            raise self.shares_float_exc
+        return self.shares_float_results.get(symbol)
 
     def get_screener_universe(
         self,

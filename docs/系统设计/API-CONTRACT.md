@@ -323,7 +323,8 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
         "date": "2026-03-10",
         "distancePct": 1.2
       }
-    ]
+    ],
+    "sharesFloat": 15200000000
   },
   "message": "success"
 }
@@ -333,6 +334,7 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 - `bars`：按日期升序，最多 250 天
 - `ma150`：与 bars 对齐，数据不足 150 天的早期日期不包含
 - `pullbackMarkers`：回踩事件的日期和价距，用于在 K 线图上标记
+- `sharesFloat`（F107-b1 / D049）：流通股数量，int | null。watchlist 路径走 Stock 表 24h TTL 缓存（D050），miss 或过期时回源 FMP `/stable/shares-float`（D051 修订，原计划 `/profile` 不携带该字段）；ETF / FMP 404 / 字段缺失时为 null。前端据此计算 Vol/Float 比率。
 
 **错误响应**：
 
