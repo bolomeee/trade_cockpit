@@ -278,3 +278,33 @@ phase: needs_review → done
 
 [下一个 Session]
   准备开发 F107-b3（Fundamentals 加 Float 绝对值显示，单位格式协商阶段敲定）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22 04:00] Sprint：F107-b3 Fundamentals 增加 Float 绝对值显示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - /api/stocks/:ticker/fundamentals 响应增 sharesFloat（复用 F107-b1 24h DB 缓存）
+  - FundamentalsCard 右列末位增 Float 行，单位 15.23B / 987.65M
+  - 集成测试：6/6 通过（含新增 2 用例）
+  - 后端全量回归：264/266（2 个失败为 F108 引入的 pullbacks pre-existing）
+  - 前端 build 通过；E2E 浏览器实测 AAPL Float 14.66B 正确渲染
+  - phase → needs_review
+
+⚠️ 待你决策：
+  - 无（acceptance 验收）
+
+🔧 系统变更：
+  - DECISIONS.md 新增 D054
+  - API-CONTRACT.md /fundamentals 字段表 + 响应示例追加 sharesFloat
+  - sprint contract: docs/开发/sprint-contracts/F107-b3-contract.md
+
+📊 功能状态：
+  F107-b1：✅ done
+  F107-b2：✅ done
+  F107-b3：🔍 needs_review
+
+[下一个 Session]
+  触发 acceptance 验收 F107-b3，或继续 F108
+
+[2026-04-22] F107-b3 验收通过 → done。验收记录：docs/验收/F107-b3-acceptance.md

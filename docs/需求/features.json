@@ -1607,8 +1607,8 @@
       "description": "在 FundamentalsCard 新增一行 'Float' 显示流通股绝对值（单位 15.23B / 987.65M，b3 contract 已敲定 B1 方案）。后端 /api/stocks/:ticker/fundamentals 响应顶层扩展 sharesFloat: int | null，复用 F107-b1 已有的 stocks.shares_float 24h TTL 缓存（D050）；miss 时走共享 get_shares_float 回源 FMP /stable/shares-float。由 F107-b2 的拆分（单次 Sprint 6 文件上限）产生。",
       "user_story": "作为投资者，除了图例里的 Vol/Float 比率，我还想在 Fundamentals 面板看到 Float 的绝对值，判断这只股票的流通盘大小本身。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "contract_agreed",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F107-b1", "F107-b2"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -1642,8 +1642,8 @@
       ],
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
-      "notes": "单位格式（15.23B / 15,234M / 中文亿）在 b3 contract 协商阶段由用户敲定；b3 contract 需读取 fundamentals_service 现有实现，确认 stocks.shares_float 读取 + 回源 fallback 的改动边界。",
-      "completed_at": null
+      "notes": "单位 15.23B / 987.65M（B1 已敲定）；复用 F107-b1 _resolve_shares_float_for_watchlist，非 watchlist → null（D054，F108 再放开）。验收日期 2026-04-22。",
+      "completed_at": "2026-04-22"
     },
     {
       "id": "F108",
