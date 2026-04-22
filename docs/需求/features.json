@@ -1563,11 +1563,11 @@
     {
       "id": "F107-b2",
       "name": "前端 ChartWidget Vol/Float 比率显示",
-      "description": "依赖 F107-b1 done。ChartWidget 左上角图例（MA5/MA20/MA150 三行下方）新增 'Vol/Float: X.XX%' 一行；默认显示最新交易日；鼠标悬停任意 bar 时联动更新；离开图表回到最新；shares_float=null（ETF / FMP 404）时显 '—'。技术点：PriceChart 新增 onHoverChange prop + chart.subscribeCrosshairMove；FundamentalsCard formatPercent 抽到 lib/format.ts 共用。",
-      "user_story": "Vol bar 能看到但看不到数字；真正能判断'今天的量算不算大'的是当日成交量占流通股的百分比——我要在图例看到这个数字，并能 hover 任一天查历史。",
+      "description": "依赖 F107-b1 done。PriceChart 内置浮动气泡显示 Vol/Float 百分比：水平跟随 crosshair x，垂直固定距图表底边 80px；hover 触发显示，离开 / sharesFloat<=0 / null 时隐藏。FundamentalsCard formatPercent 抽到 lib/format.ts 共用。迭代历史：先做图例 Vol/Float 行，后按用户反馈改为 volume 柱上方浮动气泡，再改为底边固定 80px 偏移。",
+      "user_story": "Vol bar 能看到但看不到数字；真正能判断'今天的量算不算大'的是当日成交量占流通股的百分比——我要在 hover 任一天时直观看到数字。",
       "priority": "P1",
-      "status": "testing",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F107-b1"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -1598,8 +1598,8 @@
       ],
       "test_cases": {"unit": [], "integration": [], "e2e": []},
       "iteration_history": [],
-      "notes": "D048 降级：前端单测延至 v1.4；本 sprint 硬门禁 = typecheck + build + docker E2E + 代码审查。crosshair 节流方案（useRef 或 state）Generator 阶段需查 context7 /tradingview/lightweight-charts v5 subscribeCrosshairMove 签名。",
-      "completed_at": null
+      "notes": "D048 降级：前端单测延至 v1.4；硬门禁 = typecheck + build + preview E2E + 代码审查。交互迭代：图例行 → volume 柱上方浮动气泡 → 底边固定偏移 80px（避免不同柱高导致气泡跳动）。",
+      "completed_at": "2026-04-22"
     },
     {
       "id": "F107-b3",

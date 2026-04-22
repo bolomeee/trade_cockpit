@@ -250,3 +250,31 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 phase: needs_review → done
 下一步：F107-b2 前端 Vol/Float 图例（contract_needed）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F107-b2 前端 ChartWidget Vol/Float 比率显示
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - ChartData 类型加 sharesFloat: number | null
+  - lib/format.ts 新增共用 formatPercent（入参为已 ×100 百分比值，fallback='—'）
+  - PriceChart 内置浮动气泡 + subscribeCrosshairMove（v5 API，Context7 核验）
+  - ChartWidget 数据流内聚，移除过渡版图例 Vol/Float 行
+  - FundamentalsCard 复用 formatPercent（展示等价）
+  - Evaluator：pnpm build ✅ / preview E2E ✅ / console 无 error / 用户实机验收 ✅
+  - phase → done
+
+🎨 交互迭代（用户反馈驱动）：
+  1. 图例行显示（最小实现）
+  2. volume 柱上方浮动气泡（重构为柱内置 tooltip）
+  3. 底边固定偏移 80px（避免不同柱高导致气泡跳动）
+
+🔧 系统变更：无（纯前端，不改后端 / 合约 / DB）
+
+📊 功能状态：
+  F107-b1 后端 shares_float 链路：✅ done
+  F107-b2 前端 Vol/Float 气泡：✅ done
+  F107-b3 Fundamentals Float 绝对值：⬜ contract_needed
+
+[下一个 Session]
+  准备开发 F107-b3（Fundamentals 加 Float 绝对值显示，单位格式协商阶段敲定）
