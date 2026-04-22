@@ -4,6 +4,17 @@
 
 ---
 
+## [v1.5.0] - 2026-04-22
+
+### ✨ 新增
+- 同日 ticker 数据缓存（F111-a）：watchlist 和 breakout list 点击过的 ticker，当日内 chart 和 fundamentals 不再重复请求 FMP，第二次响应速度由 ~500ms 降至 ~5ms
+
+### 🐛 修复
+- 修复点击 ETF ticker（如 IVW）时 Fundamentals 面板因 FCF 为 null 导致页面崩溃的问题
+- 修复 ETF chart 数据中重复日期导致 lightweight-charts 抛错的问题；新增 Error Boundary 防止图表异常白屏
+
+---
+
 ## [v1.4.0] - 2026-04-22
 
 ### ✨ 新增
