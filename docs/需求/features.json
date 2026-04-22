@@ -1929,9 +1929,10 @@
       "estimated_files_changed": [],
       "subtasks": {
         "F112-a": {
-          "phase": "testing",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F112-a-contract.md",
-          "scope": "后端 GET /api/news/articles 代理 FMP /stable/fmp-articles；字段规范化（publishedAt/symbols）；走 D044 rate limiter。"
+          "scope": "后端 GET /api/news/articles 代理 FMP /stable/fmp-articles；字段规范化（publishedAt/symbols）；走 D044 rate limiter。",
+          "completed_at": "2026-04-22"
         },
         "F112-b": {
           "phase": "design_needed",

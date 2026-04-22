@@ -1,0 +1,23 @@
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F112-a News 后端 API（FMP /fmp-articles 代理）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - FmpClient.get_fmp_articles 走 D044 rate limiter
+  - NewsService 字段规范化：date→publishedAt、tickers→symbols
+  - GET /api/news/articles?limit=N（1–50，默认 20）
+  - 单元+集成测试 24/24，全量回归 312/312
+  - API-CONTRACT.md 增补 News 章节
+  - 验收通过：docs/验收/v1.3.0-F112a-acceptance.md
+  - phase → done
+
+📊 功能状态：
+  F112 News Widget：🔄 in_progress
+    F112-a 后端：✅ done
+    F112-b 前端骨架：⬜ design_needed
+    F112-c ArticleModal：⬜ design_needed
+
+[下一个 Session]
+  启动 F112-b Sprint Contract 协商（前端 NewsPage 骨架 + NewsWidget）。
+  或先 /design-bridge 补齐 News 相关 design-spec 章节（如尚未覆盖）。
