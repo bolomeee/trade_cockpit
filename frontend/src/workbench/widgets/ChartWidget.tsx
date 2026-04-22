@@ -7,6 +7,23 @@ import { PriceChart } from '@/components/features/stock-detail/PriceChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common/ErrorState'
 import { EmptySymbol } from './EmptySymbol'
+import { Component, type ReactNode, type ErrorInfo } from 'react'
+
+class ChartErrorBoundary extends Component<
+  { children: ReactNode; onReset: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(_: Error, info: ErrorInfo) {
+    console.error('[ChartWidget] chart render error', info)
+  }
+  render() {
+    if (this.state.hasError)
+      return <ErrorState title="图表渲染失败" onRetry={() => { this.setState({ hasError: false }); this.props.onReset() }} />
+    return this.props.children
+  }
+}
 
 export function ChartWidget() {
   const symbol = useAppStore((s) => s.selectedSymbol)
@@ -82,7 +99,9 @@ export function ChartWidget() {
           <span style={{ color: 'var(--color-signal-breakout, #2962ff)' }}>— MA150</span>
         </div>
       </div>
-      <PriceChart data={data as ChartData} />
+      <ChartErrorBoundary onReset={() => refetch()}>
+        <PriceChart data={data as ChartData} />
+      </ChartErrorBoundary>
     </div>
   )
 }

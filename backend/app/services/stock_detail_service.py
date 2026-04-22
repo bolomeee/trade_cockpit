@@ -158,8 +158,13 @@ class StockDetailService:
         if not raw:
             raise APIError("NOT_FOUND", f"ticker {ticker} not found", 404)
 
-        normalized = [_normalize_fmp_bar(b) for b in raw]
-        bars_asc = sorted(normalized, key=lambda b: b["date"])[-CHART_WINDOW_DAYS:]
+        normalized = [_normalize_fmp_bar(b) for b in raw if _bar_is_valid(b)]
+        # Deduplicate by date: FMP occasionally returns duplicate entries for ETFs.
+        # Sort ascending → later dict-insertion wins → values() preserves asc order.
+        seen: dict[date, dict] = {}
+        for b in sorted(normalized, key=lambda b: b["date"]):
+            seen[b["date"]] = b
+        bars_asc = list(seen.values())[-CHART_WINDOW_DAYS:]
 
         closes = [b["close"] for b in bars_asc]
         ma_series = compute_ma150_series(closes)
@@ -263,6 +268,14 @@ class StockDetailService:
         }
         upsert_today_payload(self.db, ticker, ENDPOINT_FUNDAMENTALS, payload)
         return payload
+
+
+def _bar_is_valid(b: dict[str, Any]) -> bool:
+    """Skip bars with null OHLC fields (ETF edge cases from FMP)."""
+    try:
+        return all(b.get(f) is not None for f in ("date", "open", "high", "low", "close"))
+    except Exception:
+        return False
 
 
 def _normalize_fmp_bar(b: dict[str, Any]) -> dict[str, Any]:
