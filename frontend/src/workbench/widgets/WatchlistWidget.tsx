@@ -68,15 +68,15 @@ export function WatchlistWidget() {
         <EmptyState title="还没有自选股，上方搜索添加一只吧" />
       )}
       {!isLoading && !isError && sorted.length > 0 && (
-        <Table>
+        <Table className="text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
           <TableHeader>
             <TableRow>
-              <TableHead>Ticker</TableHead>
-              <TableHead>Name</TableHead>
+              <TableHead className="w-14">Ticker</TableHead>
+              <TableHead>Company</TableHead>
               <TableHead>Signal</TableHead>
-              <TableHead className="text-right">Close</TableHead>
-              <TableHead className="text-right">% MA150</TableHead>
-              <TableHead className="w-8" />
+              <TableHead>Close</TableHead>
+              <TableHead>% MA150</TableHead>
+              <TableHead className="w-6" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -141,14 +141,10 @@ function WatchlistRow({ stock, onSelect }: { stock: SignalBoardItem; onSelect: (
       <TableCell>
         <SignalBadge signalType={signalType} />
       </TableCell>
-      <TableCell
-        className="text-right"
-        style={{ fontFamily: 'var(--font-family-numeric)' }}
-      >
+      <TableCell style={{ fontFamily: 'var(--font-family-numeric)' }}>
         {closePrice !== null ? `$${closePrice.toFixed(2)}` : '—'}
       </TableCell>
       <TableCell
-        className="text-right"
         style={{ fontFamily: 'var(--font-family-numeric)', color: distanceColor }}
       >
         {distancePct !== null

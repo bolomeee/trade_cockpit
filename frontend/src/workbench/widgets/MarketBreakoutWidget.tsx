@@ -109,16 +109,16 @@ function BreakoutPane({
 
   return (
     <div className="h-full overflow-x-auto">
-      <Table>
+      <Table className="text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
         <TableHeader>
           <TableRow>
-            <TableHead>Ticker</TableHead>
+            <TableHead className="w-14">Ticker</TableHead>
             <TableHead>Company</TableHead>
             {showSignalCol && <TableHead>Signal</TableHead>}
-            <TableHead className="text-right">Close</TableHead>
-            <TableHead className="text-right">% Above MA150</TableHead>
-            <TableHead className="text-right">Vol×20d</TableHead>
-            <TableHead className="w-8" />
+            <TableHead>Close</TableHead>
+            <TableHead>% MA150</TableHead>
+            <TableHead>Vol×20d</TableHead>
+            <TableHead className="w-6" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -166,22 +166,18 @@ function BreakoutRow({
   const isPending = addMutation.isPending
 
   return (
-    <TableRow onClick={onSelect} className="cursor-pointer [&>td]:py-[7px]">
+    <TableRow onClick={onSelect} className="cursor-pointer">
       <TableCell className="font-bold">{ticker}</TableCell>
       <TableCell className="text-muted-foreground">{companyName}</TableCell>
       {showSignalCol && (
-        <TableCell className="text-xs text-muted-foreground">
+        <TableCell className="text-muted-foreground">
           {SIGNAL_LABEL[signalType]}
         </TableCell>
       )}
-      <TableCell
-        className="text-right"
-        style={{ fontFamily: 'var(--font-family-numeric)' }}
-      >
+      <TableCell style={{ fontFamily: 'var(--font-family-numeric)' }}>
         ${closePrice.toFixed(2)}
       </TableCell>
       <TableCell
-        className="text-right"
         style={{
           fontFamily: 'var(--font-family-numeric)',
           color: 'var(--color-change-positive)',
@@ -190,7 +186,7 @@ function BreakoutRow({
         +{pctAboveMa150.toFixed(1)}%
       </TableCell>
       <TableCell
-        className="text-right text-muted-foreground"
+        className="text-muted-foreground"
         style={{ fontFamily: 'var(--font-family-numeric)' }}
       >
         {volumeRatio20 != null ? `${volumeRatio20.toFixed(2)}×` : '—'}

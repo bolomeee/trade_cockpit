@@ -43,7 +43,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     id: 'sma150.watchlist',
     title: 'Watchlist',
     component: WatchlistWidget,
-    defaultLayout: { x: 0, y: 8, w: 8, h: 8, minW: 4, minH: 5 },
+    defaultLayout: { x: 0, y: 8, w: 8, h: 14, minW: 4, minH: 5 },
     category: 'sma150',
   },
   'journal.quickadd': {
