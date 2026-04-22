@@ -1786,8 +1786,9 @@
       "description": "把 v1.1.0 起以硬编码形式落地但未走 feature-dev 的 widget UI 规范纳入契约：a) widget title bar 底色统一 #ebf2fa（覆盖原 --color-surface-muted）；widget 内容根元素 marginTop:-5 / marginLeft:-5 + gap-1 紧凑间距。b) TopNav 品牌字变 NavLink 可点击回首页；ResetLayoutButton 从 MarketOverviewBar 右上角挪到 TopNav 右侧；AddStockCard search input pill 样式（10px 粗体）。design-spec 同步备案。",
       "user_story": "作为使用者，我希望所有 widget 的视觉风格一致（title 色、内容贴边距）；站标能直接点回首页；搜索框更显眼。不是功能需求，但直接影响每天工作台的顺手程度。",
       "priority": "P2",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-22",
       "dependencies": [
         "F100",
         "F101",
