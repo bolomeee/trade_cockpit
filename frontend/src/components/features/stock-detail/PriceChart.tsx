@@ -18,7 +18,7 @@ interface PriceChartProps {
   data: ChartData
 }
 
-const VOL_TOOLTIP_OFFSET_Y = 6
+const VOL_TOOLTIP_BOTTOM_OFFSET = 100
 
 function toUtcTimestamp(dateStr: string): UTCTimestamp {
   return (Date.parse(`${dateStr}T00:00:00Z`) / 1000) as UTCTimestamp
@@ -190,15 +190,10 @@ export function PriceChart({ data }: PriceChartProps) {
         return
       }
       const pct = (bar.volume / sharesFloat) * 100
-      const y = volumeSeries.priceToCoordinate(bar.volume)
-      if (y == null) {
-        hideTooltip()
-        return
-      }
       tooltip.textContent = formatPercent(pct)
       tooltip.style.display = 'block'
       tooltip.style.left = `${param.point.x}px`
-      tooltip.style.top = `${y - VOL_TOOLTIP_OFFSET_Y}px`
+      tooltip.style.top = `${container.clientHeight - VOL_TOOLTIP_BOTTOM_OFFSET}px`
     }
     chart.subscribeCrosshairMove(handleCrosshair)
 
