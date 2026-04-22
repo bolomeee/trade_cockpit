@@ -18,7 +18,8 @@ interface FundamentalsCardProps {
 
 type Metric = { label: string; value: string | null }
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | null | undefined): string | null {
+  if (value == null) return null
   if (Math.abs(value) >= 1_000_000_000) {
     return `$${(value / 1_000_000_000).toFixed(2)}B`
   }
