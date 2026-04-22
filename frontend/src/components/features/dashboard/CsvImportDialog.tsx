@@ -99,6 +99,7 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: Props) {
     }
   }
 
+  const isImporting = phase === 'importing'
   const canImport = tickers.length > 0 && phase === 'input'
 
   return (
@@ -173,9 +174,9 @@ export function CsvImportDialog({ open, onOpenChange, onSuccess }: Props) {
               <Button onClick={handleImport}>重试</Button>
             </>
           )}
-          {(phase === 'input' || phase === 'importing') && (
-            <Button onClick={handleImport} disabled={!canImport || phase === 'importing'}>
-              {phase === 'importing' ? (
+          {(phase === 'input' || isImporting) && (
+            <Button onClick={handleImport} disabled={!canImport || isImporting}>
+              {isImporting ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
                   导入中…

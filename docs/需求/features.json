@@ -1787,7 +1787,7 @@
       "user_story": "作为使用者，我希望所有 widget 的视觉风格一致（title 色、内容贴边距）；站标能直接点回首页；搜索框更显眼。不是功能需求，但直接影响每天工作台的顺手程度。",
       "priority": "P2",
       "status": "in_progress",
-      "phase": "contract_agreed",
+      "phase": "needs_review",
       "dependencies": [
         "F100",
         "F101",

@@ -155,3 +155,31 @@ F110-b（下下个 Sprint）范围（不在 F110-a）：
 
 [下一个 Session]
   /acceptance F108 验收，或继续开发 F109
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F109-a/b Widget UI 规范落实
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 反向补契约：代码已落地，本次核对并补文档
+  - F109-a：WidgetShell #ebf2fa 底色 + 5 个 widget 内容区 -5px 偏移 + gap-1
+  - F109-b：TopNav 品牌字变 NavLink + ResetLayoutButton 移到 TopNav 右侧 + AddStockCard pill 样式
+  - design-spec.md：TopNav 小节 v1.3 备案 + AddStockCard 搜索框样式小节新增
+  - 顺带修复 CsvImportDialog.tsx TypeScript 过度窄化错误（F110 遗留）
+  - 简化 AddStockCard 冗余 md:text-[10px]
+  - pnpm tsc --noEmit + pnpm build 通过
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - frontend/src/components/features/dashboard/CsvImportDialog.tsx（TS 修复）
+  - frontend/src/components/features/dashboard/AddStockCard.tsx（简化 class）
+  - docs/设计/design-spec.md（TopNav + AddStockCard 备案）
+  - docs/需求/features.json（F109 phase 更新）
+
+📊 功能状态：
+  F108：✅ done
+  F109：🔍 needs_review
+
+[下一个 Session]
+  /acceptance F109 验收
