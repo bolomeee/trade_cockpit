@@ -4,6 +4,21 @@
 
 ---
 
+## [v1.4.0] - 2026-04-22
+
+### ✨ 新增
+- Watchlist 支持 CSV 批量导入（文件上传 / 文本粘贴，自动去重分桶展示结果）
+- Watchlist 支持 CSV 导出（一键下载当日 watchlist）
+- `/fundamentals` 与 `/pullbacks` 放开到任意 ticker，Scanner 中点击非自选股不再报 404
+
+### 🎨 优化
+- 所有 widget title bar 底色统一（`#ebf2fa`），内容区边距收紧
+- TopNav 品牌字「MA150 Tracker」支持点击回首页
+- ResetLayoutButton 移至 TopNav 右侧，路由条件渲染（仅首页可见）
+- 搜索框（AddStockCard）改为 pill 形、10px 粗体样式
+
+---
+
 ## [v1.3.0] - 2026-04-22
 
 ChartWidget 叠加层（volume / MA5 / MA20 / Vol/Float 气泡）+ Fundamentals Float 绝对值 + 多信号扫描器分类 Tabs。
