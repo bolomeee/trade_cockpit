@@ -5,31 +5,48 @@
 ✅ 完成内容：
   - Watchlist 列头 Name → Company
   - Market Breakouts 列头 % Above MA150 → % MA150
-  - 两个 widget 表格统一：字号 11px / 行高紧凑 / 全左对齐 / Ticker 列 w-14
+  - 两 widget 表格统一：字号 11px / 行高紧凑 / 全左对齐 / Ticker 列 w-14
   - Watchlist 默认 h 8→14（A1 方案，持久化 layout 需用户点重置才生效）
   - design-spec.md 同步：新增「Widget 紧凑表通用规格」+ 页面 1 SignalCard 实现偏离
-  - commits: c2d8ead（代码）/ 2d69e26（文档）
+  - commits: c2d8ead / 2d69e26 / f3a66e3
 
-⚠️ 待处理（下个 session 可接手）：
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 下个 Sprint：F110-a 已写好 Contract，待开工
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 Contract：docs/开发/sprint-contracts/F110-a-contract.md
+🔒 状态：contract_drafted（未用户确认，未进入 Generator）
+
+本 Sprint 范围：
+  - 后端 POST /api/watchlist/bulk（6 文件，卡 6 文件上限）
+  - 请求 {tickers: [...]}，响应 {added, skipped_duplicate, not_found}
+  - 单 ticker FMP 非 NOT_FOUND 异常 → 502 中止整个 batch（D-F110a-1）
+  - 上限 200 ticker/次，复用 add_stock 逻辑
+
+F110-b（下下个 Sprint）范围（不在 F110-a）：
+  - 前端 CSV 解析/生成
+  - Watchlist 搜索栏加 In / Out 图标
+  - 调用 F110-a 的 bulk endpoint
+
+⚠️ 待处理（session 级）：
   - T-001 补齐 v1.1 widget 的 design-spec 章节（MarketBreakout / Fundamentals / Pullback / Chart / QuickAdd）
     详见 docs/需求/PRD-OPEN-ISSUES.md
-  - Sprint 2 Watchlist CSV 导入/导出（用户已同意拆分），启动前需决定：
-    1. CSV 列结构（仅 ticker 还是带 company）
-    2. 导入走循环单条 addStock 还是新增 bulk API
-    3. 导出是否带 signal/close/% MA150 快照
-
-🔧 系统变更：
-  - frontend/src/workbench/WidgetRegistry.ts（watchlist h: 8→14）
-  - frontend/src/workbench/widgets/WatchlistWidget.tsx
-  - frontend/src/workbench/widgets/MarketBreakoutWidget.tsx
-  - docs/设计/design-spec.md
 
 📊 功能状态：
-  F-UI 紧凑表 + 列名统一：✅ done（已 commit，可直接触发 acceptance）
-  T-001 补 widget spec：⬜ open（见 PRD-OPEN-ISSUES.md）
-  Sprint 2 CSV 导入导出：⬜ 待用户回答三个问题后启动
+  F-UI 紧凑表：✅ done（commits c2d8ead / 2d69e26）
+  F110-a 后端 bulk：📝 contract_drafted（待确认）
+  F110-b 前端 CSV：⬜ blocked by F110-a
+  T-001 补 widget spec：⬜ open
 
-[下一个 Session]
-  选项 A：继续做 T-001（说"补齐 widget spec"或"做 T-001"）
-  选项 B：启动 Sprint 2 CSV（先回答上面三个问题）
-  选项 C：验收本次 F-UI 变更（说"验收"）
+[下一个 Session 恢复指令]
+  选项 A（推荐，接上 Sprint 2）："做 F110-a" 或 "开始开发 F110-a"
+      → 直接进入 Generator 模式，按 contract 开发
+  选项 B：先调整 contract
+      → 说 "修改 F110-a contract：[具体要改的点]"
+  选项 C：做 T-001 文档补齐
+      → 说 "做 T-001" 或 "补齐 widget spec"
+  选项 D：验收本次 F-UI 变更
+      → 说 "验收 F-UI"
+
+📌 session 开场建议：让 Claude 先读 docs/开发/sprint-contracts/F110-a-contract.md
+   再执行选项 A；contract 本身包含足够上下文，无需回忆本 session。
