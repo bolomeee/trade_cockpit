@@ -1,6 +1,14 @@
 # Sprint Contract：F112-b — NewsWidget（Workbench 内新闻卡片列表）
 
-> 状态：contract_agreed | 起草：2026-04-22 | 确认：2026-04-22
+> 状态：SUPERSEDED by F112-b1 + F112-b2（2026-04-22）| 起草：2026-04-22
+>
+> ## Contract 修订 — 2026-04-22
+> **原始决策**：路径 B — 只在 Workbench 加 NewsWidget，不加新路由/导航。
+> **变更原因**：验收发现需求理解偏差。用户原始意图为 TopNav 新 News 入口 + 独立 /news 页（grid-layout）+ NewsTable + Chart widget 复用 + ArticleModal + ticker 联动（即我当初给的"路径 A"）。
+> **处理**：本合约作废，拆分为：
+> - `F112-b1-contract.md` — 导航 + /news 页 + NewsTable（table 形式，删除外链跳转；Workbench 首页移除 NewsWidget）
+> - `F112-b2-contract.md` — ArticleModal + news 页 Chart widget + ticker 联动 + DOMPurify
+> **commit aa86e7a 的处理**：NewsWidget 组件保留（F112-b1 改造为 table），Workbench 注册与默认布局在 F112-b1 中移除。
 > 父 Feature：F112 News Widget
 > 依赖：F112-a（后端 `GET /api/news/articles` 已固化）
 > 兄弟：F112-c（ArticleModal + Ticker 联动）

@@ -1934,15 +1934,15 @@
           "scope": "后端 GET /api/news/articles 代理 FMP /stable/fmp-articles；字段规范化（publishedAt/symbols）；走 D044 rate limiter。",
           "completed_at": "2026-04-22"
         },
-        "F112-b": {
-          "phase": "needs_review",
-          "contract": "docs/开发/sprint-contracts/F112-b-contract.md",
-          "scope": "Workbench 注册 NewsWidget（卡片列表：缩略图+标题+site·时间+最多3个ticker徽章）；无新路由、无TopNav改动；点击卡片新 tab 打开 FMP 原文 URL（F112-c 替换为 ArticleModal）"
+        "F112-b1": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F112-b1-contract.md",
+          "scope": "TopNav 增 News 入口 + 新路由 /news（react-grid-layout 容器）+ NewsTable widget（Date/Site/Title/Tickers 列）+ 独立布局持久化；Workbench 首页移除 NewsWidget。取代老 F112-b。"
         },
-        "F112-c": {
-          "phase": "design_needed",
-          "contract": null,
-          "scope": "ArticleModal 详情组件（全文 HTML sanitize）+ 点击 ticker 联动跳转股票详情；同时替换 F112-b 中卡片点击的 URL 外跳为 ArticleModal 内渲染"
+        "F112-b2": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F112-b2-contract.md",
+          "scope": "ArticleModal（50% 透明遮罩+圆形关闭按钮+DOMPurify sanitize）+ news 页新增 Chart widget（复用首页 ChartWidget + F111-a 当日数据缓存）+ 点击 ticker 关闭 modal 并切换 chart（useAppStore.selectedSymbol 联动）。合并了原 F112-c。"
         }
       },
       "scope": {
@@ -1971,7 +1971,8 @@
         "FMP 网络失败 → 502 EXTERNAL_API_ERROR",
         "空数据 → 200 { data: [] }",
         "回归测试全部通过"
-      ]
+      ],
+      "subtasks_notes": "F112-b 老合约 superseded（commit aa86e7a 的 Workbench NewsWidget 将在 F112-b1 执行期间移除）；F112-c 合并入 F112-b2（ArticleModal + ticker 联动同属同一用户流程）。"
     }
   ]
 }
