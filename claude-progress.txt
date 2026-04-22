@@ -177,3 +177,36 @@
 
 [下一个 Session]
   验收 F107 后协商 F107-b1 Sprint Contract（后端 shares_float 链路，Generator 模式）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] 验收：F107 合格 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- F107 phase：needs_review → done（反向补契约完成）
+- 本 session 三次 commit：
+  · 1c53f88 feat(F106-c): multi-signal widget — shadcn Tabs + stage/pullback split
+  · 10c2e19 chore(F106): accept F106-c — F106 Multi-Signal Scanner done
+  · 3b923a0 feat(F107): chart volume histogram + MA5/MA20 overlay
+- 下一步：Session 暂停，更新 SESSION-HANDOFF.md；新 session 协商 F107-b1 Sprint Contract
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Session 暂停（handoff）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 当前功能状态：
+  F106 Multi-Signal Scanner：✅ done
+  F107 股价图 Vol + MA5/20：✅ done
+  F107-b Vol/Float 比率：⬜ plan_agreed（plan 文件：~/.claude/plans/tingly-jumping-pebble.md）
+    F107-b1 后端 shares_float 链路：⬜ contract_needed（5 业务文件）
+    F107-b2 前端 Vol/Float 显示：⬜ contract_needed（3 业务文件）
+  F108 /fundamentals & /pullbacks 放开：⬜ contract_agreed（反向补）
+  F109 Widget 间距 + TopNav：⬜ contract_agreed（a/b 反向补）
+
+📝 工作树未提交（pre-session 用户手改，留到各自 sprint 落地）：
+  - frontend/src/App.tsx / TopNav.tsx / WidgetShell.tsx / FundamentalsWidget.tsx / PullbackWidget.tsx / QuickAddWidget.tsx / WatchlistWidget.tsx / AddStockCard.tsx → F109 反向补契约
+  - backend/app/services/stock_detail_service.py + docs/系统设计/DATA-MODEL.md → F108 反向补契约
+  - backend/uv.lock → 待确认
+  - Untracked：README.md、F108/F109-a/F109-b contract 草案、docs/需求/SIGNAL-CATALOG.md
+
+[下一个 Session]
+  协商 F107-b1 Sprint Contract — Generator 模式，后端 shares_float 链路。参考 ~/.claude/plans/tingly-jumping-pebble.md

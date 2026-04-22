@@ -1470,8 +1470,8 @@
       "description": "PriceChart 在 candlestick 主图下方增加独立 priceScale 的成交量 Histogram（底部 20% 区域），柱颜色跟随当日涨跌（40% 透明度）。同时叠加 MA5（橙 #f59e0b）与 MA20（紫 #8b5cf6）两条短均线，与既有 MA150 共同构成 3 条均线图。ChartWidget 左上角新增 MA5/MA20/MA150 三色图例。为短线择时与成交量背离观察提供可视化依据。",
       "user_story": "作为投资者，光看收盘价和 MA150 不足以判断短线进出场——我需要同时看到 MA5 / MA20 的走势关系和成交量柱，来判断当日突破是否放量、是否处于短周期背离区。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": ["F102"],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -1502,7 +1502,7 @@
       "test_cases": { "unit": [], "integration": [], "e2e": [] },
       "iteration_history": [],
       "notes": "反向补契约：代码已在 v1.2.0 发布后手改落地。lightweight-charts 双 priceScale 用法需 Evaluator 阶段用 context7 `/tradingview/lightweight-charts` 验证。",
-      "completed_at": null
+      "completed_at": "2026-04-22"
     },
     {
       "id": "F108",
