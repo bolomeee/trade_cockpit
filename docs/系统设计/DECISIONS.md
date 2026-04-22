@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-21
-last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D047 F108 on-demand 语义推广)
+confirmed_at: 2026-04-22
+last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -1190,3 +1190,28 @@ last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D04
 **影响**：
 - API-CONTRACT.md：`/fundamentals` 404 仅限空 ticker；`/pullbacks` 非 watchlist → 200+[]
 - `test_detail_endpoints_404_when_ticker_missing` / `_inactive`：pullbacks + fundamentals 分支从 404 改为 200
+
+
+## D055：F111-a on-demand ticker 数据当日缓存策略
+
+**日期**：2026-04-22
+**触发**：用户在 watchlist / breakout scanner 中点击 ticker 时，chart fallback 和 fundamentals 每次都打 FMP，同日切换同一 ticker 重复请求慢且浪费 API quota。
+
+**决策**：引入 `daily_payload_cache` 表（`ticker, endpoint, as_of_date, payload_json`），以 `(ticker, endpoint, as_of_date)` 为唯一键存储每日响应 JSON。
+
+缓存规则：
+- 命中条件：`as_of_date == date.today()`（server local date）
+- 覆盖对象：`/chart` fallback（非 watchlist ticker）+ `/fundamentals`（所有 ticker）
+- 不覆盖：watchlist ticker chart（已从 daily_bars 读，无 FMP 调用）；pullbacks（返回空 list 无 FMP 调用）
+- 错误不缓存：FMP httpx.HTTPError → 不写表，下次仍尝试 FMP
+- 空结果不缓存：FMP 返回 None/空 dict → 不写表，保持原 null 路径
+
+**为何不用 Redis / 内存缓存**：单用户局域网场景，SQLite 足够（D004 原则）；重启后缓存仍有效（session 级内存缓存重启即失）；无运维依赖。
+
+**为何不清理旧记录**：每日最多几十行，全量数据极小（每行 ~5–10 KB JSON）；下次访问自然跳过旧行（`as_of_date != today()`）；无清理任务 = 无背景作业竞争风险。
+
+**影响**：
+- 新表 `daily_payload_cache`（Alembic migration 005）
+- `stock_detail_service._chart_from_fmp_fallback`：先查缓存
+- `stock_detail_service.get_fundamentals`：先查缓存
+- 用户体验：同日第二次点击同一 ticker 响应速度由 ~500ms（FMP RTT）降至 ~5ms（SQLite read）

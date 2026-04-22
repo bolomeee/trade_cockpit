@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
 from app.models import DailyBar, Signal
+from app.models.daily_payload_cache import (
+    ENDPOINT_CHART,
+    ENDPOINT_FUNDAMENTALS,
+    get_today_payload,
+    upsert_today_payload,
+)
 from app.repositories.pullback_repository import PullbackRepository
 from app.repositories.stock_repository import StockRepository
 from app.services.signal_engine import compute_ma150_series
@@ -133,6 +139,11 @@ class StockDetailService:
         )
 
     def _chart_from_fmp_fallback(self, ticker: str) -> dict[str, Any]:
+        # F111-a / D055: same-day DB cache for non-watchlist tickers
+        cached = get_today_payload(self.db, ticker, ENDPOINT_CHART)
+        if cached is not None:
+            return cached
+
         today = date.today()
         from_d = today - timedelta(days=CHART_FALLBACK_LOOKBACK_DAYS)
         try:
@@ -160,9 +171,11 @@ class StockDetailService:
 
         shares_float = self._resolve_shares_float_for_fallback(ticker)
 
-        return self._assemble_chart_payload(
+        payload = self._assemble_chart_payload(
             ticker, bars_asc, ma150_points, [], shares_float
         )
+        upsert_today_payload(self.db, ticker, ENDPOINT_CHART, payload)
+        return payload
 
     @staticmethod
     def _assemble_chart_payload(
@@ -203,6 +216,12 @@ class StockDetailService:
         ticker = raw_ticker.strip().upper()
         if not ticker:
             raise APIError("NOT_FOUND", "empty ticker", 404)
+
+        # F111-a / D055: same-day DB cache (all tickers, watchlist + non-watchlist)
+        cached = get_today_payload(self.db, ticker, ENDPOINT_FUNDAMENTALS)
+        if cached is not None:
+            return cached
+
         try:
             ratios = self.fmp.get_ratios_ttm(ticker) or {}
             km = self.fmp.get_key_metrics_ttm(ticker) or {}
@@ -230,7 +249,7 @@ class StockDetailService:
             else None
         )
 
-        return {
+        payload = {
             "ticker": ticker,
             "priceToEarnings": _as_float(ratios.get("priceToEarningsRatioTTM")),
             "priceToSales": _as_float(ratios.get("priceToSalesRatioTTM")),
@@ -242,6 +261,8 @@ class StockDetailService:
             "source": FUNDAMENTALS_SOURCE_FMP,
             "updatedAt": date.today(),
         }
+        upsert_today_payload(self.db, ticker, ENDPOINT_FUNDAMENTALS, payload)
+        return payload
 
 
 def _normalize_fmp_bar(b: dict[str, Any]) -> dict[str, Any]:

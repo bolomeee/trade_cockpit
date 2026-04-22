@@ -559,3 +559,120 @@ def test_pullbacks_for_inactive_ticker_returns_empty(
     resp = client.get("/api/stocks/INAC2/pullbacks")
     assert resp.status_code == 200
     assert resp.json()["data"] == []
+
+
+# ---------- F111-a: same-day on-demand payload cache ----------
+
+
+def test_chart_fallback_cached_on_second_call(
+    client: TestClient, fake_fmp
+) -> None:
+    """First call fetches from FMP; second call within same day hits DB cache (no FMP)."""
+    closes = [100.0 + i * 0.2 for i in range(200)]
+    fake_fmp.daily_bars_results = _make_fmp_bars(date(2025, 1, 1), closes)
+
+    r1 = client.get("/api/stocks/NVME/chart")
+    assert r1.status_code == 200
+    assert len(fake_fmp.daily_bars_calls) == 1
+
+    # Second call — FMP must NOT be called again
+    r2 = client.get("/api/stocks/NVME/chart")
+    assert r2.status_code == 200
+    assert len(fake_fmp.daily_bars_calls) == 1  # still 1
+    assert r2.json()["data"]["ticker"] == "NVME"
+    assert len(r2.json()["data"]["bars"]) == len(r1.json()["data"]["bars"])
+
+
+def test_chart_fallback_cache_miss_after_day_change(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    """Cache row dated yesterday is ignored; FMP is re-fetched today."""
+    import json
+    from datetime import timezone as _tz
+
+    from app.models.daily_payload_cache import ENDPOINT_CHART, DailyPayloadCache
+
+    yesterday = date.today() - timedelta(days=1)
+    stale_row = DailyPayloadCache(
+        ticker="STALE",
+        endpoint=ENDPOINT_CHART,
+        as_of_date=yesterday,
+        payload_json=json.dumps({
+            "ticker": "STALE", "bars": [], "ma150": [], "pullbackMarkers": [], "sharesFloat": None
+        }),
+        cached_at=datetime.now(_tz.utc).replace(tzinfo=None),
+    )
+    db_session.add(stale_row)
+    db_session.commit()
+
+    closes = [100.0 + i * 0.2 for i in range(200)]
+    fake_fmp.daily_bars_results = _make_fmp_bars(date(2025, 1, 1), closes)
+
+    resp = client.get("/api/stocks/STALE/chart")
+    assert resp.status_code == 200
+    assert len(fake_fmp.daily_bars_calls) == 1  # stale cache ignored → FMP called
+
+
+def test_fundamentals_cached_on_second_call(
+    client: TestClient, fake_fmp
+) -> None:
+    """First fundamentals call hits FMP; second call within same day hits DB cache."""
+    fake_fmp.ratios_results["CACH"] = {"priceToEarningsRatioTTM": 20.0}
+    fake_fmp.key_metrics_results["CACH"] = {"marketCap": 500_000_000}
+
+    r1 = client.get("/api/stocks/CACH/fundamentals")
+    assert r1.status_code == 200
+    assert fake_fmp.ratios_calls == ["CACH"]
+    assert fake_fmp.key_metrics_calls == ["CACH"]
+
+    # Reset call tracking (do NOT reset results — cache should answer instead)
+    fake_fmp.ratios_calls.clear()
+    fake_fmp.key_metrics_calls.clear()
+
+    r2 = client.get("/api/stocks/CACH/fundamentals")
+    assert r2.status_code == 200
+    assert fake_fmp.ratios_calls == []       # cache hit — no FMP
+    assert fake_fmp.key_metrics_calls == []
+    assert r2.json()["data"]["priceToEarnings"] == 20.0
+    assert r2.json()["data"]["marketCap"] == 500_000_000
+
+
+def test_fundamentals_fmp_error_not_cached(
+    client: TestClient, fake_fmp
+) -> None:
+    """FMP error path must not write to cache; next successful call still hits FMP."""
+    import httpx as _httpx
+
+    def _boom(symbol: str):
+        raise _httpx.ConnectError("network down")
+
+    fake_fmp.get_ratios_ttm = _boom  # type: ignore[assignment]
+
+    r1 = client.get("/api/stocks/ERRX/fundamentals")
+    assert r1.status_code == 502
+
+    # Restore FMP and verify it gets called again (cache was not written)
+    fake_fmp.get_ratios_ttm = lambda symbol: fake_fmp.ratios_results.get(symbol)  # type: ignore[method-assign]
+    fake_fmp.ratios_results["ERRX"] = {"priceToEarningsRatioTTM": 15.0}
+    fake_fmp.key_metrics_results["ERRX"] = {"marketCap": 100_000_000}
+
+    r2 = client.get("/api/stocks/ERRX/fundamentals")
+    assert r2.status_code == 200
+    assert r2.json()["data"]["priceToEarnings"] == 15.0
+
+
+def test_chart_fmp_error_not_cached(client: TestClient, fake_fmp) -> None:
+    """FMP httpx error on chart fallback must not write cache; chart stays 502."""
+    fake_fmp.daily_bars_exc = httpx.ConnectError("boom")
+    r1 = client.get("/api/stocks/ERRCH/chart")
+    assert r1.status_code == 502
+
+    # Fix FMP, verify next call hits FMP (not cache)
+    fake_fmp.daily_bars_exc = None
+    closes = [50.0 + i * 0.1 for i in range(160)]
+    fake_fmp.daily_bars_results = _make_fmp_bars(date(2025, 1, 1), closes)
+    fake_fmp.daily_bars_calls.clear()
+
+    r2 = client.get("/api/stocks/ERRCH/chart")
+    assert r2.status_code == 200
+    assert len(fake_fmp.daily_bars_calls) == 1  # FMP called, not cache
