@@ -1,0 +1,35 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F-UI 紧凑表 + 列名统一
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Watchlist 列头 Name → Company
+  - Market Breakouts 列头 % Above MA150 → % MA150
+  - 两个 widget 表格统一：字号 11px / 行高紧凑 / 全左对齐 / Ticker 列 w-14
+  - Watchlist 默认 h 8→14（A1 方案，持久化 layout 需用户点重置才生效）
+  - design-spec.md 同步：新增「Widget 紧凑表通用规格」+ 页面 1 SignalCard 实现偏离
+  - commits: c2d8ead（代码）/ 2d69e26（文档）
+
+⚠️ 待处理（下个 session 可接手）：
+  - T-001 补齐 v1.1 widget 的 design-spec 章节（MarketBreakout / Fundamentals / Pullback / Chart / QuickAdd）
+    详见 docs/需求/PRD-OPEN-ISSUES.md
+  - Sprint 2 Watchlist CSV 导入/导出（用户已同意拆分），启动前需决定：
+    1. CSV 列结构（仅 ticker 还是带 company）
+    2. 导入走循环单条 addStock 还是新增 bulk API
+    3. 导出是否带 signal/close/% MA150 快照
+
+🔧 系统变更：
+  - frontend/src/workbench/WidgetRegistry.ts（watchlist h: 8→14）
+  - frontend/src/workbench/widgets/WatchlistWidget.tsx
+  - frontend/src/workbench/widgets/MarketBreakoutWidget.tsx
+  - docs/设计/design-spec.md
+
+📊 功能状态：
+  F-UI 紧凑表 + 列名统一：✅ done（已 commit，可直接触发 acceptance）
+  T-001 补 widget spec：⬜ open（见 PRD-OPEN-ISSUES.md）
+  Sprint 2 CSV 导入导出：⬜ 待用户回答三个问题后启动
+
+[下一个 Session]
+  选项 A：继续做 T-001（说"补齐 widget spec"或"做 T-001"）
+  选项 B：启动 Sprint 2 CSV（先回答上面三个问题）
+  选项 C：验收本次 F-UI 变更（说"验收"）
