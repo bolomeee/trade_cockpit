@@ -1725,8 +1725,9 @@
       "description": "延伸 D041 on-demand 语义：`/api/stocks/:ticker/fundamentals` 不再要求 ticker 在 watchlist，直接打 FMP get_ratios_ttm + get_key_metrics_ttm；`/api/stocks/:ticker/pullbacks` 对非 watchlist / inactive ticker 返回空 list（而非 404），与 chart fallback 语义一致。Scanner 场景下用户点任意 ticker 切换 Fundamentals / Pullbacks Tab 不再报 404。",
       "user_story": "作为投资者，我在 scanner 里点击一个不在 watchlist 的 ticker 时，除了看图，还想切到 Fundamentals Tab 看估值 —— 而不是被 404 挡住，逼我先把它加进 watchlist。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-22",
       "dependencies": [
         "F105-b"
       ],
