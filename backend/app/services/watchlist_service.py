@@ -163,6 +163,31 @@ class WatchlistService:
             )
         return items
 
+    def bulk_add_stocks(self, tickers: list[str]) -> dict[str, Any]:
+        seen: set[str] = set()
+        added: list[dict[str, Any]] = []
+        skipped_duplicate: list[str] = []
+        not_found: list[str] = []
+
+        for raw in tickers:
+            ticker = raw.strip().upper()
+            if not ticker or ticker in seen:
+                continue
+            seen.add(ticker)
+
+            try:
+                stock = self.add_stock(ticker)
+                added.append(self.build_created_payload(stock))
+            except APIError as exc:
+                if exc.code == "DUPLICATE":
+                    skipped_duplicate.append(ticker)
+                elif exc.code == "NOT_FOUND":
+                    not_found.append(ticker)
+                else:
+                    raise
+
+        return {"added": added, "skipped_duplicate": skipped_duplicate, "not_found": not_found}
+
     def build_created_payload(self, stock: Stock) -> dict[str, Any]:
         bar_count = self.repo.count_bars(stock.id)
         return {

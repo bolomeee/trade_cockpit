@@ -1,4 +1,4 @@
-"""Integration tests for F001-a Watchlist + Stock Search API (T1–T17)."""
+"""Integration tests for F001-a Watchlist + Stock Search API (T1–T17) and F110-a bulk add (TB1–TB9)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -232,5 +232,109 @@ def test_t16_search_limit_capped_to_20(client: TestClient, fake_fmp) -> None:
 def test_t17_search_fmp_raises(client: TestClient, fake_fmp) -> None:
     fake_fmp.search_exc = RuntimeError("boom")
     r = client.get("/api/stocks/search", params={"q": "AA"})
+    assert r.status_code == 502
+    assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"
+
+
+# =============================================================================
+# F110-a: POST /api/watchlist/bulk  (TB1–TB9)
+# =============================================================================
+
+# --- TB1 ---------------------------------------------------------------------
+
+def test_tb1_bulk_add_all_new(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL"), _fmp_hit("MSFT"), _fmp_hit("GOOGL")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "MSFT", "GOOGL"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 3
+    assert data["skippedDuplicate"] == []
+    assert data["notFound"] == []
+    assert {s["ticker"] for s in data["added"]} == {"AAPL", "MSFT", "GOOGL"}
+
+
+# --- TB2 ---------------------------------------------------------------------
+
+def test_tb2_bulk_one_duplicate(client: TestClient, fake_fmp, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    fake_fmp.search_results = [_fmp_hit("MSFT"), _fmp_hit("GOOGL")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "MSFT", "GOOGL"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 2
+    assert data["skippedDuplicate"] == ["AAPL"]
+    assert data["notFound"] == []
+
+
+# --- TB3 ---------------------------------------------------------------------
+
+def test_tb3_bulk_one_not_found(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "FAKE"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 1
+    assert data["notFound"] == ["FAKE"]
+
+
+# --- TB4 ---------------------------------------------------------------------
+
+def test_tb4_bulk_mixed_all_buckets(client: TestClient, fake_fmp, db_session: Session) -> None:
+    _mk_stock(db_session, "MSFT", is_active=True)
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "MSFT", "FAKE"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 1
+    assert data["added"][0]["ticker"] == "AAPL"
+    assert data["skippedDuplicate"] == ["MSFT"]
+    assert data["notFound"] == ["FAKE"]
+
+
+# --- TB5 ---------------------------------------------------------------------
+
+def test_tb5_bulk_case_insensitive(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL"), _fmp_hit("MSFT")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["aapl", "msft"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 2
+    tickers = {s["ticker"] for s in data["added"]}
+    assert tickers == {"AAPL", "MSFT"}
+
+
+# --- TB6 ---------------------------------------------------------------------
+
+def test_tb6_bulk_deduplicates_within_request(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_results = [_fmp_hit("AAPL")]
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "aapl", "AAPL"]})
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert len(data["added"]) == 1
+    assert db_session.query(__import__("app.models", fromlist=["Stock"]).Stock).filter_by(ticker="AAPL").count() == 1
+
+
+# --- TB7 ---------------------------------------------------------------------
+
+def test_tb7_bulk_empty_array_rejected(client: TestClient) -> None:
+    r = client.post("/api/watchlist/bulk", json={"tickers": []})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- TB8 ---------------------------------------------------------------------
+
+def test_tb8_bulk_over_200_rejected(client: TestClient) -> None:
+    tickers = [f"T{i:04d}" for i in range(201)]
+    r = client.post("/api/watchlist/bulk", json={"tickers": tickers})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- TB9 ---------------------------------------------------------------------
+
+def test_tb9_bulk_fmp_error_aborts_batch(client: TestClient, fake_fmp, db_session: Session) -> None:
+    fake_fmp.search_exc = RuntimeError("network failure")
+    r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "MSFT"]})
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"

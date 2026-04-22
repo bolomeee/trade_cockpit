@@ -1155,3 +1155,21 @@ last_modified_by: feature-dev 反向补契约 (D046 widget 硬编码规范 + D04
 - API-CONTRACT.md /fundamentals 字段表 + 响应示例已追加
 - 前端 `Fundamentals` 类型 + FundamentalsCard 增 'Float' 行（右列末位）
 - F108 放开 watchlist 限制后，可在 b3 基础上加 `_resolve_shares_float_for_fallback`，不影响本次决策
+
+
+## D-F110a-1：bulk 添加采用"快速失败"策略（F110-a）
+
+**日期**：2026-04-22
+**触发**：`POST /api/watchlist/bulk` 遇到 FMP 网络异常时的处理策略
+**决策者**：Sprint Contract（用户确认）
+
+**选择**：单个 ticker FMP 网络失败（`code != NOT_FOUND` 的 `EXTERNAL_API_ERROR`）→ 中止整个 batch，返回 502；不容错继续。
+
+**理由**：
+1. 避免半成功状态（已成功写入 N 个，第 N+1 个网络失败，后续 M 个又成功）导致前端无法准确反馈用户
+2. 网络失败通常是暂时性的，整体重试比部分重试逻辑更简单，用户体验一致
+3. DUPLICATE / NOT_FOUND 属于业务层分类，继续处理是正确的；网络失败属于基础设施层，中止是正确的
+
+**影响**：
+- `bulk_add_stocks` 仅捕获 `DUPLICATE` 和 `NOT_FOUND`，其他 `APIError` 冒泡至 router → 502
+- 前端（F110-b）应在收到 502 时提示"导入失败，请重试"，而非展示部分成功列表

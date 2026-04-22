@@ -72,6 +72,19 @@ class DeleteStockResponse(CamelModel):
     removed: bool
 
 
+BULK_ADD_MAX = 200
+
+
+class BulkAddRequest(CamelModel):
+    tickers: list[str] = Field(..., min_length=1, max_length=BULK_ADD_MAX)
+
+
+class BulkAddResult(CamelModel):
+    added: list[WatchlistCreatedItem]
+    skipped_duplicate: list[str]
+    not_found: list[str]
+
+
 # --- Stock Search ------------------------------------------------------------
 
 

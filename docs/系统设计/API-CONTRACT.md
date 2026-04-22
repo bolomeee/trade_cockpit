@@ -151,6 +151,58 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 
 ---
 
+### POST /api/watchlist/bulk
+> Feature：F110-a Watchlist 批量添加接口
+
+**用途**：批量添加股票到 watchlist，单次请求上限 200 个 ticker
+**认证**：不需要
+
+**请求体**：
+```json
+{
+  "tickers": ["AAPL", "MSFT", "GOOGL"]
+}
+```
+
+**成功响应（200）**：
+```json
+{
+  "data": {
+    "added": [
+      {
+        "id": 1,
+        "ticker": "AAPL",
+        "name": "Apple Inc.",
+        "exchange": "NASDAQ",
+        "addedAt": "2026-04-22T08:00:00Z",
+        "dataStatus": "loading"
+      }
+    ],
+    "skippedDuplicate": ["MSFT"],
+    "notFound": ["FAKE"]
+  },
+  "message": "success"
+}
+```
+
+**说明**：
+- `tickers`：1–200 个股票代码，大小写不敏感（自动转大写），请求内重复的 ticker 自动去重
+- `added`：成功新增的股票列表（同 `POST /api/watchlist` 的单条响应格式）
+- `skippedDuplicate`：已在 watchlist 中的 ticker（大写），跳过写入
+- `notFound`：FMP 查不到的 ticker（大写），跳过写入
+- 不保证原子性：单个 ticker 成功写入后，后续 ticker 的网络失败会中止整个 batch（返回 502）
+- 每个新增 ticker 自动触发 250 天历史数据 backfill（同单条接口）
+
+**错误响应**：
+
+| 场景 | 错误码 | HTTP |
+|------|--------|------|
+| `tickers` 为空数组 / 缺失 | VALIDATION_ERROR | 422 |
+| `tickers` 超过 200 个 | VALIDATION_ERROR | 422 |
+| FMP 网络失败（非 NOT_FOUND） | EXTERNAL_API_ERROR | 502 |
+
+---
+
 ## Stock Search（/api/stocks）
 
 ### GET /api/stocks/search

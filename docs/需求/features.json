@@ -1397,9 +1397,21 @@
       "status": "done",
       "phase": "done",
       "subtasks": {
-        "F106-a": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-a-contract.md", "scope": "后端扫描核心（scanner_params 新 + service 4 detector + model + repo + alembic 003）" },
-        "F106-b": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-b-contract.md", "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）" },
-        "F106-c": { "phase": "done", "contract": "docs/开发/sprint-contracts/F106-c-contract.md", "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）" }
+        "F106-a": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F106-a-contract.md",
+          "scope": "后端扫描核心（scanner_params 新 + service 4 detector + model + repo + alembic 003）"
+        },
+        "F106-b": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F106-b-contract.md",
+          "scope": "后端 API（router ?type= + schemas + fmp_client SMA 窗口 + universe screener）"
+        },
+        "F106-c": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F106-c-contract.md",
+          "scope": "前端 widget（shadcn Tabs + types + api + MarketBreakoutWidget 重构）"
+        }
       },
       "dependencies": [
         "F105"
@@ -1472,7 +1484,9 @@
       "priority": "P1",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F102"],
+      "dependencies": [
+        "F102"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/components/features/stock-detail/PriceChart.tsx",
@@ -1480,7 +1494,9 @@
         "docs/设计/design-spec.md"
       ],
       "scope": {
-        "pages": ["Workbench / ChartWidget"],
+        "pages": [
+          "Workbench / ChartWidget"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -1499,7 +1515,11 @@
         "design-spec.md 补 ChartWidget 成交量 + 短均线备案",
         "切换 ticker 无 stale series 残影；pnpm typecheck + build 通过"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "反向补契约：代码已在 v1.2.0 发布后手改落地。lightweight-charts 双 priceScale 用法需 Evaluator 阶段用 context7 `/tradingview/lightweight-charts` 验证。",
       "completed_at": "2026-04-22"
@@ -1512,7 +1532,9 @@
       "priority": "P1",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F107"],
+      "dependencies": [
+        "F107"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "backend/app/external/fmp_client.py",
@@ -1523,14 +1545,27 @@
       ],
       "scope": {
         "pages": [],
-        "api_endpoints": ["GET /api/stocks/:ticker/chart"],
-        "db_tables": ["stocks"],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/chart"
+        ],
+        "db_tables": [
+          "stocks"
+        ],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/chart"],
-        "data_model_refs": ["DATA-MODEL.md#Stock"],
-        "decision_refs": ["D049", "D050", "D051", "D052"],
+        "api_refs": [
+          "API-CONTRACT.md#GET /api/stocks/:ticker/chart"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#Stock"
+        ],
+        "decision_refs": [
+          "D049",
+          "D050",
+          "D051",
+          "D052"
+        ],
         "acceptance_type": "functional",
         "sprint_contract": "docs/开发/sprint-contracts/F107-b1-contract.md"
       },
@@ -1553,8 +1588,12 @@
           "test_stock_detail.test_chart_refreshes_shares_float_after_24h",
           "test_stock_detail.test_chart_shares_float_null_when_fmp_empty"
         ],
-        "integration": ["test_schema.test_alembic_upgrade_downgrade_roundtrip"],
-        "e2e": ["docker /api/stocks/AAPL/chart sharesFloat non-null, 二次不打 FMP"]
+        "integration": [
+          "test_schema.test_alembic_upgrade_downgrade_roundtrip"
+        ],
+        "e2e": [
+          "docker /api/stocks/AAPL/chart sharesFloat non-null, 二次不打 FMP"
+        ]
       },
       "iteration_history": [],
       "notes": "Context7 已核验：FMP /stable/profile?symbol=X；shares-float-all 官方字段为 floatShares，profile 端点历史返 floatShares + sharesFloat 两种，实装做双字段兜底。24h TTL 硬编码为常量 _SHARES_FLOAT_TTL（D050）。",
@@ -1568,7 +1607,9 @@
       "priority": "P1",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F107-b1"],
+      "dependencies": [
+        "F107-b1"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/types/stockDetail.ts",
@@ -1577,15 +1618,25 @@
         "frontend/src/lib/format.ts"
       ],
       "scope": {
-        "pages": ["Workbench / ChartWidget"],
-        "api_endpoints": ["GET /api/stocks/:ticker/chart (consume sharesFloat)"],
+        "pages": [
+          "Workbench / ChartWidget"
+        ],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/chart (consume sharesFloat)"
+        ],
         "db_tables": [],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/chart"],
+        "api_refs": [
+          "API-CONTRACT.md#GET /api/stocks/:ticker/chart"
+        ],
         "data_model_refs": [],
-        "decision_refs": ["D049", "D052", "D053"],
+        "decision_refs": [
+          "D049",
+          "D052",
+          "D053"
+        ],
         "acceptance_type": "visual+functional",
         "sprint_contract": null
       },
@@ -1596,7 +1647,11 @@
         "切换 ticker 无 stale 残影",
         "pnpm typecheck + build 通过；docker E2E 与后端 sharesFloat 一致"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "D048 降级：前端单测延至 v1.4；硬门禁 = typecheck + build + preview E2E + 代码审查。交互迭代：图例行 → volume 柱上方浮动气泡 → 底边固定偏移 80px（避免不同柱高导致气泡跳动）。",
       "completed_at": "2026-04-22"
@@ -1609,7 +1664,10 @@
       "priority": "P1",
       "status": "done",
       "phase": "done",
-      "dependencies": ["F107-b1", "F107-b2"],
+      "dependencies": [
+        "F107-b1",
+        "F107-b2"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "backend/app/services/stock_detail_service.py",
@@ -1621,15 +1679,27 @@
         "docs/系统设计/DECISIONS.md"
       ],
       "scope": {
-        "pages": ["Workbench / FundamentalsWidget"],
-        "api_endpoints": ["GET /api/stocks/:ticker/fundamentals (add sharesFloat)"],
+        "pages": [
+          "Workbench / FundamentalsWidget"
+        ],
+        "api_endpoints": [
+          "GET /api/stocks/:ticker/fundamentals (add sharesFloat)"
+        ],
         "db_tables": [],
         "design_figma_link": null
       },
       "contract": {
-        "api_refs": ["API-CONTRACT.md#GET /api/stocks/:ticker/fundamentals"],
-        "data_model_refs": ["DATA-MODEL.md#Stock.shares_float"],
-        "decision_refs": ["D050", "D051", "D054 (待写入：fundamentals 响应携带 sharesFloat)"],
+        "api_refs": [
+          "API-CONTRACT.md#GET /api/stocks/:ticker/fundamentals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#Stock.shares_float"
+        ],
+        "decision_refs": [
+          "D050",
+          "D051",
+          "D054 (待写入：fundamentals 响应携带 sharesFloat)"
+        ],
         "acceptance_type": "visual+functional",
         "sprint_contract": null
       },
@@ -1640,7 +1710,11 @@
         "pnpm typecheck + build 通过；docker E2E /fundamentals 返回 sharesFloat 一致",
         "全量 pytest 回归不降级（相对 b2 完成时的基线）"
       ],
-      "test_cases": {"unit": [], "integration": [], "e2e": []},
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "单位 15.23B / 987.65M（B1 已敲定）；复用 F107-b1 _resolve_shares_float_for_watchlist，非 watchlist → null（D054，F108 再放开）。验收日期 2026-04-22。",
       "completed_at": "2026-04-22"
@@ -1653,7 +1727,9 @@
       "priority": "P1",
       "status": "in_progress",
       "phase": "contract_agreed",
-      "dependencies": ["F105-b"],
+      "dependencies": [
+        "F105-b"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "backend/app/services/stock_detail_service.py",
@@ -1662,7 +1738,9 @@
         "docs/系统设计/DECISIONS.md"
       ],
       "scope": {
-        "pages": ["Workbench / FundamentalsWidget / PullbackWidget（仅 API 行为变，UI 不变）"],
+        "pages": [
+          "Workbench / FundamentalsWidget / PullbackWidget（仅 API 行为变，UI 不变）"
+        ],
         "api_endpoints": [
           "GET /api/stocks/:ticker/fundamentals（404 语义收窄为空 ticker）",
           "GET /api/stocks/:ticker/pullbacks（非 watchlist 返回空，不再 404）"
@@ -1676,7 +1754,10 @@
           "API-CONTRACT.md#GET-/api/stocks/:ticker/pullbacks"
         ],
         "data_model_refs": [],
-        "decision_refs": ["DECISIONS.md#D041", "DECISIONS.md#D047"],
+        "decision_refs": [
+          "DECISIONS.md#D041",
+          "DECISIONS.md#D047"
+        ],
         "acceptance_type": "functional",
         "sprint_contract": "docs/开发/sprint-contracts/F108-contract.md"
       },
@@ -1689,7 +1770,11 @@
         "watchlist active ticker 两接口行为与原版字节级一致",
         "API-CONTRACT.md 的 404 语义已更新；DECISIONS.md 追加 D047"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "反向补契约：用户确认 D041 已覆盖此语义延伸，不需再走 system-design。D047 记录决策推广。",
       "completed_at": null
@@ -1702,7 +1787,11 @@
       "priority": "P2",
       "status": "in_progress",
       "phase": "contract_agreed",
-      "dependencies": ["F100", "F101", "F102"],
+      "dependencies": [
+        "F100",
+        "F101",
+        "F102"
+      ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
         "frontend/src/workbench/WidgetShell.tsx",
@@ -1716,11 +1805,21 @@
         "docs/设计/design-spec.md"
       ],
       "subtasks": {
-        "F109-a": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F109-a-contract.md", "scope": "Widget 内部间距 + title 底色（WidgetShell + 4 widgets）" },
-        "F109-b": { "phase": "contract_agreed", "contract": "docs/开发/sprint-contracts/F109-b-contract.md", "scope": "TopNav 品牌字链接 + ResetLayoutButton 位置 + AddStockCard pill 样式" }
+        "F109-a": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F109-a-contract.md",
+          "scope": "Widget 内部间距 + title 底色（WidgetShell + 4 widgets）"
+        },
+        "F109-b": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F109-b-contract.md",
+          "scope": "TopNav 品牌字链接 + ResetLayoutButton 位置 + AddStockCard pill 样式"
+        }
       },
       "scope": {
-        "pages": ["Workbench / 所有 widget / TopNav / AddStockCard"],
+        "pages": [
+          "Workbench / 所有 widget / TopNav / AddStockCard"
+        ],
         "api_endpoints": [],
         "db_tables": [],
         "design_figma_link": null
@@ -1728,7 +1827,9 @@
       "contract": {
         "api_refs": [],
         "data_model_refs": [],
-        "decision_refs": ["DECISIONS.md#D046"],
+        "decision_refs": [
+          "DECISIONS.md#D046"
+        ],
         "acceptance_type": "visual",
         "sprint_contract": null
       },
@@ -1741,9 +1842,76 @@
         "AddStockCard search input pill 样式（rounded-full、10px、粗体）",
         "pnpm typecheck + build 通过，无回归"
       ],
-      "test_cases": { "unit": [], "integration": [], "e2e": [] },
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
       "iteration_history": [],
       "notes": "反向补契约：代码已在 v1.2.0 发布前后手改落地；本次以 sprint 形式归档，Evaluator 阶段核对 design-spec / DECISIONS / 代码三者一致。",
+      "completed_at": null
+    },
+    {
+      "id": "F110",
+      "name": "Watchlist CSV 导入/导出",
+      "description": "Watchlist 支持 CSV 批量导入（in 图标）和导出（out 图标）。拆分为 F110-a（后端批量添加接口）+ F110-b（前端 CSV UI）。",
+      "user_story": "作为投资者，我希望能一次性把我的选股名单批量导入 watchlist，而不是一个个手动输入。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "dependencies": [
+        "F001"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "subtasks": {
+        "F110-a": {
+          "phase": "needs_review",
+          "contract": "docs/开发/sprint-contracts/F110-a-contract.md",
+          "scope": "后端批量添加接口 POST /api/watchlist/bulk"
+        },
+        "F110-b": {
+          "phase": "design_needed",
+          "contract": null,
+          "scope": "前端 CSV 解析 / 文件选择 / 结果 toast"
+        }
+      },
+      "scope": {
+        "pages": [
+          "Workbench / WatchlistWidget"
+        ],
+        "api_endpoints": [
+          "POST /api/watchlist/bulk (F110-a)",
+          "GET /api/watchlist/export (F110-b, TBD)"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#POST /api/watchlist/bulk"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#Stock"
+        ],
+        "decision_refs": [
+          "DECISIONS.md#D-F110a-1"
+        ],
+        "acceptance_type": "functional",
+        "sprint_contract": "docs/开发/sprint-contracts/F110-a-contract.md"
+      },
+      "acceptance_criteria": [
+        "POST /api/watchlist/bulk 接叞最多 200 个 ticker，返回 added/skippedDuplicate/notFound 三桶",
+        "前端 CSV 导入 UI（F110-b）",
+        "前端 CSV 导出 UI（F110-b）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F110-a 完成后即可开始 F110-b。",
       "completed_at": null
     }
   ]

@@ -50,3 +50,42 @@ F110-b（下下个 Sprint）范围（不在 F110-a）：
 
 📌 session 开场建议：让 Claude 先读 docs/开发/sprint-contracts/F110-a-contract.md
    再执行选项 A；contract 本身包含足够上下文，无需回忆本 session。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-22] Sprint：F110-a Watchlist 批量添加接口（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - POST /api/watchlist/bulk 端点（接受 1-200 个 ticker，返回 added/skippedDuplicate/notFound 三桶）
+  - BulkAddRequest / BulkAddResult schema（含 BULK_ADD_MAX=200 常量）
+  - bulk_add_stocks() service 方法（复用 add_stock，快速失败策略 D-F110a-1）
+  - API-CONTRACT.md bulk endpoint 文档段落
+  - features.json 登记 F110 / F110-a（needs_review）/ F110-b（design_needed）
+  - DECISIONS.md 追加 D-F110a-1（快速失败策略）
+  - 单元/集成测试 TB1–TB9：9/9 通过
+  - 全量回归：273/275 通过（2 个失败为 F108 预先存在，与 F110-a 无关）
+  - Evaluator 自检：全部通过
+  - F110-a phase → needs_review
+
+⚠️ 已知预先存在失败（不阻塞 F110-a）：
+  - test_stock_detail.py::test_detail_endpoints_404_when_ticker_missing（F108 引入）
+  - test_stock_detail.py::test_detail_endpoints_404_when_ticker_inactive（F108 引入）
+
+🔧 系统变更：
+  - 新增：backend/app/schemas/watchlist.py + BulkAddRequest/BulkAddResult
+  - 修改：backend/app/services/watchlist_service.py + bulk_add_stocks()
+  - 修改：backend/app/routers/watchlist.py + POST /bulk 路由
+  - 修改：backend/tests/test_watchlist_api.py + TB1–TB9
+  - 修改：docs/系统设计/API-CONTRACT.md（bulk endpoint 文档）
+  - 修改：docs/需求/features.json（F110 登记）
+  - 修改：docs/系统设计/DECISIONS.md（D-F110a-1）
+
+📊 功能状态：
+  F110-a [后端 bulk 接口]：🔍 needs_review
+  F110-b [前端 CSV UI]：⬜ design_needed
+  F108 [fundamentals/pullbacks 放开]：🔄 contract_agreed（2 个测试待修复）
+
+[下一个 Session]
+  - 验收 F110-a：curl POST /api/watchlist/bulk 手工验证
+  - 继续 F108：修复 /pullbacks 非 watchlist 返回行为 + 修复 2 个测试
+  - 或开始 F110-b：前端 CSV 导入 UI

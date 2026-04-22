@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, status
 from app.dependencies import get_watchlist_service
 from app.schemas.watchlist import (
     AddStockRequest,
+    BulkAddRequest,
+    BulkAddResult,
     DeleteStockResponse,
     ResponseEnvelope,
     WatchlistCreatedItem,
@@ -35,6 +37,19 @@ def add_stock(
     stock = service.add_stock(payload.ticker)
     data = service.build_created_payload(stock)
     return ResponseEnvelope(data=WatchlistCreatedItem.model_validate(data))
+
+
+@router.post(
+    "/bulk",
+    response_model=ResponseEnvelope[BulkAddResult],
+    status_code=status.HTTP_200_OK,
+)
+def bulk_add(
+    payload: BulkAddRequest,
+    service: WatchlistService = Depends(get_watchlist_service),
+) -> ResponseEnvelope[BulkAddResult]:
+    result = service.bulk_add_stocks(payload.tickers)
+    return ResponseEnvelope(data=BulkAddResult.model_validate(result))
 
 
 @router.delete("/{ticker}", response_model=ResponseEnvelope[DeleteStockResponse])
