@@ -18,7 +18,7 @@ interface PriceChartProps {
   data: ChartData
 }
 
-const VOL_TOOLTIP_BOTTOM_OFFSET = 100
+const VOL_TOOLTIP_BOTTOM_OFFSET = 80
 
 function toUtcTimestamp(dateStr: string): UTCTimestamp {
   return (Date.parse(`${dateStr}T00:00:00Z`) / 1000) as UTCTimestamp
