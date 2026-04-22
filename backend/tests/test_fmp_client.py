@@ -328,18 +328,66 @@ def test_429_retries_once_with_backoff_then_succeeds(clock):
 
     assert result == {"symbol": "AAPL"}
     assert len(calls) == 2
-    # one backoff sleep between the two requests
+    # one backoff sleep between the two requests (base delay, attempt 0)
     assert clock.sleeps[-1] == pytest.approx(FmpClient.RETRY_BACKOFF_S, rel=1e-6)
 
 
-def test_429_twice_raises(clock):
+def test_429_exhausts_max_retries_then_raises(clock):
     def handler(req):
         return httpx.Response(429)
 
     client, calls = make_client(handler, clock)
     with pytest.raises(httpx.HTTPStatusError):
         client.get_ratios_ttm("AAPL")
-    assert len(calls) == 2  # original + 1 retry
+    # original + MAX_RETRIES_429 retries
+    assert len(calls) == 1 + FmpClient.MAX_RETRIES_429
+
+
+def test_429_exponential_backoff_waits(clock):
+    def handler(req):
+        return httpx.Response(429)
+
+    client, _ = make_client(handler, clock)
+    with pytest.raises(httpx.HTTPStatusError):
+        client.get_ratios_ttm("AAPL")
+    # Between attempts we should see base, 2*base, 4*base (3 retries)
+    backoffs = clock.sleeps[-FmpClient.MAX_RETRIES_429:]
+    expected = [
+        min(FmpClient.RETRY_BACKOFF_S * (2 ** i), FmpClient.RETRY_BACKOFF_MAX_S)
+        for i in range(FmpClient.MAX_RETRIES_429)
+    ]
+    assert backoffs == pytest.approx(expected, rel=1e-6)
+
+
+def test_429_honors_retry_after_seconds(clock):
+    responses = iter([
+        httpx.Response(429, headers={"Retry-After": "3"}),
+        ok([{"symbol": "AAPL"}]),
+    ])
+
+    def handler(req):
+        return next(responses)
+
+    client, calls = make_client(handler, clock)
+    result = client.get_ratios_ttm("AAPL")
+
+    assert result == {"symbol": "AAPL"}
+    assert len(calls) == 2
+    assert clock.sleeps[-1] == pytest.approx(3.0, rel=1e-6)
+
+
+def test_429_retry_after_capped(clock):
+    responses = iter([
+        httpx.Response(429, headers={"Retry-After": "9999"}),
+        ok([{"symbol": "AAPL"}]),
+    ])
+
+    def handler(req):
+        return next(responses)
+
+    client, _ = make_client(handler, clock)
+    client.get_ratios_ttm("AAPL")
+    assert clock.sleeps[-1] == pytest.approx(FmpClient.RETRY_AFTER_CAP_S, rel=1e-6)
 
 
 def test_5xx_does_not_retry(clock):

@@ -916,6 +916,15 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - Scanner 测试侧：新增 3 条覆盖并发加速（ThreadPool 实际并行）、OK 日志含 duration_s/workers、D040 语义在并发下保留。
 - 可观察性：scan OK 日志含 `duration_s` 字段，便于对比并发前后耗时差异。
 
+**2026-04-22 补丁：429 重试策略强化**
+- 背景：生产日志观察到 scanner 运行中偶发 `TGT scan failed: Client error '429'`。旧策略（sleep 1s 重试 1 次后直接抛错）在 FMP 端瞬时突发 429 时兜底不足，将 ticker 直接计入 failed。
+- 调整：`FmpClient._request` 保留限流主策略（共享 bucket + Semaphore(6)）不变；仅扩展重试：
+  - 最多 `MAX_RETRIES_429 = 3` 次重试（总尝试 ≤ 4）
+  - 指数退避：1s / 2s / 4s，上限 `RETRY_BACKOFF_MAX_S = 8s`
+  - 若响应含 `Retry-After`（秒数或 HTTP-date），优先采用其值，上限 `RETRY_AFTER_CAP_S = 30s`
+- 其他状态码（5xx、4xx）行为不变：立即抛错、不重试。
+- 测试新增：`test_429_exhausts_max_retries_then_raises`、`test_429_exponential_backoff_waits`、`test_429_honors_retry_after_seconds`、`test_429_retry_after_capped`。
+
 ## D045：F106 Multi-Signal Scanner 的单表多 signal_type 数据模型
 
 **日期**：2026-04-21

@@ -10,7 +10,9 @@ Rate limit policy (ARCHITECTURE.md, D044):
 - Concurrency cap: Semaphore(6) — prevents burst-stacking against a single endpoint
 - Both limits are process-shared via a module-level default limiter so that
   scanner / watchlist refresh / user-triggered calls cannot aggregate past 300 rpm
-- On 429: backoff 1s, retry once; further 429 raises HTTPStatusError
+- On 429: exponential backoff (1s → 2s → 4s, cap 8s) with up to MAX_RETRIES_429
+  retries; honors server-supplied `Retry-After` header (seconds or HTTP-date)
+  when present; exhausting retries raises HTTPStatusError
 """
 from __future__ import annotations
 
@@ -146,7 +148,10 @@ class FmpClient:
     RATE_PER_WINDOW: int = _FmpRateLimiter.RATE_PER_WINDOW
     REFILL_INTERVAL_S: float = _FmpRateLimiter.REFILL_INTERVAL_S
     CONCURRENCY_LIMIT: int = _FmpRateLimiter.CONCURRENCY_LIMIT
-    RETRY_BACKOFF_S: float = 1.0
+    RETRY_BACKOFF_S: float = 1.0  # base delay for exponential backoff on 429
+    RETRY_BACKOFF_MAX_S: float = 8.0  # cap per-retry wait
+    MAX_RETRIES_429: int = 3  # total attempts = 1 + MAX_RETRIES_429
+    RETRY_AFTER_CAP_S: float = 30.0  # ignore absurd server Retry-After values
 
     def __init__(
         self,
@@ -185,16 +190,41 @@ class FmpClient:
 
         self._limiter.acquire_concurrency()
         try:
-            self._limiter.acquire_token()
-            resp = self._http.get(path, params=merged)
-            if resp.status_code == 429:
-                self._sleep(self.RETRY_BACKOFF_S)
+            for attempt in range(self.MAX_RETRIES_429 + 1):
                 self._limiter.acquire_token()
                 resp = self._http.get(path, params=merged)
+                if resp.status_code != 429 or attempt == self.MAX_RETRIES_429:
+                    break
+                wait = self._retry_after_seconds(resp) or min(
+                    self.RETRY_BACKOFF_S * (2 ** attempt),
+                    self.RETRY_BACKOFF_MAX_S,
+                )
+                self._sleep(wait)
             resp.raise_for_status()
             return resp.json()
         finally:
             self._limiter.release_concurrency()
+
+    def _retry_after_seconds(self, resp: httpx.Response) -> float | None:
+        """Parse Retry-After (seconds or HTTP-date). Capped to RETRY_AFTER_CAP_S."""
+        raw = resp.headers.get("Retry-After")
+        if not raw:
+            return None
+        try:
+            seconds = float(raw)
+        except ValueError:
+            try:
+                from email.utils import parsedate_to_datetime
+
+                target = parsedate_to_datetime(raw)
+                if target.tzinfo is None:
+                    target = target.replace(tzinfo=timezone.utc)
+                seconds = (target - datetime.now(timezone.utc)).total_seconds()
+            except (TypeError, ValueError):
+                return None
+        if seconds <= 0:
+            return None
+        return min(seconds, self.RETRY_AFTER_CAP_S)
 
     # --- public API -----------------------------------------------------
 

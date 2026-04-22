@@ -1,0 +1,21 @@
+[2026-04-22] FMP 429 重试策略强化
+
+🐛 触发：
+  系统日志 `TGT scan failed: Client error '429 Too Many Requests'`
+  根因：FmpClient._request 旧策略只 sleep 1s 重试 1 次，FMP 端
+        瞬时突发 429 时直接 fail → ticker 计入 failed。
+
+🔧 变更：
+  - backend/app/external/fmp_client.py::FmpClient._request
+    * MAX_RETRIES_429=3，指数退避 1s/2s/4s，上限 8s
+    * 解析 Retry-After（秒数或 HTTP-date），上限 30s
+    * 5xx / 其他 4xx 行为不变（立即抛错）
+  - backend/tests/test_fmp_client.py：新增 4 条 429 相关用例
+  - docs/系统设计/DECISIONS.md：D044 追加 2026-04-22 补丁段
+
+✅ 验证：
+  pytest 全量 288/288 绿（未跑 test_fmp_live_smoke.py）
+
+📊 未改动：
+  - 共享限流器（token bucket + Semaphore(6)）主策略不变
+  - Scanner / 其他 caller 无需改动（自动受益）
