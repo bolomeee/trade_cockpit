@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.database import SessionLocal
 from app.external.fmp_client import FmpClient, default_rate_limiter
-from app.routers import data, journal, logs, market, signals, stocks, watchlist
+from app.routers import data, journal, logs, market, news, signals, stocks, watchlist
 from app.services.refresh_job import shutdown_scheduler, start_scheduler
 from app.services.watchlist_service import APIError
 
@@ -65,3 +65,4 @@ app.include_router(data.router)
 app.include_router(market.router)
 app.include_router(journal.router)
 app.include_router(logs.router)
+app.include_router(news.router)

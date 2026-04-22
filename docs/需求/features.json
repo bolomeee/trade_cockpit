@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench",
   "version": "1.2.0",
-  "last_updated": "2026-04-21",
+  "last_updated": "2026-04-22",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。v1.3 迭代新增 F106 Multi-Signal Scanner（P0：A1 Stage 1→2 Breakout / A2 Slope Flip / B2 MA5 Pullback Bounce）。",
   "completion_rate": "v1.0.0 + v1.1.0 + v1.2.0 全部 done；v1.3 F106 规划中",
   "_pipeline_status": {
@@ -1727,7 +1727,7 @@
       "priority": "P1",
       "status": "done",
       "phase": "done",
-      "completed_at": "2026-04-22",
+      "completed_at": null,
       "dependencies": [
         "F105-b"
       ],
@@ -1777,8 +1777,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "反向补契约：用户确认 D041 已覆盖此语义延伸，不需再走 system-design。D047 记录决策推广。",
-      "completed_at": null
+      "notes": "反向补契约：用户确认 D041 已覆盖此语义延伸，不需再走 system-design。D047 记录决策推广。"
     },
     {
       "id": "F109",
@@ -1788,7 +1787,7 @@
       "priority": "P2",
       "status": "done",
       "phase": "done",
-      "completed_at": "2026-04-22",
+      "completed_at": null,
       "dependencies": [
         "F100",
         "F101",
@@ -1850,8 +1849,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "反向补契约：代码已在 v1.2.0 发布前后手改落地；本次以 sprint 形式归档，Evaluator 阶段核对 design-spec / DECISIONS / 代码三者一致。",
-      "completed_at": null
+      "notes": "反向补契约：代码已在 v1.2.0 发布前后手改落地；本次以 sprint 形式归档，Evaluator 阶段核对 design-spec / DECISIONS / 代码三者一致。"
     },
     {
       "id": "F110",
@@ -1915,6 +1913,64 @@
       "iteration_history": [],
       "notes": "F110-a 完成后即可开始 F110-b。",
       "completed_at": "2026-04-22"
+    },
+    {
+      "id": "F112",
+      "name": "News Widget",
+      "description": "Workbench 新增 News Widget：聚合 FMP /stable/fmp-articles 最新全市场新闻，卡片列表 + 点击打开 ArticleModal 详情（含全文 HTML、来源、作者、相关 tickers）。拆分为 F112-a（后端代理）+ F112-b（导航+页骨架+NewsWidget）+ F112-c（ArticleModal+Ticker 联动）。v1.3 规划。",
+      "user_story": "作为投资者，我希望在工作台上直接看到最新市场新闻，点进去看全文，并且识别出新闻涉及的股票代码，方便跳转到该票详情。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "dependencies": [
+        "F100"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "subtasks": {
+        "F112-a": {
+          "phase": "testing",
+          "contract": "docs/开发/sprint-contracts/F112-a-contract.md",
+          "scope": "后端 GET /api/news/articles 代理 FMP /stable/fmp-articles；字段规范化（publishedAt/symbols）；走 D044 rate limiter。"
+        },
+        "F112-b": {
+          "phase": "design_needed",
+          "contract": null,
+          "scope": "前端导航增加 /news；NewsPage 骨架 + NewsWidget 卡片列表（标题 / 摘要 / 日期 / tickers）"
+        },
+        "F112-c": {
+          "phase": "design_needed",
+          "contract": null,
+          "scope": "ArticleModal 详情组件（全文 HTML sanitize）+ 点击 ticker 联动跳转股票详情"
+        }
+      },
+      "scope": {
+        "pages": [
+          "Workbench / NewsWidget",
+          "NewsPage"
+        ],
+        "api_endpoints": [
+          "GET /api/news/articles"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#GET /api/news/articles"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/news/articles?limit=20 返回最新 20 篇（FMP 默认 date 降序）",
+        "字段已规范化：publishedAt 为 ISO-8601，symbols 为去前缀/去重的数组",
+        "limit 越界（<1 或 >50）返回 422",
+        "FMP 网络失败 → 502 EXTERNAL_API_ERROR",
+        "空数据 → 200 { data: [] }",
+        "回归测试全部通过"
+      ]
     }
   ]
 }

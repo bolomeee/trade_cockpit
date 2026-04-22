@@ -36,6 +36,7 @@ FMP_EP_QUOTE = "/quote"
 FMP_EP_SCREENER = "/company-screener"  # F105 universe (D038)
 FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
 FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
+FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -434,6 +435,18 @@ class FmpClient:
         from_d = today - timedelta(days=_EOD_FALLBACK_WINDOW_DAYS)
         eod_bars = self.get_daily_bars(symbol, from_d, today)
         return {"source": "eod_fallback", "bars": eod_bars}
+
+    def get_fmp_articles(
+        self, page: int = 0, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        """FMP `/stable/fmp-articles` (F112-a news source).
+
+        Returns raw FMP JSON list, sorted by FMP in `date` desc. Field
+        normalization is the service layer's job. Shares D044 rate limiter.
+        """
+        params = {"page": page, "limit": limit}
+        body = self._request(FMP_EP_FMP_ARTICLES, params)
+        return list(body or [])
 
     def get_key_metrics_ttm(self, symbol: str) -> dict[str, Any] | None:
         """TTM key metrics (valuation) for a single symbol. Source for PE/PS/PEG/ROCE/FCF/marketCap (D035)."""

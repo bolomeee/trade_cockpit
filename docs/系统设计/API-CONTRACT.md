@@ -868,3 +868,67 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
   "message": "success"
 }
 ```
+
+---
+
+## News（/api/news）
+
+### GET /api/news/articles
+> Feature：F112-a News Widget 后端（FMP `/stable/fmp-articles` 代理）
+
+**用途**：获取最新一批全市场新闻（按 FMP `date` 降序返回）。FMP 客户端走 D044 rate limiter；本版本不做本地缓存。
+
+**查询参数**：
+
+| 参数 | 类型 | 必填 | 默认 | 约束 | 说明 |
+|------|------|------|------|------|------|
+| limit | integer | ❌ | 20 | 1 ≤ limit ≤ 50 | 返回条数 |
+
+**成功响应（200）**：
+```json
+{
+  "data": [
+    {
+      "title": "Cytokinetics (NASDAQ: CYTK) Executive Sells Shares ...",
+      "publishedAt": "2026-04-21T21:11:13Z",
+      "contentHtml": "<ul><li>An executive ...</li></ul>",
+      "symbols": ["CYTK"],
+      "imageUrl": "https://portal.financialmodelingprep.com/positions/....jpeg",
+      "url": "https://financialmodelingprep.com/market-news/...",
+      "author": "Gordon Thompson",
+      "site": "Financial Modeling Prep"
+    }
+  ],
+  "message": "success"
+}
+```
+
+**字段规范化规则**（FMP 原字段 → 对外字段）：
+
+| FMP 原字段 | 对外字段 | 类型 | 处理 |
+|-----------|---------|------|------|
+| `title` | `title` | string | 原样 |
+| `date` | `publishedAt` | string (ISO-8601) | `"YYYY-MM-DD HH:MM:SS"` → `"YYYY-MM-DDTHH:MM:SSZ"`（假定 UTC）；解析失败保留原字符串 |
+| `content` | `contentHtml` | string | 原样 HTML，前端负责 sanitize |
+| `tickers` | `symbols` | string[] | `"NASDAQ:CYTK, NYSE:CB"` → `["CYTK", "CB"]`；去交易所前缀、去空格、去空、去重保序；缺失/空串 → `[]` |
+| `image` | `imageUrl` | string \| null | 原样 |
+| `link` | `url` | string \| null | 原样 |
+| `author` | `author` | string \| null | 原样 |
+| `site` | `site` | string \| null | 原样 |
+
+**错误响应**：
+
+| 状态码 | code | 触发条件 |
+|-------|------|---------|
+| 422 | VALIDATION_ERROR | `limit` 越界或非整数 |
+| 502 | EXTERNAL_API_ERROR | FMP 网络错误 / 5xx / 429 重试后仍失败 |
+
+示例（502）：
+```json
+{"error": {"code": "EXTERNAL_API_ERROR", "message": "FMP articles upstream failed: ..."}}
+```
+
+**非目标**：
+- 本 Sprint 不做按 ticker 过滤（预留 `/api/news/stock?ticker=X` 命名空间）
+- 不做详情端点（FMP 列表已含全文 `content`）
+- 不做分页（仅暴露 `limit`）
