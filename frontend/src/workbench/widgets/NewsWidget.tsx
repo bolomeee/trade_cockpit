@@ -2,6 +2,14 @@ import { useNewsArticles } from '@/hooks/useNewsArticles'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import type { NewsArticle } from '@/types/news'
 
 const MAX_TICKER_BADGES = 3
@@ -12,8 +20,8 @@ export function NewsWidget() {
   if (isLoading) {
     return (
       <div className="flex h-full flex-col gap-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} style={{ height: 64 }} />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} style={{ height: 32 }} />
         ))}
       </div>
     )
@@ -24,11 +32,21 @@ export function NewsWidget() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <ul className="flex flex-col gap-1">
-        {data.map((article, i) => (
-          <NewsCard key={buildKey(article, i)} article={article} />
-        ))}
-      </ul>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[120px]">Date</TableHead>
+            <TableHead className="w-[140px]">Site</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead className="w-[180px]">Tickers</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((article, i) => (
+            <NewsRow key={buildKey(article, i)} article={article} />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -37,53 +55,39 @@ function buildKey(a: NewsArticle, fallback: number): string {
   return a.url ?? `${a.publishedAt}-${a.title}-${fallback}`
 }
 
-function NewsCard({ article }: { article: NewsArticle }) {
-  const clickable = !!article.url
-
-  const handleClick = () => {
-    if (article.url) {
-      window.open(article.url, '_blank', 'noopener,noreferrer')
-    }
-  }
-
+function NewsRow({ article }: { article: NewsArticle }) {
   const visibleTickers = article.symbols.slice(0, MAX_TICKER_BADGES)
   const hiddenCount = Math.max(0, article.symbols.length - MAX_TICKER_BADGES)
 
   return (
-    <li
-      onClick={clickable ? handleClick : undefined}
-      className={
-        'flex gap-3 rounded-md p-2 ' +
-        (clickable ? 'cursor-pointer hover:bg-muted/50' : 'cursor-default')
-      }
-    >
-      {article.imageUrl && (
-        <img
-          src={article.imageUrl}
-          alt=""
-          loading="lazy"
-          className="h-12 w-12 shrink-0 rounded object-cover"
-          onError={(e) => {
-            ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-          }}
-        />
-      )}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p
-          className="line-clamp-1 text-sm font-medium"
-          style={{ color: 'var(--color-text-primary)' }}
-        >
-          {article.title || 'Untitled'}
-        </p>
-        <p
-          className="text-xs"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          {[article.site, formatRelativeTime(article.publishedAt)]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-        {visibleTickers.length > 0 && (
+    <TableRow className="cursor-default">
+      <TableCell
+        className="text-xs"
+        style={{ color: 'var(--color-text-secondary)' }}
+      >
+        {formatRelativeTime(article.publishedAt)}
+      </TableCell>
+      <TableCell
+        className="text-xs"
+        style={{ color: 'var(--color-text-secondary)' }}
+      >
+        {article.site || '—'}
+      </TableCell>
+      <TableCell
+        className="line-clamp-1 max-w-0 text-sm font-medium"
+        style={{ color: 'var(--color-text-primary)' }}
+      >
+        {article.title || 'Untitled'}
+      </TableCell>
+      <TableCell>
+        {visibleTickers.length === 0 ? (
+          <span
+            className="text-xs"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            —
+          </span>
+        ) : (
           <div className="flex flex-wrap gap-1">
             {visibleTickers.map((t) => (
               <TickerChip key={t} ticker={t} />
@@ -101,8 +105,8 @@ function NewsCard({ article }: { article: NewsArticle }) {
             )}
           </div>
         )}
-      </div>
-    </li>
+      </TableCell>
+    </TableRow>
   )
 }
 

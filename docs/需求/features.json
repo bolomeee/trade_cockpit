@@ -1935,9 +1935,10 @@
           "completed_at": "2026-04-22"
         },
         "F112-b1": {
-          "phase": "contract_agreed",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F112-b1-contract.md",
-          "scope": "TopNav 增 News 入口 + 新路由 /news（react-grid-layout 容器）+ NewsTable widget（Date/Site/Title/Tickers 列）+ 独立布局持久化；Workbench 首页移除 NewsWidget。取代老 F112-b。"
+          "scope": "TopNav 增 News 入口 + 新路由 /news（react-grid-layout 容器）+ NewsTable widget（Date/Site/Title/Tickers 列）+ 独立布局持久化；Workbench 首页移除 NewsWidget。取代老 F112-b。",
+          "completed_at": "2026-04-23"
         },
         "F112-b2": {
           "phase": "contract_agreed",

@@ -6,6 +6,7 @@ import { MarketOverviewBar } from '@/components/features/market-overview/MarketO
 const Workbench = lazy(() => import('@/workbench/Workbench'))
 const Journal = lazy(() => import('@/pages/Journal'))
 const Logs = lazy(() => import('@/pages/Logs'))
+const News = lazy(() => import('@/pages/News'))
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Workbench />} />
             <Route path="/journal" element={<Journal />} />
+            <Route path="/news" element={<News />} />
             <Route path="/logs" element={<Logs />} />
           </Routes>
         </Suspense>

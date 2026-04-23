@@ -6,6 +6,7 @@ import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
   { to: '/journal', label: 'Journal', end: false },
+  { to: '/news', label: 'News', end: false },
   { to: '/logs', label: 'Logs', end: false },
 ] as const
 

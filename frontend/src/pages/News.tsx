@@ -5,17 +5,17 @@ import ReactGridLayout, {
   type Layout,
 } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
-import { getWorkbenchDefaultLayout, WIDGET_REGISTRY } from './WidgetRegistry'
-import { WidgetShell } from './WidgetShell'
-import { useLayoutStore } from './useLayoutStore'
+import { getNewsDefaultLayout, WIDGET_REGISTRY } from '@/workbench/WidgetRegistry'
+import { WidgetShell } from '@/workbench/WidgetShell'
+import { useNewsLayoutStore } from './useNewsLayoutStore'
 
-export default function Workbench() {
-  const layout = useLayoutStore((s) => s.layout)
-  const setLayout = useLayoutStore((s) => s.setLayout)
+export default function News() {
+  const layout = useNewsLayoutStore((s) => s.layout)
+  const setLayout = useNewsLayoutStore((s) => s.setLayout)
   const { width, containerRef, mounted } = useContainerWidth()
 
   useEffect(() => {
-    if (layout.length === 0) setLayout(getWorkbenchDefaultLayout())
+    if (layout.length === 0) setLayout(getNewsDefaultLayout())
   }, [layout.length, setLayout])
 
   const handleChange = (next: Layout) => {

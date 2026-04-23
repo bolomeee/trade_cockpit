@@ -61,15 +61,23 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     defaultLayout: { x: 0, y: 16, w: 8, h: 8, minW: 5, minH: 5 },
     category: 'scanner',
   },
-  'news.articles': {
-    id: 'news.articles',
-    title: 'Market News',
+  'news.table': {
+    id: 'news.table',
+    title: 'News',
     component: NewsWidget,
-    defaultLayout: { x: 0, y: 24, w: 4, h: 10, minW: 3, minH: 6 },
+    defaultLayout: { x: 0, y: 0, w: 12, h: 14, minW: 6, minH: 6 },
     category: 'news',
   },
 }
 
-export function getDefaultLayout(): LayoutItem[] {
-  return Object.values(WIDGET_REGISTRY).map((m) => ({ i: m.id, ...m.defaultLayout }))
+export function getWorkbenchDefaultLayout(): LayoutItem[] {
+  return Object.values(WIDGET_REGISTRY)
+    .filter((m) => m.category !== 'news')
+    .map((m) => ({ i: m.id, ...m.defaultLayout }))
+}
+
+export function getNewsDefaultLayout(): LayoutItem[] {
+  return Object.values(WIDGET_REGISTRY)
+    .filter((m) => m.category === 'news')
+    .map((m) => ({ i: m.id, ...m.defaultLayout }))
 }

@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react'
-import { getDefaultLayout } from './WidgetRegistry'
+import { getWorkbenchDefaultLayout } from './WidgetRegistry'
 import { useLayoutStore } from './useLayoutStore'
 
 export function ResetLayoutButton() {
@@ -8,7 +8,7 @@ export function ResetLayoutButton() {
   return (
     <button
       type="button"
-      onClick={() => reset(getDefaultLayout())}
+      onClick={() => reset(getWorkbenchDefaultLayout())}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
