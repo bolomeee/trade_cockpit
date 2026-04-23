@@ -614,8 +614,8 @@
       "description": "在首页展示大盘环境数据：标普500、纳斯达克指数涨跌、10年期美债利率，帮助用户判断市场整体环境",
       "user_story": "作为美股投资者，我想快速了解大盘环境，这样我能判断当前是否适合操作",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "testing",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F003"
       ],
@@ -669,7 +669,7 @@
       },
       "iteration_history": [],
       "notes": "数据来源均为 Polygon.io Stocks Basic 订阅，已确认覆盖",
-      "completed_at": null
+      "completed_at": "2026-04-21"
     },
     {
       "id": "F007-a",
@@ -1325,8 +1325,8 @@
       "description": "每日盘后扫描全美股（NYSE/NASDAQ/AMEX 可交易股票，含 ADR）市值≥500亿美元的股票池，筛出今日 MA150 穿越候选（昨日收盘<MA150 且今日收盘≥MA150，且今日价≤MA150×1.10，且 MA150 的 20 日线性回归斜率>0），展示为 Workbench 的新 widget（category: scanner, id: scanner.breakouts）。点击 ticker 联动现有 ChartWidget（后端单端点加 on-demand fallback，非 watchlist ticker 临时拉 FMP 不入库）；行内圆形 + 按钮一键加入 watchlist",
       "user_story": "作为美股投资者，我想每天盘后看到大市值股票中当日刚穿越 150 日均线且幅度<10% 的候选，这样我能在 watchlist 之外发现新的买入机会",
       "priority": "P1",
-      "status": "planned",
-      "phase": "ready_to_dev",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F102",
         "F104"
@@ -1386,7 +1386,7 @@
       },
       "iteration_history": [],
       "notes": "【系统设计待决策（S1 Sprint Contract 前必须解决）】(1) FMP screener 端点不在 D034 映射表中，需在 ARCHITECTURE.md 补映射，并通过 context7 验证 /stable/screener 参数形态（marketCapMoreThan / exchange / isActivelyTrading 等）。(2) 扫描数据获取策略：方案 X 用 /stable/technical-indicators/sma?periodLength=150 直出 SMA 值，方案 Y 批量拉 151 天 EOD 自算 MA150+斜率，方案 Z 两者组合。300/min rate limit 下需在 system-design 阶段评估 API 调用量。(3) 扫描调度时间：与现有 EOD refresh (REFRESH_CRON_HOUR=6) 的先后关系、是否独立 cron。(4) market_breakout_scans 表 schema：scan_date / ticker / company_name / close_price / ma150_value / pct_above_ma150 / slope_value / market_cap / scanned_at + 索引策略。【架构约束】widget category='scanner'（ARCHITECTURE L253），widget id='scanner.breakouts'，component 无 props 靠 AppStore+hooks。【on-demand chart 决策】用户选方案 A：扩展 /api/stocks/:ticker/chart 服务端加 fallback，前端 ChartWidget 零改动。【预计拆分】F105-a 后端扫描引擎+调度+表+GET breakouts；F105-b 后端 on-demand chart fallback；F105-c 前端 MarketBreakoutWidget+注册（feature-dev 阶段正式拆分）。【localStorage】单用户项目，手动 reset 布局即可，不做自动迁移。【视觉沿用清单（替代 design-spec，依据 D043）】(1) WidgetShell 与 Watchlist/Chart 保持一致（title bar + body padding + border-radius）。(2) 表格样式沿用 WatchlistWidget：列顺序 Ticker → Company → Close → % Above MA150；字体/行高/hover 态直接复用。(3) + 按钮：shadcn Button variant='ghost' size='icon' + lucide-react Plus 图标，rounded-full；三态 idle / loading (Loader2 spin) / added (Check 灰显 disabled)。(4) 列表默认按 pctAboveMa150 升序。(5) 空态文案：scanDate=null → 'Waiting for today’s scan'；items 为空 → 'No breakouts today'。(6) 移动端 overflow-x-auto 横滚，不折叠。(7) defaultLayout：{x:0, y:16, w:8, h:8, minW:5, minH:5}。",
-      "completed_at": null
+      "completed_at": "2026-04-21"
     },
     {
       "id": "F106",
@@ -1807,14 +1807,16 @@
       ],
       "subtasks": {
         "F109-a": {
-          "phase": "contract_agreed",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F109-a-contract.md",
-          "scope": "Widget 内部间距 + title 底色（WidgetShell + 4 widgets）"
+          "scope": "Widget 内部间距 + title 底色（WidgetShell + 4 widgets）",
+          "completed_at": "2026-04-22"
         },
         "F109-b": {
-          "phase": "contract_agreed",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F109-b-contract.md",
-          "scope": "TopNav 品牌字链接 + ResetLayoutButton 位置 + AddStockCard pill 样式"
+          "scope": "TopNav 品牌字链接 + ResetLayoutButton 位置 + AddStockCard pill 样式",
+          "completed_at": "2026-04-22"
         }
       },
       "scope": {
@@ -1920,8 +1922,9 @@
       "description": "Workbench 新增 News Widget：聚合 FMP /stable/fmp-articles 最新全市场新闻，卡片列表 + 点击打开 ArticleModal 详情（含全文 HTML、来源、作者、相关 tickers）。拆分为 F112-a（后端代理）+ F112-b（导航+页骨架+NewsWidget）+ F112-c（ArticleModal+Ticker 联动）。v1.3 规划。",
       "user_story": "作为投资者，我希望在工作台上直接看到最新市场新闻，点进去看全文，并且识别出新闻涉及的股票代码，方便跳转到该票详情。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-23",
       "dependencies": [
         "F100"
       ],
