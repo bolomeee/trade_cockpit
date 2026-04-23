@@ -1276,3 +1276,18 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - 无新依赖
 - 4 文件（原计划 5 文件 + 1 依赖）
 - 仅 `['news', 'articles']` query 被持久化，其余 query 行为不变
+
+
+## D059：Universe refresh 硬过滤 5-letter-X 共同基金代码
+
+**日期**：2026-04-23
+**触发**：`MarketBreakoutWidget` 再次出现 OAKIX / VPMAX / ABALX / CAIBX 等共同基金代码（上次 153dcda 已加 `isFund=false` 并验收通过）。
+
+**根因**：FMP `company-screener` 的 `isFund=false` 过滤不稳定——部分开放式共同基金（5 字母、以 X 结尾）仍会随 `exchange=NASDAQ` 的响应返回。依赖 FMP 的单一过滤位不够。
+
+**决策**：在 `universe_refresh_service._parse_screener_row` 增加一层 ticker 形态过滤：`^[A-Z]{4}X$`（即 5 字母以 X 结尾）一律 skip。SEC/FINRA 约定开放式共同基金代码都符合该形态；普通股 / ETF 基本不命中（ETF 为 2–4 字母，单 X 结尾如 XOM 仅 3 字母）。FMP 端 `isFund=false` 保留，作为首道过滤；本规则为 defense-in-depth。
+
+**影响**：
+- `backend/app/services/universe_refresh_service.py`：新增正则 + 过滤分支
+- `backend/tests/test_universe_refresh_service.py`：新增 `test_refresh_skips_mutual_fund_tickers`
+- 既有污染的 `market_scan_universe` 行：下一次月度 refresh 不再续期 `last_seen_at`，`MarketScannerService.list_active(since=latest)` 自动将其排除；breakout 表每次扫描 `replace_scan` 覆盖写，下次扫描即清空。

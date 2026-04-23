@@ -7,10 +7,20 @@ exist with the last successful `last_seen_at`).
 """
 from __future__ import annotations
 
+import re
 import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
+
+# SEC/FINRA convention: US open-end mutual funds use a 5-letter ticker ending
+# in "X" (e.g. OAKIX, VPMAX, ABALX). FMP's screener `isFund=false` filter does
+# not reliably exclude all of them — some slip through and pollute the
+# breakout scan universe. This regex is a defensive ticker-shape filter
+# layered on top of the FMP filter. Common stocks and ETFs do not match this
+# pattern (ETFs are 2–4 letters; single-X-suffix equities like "XOM" are 3
+# letters). See D052.
+_MUTUAL_FUND_TICKER_RE = re.compile(r"^[A-Z]{4}X$")
 
 from sqlalchemy.orm import Session
 
@@ -88,6 +98,8 @@ def _parse_screener_row(item: Any) -> UniverseUpsertRow | None:
         return None
     symbol = item.get("symbol")
     if not isinstance(symbol, str) or not symbol:
+        return None
+    if _MUTUAL_FUND_TICKER_RE.match(symbol):
         return None
     market_cap_raw = item.get("marketCap")
     try:

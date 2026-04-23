@@ -61,6 +61,29 @@ def test_refresh_skips_invalid_rows(db_session, fake_fmp):
     assert count == 1
 
 
+def test_refresh_skips_mutual_fund_tickers(db_session, fake_fmp):
+    """D052: 5-letter tickers ending in X are mutual funds — skip even if FMP leaks them."""
+    fake_fmp.screener_universe_result = [
+        _screener_row("AAPL", "Apple Inc.", 3_000_000_000_000),
+        _screener_row("OAKIX", "Oakmark International Fund", 50_000_000_000),
+        _screener_row("VPMAX", "Vanguard PRIMECAP Admiral", 80_000_000_000),
+        _screener_row("ABALX", "American Funds Balanced A", 200_000_000_000),
+        _screener_row("BAC", "Bank of America", 300_000_000_000),  # 3 letters — keep
+    ]
+
+    result = UniverseRefreshService(db_session, fake_fmp).refresh()
+
+    assert result.status == "ok"
+    assert result.upserted == 2
+    assert result.skipped == 3
+
+    tickers = {
+        r.ticker
+        for r in db_session.execute(select(MarketScanUniverse)).scalars().all()
+    }
+    assert tickers == {"AAPL", "BAC"}
+
+
 def test_refresh_fmp_failure_logs_error(db_session, fake_fmp):
     fake_fmp.screener_universe_exc = RuntimeError("fmp down")
 
