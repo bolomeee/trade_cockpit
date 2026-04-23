@@ -1224,3 +1224,22 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - `stock_detail_service._chart_from_fmp_fallback`：先查缓存
 - `stock_detail_service.get_fundamentals`：先查缓存
 - 用户体验：同日第二次点击同一 ticker 响应速度由 ~500ms（FMP RTT）降至 ~5ms（SQLite read）
+
+
+## D056：F112-b2 引入 DOMPurify 做新闻正文 HTML sanitize
+
+**日期**：2026-04-23
+**触发**：F112-b2 的 ArticleModal 需要渲染 FMP `/stable/fmp-articles` 返回的 `content` 字段（任意 HTML），直接用 `dangerouslySetInnerHTML` 存在 XSS 风险（`<script>`、`onerror` inline、`<iframe>` 等）。
+
+**决策**：引入 `dompurify@3.4.x`（TypeScript 类型自带，无需 `@types/dompurify`），在 ArticleModal 渲染前对 `article.contentHtml` 调用 `DOMPurify.sanitize`，配置 `FORBID_TAGS: ['style','script','iframe','object','embed']` + `FORBID_ATTR: ['onerror','onload','onclick']`。
+
+**为何不自己写白名单**：安全关键路径，DOMPurify 是 cure53 维护的主流方案，已处理各种 HTML 解析边缘 case（mXSS、SVG/MathML 注入、属性混淆等）；自写黑白名单几乎必然漏 payload。
+
+**为何 Forbid 而非 Allow**：FMP 新闻正文格式多样（p/a/img/ul/li/h1-6/blockquote/table 等），写死 `ALLOWED_TAGS` 会丢排版；黑名单 + DOMPurify 默认 profile 足以覆盖 XSS 向量。
+
+**为何不用 isomorphic-dompurify**：前端 SPA，无 SSR 需求；原生 dompurify 足够。
+
+**影响**：
+- 新依赖：`frontend/package.json` + `dompurify@3.4.1`
+- `frontend/src/components/common/ArticleModal.tsx`：调用 `DOMPurify.sanitize`
+- 包体积 +~50KB gzipped（可接受）

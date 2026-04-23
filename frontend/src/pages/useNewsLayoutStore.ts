@@ -16,8 +16,8 @@ export const useNewsLayoutStore = create<NewsLayoutStore>()(
       reset: (defaultLayout) => set({ layout: defaultLayout }),
     }),
     {
-      name: 'ma150.news.layouts.v1',
-      version: 1,
+      name: 'ma150.news.layouts.v2',
+      version: 2,
     },
   ),
 )

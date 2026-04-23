@@ -65,7 +65,14 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     id: 'news.table',
     title: 'News',
     component: NewsWidget,
-    defaultLayout: { x: 0, y: 0, w: 12, h: 14, minW: 6, minH: 6 },
+    defaultLayout: { x: 0, y: 0, w: 8, h: 14, minW: 6, minH: 6 },
+    category: 'news',
+  },
+  'news.chart': {
+    id: 'news.chart',
+    title: 'Price Chart',
+    component: ChartWidget,
+    defaultLayout: { x: 8, y: 0, w: 4, h: 14, minW: 3, minH: 6 },
     category: 'news',
   },
 }

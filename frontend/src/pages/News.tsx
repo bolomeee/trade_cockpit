@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -7,12 +7,18 @@ import ReactGridLayout, {
 import 'react-grid-layout/css/styles.css'
 import { getNewsDefaultLayout, WIDGET_REGISTRY } from '@/workbench/WidgetRegistry'
 import { WidgetShell } from '@/workbench/WidgetShell'
+import { NewsWidget } from '@/workbench/widgets/NewsWidget'
+import { ArticleModal } from '@/components/common/ArticleModal'
+import { useAppStore } from '@/store/useAppStore'
+import type { NewsArticle } from '@/types/news'
 import { useNewsLayoutStore } from './useNewsLayoutStore'
 
 export default function News() {
   const layout = useNewsLayoutStore((s) => s.layout)
   const setLayout = useNewsLayoutStore((s) => s.setLayout)
   const { width, containerRef, mounted } = useContainerWidth()
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null)
+  const setSelectedSymbol = useAppStore((s) => s.setSelectedSymbol)
 
   useEffect(() => {
     if (layout.length === 0) setLayout(getNewsDefaultLayout())
@@ -24,6 +30,11 @@ export default function News() {
 
   const handleClose = (id: string) => {
     setLayout(layout.filter((item) => item.i !== id))
+  }
+
+  const handleSelectTicker = (ticker: string) => {
+    setSelectedSymbol(ticker)
+    setSelectedArticle(null)
   }
 
   return (
@@ -41,11 +52,17 @@ export default function News() {
             {layout.map((item) => {
               const manifest = WIDGET_REGISTRY[item.i]
               if (!manifest) return <div key={item.i} />
-              const Widget = manifest.component
               return (
                 <div key={item.i}>
                   <WidgetShell title={manifest.title} onClose={() => handleClose(item.i)}>
-                    <Widget />
+                    {item.i === 'news.table' ? (
+                      <NewsWidget
+                        onOpenArticle={setSelectedArticle}
+                        onSelectTicker={setSelectedSymbol}
+                      />
+                    ) : (
+                      <manifest.component />
+                    )}
                   </WidgetShell>
                 </div>
               )
@@ -53,6 +70,11 @@ export default function News() {
           </ReactGridLayout>
         )}
       </div>
+      <ArticleModal
+        article={selectedArticle}
+        onClose={() => setSelectedArticle(null)}
+        onSelectTicker={handleSelectTicker}
+      />
     </div>
   )
 }

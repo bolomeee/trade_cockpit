@@ -14,7 +14,12 @@ import type { NewsArticle } from '@/types/news'
 
 const MAX_TICKER_BADGES = 3
 
-export function NewsWidget() {
+export type NewsWidgetProps = {
+  onOpenArticle?: (article: NewsArticle) => void
+  onSelectTicker?: (ticker: string) => void
+}
+
+export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = {}) {
   const { data, isLoading, isError, refetch } = useNewsArticles()
 
   if (isLoading) {
@@ -32,18 +37,22 @@ export function NewsWidget() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[120px]">Date</TableHead>
-            <TableHead className="w-[140px]">Site</TableHead>
+            <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Title</TableHead>
             <TableHead className="w-[180px]">Tickers</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((article, i) => (
-            <NewsRow key={buildKey(article, i)} article={article} />
+            <NewsRow
+              key={buildKey(article, i)}
+              article={article}
+              onOpen={onOpenArticle}
+              onSelectTicker={onSelectTicker}
+            />
           ))}
         </TableBody>
       </Table>
@@ -55,12 +64,24 @@ function buildKey(a: NewsArticle, fallback: number): string {
   return a.url ?? `${a.publishedAt}-${a.title}-${fallback}`
 }
 
-function NewsRow({ article }: { article: NewsArticle }) {
+function NewsRow({
+  article,
+  onOpen,
+  onSelectTicker,
+}: {
+  article: NewsArticle
+  onOpen?: (a: NewsArticle) => void
+  onSelectTicker?: (ticker: string) => void
+}) {
   const visibleTickers = article.symbols.slice(0, MAX_TICKER_BADGES)
   const hiddenCount = Math.max(0, article.symbols.length - MAX_TICKER_BADGES)
+  const clickable = !!onOpen
 
   return (
-    <TableRow className="cursor-default">
+    <TableRow
+      onClick={clickable ? () => onOpen?.(article) : undefined}
+      className={clickable ? 'cursor-pointer' : 'cursor-default'}
+    >
       <TableCell
         className="text-xs"
         style={{ color: 'var(--color-text-secondary)' }}
@@ -68,13 +89,7 @@ function NewsRow({ article }: { article: NewsArticle }) {
         {formatRelativeTime(article.publishedAt)}
       </TableCell>
       <TableCell
-        className="text-xs"
-        style={{ color: 'var(--color-text-secondary)' }}
-      >
-        {article.site || '—'}
-      </TableCell>
-      <TableCell
-        className="line-clamp-1 max-w-0 text-sm font-medium"
+        className="truncate text-sm"
         style={{ color: 'var(--color-text-primary)' }}
       >
         {article.title || 'Untitled'}
@@ -90,7 +105,7 @@ function NewsRow({ article }: { article: NewsArticle }) {
         ) : (
           <div className="flex flex-wrap gap-1">
             {visibleTickers.map((t) => (
-              <TickerChip key={t} ticker={t} />
+              <TickerChip key={t} ticker={t} onSelect={onSelectTicker} />
             ))}
             {hiddenCount > 0 && (
               <span
@@ -110,17 +125,45 @@ function NewsRow({ article }: { article: NewsArticle }) {
   )
 }
 
-function TickerChip({ ticker }: { ticker: string }) {
+function TickerChip({
+  ticker,
+  onSelect,
+}: {
+  ticker: string
+  onSelect?: (t: string) => void
+}) {
+  const clickable = !!onSelect
+  const base =
+    'rounded px-1.5 py-[1px] text-[10px] font-medium'
+  if (!clickable) {
+    return (
+      <span
+        className={base}
+        style={{
+          color: 'var(--color-text-secondary)',
+          background: 'var(--color-surface-muted, rgba(127,127,127,0.12))',
+        }}
+      >
+        {ticker}
+      </span>
+    )
+  }
   return (
-    <span
-      className="rounded px-1.5 py-[1px] text-[10px] font-medium"
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect?.(ticker)
+      }}
+      className={`${base} cursor-pointer hover:bg-muted`}
       style={{
-        color: 'var(--color-text-secondary)',
+        color: 'var(--color-text-primary)',
         background: 'var(--color-surface-muted, rgba(127,127,127,0.12))',
+        border: '1px solid var(--color-border)',
       }}
     >
       {ticker}
-    </span>
+    </button>
   )
 }
 

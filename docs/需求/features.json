@@ -1941,9 +1941,10 @@
           "completed_at": "2026-04-23"
         },
         "F112-b2": {
-          "phase": "contract_agreed",
+          "phase": "done",
           "contract": "docs/开发/sprint-contracts/F112-b2-contract.md",
-          "scope": "ArticleModal（50% 透明遮罩+圆形关闭按钮+DOMPurify sanitize）+ news 页新增 Chart widget（复用首页 ChartWidget + F111-a 当日数据缓存）+ 点击 ticker 关闭 modal 并切换 chart（useAppStore.selectedSymbol 联动）。合并了原 F112-c。"
+          "scope": "ArticleModal（50% 透明遮罩+圆形关闭按钮+DOMPurify sanitize）+ news 页新增 Chart widget（复用首页 ChartWidget + F111-a 当日数据缓存）+ 点击 ticker 关闭 modal 并切换 chart（useAppStore.selectedSymbol 联动）。合并了原 F112-c。NewsWidget 行内 ticker badge 也可直接切 chart（验收反馈补充）。",
+          "completed_at": "2026-04-23"
         }
       },
       "scope": {
