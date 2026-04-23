@@ -4,6 +4,21 @@
 
 ---
 
+## [v1.7.0] - 2026-04-23
+
+### ✨ 新增
+- News 后端缓存：新增 `news_articles_cache` 表，按自然日存储文章，支持增量翻页（FMP 上限5页）（F113-a）
+- News 前端持久化：文章存 localStorage（5日滚动窗口），跨刷新免重拉，旧条目自动修剪（F113-b）
+- News 增量刷新：Refresh 按钮调 `?since=<最新 publishedAt>`，仅拉新文章并合并到列表顶部（F113-b）
+- News 已读状态：点开文章后列表行视觉变淡（opacity-50），跨刷新永久保留（F113-c）
+- News 表格行距和字号对齐 Watchlist（11px / py-[3px]）
+
+### 🛠 改进
+- `GET /api/news/articles` 支持 `since`、`window`、`limit` 参数；响应新增 `meta`（cache_hit / fmp_calls / truncated / fmp_error）
+- FMP 失败但缓存有数据时降级返回缓存 + `meta.fmp_error=true`，不中断用户浏览
+
+---
+
 ## [v1.6.0] - 2026-04-23
 
 ### ✨ 新增

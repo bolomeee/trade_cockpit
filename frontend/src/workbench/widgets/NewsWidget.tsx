@@ -1,4 +1,7 @@
+import { RefreshCw } from 'lucide-react'
 import { useNewsArticles } from '@/hooks/useNewsArticles'
+import { articleKey } from '@/lib/news-persist'
+import { useReadArticlesStore } from '@/store/useReadArticlesStore'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,7 +23,7 @@ export type NewsWidgetProps = {
 }
 
 export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = {}) {
-  const { data, isLoading, isError, refetch } = useNewsArticles()
+  const { data, isLoading, isError, refresh, isRefreshing } = useNewsArticles()
 
   if (isLoading) {
     return (
@@ -32,17 +35,33 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
     )
   }
 
-  if (isError) return <ErrorState onRetry={() => refetch()} />
+  if (isError) return <ErrorState onRetry={refresh} />
   if (!data || data.length === 0) return <EmptyState title="No news yet" />
 
   return (
     <div className="h-full overflow-y-auto">
-      <Table className="table-fixed">
+      <Table className="table-fixed text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Title</TableHead>
-            <TableHead className="w-[180px]">Tickers</TableHead>
+            <TableHead className="w-[180px]">
+              <div className="flex items-center justify-between">
+                <span>Tickers</span>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  disabled={isRefreshing}
+                  title="Refresh news"
+                  className="rounded p-0.5 opacity-60 transition-opacity hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <RefreshCw
+                    size={13}
+                    className={isRefreshing ? 'animate-spin' : ''}
+                  />
+                </button>
+              </div>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -73,6 +92,7 @@ function NewsRow({
   onOpen?: (a: NewsArticle) => void
   onSelectTicker?: (ticker: string) => void
 }) {
+  const isRead = useReadArticlesStore((s) => s.isRead(articleKey(article)))
   const visibleTickers = article.symbols.slice(0, MAX_TICKER_BADGES)
   const hiddenCount = Math.max(0, article.symbols.length - MAX_TICKER_BADGES)
   const clickable = !!onOpen
@@ -80,16 +100,15 @@ function NewsRow({
   return (
     <TableRow
       onClick={clickable ? () => onOpen?.(article) : undefined}
-      className={clickable ? 'cursor-pointer' : 'cursor-default'}
+      className={`${clickable ? 'cursor-pointer' : 'cursor-default'}${isRead ? ' opacity-50' : ''}`}
     >
       <TableCell
-        className="text-xs"
         style={{ color: 'var(--color-text-secondary)' }}
       >
         {formatRelativeTime(article.publishedAt)}
       </TableCell>
       <TableCell
-        className="truncate text-sm"
+        className="truncate"
         style={{ color: 'var(--color-text-primary)' }}
       >
         {article.title || 'Untitled'}

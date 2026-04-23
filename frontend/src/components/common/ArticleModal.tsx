@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import DOMPurify from 'dompurify'
 import { X } from 'lucide-react'
+import { articleKey } from '@/lib/news-persist'
+import { useReadArticlesStore } from '@/store/useReadArticlesStore'
 import type { NewsArticle } from '@/types/news'
 
 type Props = {
@@ -13,6 +15,11 @@ type Props = {
 export function ArticleModal({ article, onClose, onSelectTicker }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null)
   const prevFocusRef = useRef<HTMLElement | null>(null)
+  const markAsRead = useReadArticlesStore((s) => s.markAsRead)
+
+  useEffect(() => {
+    if (article) markAsRead(articleKey(article))
+  }, [article?.url, article?.publishedAt, markAsRead])
 
   useEffect(() => {
     if (!article) return

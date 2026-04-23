@@ -1,8 +1,6 @@
-"""News schemas (F112-a).
+"""News schemas (F112-a / F113-a).
 
-Outward-facing shape of the `/api/news/articles` response items. Raw FMP
-`/stable/fmp-articles` payload is normalized by `NewsService` before reaching
-this model.
+Outward-facing shape of the `/api/news/articles` response.
 """
 from __future__ import annotations
 
@@ -18,3 +16,16 @@ class NewsArticle(CamelModel):
     url: str | None = None
     author: str | None = None
     site: str | None = None
+
+
+class NewsListResponseMeta(CamelModel):
+    cache_hit: bool
+    fmp_calls: int
+    truncated: bool
+    fmp_error: bool = False
+
+
+class NewsListResponse(CamelModel):
+    data: list[NewsArticle]
+    meta: NewsListResponseMeta
+    message: str = "success"

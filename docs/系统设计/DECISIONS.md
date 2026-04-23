@@ -1243,3 +1243,36 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - 新依赖：`frontend/package.json` + `dompurify@3.4.1`
 - `frontend/src/components/common/ArticleModal.tsx`：调用 `DOMPurify.sanitize`
 - 包体积 +~50KB gzipped（可接受）
+
+
+
+## D057：F113-a 新建 `news_articles_cache` 而不复用 `daily_payload_cache`
+
+**日期**：2026-04-23
+**触发**：F113-a 需要缓存 FMP 新闻文章，`daily_payload_cache` 已存在。
+
+**决策**：新建独立表 `news_articles_cache`，不复用 `daily_payload_cache`。
+
+**为何不复用**：`daily_payload_cache` 语义是"单 payload / 覆盖式写"，每行代表 `(ticker, endpoint, as_of_date)` 的一次整体响应 JSON。News 需要**多行增量 upsert**（每篇文章一行，按 `article_key` 去重），且去重逻辑（URL 或 SHA-256 hash）和索引模式（按 `published_at` 排序读取）与现有表完全不同。复用会混淆表语义并破坏现有 F111-a 路径。
+
+**影响**：
+- 新表 `news_articles_cache`（Alembic migration 006）
+- 新文件 `backend/app/repositories/news_cache_repository.py`
+- `backend/app/models/news_article_cache.py`
+
+
+## D058：F113-b 不引入 @tanstack/react-query-persist-client
+
+**日期**：2026-04-23
+**触发**：F113-b 需要持久化 News 文章到 localStorage；features.json 原计划使用 `@tanstack/react-query-persist-client` + `@tanstack/query-sync-storage-persister`。
+
+**决策**：改用手动 localStorage，不引入该库。
+
+**为何不用 PersistQueryClientProvider**：该方案持久化整个 QueryClient 缓存（watchlist、chart、signals 等），不只是 news articles。对其他 query 的持久化既多余又有潜在风险（过期数据被恢复为 initial state）。针对单一 query 做定向持久化用手动 localStorage 更简洁、可控。
+
+**实现**：`src/lib/news-persist.ts` — key `ma150.news.v1.<YYYY-MM-DD>`，`useQuery.initialData` + `staleTime: Infinity`（有今日缓存时），`useMutation` 做增量 refresh。
+
+**影响**：
+- 无新依赖
+- 4 文件（原计划 5 文件 + 1 依赖）
+- 仅 `['news', 'articles']` query 被持久化，其余 query 行为不变

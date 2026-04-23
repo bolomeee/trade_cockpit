@@ -874,15 +874,25 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 ## News（/api/news）
 
 ### GET /api/news/articles
-> Feature：F112-a News Widget 后端（FMP `/stable/fmp-articles` 代理）
+> Feature：F112-a + F113-a News Widget 后端（FMP 代理 + 后端缓存层）
 
-**用途**：获取最新一批全市场新闻（按 FMP `date` 降序返回）。FMP 客户端走 D044 rate limiter；本版本不做本地缓存。
+**用途**：获取全市场新闻。`calendar-1d`（默认）从 `news_articles_cache` 读取当日+昨日文章，缓存不足时补拉 FMP；`since` 模式增量翻页只返回新文章；`window=none` 直打 FMP（F112-a 兼容路径）。
 
 **查询参数**：
 
 | 参数 | 类型 | 必填 | 默认 | 约束 | 说明 |
 |------|------|------|------|------|------|
-| limit | integer | ❌ | 20 | 1 ≤ limit ≤ 50 | 返回条数 |
+| limit | integer | ❌ | 20 | 1 ≤ limit ≤ 200 | 返回条数（上限从 50 提至 200） |
+| since | string (ISO-8601) | ❌ | null | 合法 ISO datetime | 增量模式：只返回 `publishedAt > since` 的文章 |
+| window | string | ❌ | `"calendar-1d"` | `"calendar-1d"` \| `"none"` | 缓存策略：`calendar-1d` = 当日+昨日缓存优先；`none` = 直打 FMP |
+
+**行为矩阵**：
+
+| 场景 | 请求 | 后端行为 |
+|------|------|---------|
+| 首次打开 | `?window=calendar-1d` | 读 `news_articles_cache` where `as_of_date IN (today, yesterday)`；覆盖度不足则 FMP 补齐并写缓存 |
+| 增量刷新 | `?since=<iso>` | 翻 FMP page=0..4（上限 5 页）直到 `date <= since`；新文章 upsert 缓存；仅返回 `publishedAt > since` |
+| 跳过缓存 | `?window=none` | 直打 FMP（F112-a 原行为） |
 
 **成功响应（200）**：
 ```json
@@ -899,9 +909,26 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
       "site": "Financial Modeling Prep"
     }
   ],
+  "meta": {
+    "cacheHit": true,
+    "fmpCalls": 0,
+    "truncated": false,
+    "fmpError": false
+  },
   "message": "success"
 }
 ```
+
+**meta 字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cacheHit` | bool | true = 完全从缓存读，未打 FMP |
+| `fmpCalls` | int | 本次请求打了几次 FMP |
+| `truncated` | bool | `since` 模式触顶 5 页仍未到 since 边界 |
+| `fmpError` | bool | FMP 失败但缓存降级成功（degraded 模式） |
+
+`meta` 为额外字段，F112-a 现有前端调用可安全忽略。
 
 **字段规范化规则**（FMP 原字段 → 对外字段）：
 
@@ -920,15 +947,12 @@ last_modified_by: system-design (F105 v1.2 — market-breakouts + stock chart on
 
 | 状态码 | code | 触发条件 |
 |-------|------|---------|
-| 422 | VALIDATION_ERROR | `limit` 越界或非整数 |
-| 502 | EXTERNAL_API_ERROR | FMP 网络错误 / 5xx / 429 重试后仍失败 |
+| 422 | VALIDATION_ERROR | `limit` 越界 / `since` 非合法 ISO / `window` 非枚举值 |
+| 502 | EXTERNAL_API_ERROR | FMP 失败且缓存为空 |
 
-示例（502）：
-```json
-{"error": {"code": "EXTERNAL_API_ERROR", "message": "FMP articles upstream failed: ..."}}
-```
+降级（200）：FMP 失败 + 缓存有数据 → `meta.fmpError=true`，由前端决定是否提示用户。
 
 **非目标**：
-- 本 Sprint 不做按 ticker 过滤（预留 `/api/news/stock?ticker=X` 命名空间）
+- 不做按 ticker 过滤（预留 `/api/news/stock?ticker=X` 命名空间）
 - 不做详情端点（FMP 列表已含全文 `content`）
-- 不做分页（仅暴露 `limit`）
+- 不做跨日缓存清理（按 `as_of_date` 自然过期）

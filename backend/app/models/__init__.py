@@ -15,6 +15,7 @@ from app.models.journal_entry import JournalEntry  # noqa: E402
 from app.models.market_scan_universe import MarketScanUniverse  # noqa: E402
 from app.models.market_breakout_scan import MarketBreakoutScan  # noqa: E402
 from app.models.daily_payload_cache import DailyPayloadCache  # noqa: E402
+from app.models.news_article_cache import NewsArticleCache  # noqa: E402
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "MarketScanUniverse",
     "MarketBreakoutScan",
     "DailyPayloadCache",
+    "NewsArticleCache",
 ]
