@@ -31,6 +31,8 @@ from app.schemas.news import NewsArticle
 from app.services.news_service import (
     ArticleListResult,
     NewsService,
+    _to_article,
+    extract_exchange_prefixed_tickers,
     normalize_tickers,
     to_iso_datetime,
 )
@@ -121,6 +123,53 @@ def test_to_iso_datetime_invalid_preserved():
 
 def test_to_iso_datetime_empty():
     assert to_iso_datetime("") == ""
+
+
+# ---------------------------------------------------------------------------
+# extract_exchange_prefixed_tickers / _to_article merge
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Axe Compute (NASDAQ: AGPU) surged", ["AGPU"]),
+        ("Toro Corp (NYSE:TORO) announced", ["TORO"]),
+        ("(nasdaq: AGPU)", ["AGPU"]),
+        ("(NASDAQ: agpu)", []),
+        ("Akanda (AKAN) gained", []),
+        ("CEO Tim Cook (CEO) said", []),
+        ("(NASDAQ: AGPU) and (NYSE: TORO) and (NYSE:TORO)", ["AGPU", "TORO"]),
+        ("(NYSEARCA: SPY) and (OTCQB: XYZ) and (AMEX: ABC)", ["SPY", "XYZ", "ABC"]),
+        ("", []),
+        (None, []),
+    ],
+)
+def test_extract_exchange_prefixed_tickers(text, expected):
+    assert extract_exchange_prefixed_tickers(text) == expected
+
+
+def test_to_article_merges_fmp_tickers_with_title_extraction():
+    row = {
+        "title": "Movers: Axe (NASDAQ: AGPU), Toro (NYSE: TORO)",
+        "content": "Details about (NASDAQ: AGPU).",
+        "tickers": "NASDAQ:CYTK",
+        "date": "2026-04-23 10:00:00",
+        "link": "https://example.com/a",
+    }
+    article = _to_article(row)
+    assert article.symbols == ["CYTK", "AGPU", "TORO"]
+
+
+def test_to_article_without_exchange_prefix_keeps_fmp_only():
+    row = {
+        "title": "Top Movers: Akanda (AKAN), Toro (TORO)",
+        "content": "",
+        "tickers": "NASDAQ:AKAN",
+        "date": "2026-04-23 10:00:00",
+    }
+    article = _to_article(row)
+    assert article.symbols == ["AKAN"]
     assert to_iso_datetime(None) == ""
 
 

@@ -13,6 +13,7 @@ When db is None (legacy / test path) all requests fall through to direct FMP.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -60,6 +61,34 @@ def normalize_tickers(raw: Any) -> list[str]:
     return out
 
 
+_EXCHANGE_PREFIXED_RE = re.compile(
+    r"\(\s*"
+    r"(?i:NASDAQ(?:CM)?|NYSE(?:ARCA)?|AMEX|CBOE|BATS|NMS|OTC(?:QB|QX|BB)?)"
+    r"\s*:\s*"
+    r"([A-Z][A-Z0-9.-]{0,5})"
+    r"\s*\)"
+)
+
+
+def extract_exchange_prefixed_tickers(text: Any) -> list[str]:
+    """Extract `(NASDAQ: AGPU)` / `(NYSE: TORO)` patterns from free text.
+
+    Ticker part is case-sensitive uppercase (so `(NASDAQ: agpu)` is rejected
+    as likely not a real ticker reference). Exchange prefix is case-insensitive.
+    Returns dedup list preserving first-seen order.
+    """
+    if not isinstance(text, str) or not text:
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    for match in _EXCHANGE_PREFIXED_RE.finditer(text):
+        sym = match.group(1).strip()
+        if sym and sym not in seen:
+            seen.add(sym)
+            out.append(sym)
+    return out
+
+
 def to_iso_datetime(raw: Any) -> str:
     """`"2026-04-21 21:11:13"` → `"2026-04-21T21:11:13Z"`.
 
@@ -77,11 +106,21 @@ def to_iso_datetime(raw: Any) -> str:
 
 
 def _to_article(row: dict[str, Any]) -> NewsArticle:
+    title = str(row.get("title") or "")
+    content = str(row.get("content") or "")
+    fmp_symbols = normalize_tickers(row.get("tickers"))
+    extra_symbols = extract_exchange_prefixed_tickers(f"{title} {content}")
+    seen: set[str] = set()
+    merged: list[str] = []
+    for sym in (*fmp_symbols, *extra_symbols):
+        if sym not in seen:
+            seen.add(sym)
+            merged.append(sym)
     return NewsArticle(
-        title=str(row.get("title") or ""),
+        title=title,
         published_at=to_iso_datetime(row.get("date")),
-        content_html=str(row.get("content") or ""),
-        symbols=normalize_tickers(row.get("tickers")),
+        content_html=content,
+        symbols=merged,
         image_url=row.get("image") or None,
         url=row.get("link") or None,
         author=row.get("author") or None,

@@ -1,7 +1,14 @@
 import type { NewsArticle } from '@/types/news'
 
-const STORAGE_KEY = 'ma150.news.v1'
+const STORAGE_KEY = 'ma150.news.v2'
+const LEGACY_KEYS = ['ma150.news.v1']
 const RETENTION_DAYS = 5
+
+try {
+  for (const k of LEGACY_KEYS) localStorage.removeItem(k)
+} catch {
+  // localStorage unavailable — ignore
+}
 
 function cutoffIso(): string {
   const d = new Date()
