@@ -1975,6 +1975,57 @@
         "回归测试全部通过"
       ],
       "subtasks_notes": "F112-b 老合约 superseded（commit aa86e7a 的 Workbench NewsWidget 将在 F112-b1 执行期间移除）；F112-c 合并入 F112-b2（ArticleModal + ticker 联动同属同一用户流程）。"
+    },
+    {
+      "id": "F113",
+      "name": "News 缓存与增量刷新",
+      "description": "消除 News 列表每次刷新/切页都直打 FMP 的浪费。后端新增 news_articles_cache 表按自然日维度存储文章；API 支持 since=<iso> 增量模式 + window=calendar-1d 默认窗口。前端用 React Query persistent client 将当日结果持久化到 localStorage，跨刷新/跨 session 免重拉；Refresh 按钮触发增量合并。附带已读状态（localStorage 存 readArticleIds + 列表行视觉区分）。",
+      "user_story": "作为投资者，我希望打开 News 页看到最近一个自然日的新闻，刷新页面不要全量重拉（浪费 FMP 配额也慢），刷新时只增量捞最新的；看过的新闻（标题 + 全文）今天以内不再消耗网络；已读的文章视觉上与未读区分。",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "dependencies": ["F112"],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "subtasks": {
+        "F113-a": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F113-a-contract.md",
+          "scope": "后端：新增 news_articles_cache 表 + /api/news/articles 支持 since/window 参数 + 增量翻页（上限 5 页）+ 缓存降级。6 文件。"
+        },
+        "F113-b": {
+          "phase": "planned",
+          "contract": null,
+          "scope": "前端：React Query persist-client + day-scoped localStorage + Refresh 按钮改走 since=<本地最新 publishedAt> + 合并去重。预计 5 文件 + 1 新依赖（@tanstack/react-query-persist-client + query-sync-storage-persister），记 D058。"
+        },
+        "F113-c": {
+          "phase": "planned",
+          "contract": null,
+          "scope": "已读状态：新 useReadArticlesStore（zustand persist，key=ma150.news.read.v1）+ NewsRow 已读行视觉（opacity 0.6 或灰色）+ ArticleModal 打开时 markAsRead(article_key)。预计 3-4 文件。"
+        }
+      },
+      "scope": {
+        "pages": ["NewsPage", "NewsWidget"],
+        "api_endpoints": ["GET /api/news/articles (扩展)"],
+        "db_tables": ["news_articles_cache"],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": ["API-CONTRACT.md#GET /api/news/articles"],
+        "data_model_refs": ["DATA-MODEL.md#NewsArticleCache"],
+        "decision_refs": ["D057 (news_articles_cache 不复用 daily_payload_cache)", "D058 (F113-b 记录 persist-client 引入)"],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "首次打开 /news：后端命中缓存空 → 打 FMP → 落库 → 返回；第二次同请求 meta.cache_hit=true",
+        "Refresh：since=<本地最新 publishedAt> → 后端翻 FMP 直到命中旧文章或 5 页上限，仅回新文章",
+        "前端刷新浏览器：localStorage 命中 → 立即渲染 0 网络；React Query 不 refetch",
+        "跨自然日：as_of_date 失配 → 前端清 localStorage → 重拉最近 1 自然日",
+        "已读文章：点开 modal 后列表行视觉变淡；跨刷新保持",
+        "FMP 失败但缓存有数据：降级返回缓存 + meta.fmp_error=true",
+        "回归：F112-a 原调用（无 since/window 参数）行为不变"
+      ],
+      "subtasks_notes": "按 a → b → c 顺序执行；a 后端稳定是 b 的前提。b 和 c 完成后走最终验收 + v1.7.0 发版。"
     }
   ]
 }
