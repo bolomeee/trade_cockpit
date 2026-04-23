@@ -108,8 +108,11 @@ WatchlistWidget 顶部的 ticker 搜索框（`AddStockCard`）从 v1.3 起采用
   - 其余列自适应
 - **字段命名**：列头文案以业务术语为准（公司 → `Company`，而非数据字段名 `name`）。跨 widget 同语义的列（公司名、收盘价、距 MA150 百分比）**必须使用同一列头文案**。
 - **数值格式**：货币 `$X.XX`、百分比 `+X.X%`、Vol 比 `X.XX×`，字体使用 `var(--font-family-numeric)` (Helvetica/Arial)，颜色按正负取 `--color-change-positive` / `--color-change-negative`
+- **表头吸顶（sticky header，v1.1.1+）**：所有列表型 widget 的表头在内容超出可视区时必须保持吸顶可见。
+  - 实现：`<Table>` 外层包 `<div className="flex-1 overflow-y-auto">`（或等价的 h-full overflow-y-auto），`<TableHeader>` 加 `sticky top-0 z-10 bg-card`
+  - ⚠️ 陷阱：shadcn `Table` 内部 wrapper 的 `overflow-x-auto` 会被 CSS 规范强制把 `overflow-y` 也计算为 `auto`，从而成为 sticky 的滚动容器并使吸顶失效。已在 `components/ui/table.tsx` 去掉该 class；新增表格型 widget 时如需横向滚动，在外层自行包 `overflow-x-auto`，**不要**改回 Table 内部
 
-> 设计基准：2026-04-22 F-UI 紧凑化 Sprint 确定。早期设计稿中的 Table 默认规格（`text-sm` / `h-10` / 部分列右对齐）在 widget 场景下密度过低，不再适用。
+> 设计基准：2026-04-22 F-UI 紧凑化 Sprint 确定。早期设计稿中的 Table 默认规格（`text-sm` / `h-10` / 部分列右对齐）在 widget 场景下密度过低，不再适用。sticky 表头于 2026-04-23 补入。
 
 ### Widget 内部视觉规格
 

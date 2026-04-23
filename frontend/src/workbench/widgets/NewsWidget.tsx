@@ -41,7 +41,7 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
   return (
     <div className="h-full overflow-y-auto">
       <Table className="table-fixed text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Title</TableHead>
