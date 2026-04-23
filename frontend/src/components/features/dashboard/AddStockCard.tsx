@@ -74,7 +74,7 @@ export function AddStockCard() {
           value={input}
           placeholder="Search ticker or name (e.g. OXY)"
           onChange={(e) => setInput(e.target.value)}
-          className="rounded-full text-[10px] font-bold placeholder:font-bold"
+          className="rounded-full h-[29px] text-[10px] md:text-[10px] font-bold placeholder:font-medium"
         />
       </PopoverAnchor>
       <PopoverContent

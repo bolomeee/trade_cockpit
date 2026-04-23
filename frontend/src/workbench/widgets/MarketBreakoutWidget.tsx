@@ -9,7 +9,6 @@ import { useAppStore } from '@/store/useAppStore'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ErrorState } from '@/components/common/ErrorState'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -108,9 +107,9 @@ function BreakoutPane({
   const showSignalCol = signalTypes.length > 1
 
   return (
-    <div className="h-full overflow-x-auto">
+    <div className="h-full overflow-y-auto">
       <Table className="text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             <TableHead className="w-14">Ticker</TableHead>
             <TableHead>Company</TableHead>
@@ -192,11 +191,9 @@ function BreakoutRow({
         {volumeRatio20 != null ? `${volumeRatio20.toFixed(2)}×` : '—'}
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 rounded-full"
+          className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-50"
           aria-label={added ? `${ticker} 已加入 watchlist` : `添加 ${ticker} 到 watchlist`}
           disabled={isPending || added}
           onClick={() => addMutation.mutate()}
@@ -208,7 +205,7 @@ function BreakoutRow({
           ) : (
             <Plus size={12} />
           )}
-        </Button>
+        </button>
       </TableCell>
     </TableRow>
   )

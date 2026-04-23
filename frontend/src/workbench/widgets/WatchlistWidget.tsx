@@ -116,8 +116,9 @@ export function WatchlistWidget() {
         <EmptyState title="还没有自选股，上方搜索添加一只吧" />
       )}
       {!isLoading && !isError && sorted.length > 0 && (
+        <div className="flex-1 overflow-y-auto">
         <Table className="text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="w-14">Ticker</TableHead>
               <TableHead>Company</TableHead>
@@ -137,6 +138,7 @@ export function WatchlistWidget() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   )
