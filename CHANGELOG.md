@@ -4,6 +4,24 @@
 
 ---
 
+## [v1.6.0] - 2026-04-23
+
+### ✨ 新增
+- News 页：TopNav 增 News 入口，独立 `/news` 路由，react-grid-layout 容器，布局持久化独立于 Workbench（F112-b1）
+- NewsTable widget：Date / Title / Tickers 列，点行开 ArticleModal，点 ticker badge 直接切 Price Chart
+- ArticleModal：50% 透明遮罩 + 圆形关闭按钮 + DOMPurify sanitize 防 XSS + Escape 关闭（F112-b2）
+- News 页复用 ChartWidget、FundamentalsWidget —— ticker 点击通过 `useAppStore.selectedSymbol` 全局联动
+- WidgetRegistry 支持按 category 分派，`getWorkbenchDefaultLayout` / `getNewsDefaultLayout` 独立管理不同页布局
+
+### 🔧 变更
+- Workbench 首页移除 NewsWidget（迁至 /news 页）
+- NewsWidget 由卡片列表重写为 table-fixed 布局
+
+### 📦 依赖
+- 新增 `dompurify@3.4.1`（types 自带）
+
+---
+
 ## [v1.5.1] - 2026-04-22
 
 ### 🐛 修复
