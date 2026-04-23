@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import type { NewsArticle } from '@/types/news'
 
-const MAX_TICKER_BADGES = 3
+const MAX_TICKER_BADGES = 5
 
 export type NewsWidgetProps = {
   onOpenArticle?: (article: NewsArticle) => void
@@ -45,7 +45,7 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Title</TableHead>
-            <TableHead className="w-[180px]">
+            <TableHead className="w-[280px]">
               <div className="flex items-center justify-between">
                 <span>Tickers</span>
                 <button
