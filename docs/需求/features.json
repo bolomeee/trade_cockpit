@@ -2412,13 +2412,20 @@
       "name": "Setup Monitor 前端 Widget",
       "description": "3 共享组件（SetupTypeBadge / SetupQualityBadge / EarningsRiskDot）+ SetupMonitorWidget + API client + CockpitRegistry 注册",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "needs_review",
       "dependencies": [
         "F202-b"
       ],
       "estimated_sessions": 1,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "frontend/src/cockpit/components/SetupTypeBadge.tsx",
+        "frontend/src/cockpit/components/SetupQualityBadge.tsx",
+        "frontend/src/cockpit/components/EarningsRiskDot.tsx",
+        "frontend/src/cockpit/lib/api/setupMonitorApi.ts",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/CockpitRegistry.ts"
+      ],
       "contract": {
         "api_refs": [
           "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
