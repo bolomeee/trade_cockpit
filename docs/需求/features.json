@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-24-feature-dev-F200a",
+  "last_updated": "2026-04-25-F202a-contract",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F201-b",
+    "active_sprint": "F202-a",
     "active_sprint_phase": "design_ready"
   },
   "_iteration_log": [
@@ -2257,8 +2257,25 @@
         "D070：service 内无魔法数字，所有阈值从 cockpit_params 引入"
       ],
       "test_cases": {
-        "unit": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14"],
-        "integration": ["S15"],
+        "unit": [
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10",
+          "S11",
+          "S12",
+          "S13",
+          "S14"
+        ],
+        "integration": [
+          "S15"
+        ],
         "e2e": []
       },
       "iteration_history": [],
@@ -2329,13 +2346,12 @@
       "notes": "依赖 F201-a。market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。Sprint Contract 待 F201-a 验收后协商。"
     },
     {
-      "id": "F202",
-      "name": "Setup Monitor Widget",
-      "description": "watchlist 的 cockpit 专用扩展视图，回答'哪些 watchlist 股票接近可执行'。不改动 Workbench 的 WatchlistWidget；cockpit 侧新建独立 widget + 独立 API。后端计算 setup type（Breakout/Pullback/Reclaim/Earnings Drift/Extended/Broken）+ setup quality（A/B/C）+ distance-to-entry（%）+ reward/risk + RS status + volume status + earnings risk（Safe/Caution/Danger，依赖 F204）。Ready signal 汇总：Trend>=4 & RS>=70 & Quality>=B+ & DistEntry<=3% & R:R>=2 & Earnings!=Danger & Regime!=Risk-Off 则行高亮。",
-      "user_story": "作为慢交易投资者，我的 watchlist 有几十只股票，我需要一眼看出今天哪几只接近触发点（Ready）、哪些在接近中（Near Setup）、哪些已失效（Broken），以及每只股票的结构化交易条件",
+      "id": "F202-a",
+      "name": "Setup Monitor 数据层",
+      "description": "setup_snapshots 表 + SetupSnapshot ORM + SetupSnapshotRepository + cockpit_params §2 CockpitSetupParams + SetupService 计算引擎（纯函数 + compute_and_store_all + get_setup_monitor_data）",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "contract_agreed",
       "dependencies": [
         "F200-a",
         "F200-b",
@@ -2343,20 +2359,40 @@
         "F201-b",
         "F204"
       ],
-      "estimated_sessions": 3,
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/010_f202a_setup_snapshots.py",
+        "backend/app/models/setup_snapshot.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/setup_snapshot_repository.py",
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/setup_service.py",
+        "backend/tests/test_setup_f202a.py"
+      ],
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot"
+        ],
+        "decision_refs": [
+          "D062 setup_snapshots 独立表",
+          "D070 Cockpit 参数管理（§2 CockpitSetupParams）"
+        ],
+        "acceptance_type": "functional"
+      }
+    },
+    {
+      "id": "F202-b",
+      "name": "Setup Monitor 接入层",
+      "description": "config cron 参数 + refresh_job setup tick + Pydantic Schema + FastAPI Router GET /api/cockpit/setup-monitor",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F202-a"
+      ],
+      "estimated_sessions": 1,
       "estimated_files_changed": [],
-      "scope": {
-        "pages": [
-          "Cockpit"
-        ],
-        "api_endpoints": [
-          "GET /api/cockpit/setup-monitor"
-        ],
-        "db_tables": [
-          "setup_snapshots (新表或复用 signals 扩字段，待 system-design 决)"
-        ],
-        "design_figma_link": null
-      },
       "contract": {
         "api_refs": [
           "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
@@ -2365,26 +2401,34 @@
           "DATA-MODEL.md §Entity: SetupSnapshot"
         ],
         "decision_refs": [
-          "D062 setup_snapshots 独立表",
-          "D070 Cockpit 参数管理（setup quality A/B/C 阈值、Ready 信号门限进 cockpit_params §2）"
+          "D062",
+          "D070"
         ],
         "acceptance_type": "functional"
-      },
-      "acceptance_criteria": [
-        "GET /api/cockpit/setup-monitor 返回 watchlist 每只股票的 setup_type / setup_quality (A/B/C) / distance_to_entry_pct / reward_risk / rs_status / volume_status / earnings_risk / suggested_action",
-        "顶部摘要：Ready / Near Setup / Extended / Broken 数量 + watchlist 总数",
-        "Ready signal 条件全满足时行背景高亮（全 7 条 AND 门）",
-        "点击行通过 cockpitStore 联动 Decision Panel（不使用 useAppStore）",
-        "setup quality 阈值（A/B/C）可在后端 config 调整，默认阈值记录在 DECISIONS.md",
-        "earnings 距离 <=3 个交易日的股票 earnings_risk=Danger，<=10 天 Caution，否则 Safe"
+      }
+    },
+    {
+      "id": "F202-c",
+      "name": "Setup Monitor 前端 Widget",
+      "description": "3 共享组件（SetupTypeBadge / SetupQualityBadge / EarningsRiskDot）+ SetupMonitorWidget + API client + CockpitRegistry 注册",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F202-b"
       ],
-      "test_cases": {
-        "unit": [],
-        "integration": [],
-        "e2e": []
-      },
-      "iteration_history": [],
-      "notes": "复用 signals 表数据 + F204 earnings_events 联表。不写独立 scanner（watchlist 规模小，按需计算即可）。"
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D060 cockpit/workbench 隔离"
+        ],
+        "acceptance_type": "visual"
+      }
     },
     {
       "id": "F203",

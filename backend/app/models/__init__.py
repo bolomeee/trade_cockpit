@@ -18,6 +18,7 @@ from app.models.daily_payload_cache import DailyPayloadCache  # noqa: E402
 from app.models.news_article_cache import NewsArticleCache  # noqa: E402
 from app.models.earnings_event import EarningsEvent  # noqa: E402
 from app.models.market_regime_snapshot import MarketRegimeSnapshot  # noqa: E402
+from app.models.setup_snapshot import SetupSnapshot  # noqa: E402
 
 __all__ = [
     "Base",
@@ -34,4 +35,5 @@ __all__ = [
     "NewsArticleCache",
     "EarningsEvent",
     "MarketRegimeSnapshot",
+    "SetupSnapshot",
 ]

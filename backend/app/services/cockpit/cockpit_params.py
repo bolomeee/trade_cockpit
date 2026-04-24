@@ -114,3 +114,97 @@ class CockpitRegimeParams(BaseModel):
 
 SHARED = CockpitSharedParams()
 REGIME = CockpitRegimeParams()
+
+
+class CockpitSetupParams(BaseModel):
+    """§2 SETUP — setup type classification, quality thresholds, Ready signal gates."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # ── MA 周期（trend_score 5 阶梯：close>MA10>MA21>MA50>MA150>MA200）──────
+    MA_PERIODS: list[int] = Field(
+        default=[10, 21, 50, 150, 200],
+        description="5 MA periods for trend_score ladder: close>MA10>MA21>MA50>MA150>MA200",
+    )
+
+    # ── 成交量状态阈值（vs 20 日均量）──────────────────────────────────────
+    VOLUME_MA_PERIOD: int = Field(default=20, description="Rolling period for volume average", ge=5, le=50)
+    VOLUME_HIGH_RATIO: float = Field(default=1.2, description="last_volume/avg > this → HIGH", ge=1.0, le=3.0)
+    VOLUME_LOW_RATIO: float = Field(default=0.8, description="last_volume/avg < this → LOW", ge=0.1, le=1.0)
+
+    # ── Setup 分类阈值 ────────────────────────────────────────────────────
+    EXTENDED_MA50_PCT: float = Field(
+        default=15.0,
+        description="close > MA50*(1 + this/100) → EXTENDED",
+        ge=5.0, le=50.0,
+    )
+    BREAKOUT_ZONE_PCT: float = Field(
+        default=5.0,
+        description="close within this% below 20d-high → BREAKOUT zone",
+        ge=0.5, le=10.0,
+    )
+    PULLBACK_ZONE_ABOVE_MA50_PCT: float = Field(
+        default=3.0,
+        description="close <= MA50*(1+this/100) → still in pullback zone (not extended)",
+        ge=0.5, le=10.0,
+    )
+    RECLAIM_LOOKBACK_BARS: int = Field(
+        default=10,
+        description="Look back N bars to find a close < MA50; if found and current close > MA50 → RECLAIM",
+        ge=2, le=30,
+    )
+    EARNINGS_DRIFT_MAX_DAYS: int = Field(
+        default=7,
+        description="Earnings in past N days + price above MA21 → EARNINGS_DRIFT",
+        ge=1, le=21,
+    )
+
+    # ── Setup quality 阈值 ────────────────────────────────────────────────
+    QUALITY_A_TREND_MIN: int = Field(default=4, description="Min trend_score for quality A", ge=1, le=5)
+    QUALITY_A_RS_MIN: float = Field(default=75.0, description="Min rs_percentile for quality A", ge=1.0, le=100.0)
+    QUALITY_B_TREND_MIN: int = Field(default=3, description="Min trend_score for quality B", ge=1, le=5)
+    QUALITY_B_RS_MIN: float = Field(default=60.0, description="Min rs_percentile for quality B", ge=1.0, le=100.0)
+    QUALITY_C_TREND_MIN: int = Field(default=2, description="Min trend_score for quality C", ge=1, le=5)
+    QUALITY_C_RS_MIN: float = Field(default=45.0, description="Min rs_percentile for quality C", ge=1.0, le=100.0)
+
+    # ── RS percentile 计算 ────────────────────────────────────────────────
+    RS_LOOKBACK_DAYS: int = Field(
+        default=252,
+        description="Days of history used for RS return calculation (stock and SPY)",
+        ge=20, le=500,
+    )
+    RS_SPY_FALLBACK_PCT: float = Field(
+        default=50.0,
+        description="rs_percentile fallback when SPY data unavailable or single-stock watchlist",
+        ge=0.0, le=100.0,
+    )
+
+    # ── Ready signal 7 条 AND 门 ──────────────────────────────────────────
+    READY_TREND_MIN: int = Field(default=4, description="Min trend_score for readySignal", ge=1, le=5)
+    READY_RS_MIN: float = Field(default=70.0, description="Min rs_percentile for readySignal", ge=1.0, le=100.0)
+    READY_QUALITY_MIN: str = Field(
+        default="B",
+        description="Min quality for readySignal: 'B'→{A,B}; 'A'→{A}; 'C'→{A,B,C}",
+    )
+    READY_DIST_MAX_PCT: float = Field(default=3.0, description="Max distanceToEntryPct for readySignal (%)", ge=0.1, le=10.0)
+    READY_REWARD_RISK_MIN: float = Field(default=2.0, description="Min rewardRisk for readySignal", ge=1.0, le=10.0)
+
+    # ── Earnings risk 阈值 ────────────────────────────────────────────────
+    EARNINGS_DANGER_DAYS: int = Field(default=3, description="Days to next earnings ≤ this → DANGER", ge=1, le=14)
+    EARNINGS_CAUTION_DAYS: int = Field(default=10, description="Days to next earnings ≤ this (> DANGER) → CAUTION", ge=2, le=30)
+
+    # ── Entry / Stop 价位计算参数 ─────────────────────────────────────────
+    ENTRY_TICK_PCT: float = Field(default=0.1, description="Tick above entry level (%); entry = level*(1+this/100)", ge=0.01, le=1.0)
+    PIVOT_LOOKBACK_BARS: int = Field(default=20, description="Bars to look back for 20-day pivot high (BREAKOUT detection)", ge=5, le=60)
+    BREAKOUT_STOP_MA50_PCT: float = Field(default=2.0, description="Stop = MA50*(1-this/100) for BREAKOUT setups", ge=0.5, le=10.0)
+    PULLBACK_STOP_MA21_PCT: float = Field(default=3.0, description="Stop = MA21*(1-this/100) for PULLBACK setups", ge=0.5, le=10.0)
+    PULLBACK_FLOOR_MA50_PCT: float = Field(default=3.0, description="Pullback floor = MA50*(1-this/100); close must be above this", ge=0.5, le=10.0)
+    PULLBACK_FALLBACK_SUPPORT_PCT: float = Field(default=10.0, description="When MA150 is None, fallback lower support = MA50*(1-this/100)", ge=1.0, le=20.0)
+    RECLAIM_STOP_MA50_PCT: float = Field(default=2.0, description="Stop = MA50*(1-this/100) for RECLAIM setups", ge=0.5, le=10.0)
+    EARNINGS_DRIFT_STOP_MA21_PCT: float = Field(default=2.0, description="Stop = MA21*(1-this/100) for EARNINGS_DRIFT setups", ge=0.5, le=10.0)
+
+    # ── 数据保留 ──────────────────────────────────────────────────────────
+    SETUP_RETENTION_DAYS: int = Field(default=60, description="Days to retain setup snapshots (D062)", ge=7, le=365)
+
+
+SETUP = CockpitSetupParams()
