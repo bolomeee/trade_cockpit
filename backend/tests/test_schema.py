@@ -22,6 +22,7 @@ EXPECTED_TABLES = {
     "market_breakout_scans",
     "daily_payload_cache",
     "news_articles_cache",
+    "earnings_events",  # F204-a
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {

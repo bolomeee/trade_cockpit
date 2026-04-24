@@ -1,1 +1,326 @@
+=== PROJECT PROGRESS LOG ===
+项目：MA150 Tracker → Workbench → Cockpit
+初始化：2026-04-16 | 本次更新：2026-04-24
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Pipeline 阶段 0（迭代模式）：v1.8/v1.9/v2.0 Cockpit Epic 需求规划完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - 阅读参考稿 slow_trading_system_proposal.md，对照现有 features.json / PRD.md / ARCHITECTURE.md / CHANGELOG.md
+  - 列出冲突（独立页 vs Workbench 哲学、方案引用过时的 Polygon 5/min vs 实际 FMP 300/min、AI 层空白、Position 来源等）
+  - 经 5 轮 Q&A 与用户确认切分：v1.8 P0 / v1.9 P1 / v2.0 P2（AI 层）
+  - context7 查询确认 LiteLLM 契合度（Router + response_format=Pydantic + fallbacks + budget 全覆盖）
+  - 备份 features.json → .features.json.bak
+  - 更新 features.json 元数据（version → 1.8.0-planning, current_iteration → v1.8）
+  - _iteration_log 追加 v1.8 / v1.9 / v2.0 三条 planned 记录
+  - features 数组追加 F200–F211 共 12 条新 feature，phase=design_needed
+  - PRD.md 追加 v1.8/v1.9/v2.0 迭代章节（含架构约束、切分表、下游影响评估）
+  - JSON 语法校验通过（42 个 feature，7 个 iteration）
+
+⚠️ 待用户决策（留给 system-design 阶段）：
+  - market_indices 表扩展 symbol 集合 vs 新建 sector_etfs 表
+  - setup_snapshots 新表 vs 复用 signals 表扩字段
+  - CockpitChart 独立实现（A 方案）已在 F203 notes 锁定，不再讨论
+  - LiteLLM 具体版本 / 初始 model 字符串需在 system-design 阶段 pin
+
+⚠️ 已知 drift（本次不修）：
+  - features.json `_iteration_log` 只记到 v1.3，v1.4–v1.7 未补录（CHANGELOG.md 是权威）
+
+📊 功能状态摘要：
+  - F000–F113 全部 done（v1.0.0 – v1.7.0 已发布）
+  - F200–F211 新建，全部 phase=design_needed / status=planned
+  - _pipeline_status: requirements=done, system_design=not_started
+
+_pipeline_status 更新：requirements(v1.8) → done
+
+[下一步]
+  ⚠️ 用户要求开新 session 继续。
+  触发 system-design skill 扩展系统设计文档：
+    - DATA-MODEL.md 加 6 张新表
+    - API-CONTRACT.md 加 cockpit 命名空间 + AI 入口
+    - ARCHITECTURE.md 加 cockpit/ai 目录、litellm 依赖、新 env、FMP earnings-calendar 映射
+    - DECISIONS.md 加 5–6 条新决策（尤其 LiteLLM 选型 + CockpitChart 不共享代码）
+  system-design 完成后再走 design-bridge → feature-dev（从 F200 开始）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Pipeline 阶段 1：v1.8/v1.9/v2.0 Cockpit Epic 系统设计完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - DATA-MODEL.md 扩展：
+      · MarketIndex 扩至 17 symbol（SPX/NDX/TNX + SPY/QQQ/IWM + 11 sector ETF），retention 5→260 交易日
+      · 新增 7 个实体：MarketRegimeSnapshot / SetupSnapshot / EarningsEvent / UserSettings / Position / PendingOrder / AiMemo
+      · 对应 SQLAlchemy ORM 类全部追加到文件尾部
+      · frontmatter status=confirmed, confirmed_at=2026-04-24
+  - API-CONTRACT.md 扩展：
+      · 新增 cockpit 命名空间概览表（18 endpoint + 1 AI 统一入口）
+      · 18 个 cockpit endpoint 完整 schema（regime / setup-monitor / decision / chart / earnings / pool / positions×4 / pending-orders×4 / user-settings×2 / actions/today）
+      · 1 个 AI 统一入口 POST /api/ai/{task_type} + 4 个新 AI 错误码
+      · /decision/{ticker} 响应加 deterministicHash（F210 护栏锚点）
+      · frontmatter status=confirmed, confirmed_at=2026-04-24
+  - ARCHITECTURE.md 扩展：
+      · 技术栈表追加 litellm >=1.83,<2.0
+      · 依赖规则硬约束：cockpit/ ⟂ workbench/（ESLint no-restricted-imports 强制）
+      · 目录树加 frontend/src/cockpit/ + backend/app/routers/cockpit/ + services/cockpit/ + ai/
+      · env 表加 REGIME_CRON / SETUP_CRON / EARNINGS_CRON / PENDING_ORDER_EXPIRE_CRON + 8 个 AI 相关变量
+      · FMP endpoint 映射加 /stable/earnings-calendar + ETF 日度拉取
+      · 新增 "AI Gateway" 章节（调用链 / tier 映射 / guardrail / dedup cache）
+  - DECISIONS.md 追加 D060–D069 共 10 条新决策：
+      · D060 Cockpit 独立第三页（3 页并列）
+      · D061 market_indices 扩 17 symbol（不新建 sector_etfs）+ regime 阈值/权重
+      · D062 setup_snapshots 独立表（不扩 signals）
+      · D063 CockpitChartWidget 独立 + /api/cockpit/chart 独立 endpoint
+      · D064 LiteLLM + 单一动态 /api/ai/{task_type} + 三 tier
+      · D065 Earnings 仅 cockpit + 每日增量 upsert
+      · D066 user_settings CHECK(id=1) + 仓位公式 (min of 3 risk pct)
+      · D067 positions/pending_orders ticker 不设 FK
+      · D068 F210 确定性护栏 + deterministicHash
+      · D069 ai_memos 双用途（audit + dedup）+ schema_version 失效
+  - features.json：
+      · _pipeline_status.system_design: not_started → done
+      · F200–F211 的 contract.api_refs / data_model_refs / decision_refs 全部填入
+      · _iteration_log 追加 v1.8-system-design 记录
+
+⚠️ 下一步（新 session）：
+  触发 design-bridge 或 figma-mcp skill：
+    · 把 design-spec.md 扩展覆盖 Cockpit 3 栏布局、6 维 regime 表盘、setup 列表、decision panel、position/order 表单、daily action list
+    · 图层命名使用 DATA-MODEL 字段名（如 market_regime_snapshot.score、setup_snapshot.reward_risk）
+  design 完成后 → feature-dev 从 F200 开始开发。
+
+📊 pipeline_status：requirements=done, system_design=done, ui_design=not_started
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Cockpit Epic 设计衔接（design-bridge）完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  Skill：design-bridge（Pipeline 第 2 阶段）
+  覆盖：F200–F211（v1.8 P0 / v1.9 P1 / v2.0 AI Layer）
+  无 Figma — 用 ASCII wireframe + 字段绑定 + 状态描述定义视觉契约。
+
+  - docs/设计/design-spec.md（+520 行，第 627 行起 Cockpit 章节）
+      · 全局结构：3 栏 RGL 网格（左 4 / 中 5 / 右 3 cols）
+      · Cockpit 网格规格 + 默认布局表（9 widgets x/y/w/h/minW/minH）
+      · 9 widget wireframe：MarketRegime / Earnings / PoolBuilder /
+        CockpitChart / SetupMonitor / DecisionPanel / PositionList /
+        PendingOrders / ActionList
+      · UserSettingsDialog（齿轮触发，独立路由限定）
+      · 5 共享子组件：RegimePill / SetupTypeBadge / SetupQualityBadge /
+        EarningsRiskDot / ChartHorizontalLine
+      · 状态描述：normal / empty / loading / error
+      · 响应式断点 + 动效补充
+
+  - docs/设计/component-plan.md（追加 §Cockpit-1 ~ §Cockpit-7）
+      · 页面拆解 / 组件清单 / 边界定义 / 数据获取（react-query 缓存策略）
+      · 9 widget + 4 dialog + CockpitPage / CockpitRegistry / 2 store
+      · 目录结构 src/cockpit/{components,widgets,dialogs,store,lib/api}/
+      · 边界红线（追加 cockpit ⟂ workbench / 不直接调 LiteLLM 等）
+      · v1.8/v1.9/v2.0 渐进式实施清单
+
+  - docs/设计/data-mapping.md（追加 §Cockpit-1 ~ §Cockpit-9 + Settings + AI wrapper）
+      · 25+ 字段绑定细表，camelCase API ↔ design-spec 元素一一对应
+      · Step 7d 一致性验证：data-mapping ↔ DATA-MODEL ✅ PASS
+      · Step 7e 一致性验证：data-mapping ↔ API-CONTRACT ✅ PASS（18 cockpit endpoints + 7 AI task_type 全覆盖）
+      · Step 7f 枚举色彩对齐：tokens.json ↔ DATA-MODEL ✅ PASS
+      · 派生字段（lastClose / rMultiple / nextAction / cacheHit 等）已标注 derived
+
+  - docs/设计/tokens.json + frontend/src/styles/tokens.css（+25 token）
+      · 5 regime / 3 quality / 6 setup-type / 3 earnings-risk /
+        3 action-bg / 5 chart 横线
+      · 全部走 var() 别名复用既有 hex（仅 9 个新 hex：constructive/quality-b/pullback/reclaim/earnings/avwap/3 个 action-bg）
+
+  - docs/系统设计/DECISIONS.md（D060 修订）
+      · 移除"Workbench 的 react-grid-layout 不适合 Cockpit 的固定 3 栏布局"
+      · 追加"布局引擎说明（design-bridge 阶段补充）"段：
+        Cockpit 沿用 RGL 引擎 + 独立 Registry / Store / localStorage key
+        ma150.cockpit.layouts.v1，与 Workbench 完全独立
+      · 用户决策：选 B（用 RGL 好迭代）
+
+  - docs/需求/features.json
+      · _pipeline_status.ui_design: not_started → done
+      · _iteration_log 追加 v1.8-design-bridge 记录
+      · last_updated: 2026-04-24-design-bridge
+
+⚠️ 下一步（新 session）：
+  触发 feature-dev skill 协商 Sprint Contract，从 F200 开始开发。
+  开发前必须查阅 component-plan.md §Cockpit-1 ~ §Cockpit-7 确认组件边界。
+  v1.8 P0 实施范围：F200/F201/F202/F203/F204（5 个），
+  对应 widget：MarketRegime / Earnings / CockpitChart / SetupMonitor / DecisionPanel
+  + 框架（CockpitPage/Registry/2 store）+ 5 共享子组件 + UserSettingsDialog。
+
+📊 pipeline_status：requirements=done, system_design=done, ui_design=done, development=not_started
+
+
+
+================================================================================
+[2026-04-24 Sprint：F200-a Cockpit 前端骨架（Sprint Contract 协商）]
+================================================================================
+
+✅ 完成内容：
+  - Sprint Contract 协商通过：docs/开发/sprint-contracts/F200-a-contract.md
+    · 6 前端文件：pages/Cockpit.tsx, cockpit/{CockpitShell, CockpitRegistry,
+      useCockpitLayoutStore}.ts/tsx, cockpit/widgets/PlaceholderWidget.tsx,
+      store/cockpitStore.ts
+    · App.tsx 2 行按 D010 脚手架豁免（lazy import + Route）
+    · 8 条验收 + Evaluator D060 跨引用审计清单 + 非目标清单
+    · F200-a phase → contract_agreed
+
+  - D070 登记（DECISIONS.md 追加）：Cockpit 参数管理用 Pydantic BaseModel
+    · backend/app/services/cockpit/cockpit_params.py 单文件集中
+    · 分区：§0 SHARED / §1 REGIME / §2 SETUP / §3 DECISION / §4 EARNINGS
+    · Field(description, ge, le) 强制；无 .env/DB/YAML/runtime 热更/管理 UI
+    · cron→.env / user_settings→DB / AI→.env / 前端→FE code 分别承载
+    · 首次创建放在 F201-a（本 F200-a sprint 不涉及）
+    · Precedent: D045 scanner_params.py（纯常量版）
+
+  - F200 拆分为 F200-a + F200-b（因 6 文件上限）
+    · F200-a：6 前端文件 + App.tsx 豁免（本 sprint）
+    · F200-b：TopNav 集成 + backend/cockpit/ 空目录 + ESLint 边界（下一 sprint）
+
+  - features.json 同步：
+    · F200 条目拆为 F200-a(contract_agreed) / F200-b(design_ready)
+    · F201/F202/F203/F204 依赖改为 [F200-a, F200-b]
+    · F201/F202/F203/F204 decision_refs 加入 D070 + 对应分区
+    · v1.8 iteration_log status: planned → in_progress
+    · _pipeline_status 加 active_sprint=F200-a
+    · last_updated: 2026-04-24-feature-dev-F200a
+
+⚠️ 待你决策：无（F200-a contract 已全部敲定）
+
+🔧 系统变更：
+  - 新文件 docs/开发/sprint-contracts/F200-a-contract.md
+  - DECISIONS.md 追加 D070（1 个新 decision）
+  - features.json F200 条目替换 + 4 个 feature 的 decision_refs 扩展
+
+📊 功能状态：
+  - F200-a: contract_agreed（等待 Generator 模式实现）
+  - F200-b: design_ready（F200-a 完成后开）
+  - F201-F204: design_ready（依赖改为 F200-a+F200-b）
+
+⚠️ 下一步（新 session，必须严格遵守）：
+  1. 读 CLAUDE.md + SESSION-HANDOFF.md + F200-a-contract.md + DECISIONS.md(D060/D070)
+  2. 进入 Generator 模式，按契约写 6 文件 + App.tsx 2 行
+  3. 切 Evaluator 自检（含 D060 跨引用审计）
+  4. preview_start 做 E2E（/cockpit 渲染 / localStorage key 隔离 / 三路由互不干扰）
+  5. 报告给用户
+  不做：TopNav（F200-b）/ backend 目录（F200-b）/ cockpit_params.py（F201-a）
+
+📊 pipeline_status：requirements=done, system_design=done, ui_design=done,
+                   development=in_progress, active_sprint=F200-a
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] F200-a Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint：F200-a — Cockpit 前端骨架
+
+✅ Generator：写入 6 文件 + App.tsx 2 行
+  - frontend/src/cockpit/useCockpitLayoutStore.ts（zustand+persist，key: ma150.cockpit.layouts.v1 v1）
+  - frontend/src/store/cockpitStore.ts（zustand 无 persist，selectedTicker）
+  - frontend/src/cockpit/CockpitRegistry.ts（CockpitWidgetManifest + COCKPIT_WIDGET_REGISTRY + getCockpitDefaultLayout）
+  - frontend/src/cockpit/widgets/PlaceholderWidget.tsx（占位 widget，F201 时替换）
+  - frontend/src/cockpit/CockpitShell.tsx（RGL cols=12,rowHeight=40,margin=[12,12] + inline frame）
+  - frontend/src/pages/Cockpit.tsx（lazy wrapper）
+  - frontend/src/App.tsx（+2 行：lazy import + /cockpit Route）
+
+✅ Evaluator 自检全部通过
+  - pnpm build 零 error
+  - D060 跨引用审计：cockpit/ 无任何 workbench/ or useAppStore 引用
+  - localStorage key 精确为 ma150.cockpit.layouts.v1
+  - 无 console.log 遗留
+  - App.tsx 精确 2 行变更
+
+✅ E2E（preview tools）
+  - /cockpit 渲染 RGL 网格 + PlaceholderWidget ✓
+  - 布局持久化（write→reload→persist）✓
+  - 清空 key 后默认布局恢复 ✓
+  - workbench localStorage key 不被 cockpit 操作影响 ✓
+  - 4 路由回归：/ /news /journal /logs 全部正常 ✓
+
+📊 功能状态：
+  - F200-a: needs_review（等待用户验收）
+  - F200-b: design_ready（下一个 sprint）
+  - F201-F204: design_ready（依赖 F200-a+F200-b）
+
+📊 pipeline_status：requirements=done, system_design=done, ui_design=done,
+                   development=in_progress, active_sprint=F200-a(needs_review)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] F200-b Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
+
+✅ Generator：5 文件
+  - frontend/src/cockpit/CockpitResetLayoutButton.tsx（新建，useCockpitLayoutStore + getCockpitDefaultLayout）
+  - frontend/src/components/features/topnav/TopNav.tsx（修改，加 Cockpit NavLink + showCockpitReset 条件渲染）
+  - backend/app/routers/cockpit/__init__.py（新建，空占位）
+  - backend/app/services/cockpit/__init__.py（新建，空占位）
+  - frontend/eslint.config.js（修改，no-restricted-imports：src/cockpit/** 禁 **/workbench/**）
+
+✅ Evaluator 自检全部通过
+  - pnpm build 零 error
+  - ESLint 规则验证：cockpit 内 workbench import 被正确拦截（exit 1）
+  - CockpitResetLayoutButton 无 workbench/ 引用（D060 合规）
+  - TopNav 修改：+1 import + +1 const + +1 JSX 行，精确 3 行改动
+
+✅ E2E（preview tools）
+  - /cockpit：Cockpit 链接激活高亮 + 重置布局按钮显示 ✓
+  - /：Cockpit 链接未激活 + 重置布局按钮（workbench）显示 + MarketOverviewBar 正常 ✓
+  - 无 console runtime error ✓
+
+📊 功能状态：
+  - F200-a: needs_review（等待用户验收）
+  - F200-b: needs_review（等待用户验收）
+  - F201–F204: design_ready（依赖 F200-a+F200-b，就绪）
+
+📊 pipeline_status：requirements=done, system_design=done, ui_design=done,
+                   development=in_progress, active_sprint=F200-b(needs_review)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Sprint：F204-a Earnings Calendar 数据层
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F204 拆分为 F204-a（数据层）+ F204-b（接入层），Sprint Contract 协商通过
+  - Alembic 迁移 008_f204_earnings_events.py：创建 earnings_events 表
+    · (ticker, earnings_date) 唯一约束；ticker / earnings_date 各建索引
+    · upgrade/downgrade 双向验证通过
+  - backend/app/models/earnings_event.py（新建，严格对照 DATA-MODEL.md）
+  - backend/app/models/__init__.py（+1 import EarningsEvent）
+  - backend/app/repositories/earnings_event_repository.py（新建）
+    · upsert_batch：estimate 字段完整覆盖；actual 字段仅非 None 时覆盖（保护已有值）
+    · get_next_earnings(ticker, from_date) → EarningsEvent | None
+    · delete_before(cutoff) → int
+  - backend/app/external/fmp_client.py（修改）
+    · FMP_EP_EARNINGS_CALENDAR 常量 + get_earnings_calendar(from_date, to_date)
+  - backend/app/services/cockpit/earnings_service.py（新建）
+    · fetch_and_store(today): 单次 FMP 请求 from=today-7, to=today+30，写入 DB
+    · get_next_earnings(ticker): 返回 camelCase dict，对齐 API-CONTRACT
+  - 单元/集成测试：12/12 通过（标准 3–11 全覆盖）
+    · upsert actual=None 保留旧值（关键业务规则）✅
+    · time_of_day normalization BMO/AMC/None ✅
+  - 全量回归：361 passed；1 pre-existing failure（test_news_api）与 F204-a 无关
+  - test_schema.py EXPECTED_TABLES 更新（加入 earnings_events）
+
+⚠️ 预先存在的失败（非 F204-a 引入）：
+  - tests/test_news_api.py::test_fmp_failure_with_cached_data_returns_degraded
+    （git stash 前同样失败，与 F204-a 无关）
+
+🔧 系统变更：
+  - 新文件：008_f204_earnings_events.py / earnings_event.py /
+    earnings_event_repository.py / earnings_service.py / test_earnings_f204a.py /
+    F204-a-contract.md
+  - 修改：models/__init__.py / fmp_client.py / conftest.py / test_schema.py /
+    features.json / claude-progress.txt
+
+📊 功能状态：
+  - F204-a: needs_review（等待用户验收）
+  - F204-b: design_ready（Sprint Contract 协商放在 F204-a 验收后）
+  - F201–F203: design_ready（依赖链未变）
+
+⚠️ 下一步：
+  用户验收 F204-a（确认 earnings_events 表已建、12 个测试全通过）
+  → 进入 F204-b Sprint Contract 协商（Config + Cron + Schema + Router）

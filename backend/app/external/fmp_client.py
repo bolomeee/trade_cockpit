@@ -37,6 +37,7 @@ FMP_EP_SCREENER = "/company-screener"  # F105 universe (D038)
 FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
 FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
 FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
+FMP_EP_EARNINGS_CALENDAR = "/earnings-calendar"  # F204-a earnings events
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -455,6 +456,18 @@ class FmpClient:
         if not results:
             return None
         return results[0]
+
+    def get_earnings_calendar(self, from_date: str, to_date: str) -> list[Any]:
+        """FMP `/stable/earnings-calendar` (F204-a).
+
+        from_date / to_date: YYYY-MM-DD strings.
+        Returns raw list; field normalization is the service layer's job.
+        Expected fields per item: symbol, date, epsEstimated, eps,
+        revenueEstimated, revenue, time (BMO/AMC/--).
+        """
+        params = {"from": from_date, "to": to_date}
+        body = self._request(FMP_EP_EARNINGS_CALENDAR, params)
+        return list(body or [])
 
 
 def _fmt_date(d: str | date) -> str:

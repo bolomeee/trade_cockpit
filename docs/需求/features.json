@@ -1,17 +1,19 @@
 {
   "_schema_version": "2.0",
-  "project": "MA150 Tracker → Workbench",
-  "version": "1.2.0",
-  "last_updated": "2026-04-23",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。v1.3 迭代新增 F106 Multi-Signal Scanner（P0：A1 Stage 1→2 Breakout / A2 Slope Flip / B2 MA5 Pullback Bounce）。",
-  "completion_rate": "v1.0.0 + v1.1.0 + v1.2.0 全部 done；v1.3 F106 规划中",
+  "project": "MA150 Tracker → Workbench → Cockpit",
+  "version": "1.8.0-planning",
+  "last_updated": "2026-04-24-feature-dev-F200a",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
+  "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
-    "ui_design": "not_started",
-    "development": "not_started",
+    "ui_design": "done",
+    "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v1.2"
+    "current_iteration": "v1.8",
+    "active_sprint": "F204-a",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -73,6 +75,60 @@
       "deprecated": [],
       "status": "in_progress",
       "description": "Multi-Signal Scanner P0（F106：A1/A2/B2）+ 反向补契约：F107 股价图成交量 + 短均线叠加 / F108 fundamentals 与 pullbacks 放开到任意 ticker（延伸 D041 on-demand 语义）/ F109 Widget UI 规范落实（title 底色 #ebf2fa、widget 内部间距 -5px + gap-1、TopNav ResetLayoutButton 位置调整、search input pill 样式）。F107-F109 为 v1.2.0 发布后绕过 feature-dev 手改的代码，在 v1.3 迭代里反向补 Sprint Contract 归入轨道。"
+    },
+    {
+      "version": "v1.8",
+      "date": "2026-04-24",
+      "added": [
+        "F200-a",
+        "F200-b",
+        "F201",
+        "F202",
+        "F203",
+        "F204-a",
+        "F204-b"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "Cockpit P0：新建独立 /cockpit 页（TopNav 平级入口，与 Workbench / News 并列），实现慢交易工作流骨架。F200 拆分为 F200-a（前端 6 文件骨架 + App.tsx 2 行豁免）和 F200-b（TopNav 集成 + backend 空目录 + ESLint 边界），因 6 文件上限约束。F200-a Sprint Contract 协商通过，进入 Generator 模式。D070 登记 Pydantic cockpit_params.py 参数管理约定（首次创建在 F201-a）。F201 Market Regime / F202 Setup Monitor / F203 Decision Panel / F204 Earnings Calendar 依次依赖 F200-a/b，F203 将拆 a/b/c。"
+    },
+    {
+      "version": "v1.9",
+      "date": "2026-04-24",
+      "added": [
+        "F205",
+        "F206",
+        "F207"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "planned",
+      "description": "Cockpit P1：F205 Pool Builder Widget（多维筛选漏斗：tradability→trend→RS→fundamental→setup，复用现有 scanner 服务并扩展 RS percentile / ADV filter）；F206 Position Manager（手动录入 positions + pending_orders 两张新表，R multiple 实时计算）；F207 Daily Action List Widget（must act / monitor / no action 三栏聚合）。嘉信证券无 API，持仓全手动录入。"
+    },
+    {
+      "version": "v2.0",
+      "date": "2026-04-24",
+      "added": [
+        "F208",
+        "F209",
+        "F210",
+        "F211"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "planned",
+      "description": "Cockpit P2：AI 层。F208 LLM Gateway（LiteLLM Router 封装 + tier-based model config via env + budget gate + ai_memos 表 + Pydantic schema validation，provider-agnostic，可灵活切换 OpenAI / Anthropic / 本地模型）；F209 Market Narrator + Setup Explainer（走 default tier）；F210 Candidate Ranker + Trade Plan Generator（走 critical tier）；F211 Contradiction Detector + News Summarizer + Journal Assistant（复杂任务走 complex tier）。用户初始模型：gpt-5.4-nano / gpt-5.4-mini / gpt-5.4，通过 env 可覆盖。"
+    },
+    {
+      "iteration": "v1.8-system-design",
+      "date": "2026-04-24",
+      "summary": "Cockpit Epic 系统设计：扩展 DATA-MODEL / API-CONTRACT / ARCHITECTURE / DECISIONS 覆盖 F200–F211；新增 7 张表 / 18 cockpit endpoint + 1 AI 统一入口 / 10 条新决策 D060–D069。"
+    },
+    {
+      "iteration": "v1.8-design-bridge",
+      "date": "2026-04-24",
+      "summary": "Cockpit Epic UI 设计衔接：design-spec 扩 ~520 行覆盖 9 widget + UserSettingsDialog + 5 共享子组件 + 3 栏 RGL 默认布局；component-plan 追加 §Cockpit-1 ~ §Cockpit-7（9 widget + 4 dialog + CockpitPage/Registry/2 store + 边界红线 + react-query 缓存策略 + 渐进实施清单）；data-mapping 追加 §Cockpit-1 ~ §Cockpit-9 + Settings + AI wrapper 共 25+ 字段映射 + Step 7d/7e/7f 一致性验证全部 PASS；tokens.json/css 加 25 个 cockpit token（regime/setup/quality/earnings/action-bg/chart 横线 等）。Layout 决策：D060 修订为 Cockpit 沿用 react-grid-layout（独立 Registry/Store/localStorage key ma150.cockpit.layouts.v1）。_pipeline_status.ui_design = done。"
     }
   ],
   "_phase_legend": {
@@ -2048,6 +2104,792 @@
         "回归：F112-a 原调用（无 since/window 参数）行为不变"
       ],
       "subtasks_notes": "按 a → b → c 顺序执行；a 后端稳定是 b 的前提。b 和 c 完成后走最终验收 + v1.7.0 发版。"
+    },
+    {
+      "id": "F200-a",
+      "name": "Cockpit 前端骨架（路由 + RGL 容器 + store）",
+      "description": "新建 /cockpit 路由页的前端骨架：独立 react-grid-layout 容器 + 独立 CockpitRegistry + 独立 layout localStorage key（ma150.cockpit.layouts.v1）+ 独立 cockpit client store，与 Workbench / News 三页彻底解耦。本 sprint 仅写 6 个前端文件（pages/Cockpit.tsx、cockpit/CockpitShell.tsx、cockpit/CockpitRegistry.ts、cockpit/useCockpitLayoutStore.ts、cockpit/widgets/PlaceholderWidget.tsx、store/cockpitStore.ts）+ App.tsx 2 行 lazy import + Route 豁免（D010 脚手架例外）。不改 TopNav（F200-b），不建 backend 目录（F200-b）。",
+      "user_story": "作为慢交易投资者，我希望在主 Workbench 之外有一个独立的 Cockpit 页面，专用于慢交易工作流，与 Workbench 布局和状态完全解耦",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/pages/Cockpit.tsx",
+        "frontend/src/cockpit/CockpitShell.tsx",
+        "frontend/src/cockpit/CockpitRegistry.ts",
+        "frontend/src/cockpit/useCockpitLayoutStore.ts",
+        "frontend/src/cockpit/widgets/PlaceholderWidget.tsx",
+        "frontend/src/store/cockpitStore.ts",
+        "frontend/src/App.tsx (2 行豁免)"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F200-a-contract.md",
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D010 脚手架 2 行豁免",
+          "D060 Cockpit 独立第三页（零交叉引用硬约束）",
+          "D070 Cockpit 参数管理（本 sprint 不创建 cockpit_params.py，首次创建在 F201-a）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "访问 /cockpit 渲染空 RGL 容器，显示 1 个 PlaceholderWidget",
+        "拖动/缩放 widget 后写入 ma150.cockpit.layouts.v1，刷新浏览器保留布局",
+        "Cockpit 布局变更不影响 Workbench (ma150.workbench.layouts.v5) 和 News (ma150.news.layouts.v1)",
+        "cockpit/ 目录不 import workbench/、news/，反向亦然（Evaluator 人工审查）",
+        "useCockpitLayoutStore 与 useWorkbenchLayoutStore 为两个独立 zustand store，persist key 不同",
+        "cockpitStore.selectedTicker 与 useAppStore.selectedSymbol 完全独立"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": [
+          "preview_start → /cockpit 渲染 + localStorage 键正确 + 跨路由互不干扰"
+        ]
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract 见 docs/开发/sprint-contracts/F200-a-contract.md。已协商通过（2026-04-24）。App.tsx 2 行修改按 D010 脚手架豁免，不计入 6 文件上限。"
+    },
+    {
+      "id": "F200-b",
+      "name": "Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界",
+      "description": "F200-a 完成后的收尾工作：(1) TopNav 新增 Cockpit 链接 + ResetLayoutButton 根据 pathname 条件渲染（/cockpit 时指向 cockpit store）；(2) 新建 backend/app/routers/cockpit/__init__.py 和 backend/app/services/cockpit/__init__.py 空目录骨架；(3) 在 frontend/eslint.config 或 tsconfig paths 强制 cockpit ⇄ workbench 零交叉引用（no-restricted-imports rule）。",
+      "user_story": "作为慢交易投资者，我在 TopNav 看到 Cockpit 入口，点击切换到 /cockpit；Reset Layout 按钮只在 /cockpit 时操作 cockpit 布局",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [
+        "F200-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D060 Cockpit 独立第三页"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "TopNav 出现 Cockpit 入口，点击进入 /cockpit",
+        "Reset Layout 按钮在 /cockpit 可见并操作 cockpit 布局；在 /workbench 操作 workbench 布局",
+        "backend/app/routers/cockpit/ 和 backend/app/services/cockpit/ 目录存在（空 __init__.py）",
+        "ESLint 报错当 cockpit/*.ts 尝试 import workbench/*，反向亦然"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F200-a 解耦后的收尾。TopNav 集成逻辑从 F200 独立出来，因为 F200-a 已达 6 文件上限。"
+    },
+    {
+      "id": "F201",
+      "name": "Market Regime Widget",
+      "description": "Cockpit 首个业务 widget。回答'今天是否值得承担风险'。新表 market_regime_snapshots 每日存 regime score / 子项分数 / classification。market_indices 扩展收录 SPY/QQQ/IWM 和 11 个 sector ETF（XLK/XLY/XLF/XLI/XLE/XLV/XLC/XLP/XLU/XLB/XLRE）。后端新 service market_regime_service.py 实现 score 算法（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100 分）。API GET /api/cockpit/regime 返回 score + classification + 指数卡片数据 + sector heatmap。",
+      "user_story": "作为慢交易投资者，打开 Cockpit 我要先看到今日 market regime（Risk-On/Constructive/Neutral/Defensive/Risk-Off），对应的 allowed exposure 和 single trade risk 区间，以及 SPY/QQQ/IWM 和 11 个 sector ETF 的状态 heatmap，用以决定今日是否开新仓",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/regime"
+        ],
+        "db_tables": [
+          "market_regime_snapshots",
+          "market_indices (扩展 symbol 集合至 SPY/QQQ/IWM + 11 sector ETF)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/regime"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot",
+          "DATA-MODEL.md §Entity: MarketIndex"
+        ],
+        "decision_refs": [
+          "D061 market_indices 扩展至 17 symbol + regime 阈值与权重",
+          "D070 Cockpit 参数管理（本 feature 首次创建 cockpit_params.py §0+§1）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/regime 返回 regime / market_score (0-100) / allowed_exposure / single_trade_risk_pct / indices 卡片（SPY/QQQ/IWM）/ sector heatmap（11 个 ETF）",
+        "Market Score 权重可在 config 中调整，默认为 SPY 25 + QQQ 20 + IWM 15 + Sector 20 + RiskAppetite 10 + Volatility 10",
+        "每日盘后 APScheduler 任务计算并写入 market_regime_snapshots（日期+score+子项分）",
+        "Widget 顶部显示 regime + score + allowed exposure + preferred setups",
+        "Widget 中部显示 SPY/QQQ/IWM 三张卡片（Bullish/Leading/Weak + above_50ma + above_200ma + RS trend）",
+        "Widget 底部 11 sector ETF heatmap，每 tile 显示 symbol + state（Strong/Constructive/Weak/Defensive）",
+        "数据不可用时 widget 显示明确占位态，不白屏不崩溃"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "使用 FMP /stable/historical-price-eod/full 拉 14 个 ETF 日线，走现有 FMP 限流器。MarketOverviewWidget（Workbench，SPX/NDX/TNX）保持不变。"
+    },
+    {
+      "id": "F202",
+      "name": "Setup Monitor Widget",
+      "description": "watchlist 的 cockpit 专用扩展视图，回答'哪些 watchlist 股票接近可执行'。不改动 Workbench 的 WatchlistWidget；cockpit 侧新建独立 widget + 独立 API。后端计算 setup type（Breakout/Pullback/Reclaim/Earnings Drift/Extended/Broken）+ setup quality（A/B/C）+ distance-to-entry（%）+ reward/risk + RS status + volume status + earnings risk（Safe/Caution/Danger，依赖 F204）。Ready signal 汇总：Trend>=4 & RS>=70 & Quality>=B+ & DistEntry<=3% & R:R>=2 & Earnings!=Danger & Regime!=Risk-Off 则行高亮。",
+      "user_story": "作为慢交易投资者，我的 watchlist 有几十只股票，我需要一眼看出今天哪几只接近触发点（Ready）、哪些在接近中（Near Setup）、哪些已失效（Broken），以及每只股票的结构化交易条件",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F200-a",
+        "F200-b",
+        "F201",
+        "F204"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/setup-monitor"
+        ],
+        "db_tables": [
+          "setup_snapshots (新表或复用 signals 扩字段，待 system-design 决)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot"
+        ],
+        "decision_refs": [
+          "D062 setup_snapshots 独立表",
+          "D070 Cockpit 参数管理（setup quality A/B/C 阈值、Ready 信号门限进 cockpit_params §2）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/setup-monitor 返回 watchlist 每只股票的 setup_type / setup_quality (A/B/C) / distance_to_entry_pct / reward_risk / rs_status / volume_status / earnings_risk / suggested_action",
+        "顶部摘要：Ready / Near Setup / Extended / Broken 数量 + watchlist 总数",
+        "Ready signal 条件全满足时行背景高亮（全 7 条 AND 门）",
+        "点击行通过 cockpitStore 联动 Decision Panel（不使用 useAppStore）",
+        "setup quality 阈值（A/B/C）可在后端 config 调整，默认阈值记录在 DECISIONS.md",
+        "earnings 距离 <=3 个交易日的股票 earnings_risk=Danger，<=10 天 Caution，否则 Safe"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "复用 signals 表数据 + F204 earnings_events 联表。不写独立 scanner（watchlist 规模小，按需计算即可）。"
+    },
+    {
+      "id": "F203",
+      "name": "Decision Panel Widget (CockpitChart + Entry/Stop/Size)",
+      "description": "个股决策面板。新建 CockpitChartWidget（frontend/src/cockpit/widgets/CockpitChartWidget.tsx），与 Workbench ChartWidget 完全独立不共享代码，K 线 + MA10/21/50/150/200 + AVWAP（anchor: earnings 日或用户指定）+ ATR 可视化 + Entry/Stop/2R/3R 四条水平叠加线。右侧 Decision Card：entry / stop / risk_per_share / position_size / account_risk / setup_quality / earnings_risk。新表 user_settings 单行单用户存储 account_size + max_exposure_pct + single_trade_risk_pct，通过 GET/PUT /api/cockpit/user-settings 读写。Position size = floor(account_size * risk_pct / (entry - stop))。",
+      "user_story": "作为慢交易投资者，我看中一只股票要做决策时，需要一个独立面板：图表叠加 entry/stop/target 线，右侧显示计算好的 position size / R 倍数 / account risk，并能调整我的 account 参数",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F200-a",
+        "F200-b",
+        "F202"
+      ],
+      "estimated_sessions": 5,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/user-settings",
+          "PUT /api/cockpit/user-settings",
+          "GET /api/cockpit/decision/{ticker} (entry/stop/size 计算)"
+        ],
+        "db_tables": [
+          "user_settings"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/decision/{ticker}",
+          "API-CONTRACT.md §GET /api/cockpit/chart/{ticker}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D063 CockpitChartWidget 独立",
+          "D066 user_settings 单行 + 仓位公式",
+          "D068 F210 确定性护栏",
+          "D070 Cockpit 参数管理（decision 推荐默认 entry/stop 公式系数进 cockpit_params §3）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "CockpitChartWidget 独立文件，与 ChartWidget 无 import 交叉",
+        "图表叠加 Entry 线 / Stop 线 / 2R 线 / 3R 线 / AVWAP 曲线 / ATR 参考带（可切换）",
+        "AVWAP anchor 支持从 earnings 日（依赖 F204）自动计算或用户手动指定日期",
+        "Decision Card 显示 entry / stop / risk_per_share / suggested_shares / position_value / account_risk_pct / reward_risk / setup_quality / earnings_risk",
+        "user_settings 表单 CRUD：account_size / max_exposure_pct / single_trade_risk_pct / default_risk_per_trade_pct",
+        "Position size 计算 = floor(account_size * risk_pct / (entry - stop))，risk_pct 受 regime 调整（参考 F201 输出）",
+        "Entry/Stop 规则按 setup type 推荐默认值（breakout=pivot*1.001 / pullback=reversal_high*1.001 / reclaim=reclaim_high*1.001）",
+        "修改 user_settings 后，所有 Decision Panel 中的 size 计算立即刷新"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "本 feature 超过常规 6 文件上限，feature-dev Sprint Contract 阶段需要拆分（建议 F203-a CockpitChart 基础、F203-b Entry/Stop/Size 计算 + user_settings、F203-c Decision Card UI）。"
+    },
+    {
+      "id": "F204-a",
+      "name": "Earnings Calendar 数据层（Model + Repo + FMP + Service）",
+      "description": "建立 earnings_events 表（Alembic 008），实现 EarningsEvent SQLAlchemy model、EarningsEventRepository（upsert_batch + get_next + delete_before）、FmpClient.get_earnings_calendar()、EarningsService（fetch_and_store + get_next_earnings）。为 F204-b cron job + API 提供数据基础。",
+      "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/008_f204_earnings_events.py",
+        "backend/app/models/earnings_event.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/earnings_event_repository.py",
+        "backend/app/external/fmp_client.py",
+        "backend/app/services/cockpit/earnings_service.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [
+          "earnings_events"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: EarningsEvent"
+        ],
+        "decision_refs": [
+          "D065 Earnings 仅 cockpit 消费 + 每日增量 upsert"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "earnings_events 表建立，按 (ticker, earnings_date) 唯一",
+        "upsert_batch：actual 字段 None 时保留旧值，非 None 时覆盖",
+        "EarningsService.fetch_and_store 以 FakeFMP 注入可正确写入 DB",
+        "EarningsService.get_next_earnings 返回字段与 API-CONTRACT.md 对齐"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract: docs/开发/sprint-contracts/F204-a-contract.md"
+    },
+    {
+      "id": "F204-b",
+      "name": "Earnings Calendar 接入层（Cron + API）",
+      "description": "在 F204-a 数据层基础上，接入 APScheduler cron job（每日 05:30 UTC 增量拉取 FMP earnings）、暴露 GET /api/cockpit/earnings?ticker= endpoint（Pydantic schema + FastAPI router + main.py 注册）。",
+      "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F204-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/config.py",
+        "backend/app/services/refresh_job.py",
+        "backend/app/schemas/cockpit/earnings.py",
+        "backend/app/routers/cockpit/earnings.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/app/main.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /api/cockpit/earnings?ticker={ticker}"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/earnings"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: EarningsEvent"
+        ],
+        "decision_refs": [
+          "D065 Earnings 仅 cockpit 消费 + 每日增量 upsert",
+          "D070 Cockpit 参数管理（earnings_risk 阈值 3d/10d 进 cockpit_params §4，由 F202 落地）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "APScheduler 每日 05:30 UTC 调度 earnings cron job",
+        "GET /api/cockpit/earnings?ticker=AAPL 返回 nextEarningsDate 和 daysUntil",
+        "未来 30 天内无 earnings 时返回 null + note 字段",
+        "cockpit 外的任何 widget（Workbench/News）不消费此 endpoint"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "依赖 F204-a 完成。Sprint Contract 协商放在 F204-a needs_review 之后。"
+    },
+    {
+      "id": "F205",
+      "name": "Pool Builder Widget",
+      "description": "Cockpit P1 第一个 widget。多维筛选漏斗：全美 tradable universe → Trend Qualified → RS Leaders → Fundamental Qualified → Action Candidates。复用现有 F105 scanner_universe + F106 multi-signal scanner 的服务层，扩展加入 RS percentile（基于 250 天 stock/SPY return ratio）+ ADV filter（avg_dollar_volume_20d > 20M）+ fundamental sanity filter（revenue_growth_yoy > 10% 等）。GET /api/cockpit/pool 返回 funnel 数量 + 结果表。",
+      "user_story": "作为慢交易投资者，我不只看 watchlist 内股票，还要从全市场发现新候选。我需要一个漏斗 UI：看到 tradable/trend/RS/fundamental 各层淘汰后的数量和最终候选列表，并能一键加入 watchlist",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F201"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/pool"
+        ],
+        "db_tables": [
+          "复用 market_scan_universe / market_breakout_scans（扩字段或 join）"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/pool"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
+        ],
+        "decision_refs": [
+          "D062 setup_snapshots 独立表"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/pool 返回 funnel counts（tradable / trend / rs / fundamental / action）+ top N candidates 数组",
+        "筛选器 UI：Market Cap / Price / ADV / Trend Score / RS Percentile / Revenue Growth / Sector / Setup Type",
+        "结果表格列：Ticker / Name / Sector / Price / Trend / RS / Setup / Distance to Pivot / Distance to 50MA / Earnings / Action",
+        "Action 按钮：Add to Watchlist / Ignore / Remove",
+        "筛选器改动后实时重新请求，不刷新整页"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。"
+    },
+    {
+      "id": "F206",
+      "name": "Position Manager（手动录入持仓）",
+      "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
+      "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F203"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET/POST /api/cockpit/positions",
+          "PATCH/DELETE /api/cockpit/positions/{id}",
+          "GET/POST /api/cockpit/pending-orders",
+          "PATCH/DELETE /api/cockpit/pending-orders/{id}"
+        ],
+        "db_tables": [
+          "positions",
+          "pending_orders"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/positions",
+          "API-CONTRACT.md §POST /api/cockpit/positions",
+          "API-CONTRACT.md §PATCH /api/cockpit/positions/{id}",
+          "API-CONTRACT.md §DELETE /api/cockpit/positions/{id}",
+          "API-CONTRACT.md §GET /api/cockpit/pending-orders",
+          "API-CONTRACT.md §POST /api/cockpit/pending-orders",
+          "API-CONTRACT.md §PATCH /api/cockpit/pending-orders/{id}",
+          "API-CONTRACT.md §DELETE /api/cockpit/pending-orders/{id}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: Position",
+          "DATA-MODEL.md §Entity: PendingOrder",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D066 user_settings + 仓位公式",
+          "D067 positions/pending_orders ticker 不 FK"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "positions 和 pending_orders 两表建立，Alembic 迁移",
+        "前端录入表单：ticker / setup / entry / stop / size / 备注",
+        "Open Positions 表：显示 entry / last / stop / R multiple / size / unrealized P/L / earnings / next action（R multiple = (last-entry) / (entry-stop)）",
+        "Pending Orders 表：显示 ticker / setup / entry / stop / size / risk / expiration / distance to trigger / status",
+        "Risk Summary：open_risk_pct / total_exposure_pct / pending_risk_pct / positions_count / pending_count",
+        "positions / pending_orders 与 Journal 解耦（两个用途不同），但可互相引用（positions 转入 Journal 作为平仓记录）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。"
+    },
+    {
+      "id": "F207",
+      "name": "Daily Action List Widget",
+      "description": "聚合 positions + pending_orders + setup monitor，生成今日动作清单，分三栏：Must Act（raise stop / cancel order / reduce before earnings）/ Monitor（接近触发 / 持仓稳态）/ No Action。每条动作附 rationale。后端服务 action_service.py 实现规则引擎（订单保留 / 取消 / 修改规则见 proposal §8.27）。GET /api/cockpit/actions/today。",
+      "user_story": "作为慢交易投资者，每天盘后我打开 Cockpit 最想知道的是'今天我要做什么'。我需要一个清单：必须做的动作（移动止损/取消订单/财报前减仓）、需要监控的、今天没事的，每条都有明确原因",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F206",
+        "F202"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/actions/today"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/user-settings",
+          "API-CONTRACT.md §PUT /api/cockpit/user-settings",
+          "API-CONTRACT.md §GET /api/cockpit/actions/today"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: UserSettings",
+          "DATA-MODEL.md §Entity: Position",
+          "DATA-MODEL.md §Entity: PendingOrder"
+        ],
+        "decision_refs": [
+          "D066 user_settings 单行 + 仓位公式"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/actions/today 返回 must_act[] / monitor[] / no_action[] 三数组，每条含 ticker / action_type / rationale",
+        "Must Act 包括：raise_stop（新 swing low 形成）/ cancel_order（setup 低点破位）/ reduce_before_earnings（财报<=2 天）/ tighten_stop（regime 转 Defensive）",
+        "Monitor 包括：approaching_trigger（<=3% 距离入场）/ stable_position（趋势完好）",
+        "No Action 列出其他稳态持仓，标记'无规则变化'",
+        "所有动作的 rationale 引用具体信号/规则（不使用 AI 生成，走 deterministic 规则引擎）",
+        "前端分栏 UI，Must Act 置顶红色提示"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。"
+    },
+    {
+      "id": "F208",
+      "name": "LLM Gateway (LiteLLM Router + Tier Config + Budget + Memo)",
+      "description": "Cockpit P2 AI 层基座。引入 litellm Python 依赖，新建 backend/app/ai/ 模块：gateway.py（AiGateway.run(task_type, input) 统一入口）/ routing.py（task_type → tier → model_id 映射，env 驱动）/ providers/（LiteLLM 自动处理 OpenAI/Anthropic/其他）/ schemas/（每 task_type 的 Pydantic 输出 schema）/ budget.py（月预算熔断）/ memo_repo.py（ai_memos 表持久化）。新表 ai_memos（task_type, input_hash, output_json, model_used, cost_usd, tokens_in, tokens_out, created_at）。env: AI_MODEL_DEFAULT/CRITICAL/COMPLEX + AI_MONTHLY_BUDGET_USD + OPENAI_API_KEY（未来可加 ANTHROPIC_API_KEY）。",
+      "user_story": "作为系统设计者，我需要一个 provider-agnostic 的 AI 入口：业务代码只写 task_type 和输入，不关心用哪个 model；通过 env 可在 nano/mini/full 三档之间切换，也可以换到 Anthropic 或本地模型；每次调用强制 Pydantic schema 校验、计费入库、超月预算熔断",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "POST /api/ai/{task_type}（统一入口）"
+        ],
+        "db_tables": [
+          "ai_memos"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "pyproject.toml 添加 litellm 依赖",
+        "backend/app/ai/ 目录建立，gateway/routing/providers/schemas/budget/memo_repo 六个模块齐备",
+        "AiGateway.run(task_type, input_dict) → 返回 schema-validated dict，schema 校验失败抛 AiSchemaError",
+        "env 覆盖验证：AI_MODEL_DEFAULT=gpt-5.4-nano 走 nano，改为 claude-haiku-4.5 后无代码改动即生效（通过 LiteLLM model 字符串映射）",
+        "超月预算（AI_MONTHLY_BUDGET_USD）时抛 AiBudgetExceeded，不降级不 fallback",
+        "每次调用写入 ai_memos 表，字段齐全（含 model_used 和 cost_usd）",
+        "POST /api/ai/{task_type} 对外统一 endpoint，body 传 input_dict，响应 schema-validated output + memo_id",
+        "config tier → model_id 映射支持 YAML 或 .env 两种加载方式，优先 .env"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "v2.0 其他 AI feature（F209/F210/F211）的前置。本 feature 只建基座不实现具体 task。初始用户模型：AI_MODEL_DEFAULT=gpt-5.4-nano / AI_MODEL_CRITICAL=gpt-5.4-mini / AI_MODEL_COMPLEX=gpt-5.4（模型名以用户提供为准，未来可在 .env 自由更改）。"
+    },
+    {
+      "id": "F209",
+      "name": "AI: Market Narrator + Setup Explainer",
+      "description": "基于 F208 实现两个 default-tier AI task。task_type=market_narrator：输入 F201 的 regime 结构化数据，输出 headline / summary / risk_posture / preferred_setups / avoid / warnings；task_type=setup_explainer：输入单股 setup 结构化数据（trend / RS / setup / risk），输出 label / quality / why_watch / main_risks。前端：Market Regime Widget 增 AI Market Notes 区；Setup Monitor 每行可展开 AI 解释。",
+      "user_story": "作为投资者，我想让 AI 用自然语言解释当前市场 regime 和每个 setup 的逻辑，但不要让它做买卖决定，只做解释和归纳",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F208",
+        "F201",
+        "F202"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/market_narrator",
+          "POST /api/ai/setup_explainer"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=narrate_regime / explain_setup / summarize_news / journal_reflect)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "task_type=market_narrator 和 setup_explainer 两个 Pydantic schema 在 backend/app/ai/schemas/ 定义",
+        "默认走 AI_MODEL_DEFAULT（tier=default）",
+        "prompt 严格禁止：'buy now' / 'sell now' / 承诺收益 / 编造数据 / 忽略止损（guardrail 通过 system prompt + post-validate 关键词检测）",
+        "Market Regime Widget 顶部展示 AI headline + summary，下方展示 preferred_setups / avoid / warnings 列表",
+        "Setup Monitor 每行右侧'?' 按钮点开 popover，显示 label / quality / why_watch / main_risks",
+        "AI 输出不覆盖 deterministic signal，只附加展示",
+        "Schema 校验失败 / 超预算时前端显示'AI 暂不可用'占位，不影响其他 widget"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": ""
+    },
+    {
+      "id": "F210",
+      "name": "AI: Candidate Ranker + Trade Plan Generator",
+      "description": "critical-tier AI task。candidate_ranker 输入 setup monitor 候选列表，输出 top_candidates 排序（rank / reason / action）；trade_plan 输入单股 setup + user_settings，输出结构化 trade_plan（action / entry / stop / size / targets / management / memo）。前端：Setup Monitor 顶部'AI 排序'按钮；Decision Panel 新增'Generate Trade Plan'按钮。",
+      "user_story": "作为投资者，当我 watchlist 有很多 setup 同时接近触发时，我需要 AI 帮我排序 top 3 优先；当我决定交易某只股票时，我需要 AI 帮我生成一份完整的 trade memo（在 deterministic 数字之上做叙述和 management rule）",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F208",
+        "F202",
+        "F203"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/candidate_ranker",
+          "POST /api/ai/trade_plan"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=rank_pool / plan_trade)",
+          "API-CONTRACT.md §GET /api/cockpit/decision/{ticker}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo",
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + tier 分层",
+          "D068 F210 确定性护栏 + deterministicHash",
+          "D066 仓位公式"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "两个 task_type Pydantic schema 定义齐全",
+        "默认走 AI_MODEL_CRITICAL（tier=critical）",
+        "trade_plan 输出的 entry/stop/size 数字必须等于 F203 deterministic 计算结果（AI 不可改写数字，只能新增 memo 和 management 规则）",
+        "candidate_ranker 输入 setup 数组最多 20 个，超过截断并在响应 meta 标记",
+        "Setup Monitor AI 排序结果展示 top 3 + rank reason",
+        "Decision Panel trade plan 展示 memo + management 列表（move stop to breakeven near 2R 等）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "AI 不可改写 deterministic 数字是强硬约束（proposal §10.3 guardrail），通过 post-validate 对比 gateway 输出与 F203 计算结果。"
+    },
+    {
+      "id": "F211",
+      "name": "AI: Contradiction Detector + News Summarizer + Journal Assistant",
+      "description": "混合 tier。contradiction_detector（default tier）：输入单股完整 context，输出矛盾列表（earnings risk / reward-risk / volume distribution 等）+ recommendation；news_summarizer（default tier）：输入最近 N 条 news，输出 catalyst_summary / sentiment / relevance / risks；journal_assistant（complex tier）：出场后自动复盘（plan vs actual / entry quality / stop discipline / mistake classification / lesson）+ 月度策略审计。前端：Decision Panel 增 contradiction 区；News 页增可选 AI 摘要 bar；Position Manager 出场时触发 journal review。",
+      "user_story": "作为投资者，我需要 AI 检测'技术面强但财报太近'这种矛盾；用 AI 把散乱 news 归纳成 catalyst；交易结束后 AI 自动对比 plan vs actual 帮我复盘归因",
+      "priority": "P2",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F208",
+        "F203",
+        "F206"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit",
+          "News"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/contradiction_detector",
+          "POST /api/ai/news_summarizer",
+          "POST /api/ai/journal_assistant"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=contradict_plan / summarize_news / journal_reflect)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D068 F210 确定性护栏（contradict_plan 路径）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "contradiction_detector / news_summarizer / journal_assistant 三个 task_type 定义齐全",
+        "contradiction_detector 走 default tier，journal_assistant 走 complex tier（月度审计等复杂任务）",
+        "Decision Panel 底部 'Contradictions' 区展示 severity (High/Medium/Low) 和 recommendation",
+        "News 页顶部 'AI 摘要'（可选开关）展示 catalyst_summary / sentiment / risks",
+        "Position Manager 关闭持仓（手动录入平仓）时自动触发 journal_assistant，写入 journal_entry 的 ai_review 字段",
+        "journal_assistant 每月 1 号自动生成上月交易复盘报告（rule adherence / expectancy / setup-level performance）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "News 页是 F112 遗留独立页，本 feature 在 cockpit 外也会触碰一个文件（News 顶部 AI bar），需在 Sprint Contract 阶段明确。"
     }
   ]
 }

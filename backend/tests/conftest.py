@@ -62,6 +62,11 @@ class FakeFMP:
         self.ma150_exc: dict[str, Exception] = {}
         self.ma150_calls: list[str] = []
 
+        # F204-a: earnings calendar
+        self.earnings_calendar_result: list[dict[str, Any]] = []
+        self.earnings_calendar_calls: list[tuple[str, str]] = []
+        self.earnings_calendar_exc: Exception | None = None
+
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
         self.search_calls.append((query, limit))
         if self.search_exc is not None:
@@ -116,6 +121,12 @@ class FakeFMP:
         if symbol in self.ma150_exc:
             raise self.ma150_exc[symbol]
         return dict(self.ma150_results.get(symbol, {"source": "sma", "bars": []}))
+
+    def get_earnings_calendar(self, from_date: str, to_date: str) -> list[Any]:
+        self.earnings_calendar_calls.append((from_date, to_date))
+        if self.earnings_calendar_exc is not None:
+            raise self.earnings_calendar_exc
+        return list(self.earnings_calendar_result)
 
 
 @pytest.fixture
