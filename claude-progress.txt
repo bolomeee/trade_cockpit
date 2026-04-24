@@ -324,3 +324,32 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 ⚠️ 下一步：
   用户验收 F204-a（确认 earnings_events 表已建、12 个测试全通过）
   → 进入 F204-b Sprint Contract 协商（Config + Cron + Schema + Router）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Sprint：F204-b Earnings Calendar 接入层
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - config.py：earnings_cron_hour=5, earnings_cron_minute=30
+  - refresh_job.py：EARNINGS_JOB_ID + _earnings_tick（weekdays 05:30 UTC，在 scanner 06:15 之前）
+  - schemas/cockpit/__init__.py（package marker）
+  - schemas/cockpit/earnings.py：EarningsData + EarningsResponse（CamelModel alias_generator）
+  - routers/cockpit/earnings.py：GET /earnings endpoint（注入 EarningsService）
+  - routers/cockpit/__init__.py：从 F200-b 空占位升级为真实 cockpit APIRouter
+  - main.py：app.include_router(cockpit_router, prefix="/api/cockpit")
+  - test_earnings_f204b.py：7/7 测试通过（S1–S7 + 隐式 S8）
+  - 全量回归：368 passed；1 pre-existing failure（test_news_api，与 F204-b 无关）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+  - commit: af972f8 feat(F204-b): Earnings Calendar 接入层（Cron + Router）
+
+📊 功能状态：
+  F200-a: ✅ done（用户验收）
+  F200-b: ✅ done（用户验收）
+  F204-a: ✅ done（用户验收）
+  F204-b: 🔍 needs_review（等待用户验收）
+  F201–F203: design_ready（依赖 F204-b 验收后推进）
+
+[下一步]
+  用户验收 F204-b（确认 GET /api/cockpit/earnings?ticker=AAPL 可访问）
+  → 进入 F201 Market Regime Widget Sprint Contract 协商
