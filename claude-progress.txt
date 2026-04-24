@@ -353,3 +353,45 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 [下一步]
   用户验收 F204-b（确认 GET /api/cockpit/earnings?ticker=AAPL 可访问）
   → 进入 F201 Market Regime Widget Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-24] Sprint：F201-a Market Regime 数据层
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Alembic 迁移 009_f201a_market_regime_snapshots.py（upgrade/downgrade 双向验证）
+  - SQLAlchemy ORM MarketRegimeSnapshot（Text + Date + Float + Integer 字段）
+  - MarketRegimeRepository（upsert / get_latest / delete_old）
+  - cockpit_params.py §0 CockpitSharedParams + §1 CockpitRegimeParams（D070 首次落地）
+    - frozen=True Pydantic v2 模型，所有字段带 Field(description, ge/le)
+    - SECTOR_NEUTRAL_RATIO 新增，消除 _sector_state 中的 1.0 魔法值
+  - MarketRegimeService 计分引擎（6 维度，总分 100）
+    - compute_and_store(today)：从 market_indices 读取，计分，upsert snapshot
+    - get_indices_and_sectors_state()：camelCase 字典，供 F201-b GET endpoint
+    - 所有阈值通过 REGIME.* / SHARED.* 引入，无魔法数字
+  - tests/test_regime_f201a.py（S1–S14，22 个测试用例）
+  - tests/test_schema.py：EXPECTED_TABLES 追加 market_regime_snapshots
+  - 单元测试：22/22 通过
+  - 全量回归：390/391 通过（1 个预先存在的 test_news_api 失败，非本 sprint 引入）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+⚠️ 待你验收：
+  - 确认 F201-a 开发完成后，进入用户验收，然后继续 F201-b（接入层）
+
+🔧 系统变更：
+  - 新增 Alembic 迁移 revision: 009_f201a_market_regime_snapshots
+  - 新增 cockpit_params.py（第一个 cockpit 参数模块，D070 首次落地）
+  - market_regime_service.py 中 _sector_state 使用 SECTOR_NEUTRAL_RATIO，无 1.0 硬编码
+
+📊 功能状态：
+  F200-a [Cockpit Skeleton]：✅ done
+  F200-b [TopNav + ESLint]：✅ done
+  F201-a [Market Regime 数据层]：🔍 needs_review
+  F201-b [Market Regime 接入层]：⬜ design_ready
+  F204-a/b [Earnings Calendar]：✅ done
+
+[下一步]
+  用户验收 F201-a（运行 pytest tests/test_regime_f201a.py 确认 22 个测试通过）
+  → git commit -m "feat(F201-a): Market Regime 数据层（model + repo + cockpit_params + scoring service）"
+  → 继续 F201-b Sprint Contract 协商

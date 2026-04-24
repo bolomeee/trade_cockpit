@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F201",
-    "active_sprint_phase": "design_ready"
+    "active_sprint": "F201-a",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -2205,29 +2205,96 @@
       "notes": "F200-a 解耦后的收尾。TopNav 集成逻辑从 F200 独立出来，因为 F200-a 已达 6 文件上限。"
     },
     {
-      "id": "F201",
-      "name": "Market Regime Widget",
-      "description": "Cockpit 首个业务 widget。回答'今天是否值得承担风险'。新表 market_regime_snapshots 每日存 regime score / 子项分数 / classification。market_indices 扩展收录 SPY/QQQ/IWM 和 11 个 sector ETF（XLK/XLY/XLF/XLI/XLE/XLV/XLC/XLP/XLU/XLB/XLRE）。后端新 service market_regime_service.py 实现 score 算法（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100 分）。API GET /api/cockpit/regime 返回 score + classification + 指数卡片数据 + sector heatmap。",
+      "id": "F201-a",
+      "name": "Market Regime 数据层",
+      "description": "market_regime_snapshots 新表 + MarketRegimeRepository + cockpit_params.py §0+§1（D070 首次落地）+ MarketRegimeService 计分引擎（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100）+ get_indices_and_sectors_state 方法。",
+      "user_story": "作为开发者，需要可独立测试的计分引擎，能从 market_indices 历史数据计算 regime 打分并持久化到 market_regime_snapshots。",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "needs_review",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/009_f201a_market_regime_snapshots.py",
+        "backend/app/models/market_regime_snapshot.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/market_regime_repository.py",
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/market_regime_service.py",
+        "backend/tests/test_regime_f201a.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [
+          "market_regime_snapshots"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
+        ],
+        "decision_refs": [
+          "D061 regime 阈值与权重（修订版）",
+          "D070 cockpit_params.py 首次创建 §0+§1"
+        ],
+        "acceptance_type": "unit_integration"
+      },
+      "acceptance_criteria": [
+        "alembic upgrade/downgrade 双向通过",
+        "compute_and_store 写入 market_regime_snapshots，market_score = 6 子项之和",
+        "全牛市数据 → score=100 / RISK_ON；全熊市数据 → score=0 / RISK_OFF",
+        "sector participation: round(N/11*20)；数据不足 → 子项得 0 不抛异常",
+        "regime 阈值边界 S8 全部通过（参数化测试）",
+        "UPSERT 同一 date 只保留最新一行",
+        "get_indices_and_sectors_state 返回 indices(7字段) + sectors(4字段) 正确结构",
+        "cockpit_params.py import 无异常（Pydantic 校验通过）",
+        "D070：service 内无魔法数字，所有阈值从 cockpit_params 引入"
+      ],
+      "test_cases": {
+        "unit": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14"],
+        "integration": ["S15"],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract: docs/开发/sprint-contracts/F201-a-contract.md"
+    },
+    {
+      "id": "F201-b",
+      "name": "Market Regime 接入层",
+      "description": "market_indices 扩展 14 ETF symbol（MARKET_INDEX_WINDOW=260 + 新 SYMBOL_NAMES / _DB_TO_FMP_INDEX 映射）+ APScheduler regime cron job（config.py REGIME_CRON_*）+ Pydantic RegimeSchema + FastAPI GET /api/cockpit/regime router + routers/cockpit/__init__.py 注册。",
       "user_story": "作为慢交易投资者，打开 Cockpit 我要先看到今日 market regime（Risk-On/Constructive/Neutral/Defensive/Risk-Off），对应的 allowed exposure 和 single trade risk 区间，以及 SPY/QQQ/IWM 和 11 个 sector ETF 的状态 heatmap，用以决定今日是否开新仓",
       "priority": "P0",
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
         "F200-a",
-        "F200-b"
+        "F200-b",
+        "F201-a"
       ],
-      "estimated_sessions": 3,
-      "estimated_files_changed": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/repositories/market_index_repository.py",
+        "backend/app/services/market_refresh_service.py",
+        "backend/app/config.py",
+        "backend/app/services/refresh_job.py",
+        "backend/app/schemas/cockpit/regime.py",
+        "backend/app/routers/cockpit/regime.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/tests/test_regime_f201b.py"
+      ],
       "scope": {
-        "pages": [
-          "Cockpit"
-        ],
+        "pages": [],
         "api_endpoints": [
           "GET /api/cockpit/regime"
         ],
         "db_tables": [
-          "market_regime_snapshots",
-          "market_indices (扩展 symbol 集合至 SPY/QQQ/IWM + 11 sector ETF)"
+          "market_indices (扩展 symbol 集合至 SPY/QQQ/IWM + 11 sector ETF, window=260)"
         ],
         "design_figma_link": null
       },
@@ -2236,23 +2303,22 @@
           "API-CONTRACT.md §GET /api/cockpit/regime"
         ],
         "data_model_refs": [
-          "DATA-MODEL.md §Entity: MarketRegimeSnapshot",
           "DATA-MODEL.md §Entity: MarketIndex"
         ],
         "decision_refs": [
-          "D061 market_indices 扩展至 17 symbol + regime 阈值与权重",
-          "D070 Cockpit 参数管理（本 feature 首次创建 cockpit_params.py §0+§1）"
+          "D061 market_indices 扩展至 17 symbol",
+          "D070 cockpit_params.py（F201-a 已建，本 Sprint 只引用）"
         ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "GET /api/cockpit/regime 返回 regime / market_score (0-100) / allowed_exposure / single_trade_risk_pct / indices 卡片（SPY/QQQ/IWM）/ sector heatmap（11 个 ETF）",
-        "Market Score 权重可在 config 中调整，默认为 SPY 25 + QQQ 20 + IWM 15 + Sector 20 + RiskAppetite 10 + Volatility 10",
-        "每日盘后 APScheduler 任务计算并写入 market_regime_snapshots（日期+score+子项分）",
-        "Widget 顶部显示 regime + score + allowed exposure + preferred setups",
-        "Widget 中部显示 SPY/QQQ/IWM 三张卡片（Bullish/Leading/Weak + above_50ma + above_200ma + RS trend）",
-        "Widget 底部 11 sector ETF heatmap，每 tile 显示 symbol + state（Strong/Constructive/Weak/Defensive）",
-        "数据不可用时 widget 显示明确占位态，不白屏不崩溃"
+        "GET /api/cockpit/regime 返回 regime / marketScore / subscores / allowedExposurePct / singleTradeRiskPct / preferredSetups / avoidSetups / indices / sectors / computedAt",
+        "indices 含 SPY/QQQ/IWM 各 1 条（含 aboveMa50/aboveMa200/rsTrend/state）",
+        "sectors 含 11 ETF 各 1 条（state: Strong/Constructive/Weak/Defensive）",
+        "market_indices 保留 260 天窗口（原 5 天扩展）",
+        "APScheduler regime cron 每日盘后触发 compute_and_store",
+        "market_regime_snapshots 为空时返回 404 NOT_FOUND",
+        "数据不可用时 sectors 返回 close=null / state=Neutral 占位不报错"
       ],
       "test_cases": {
         "unit": [],
@@ -2260,7 +2326,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "使用 FMP /stable/historical-price-eod/full 拉 14 个 ETF 日线，走现有 FMP 限流器。MarketOverviewWidget（Workbench，SPX/NDX/TNX）保持不变。"
+      "notes": "依赖 F201-a。market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。Sprint Contract 待 F201-a 验收后协商。"
     },
     {
       "id": "F202",
@@ -2273,7 +2339,8 @@
       "dependencies": [
         "F200-a",
         "F200-b",
-        "F201",
+        "F201-a",
+        "F201-b",
         "F204"
       ],
       "estimated_sessions": 3,
@@ -2500,7 +2567,7 @@
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
-        "F201"
+        "F201-b"
       ],
       "estimated_sessions": 4,
       "estimated_files_changed": [],
@@ -2729,7 +2796,7 @@
       "phase": "design_ready",
       "dependencies": [
         "F208",
-        "F201",
+        "F201-b",
         "F202"
       ],
       "estimated_sessions": 3,
