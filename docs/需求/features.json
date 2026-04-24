@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F204-a",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": "F204-b",
+    "active_sprint_phase": "design_ready"
   },
   "_iteration_log": [
     {
@@ -2389,8 +2389,8 @@
       "description": "建立 earnings_events 表（Alembic 008），实现 EarningsEvent SQLAlchemy model、EarningsEventRepository（upsert_batch + get_next + delete_before）、FmpClient.get_earnings_calendar()、EarningsService（fetch_and_store + get_next_earnings）。为 F204-b cron job + API 提供数据基础。",
       "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F200-a",
         "F200-b"
