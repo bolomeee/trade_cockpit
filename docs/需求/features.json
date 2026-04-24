@@ -2443,7 +2443,7 @@
       "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
       "priority": "P0",
       "status": "planned",
-      "phase": "design_ready",
+      "phase": "in_progress",
       "dependencies": [
         "F204-a"
       ],

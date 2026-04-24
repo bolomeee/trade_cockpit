@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
+from app.services.cockpit.earnings_service import EarningsService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
 from app.services.market_scanner_service import MarketScannerService
@@ -41,6 +42,7 @@ DAILY_REFRESH_CRON = "30 21 * * 1-5"
 SCHEDULER_JOB_ID = "ma150_daily_refresh"
 SCANNER_JOB_ID = "ma150_market_scanner"
 UNIVERSE_JOB_ID = "ma150_universe_refresh"
+EARNINGS_JOB_ID = "cockpit_earnings_refresh"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -212,6 +214,19 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F204-b: earnings calendar refresh, weekdays 05:30 UTC (before scanner at 06:15)
+        sched.add_job(
+            _earnings_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.earnings_cron_hour,
+                minute=settings.earnings_cron_minute,
+                timezone="UTC",
+            ),
+            id=EARNINGS_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -262,6 +277,18 @@ def _universe_tick(
             UniverseRefreshService(db, fmp=fmp_factory()).refresh()
     except Exception:  # noqa: BLE001
         logger.error("universe tick failed\n%s", traceback.format_exc())
+
+
+def _earnings_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for EarningsService (F204-b): weekdays 05:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            EarningsService(db, fmp=fmp_factory()).fetch_and_store()
+    except Exception:  # noqa: BLE001
+        logger.error("earnings tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

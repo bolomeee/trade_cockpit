@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     universe_cron_hour: int = 5
     universe_cron_minute: int = 0
 
+    # F204-b earnings calendar refresh (weekdays 05:30 UTC, before scanner)
+    earnings_cron_hour: int = 5
+    earnings_cron_minute: int = 30
+
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 
