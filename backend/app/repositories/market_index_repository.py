@@ -9,8 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.models.market_index import MarketIndex
 
-MARKET_INDEX_WINDOW = 5
+MARKET_INDEX_WINDOW = 260
 MARKET_INDEX_SYMBOLS = ("SPX", "NDX", "TNX")
+REGIME_ETF_SYMBOLS = (
+    "SPY", "QQQ", "IWM",
+    "XLK", "XLY", "XLF", "XLI", "XLE", "XLV", "XLC", "XLP", "XLU", "XLB", "XLRE",
+)
 
 
 class MarketIndexRepository:
@@ -85,3 +89,17 @@ class MarketIndexRepository:
         )
         self.db.commit()
         return int(result.rowcount or 0)
+
+    def upsert_batch(self, rows: list[dict]) -> None:
+        """Upsert multiple rows in a single transaction (used by regime ETF refresh).
+
+        Each dict must have keys: symbol, name, date, close, prev_close, change_pct.
+        """
+        for row in rows:
+            stmt = sqlite_insert(MarketIndex).values(**row)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["symbol", "date"],
+                set_={k: v for k, v in row.items() if k not in ("symbol", "date")},
+            )
+            self.db.execute(stmt)
+        self.db.commit()

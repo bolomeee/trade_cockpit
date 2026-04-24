@@ -28,6 +28,7 @@ from app.config import settings
 from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.earnings_service import EarningsService
+from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
 from app.services.market_scanner_service import MarketScannerService
@@ -43,6 +44,7 @@ SCHEDULER_JOB_ID = "ma150_daily_refresh"
 SCANNER_JOB_ID = "ma150_market_scanner"
 UNIVERSE_JOB_ID = "ma150_universe_refresh"
 EARNINGS_JOB_ID = "cockpit_earnings_refresh"
+REGIME_JOB_ID = "cockpit_regime_refresh"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -227,6 +229,19 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F201-b: regime ETF refresh + scoring, weekdays 22:15 UTC (after main refresh at 21:30)
+        sched.add_job(
+            _regime_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.regime_cron_hour,
+                minute=settings.regime_cron_minute,
+                timezone="UTC",
+            ),
+            id=REGIME_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -289,6 +304,20 @@ def _earnings_tick(
             EarningsService(db, fmp=fmp_factory()).fetch_and_store()
     except Exception:  # noqa: BLE001
         logger.error("earnings tick failed\n%s", traceback.format_exc())
+
+
+def _regime_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for regime ETF refresh + scoring (F201-b): weekdays 22:15 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            fmp = fmp_factory()
+            MarketRefreshService(db, fmp=fmp).refresh_regime_etfs()
+            MarketRegimeService(db).compute_and_store()
+    except Exception:  # noqa: BLE001
+        logger.error("regime tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

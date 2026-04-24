@@ -47,7 +47,8 @@ def test_prune_keeps_window(db_session):
     repo = MarketIndexRepository(db_session)
     for i in range(7):
         repo.upsert("SPX", "S&P 500", date(2026, 4, 1 + i), 5000.0 + i, None, None)
-    deleted = repo.prune_to_window("SPX", MARKET_INDEX_WINDOW)
+    # Pass explicit window=5 to verify pruning logic (MARKET_INDEX_WINDOW is now 260 for regime ETF history)
+    deleted = repo.prune_to_window("SPX", max_rows=5)
     assert deleted == 2
 
     from sqlalchemy import func, select
@@ -57,7 +58,7 @@ def test_prune_keeps_window(db_session):
     count = db_session.execute(
         select(func.count(MarketIndex.id)).where(MarketIndex.symbol == "SPX")
     ).scalar_one()
-    assert count == MARKET_INDEX_WINDOW
+    assert count == 5
 
 
 # ---------- Service (with fake_fmp) ----------

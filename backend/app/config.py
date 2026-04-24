@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     earnings_cron_hour: int = 5
     earnings_cron_minute: int = 30
 
+    # F201-b regime ETF refresh + scoring (weekdays 22:15 UTC, after main refresh at 21:30)
+    regime_cron_hour: int = 22
+    regime_cron_minute: int = 15
+
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 

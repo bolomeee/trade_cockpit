@@ -20,6 +20,7 @@ from app.external.fmp_client import FmpClient
 from app.repositories.market_index_repository import (
     MARKET_INDEX_SYMBOLS,
     MARKET_INDEX_WINDOW,
+    REGIME_ETF_SYMBOLS,
     MarketIndexRepository,
 )
 from app.repositories.system_log_repository import SystemLogRepository
@@ -30,6 +31,23 @@ SYMBOL_NAMES: dict[str, str] = {
     "SPX": "S&P 500",
     "NDX": "NASDAQ 100",
     "TNX": "10-Year Treasury Yield",
+}
+
+REGIME_ETF_NAMES: dict[str, str] = {
+    "SPY": "SPDR S&P 500 ETF Trust",
+    "QQQ": "Invesco QQQ Trust",
+    "IWM": "iShares Russell 2000 ETF",
+    "XLK": "Technology Select Sector SPDR",
+    "XLY": "Consumer Discretionary Select Sector SPDR",
+    "XLF": "Financial Select Sector SPDR",
+    "XLI": "Industrial Select Sector SPDR",
+    "XLE": "Energy Select Sector SPDR",
+    "XLV": "Health Care Select Sector SPDR",
+    "XLC": "Communication Services Select Sector SPDR",
+    "XLP": "Consumer Staples Select Sector SPDR",
+    "XLU": "Utilities Select Sector SPDR",
+    "XLB": "Materials Select Sector SPDR",
+    "XLRE": "Real Estate Select Sector SPDR",
 }
 
 # DB symbol → FMP fetch symbol (D034). TNX uses treasury-rates, not this map.
@@ -135,6 +153,59 @@ class MarketRefreshService:
             float(close),
             float(prev_close) if prev_close is not None else None,
         )
+
+    def refresh_regime_etfs(self) -> "MarketBatchResult":
+        """Fetch 400 calendar days of history for 14 regime ETFs and upsert all bars.
+
+        Called by the regime cron tick (F201-b) before compute_and_store.
+        """
+        results: list[SymbolResult] = []
+        completed = 0
+        failed = 0
+        for symbol in REGIME_ETF_SYMBOLS:
+            try:
+                self._refresh_etf_history(symbol)
+            except Exception as exc:  # noqa: BLE001
+                self.log_repo.create(
+                    level="ERROR",
+                    source=LOG_SOURCE,
+                    message=f"{symbol} ETF refresh failed: {exc}",
+                    detail=traceback.format_exc(),
+                )
+                results.append(SymbolResult(symbol=symbol, status="error", error=str(exc)))
+                failed += 1
+                continue
+            self.log_repo.create(level="OK", source=LOG_SOURCE, message=f"{symbol} ETF refreshed")
+            results.append(SymbolResult(symbol=symbol, status="ok"))
+            completed += 1
+        return MarketBatchResult(completed=completed, failed=failed, results=results)
+
+    def _refresh_etf_history(self, symbol: str) -> None:
+        bars = self.fmp.get_index_recent_bars(symbol, days=400)
+        if not bars:
+            raise RuntimeError(f"{symbol}: empty FMP response")
+        sorted_bars = sorted(bars, key=lambda b: str(_get(b, "date") or ""))
+        name = REGIME_ETF_NAMES.get(symbol, symbol)
+        rows: list[dict] = []
+        for i, bar in enumerate(sorted_bars):
+            close = _get(bar, "close")
+            raw_date = _get(bar, "date")
+            if close is None or raw_date is None:
+                continue
+            row_date = _parse_iso_date(str(raw_date)[:10])
+            prev_bar = sorted_bars[i - 1] if i > 0 else None
+            prev_close_raw = _get(prev_bar, "close") if prev_bar is not None else None
+            prev_close = float(prev_close_raw) if prev_close_raw is not None else None
+            rows.append({
+                "symbol": symbol,
+                "name": name,
+                "date": row_date,
+                "close": float(close),
+                "prev_close": prev_close,
+                "change_pct": _change_pct(float(close), prev_close),
+            })
+        self.repo.upsert_batch(rows)
+        self.repo.prune_to_window(symbol, MARKET_INDEX_WINDOW)
 
     def _fetch_treasury(self) -> tuple[date, float, float | None]:
         data = self.fmp.get_treasury_10y_latest()
