@@ -1,100 +1,93 @@
-# SESSION-HANDOFF — 2026-04-24（F204-b 完成，进入 F201）
+# SESSION-HANDOFF — 2026-04-24（F201-a done，进入 F201-b）
 
-> 覆盖上一版 handoff（F204-a done → F204-b）。本次完成 F204-b Earnings Calendar 接入层，用户验收通过。
-
-## 立即执行指令（给下一个 session）
-
-**开启新 session 后，说**：
-
-> 继续 Cockpit Epic v1.8 开发。F200-a、F200-b、F204-a、F204-b 均已验收通过（done）。
-> 读以下文件后决定下一步：
-> 1. `CLAUDE.md`
-> 2. `SESSION-HANDOFF.md`（本文件）
-> 3. `claude-progress.txt` 末尾条目
-> 4. `docs/需求/features.json`（_pipeline_status + active_sprint）
->
-> 下一个 sprint 是 **F201**（Market Regime Widget：后端计分引擎 + `/api/cockpit/regime` endpoint）。
-> 进入 feature-dev skill，走 Sprint Contract 协商流程。
+> 覆盖上一版 handoff（F204-b done → F201）。本次完成 F201-a Market Regime 数据层，用户验收通过。
 
 ---
 
-## 本次 session 做了什么
+## 完成的内容
 
-实现 F204-b：Earnings Calendar 接入层。
+### F201-a Market Regime 数据层（`45fbb5d`）✅ done
 
-### 产出清单
-
-| 文件 | 动作 | 说明 |
-|---|---|---|
-| `backend/app/config.py` | 修改 | +`earnings_cron_hour=5`, `earnings_cron_minute=30` |
-| `backend/app/services/refresh_job.py` | 修改 | `EARNINGS_JOB_ID` + `_earnings_tick`（weekdays 05:30 UTC） |
-| `backend/app/schemas/cockpit/__init__.py` | 新建 | package marker |
-| `backend/app/schemas/cockpit/earnings.py` | 新建 | `EarningsData` + `EarningsResponse`（CamelModel） |
-| `backend/app/routers/cockpit/earnings.py` | 新建 | `GET /earnings` endpoint，注入 EarningsService |
-| `backend/app/routers/cockpit/__init__.py` | 修改 | 从 F200-b 空占位升级为真实 cockpit APIRouter |
-| `backend/app/main.py` | 修改 | `app.include_router(cockpit_router, prefix="/api/cockpit")` |
-| `backend/tests/test_earnings_f204b.py` | 新建 | 7/7 测试（S1–S7） |
-| `docs/开发/sprint-contracts/F204-b-contract.md` | 新建 | Sprint Contract |
-| `docs/需求/features.json` | 修改 | F204-b → done；active_sprint → F201 |
-| `claude-progress.txt` | 追加 | F204-b Sprint 条目 |
-
-### Evaluator 自检结果
-
-- 7/7 F204-b 测试通过 ✅
-- 全量回归：368 passed；1 pre-existing failure（test_news_api）✅
-- GET /api/cockpit/earnings?ticker=AAPL → 200 camelCase 响应 ✅
-- 用户手动验收：启动后端访问端点，确认 API 通畅 ✅
-- commit: `af972f8 feat(F204-b): Earnings Calendar 接入层（Cron + Router）`
+- **Alembic 迁移** `009_f201a_market_regime_snapshots.py`：建表 + `uq_market_regime_date` 唯一索引
+- **MarketRegimeSnapshot** ORM model（`backend/app/models/market_regime_snapshot.py`）
+- **MarketRegimeRepository**（`backend/app/repositories/market_regime_repository.py`）：upsert / get_latest / delete_old（90 天 retention）
+- **cockpit_params.py**（`backend/app/services/cockpit/cockpit_params.py`）：D070 首次落地
+  - `CockpitSharedParams §0`：MA_SHORT=50 / MA_LONG=200 / REGIME_LOOKBACK_DAYS=200 / RS_LOOKBACK_DAYS=20 / SECTOR_ETFS(11) / INDEX_ETFS(3)
+  - `CockpitRegimeParams §1`：打分 PTS / regime 阈值 / sector ratio 阈值（含 SECTOR_NEUTRAL_RATIO=1.0）/ exposure 表 / setup 推荐表，frozen=True Pydantic v2
+- **MarketRegimeService**（`backend/app/services/cockpit/market_regime_service.py`）：
+  - `compute_and_store(today)` — 6 维度打分，upsert market_regime_snapshots
+  - `get_indices_and_sectors_state()` — 返回 camelCase 字典，供 F201-b GET endpoint 直接调用
+  - 所有阈值通过 REGIME.* / SHARED.* 引入，D070 合规
+- **测试**：S1–S14 共 22 个用例全通过；全量回归 390/391（1 个预先存在的 test_news_api 失败）
 
 ---
 
-## v1.8 P0 执行路线图（当前位置）
+## 当前状态
+
+| Feature | 状态 |
+|---------|------|
+| F200-a Cockpit Skeleton（前端骨架） | ✅ done |
+| F200-b TopNav + ESLint 边界 | ✅ done |
+| F201-a Market Regime 数据层 | ✅ done（45fbb5d） |
+| **F201-b Market Regime 接入层** | **⬜ design_ready → 待 Sprint Contract 协商** |
+| F202 Setup Monitor | ⬜ design_ready（依赖 F201-a ✅ + F201-b） |
+| F203 Decision Panel | ⬜ design_ready（依赖 F201-b） |
+| F204-a/b Earnings Calendar | ✅ done |
+
+---
+
+## F201-b 内容速览（下一 Sprint）
+
+**目标**：让 `GET /api/cockpit/regime` 可以返回 regime 打分 + indices + sectors 状态。
+
+**7 生产文件 + 1 测试文件**：
+
+| # | 文件 | 操作 |
+|---|------|------|
+| 1 | `backend/app/repositories/market_index_repository.py` | 修改：WINDOW 5→260，新增 SPY/QQQ/IWM + 11 sector ETF symbol 映射 |
+| 2 | `backend/app/services/market_refresh_service.py` | 修改：拉取 14 ETF 日线数据 |
+| 3 | `backend/app/config.py` | 修改：+REGIME_CRON_HOUR/MINUTE/DAY_OF_WEEK |
+| 4 | `backend/app/services/refresh_job.py` | 修改：注册 regime cron job（参照 EarningsCronJob 模式） |
+| 5 | `backend/app/schemas/cockpit/regime.py` | 新建：RegimeResponse Pydantic schema |
+| 6 | `backend/app/routers/cockpit/regime.py` | 新建：GET /api/cockpit/regime |
+| 7 | `backend/app/routers/cockpit/__init__.py` | 修改：注册 regime router |
+| 8 | `backend/tests/test_regime_f201b.py` | 新建 |
+
+**关键注意事项**：
+- `market_index_repository.py` 现在 `WINDOW=5`，扩展到 260 须验证 `prune_to_window` 兼容性
+- FmpClient 当前只有 `get_index_recent_bars`（SPX/NDX/TNX），需确认是否支持 ETF symbol（如 SPY）
+- `MarketRegimeService.get_indices_and_sectors_state()` 已在 F201-a 实现，F201-b 只需在 router 调用
+- API-CONTRACT.md 已有 `GET /api/cockpit/regime` 完整定义，包括 404 when empty 行为
+
+---
+
+## Sprint Contract 执行状态（F201-a，已完成）
+
+| 开发步骤 | 状态 |
+|---------|------|
+| DATA-MODEL 确认 | ✅ |
+| API-CONTRACT 确认 | ✅ |
+| Alembic 迁移 009 | ✅ |
+| MarketRegimeRepository | ✅ |
+| cockpit_params.py §0+§1 | ✅ |
+| MarketRegimeService 计分引擎 | ✅ |
+| 单元/集成测试 S1–S14 | ✅ 22/22 |
+| 全量回归 S15 | ✅ 390/391 |
+| Evaluator 自检清单 | ✅ 全部通过 |
+
+---
+
+## 下一个 Session 继续的指令
 
 ```
-[F200-a 前端骨架]                    ✅ done
-        ↓
-[F200-b TopNav + backend 骨架]       ✅ done
-        ↓
-[F204-a Earnings Calendar 数据层]    ✅ done
-        ↓
-[F204-b Earnings Calendar 接入层]    ✅ done
-        ↓
-[F201 Market Regime Widget]          ← 下一个 sprint（新 session）
-        ↓
-[F202 Setup Monitor Widget]（依赖 F201+F204）
-        ↓
-[F203-a/b/c Decision Panel]
-        ↓
-v1.8.0 发版
+我回来了，请读取：
+- CLAUDE.md
+- SESSION-HANDOFF.md
+- docs/需求/features.json（F201-b 部分）
+- docs/系统设计/API-CONTRACT.md（§GET /api/cockpit/regime 部分）
+- docs/系统设计/DECISIONS.md（D061 修订版）
+- backend/app/repositories/market_index_repository.py（了解现状）
+- backend/app/config.py（了解现有 cron 参数格式）
+
+然后告诉我项目状态，准备开发 F201-b Market Regime 接入层。
 ```
-
----
-
-## F201 概要（给下一个 session 的 Sprint Contract 协商素材）
-
-**目标**：实现 `GET /api/cockpit/regime` endpoint，返回 market regime 打分 + SPY/QQQ/IWM 指数卡片 + 11 sector heatmap。
-
-**涉及数据**：
-- `market_regime_snapshots` 表（需确认是否已存在，或需 Alembic 迁移新建）
-- `market_indices` 表（已存在，含 SPY/QQQ/IWM/XL* 数据）
-- `cockpit_params.py` §0（regime 权重）+ §1（regime 枚举阈值）
-
-**注意**：
-- F201 可能需要拆分为 F201-a（数据层：model + repo + 计分 service）和 F201-b（接入层：cron + router），对照 F204 的拆分模式
-- 需要先查 `docs/系统设计/DATA-MODEL.md` 确认 `market_regime_snapshots` 表是否已定义
-- cockpit_params.py 是 F201 首次落地的关键新文件（§0 regime weight + §1 threshold）
-
-**API-CONTRACT 引用**：`GET /api/cockpit/regime`（已定义，见 API-CONTRACT.md §Cockpit Market Regime）
-
----
-
-## 给下一个 session 的提醒
-
-1. **F200-a/b + F204-a/b 均为 done** — 不用再回顾
-2. **下一个 sprint 是 F201**（Market Regime Widget，后端为主）
-3. **pre-existing test failure**：`tests/test_news_api.py::test_fmp_failure_with_cached_data_returns_degraded` 已作为独立 task 标记，不阻塞 F201
-4. **cockpit router 已就绪**：`app.include_router(cockpit_router, prefix="/api/cockpit")` 已在 main.py 注册，F201 只需在 `routers/cockpit/__init__.py` include 新 sub-router
-
-## 未决事项
-
-- `test_news_api.py::test_fmp_failure_with_cached_data_returns_degraded`：预先存在，已标记独立修复（非 F201 阻塞）

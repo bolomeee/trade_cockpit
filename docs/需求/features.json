@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F201-a",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": "F201-b",
+    "active_sprint_phase": "design_ready"
   },
   "_iteration_log": [
     {
@@ -2210,8 +2210,8 @@
       "description": "market_regime_snapshots 新表 + MarketRegimeRepository + cockpit_params.py §0+§1（D070 首次落地）+ MarketRegimeService 计分引擎（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100）+ get_indices_and_sectors_state 方法。",
       "user_story": "作为开发者，需要可独立测试的计分引擎，能从 market_indices 历史数据计算 regime 打分并持久化到 market_regime_snapshots。",
       "priority": "P0",
-      "status": "planned",
-      "phase": "needs_review",
+      "status": "completed",
+      "phase": "done",
       "dependencies": [
         "F200-a",
         "F200-b"
