@@ -1280,3 +1280,41 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
 ⏭ 下一步：F209-c — Setup Explainer popover（复用 F209-b 的 aiApi.ts）
    依赖：F209-a ✅ + F209-b ✅ + F202-c ✅
    触发：feature-dev skill，类型 A（新功能）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F209-c — AI Setup Explainer Popover（Contract 协商）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 阅读 F209-c acceptance_criteria + 后端 schema + design-spec §Widget5
+  - 识别核心冲突：SetupItem.setupType（7 项大写）vs schema.setup（5 项小写）
+  - 与用户对齐 4 项决策（全 yes）：
+      Q1. setup 映射：仅 BREAKOUT/PULLBACK/RECLAIM 显示 ? 按钮，其余 4 种不显示
+      Q2. 触发：点击（非 hover），design-spec line 972 待规则 8 偏离标注
+      Q3. 缓存：不写前端 cooldown，react-query gcTime=24h + 服务端 ai_memos 双层
+      Q4. 视觉：新增独立第 10 列 ?
+  - context7 查 shadcn/ui Popover：受控 open / asChild trigger 模式确认
+  - Sprint Contract 落盘 docs/开发/sprint-contracts/F209-c-contract.md
+      预计修改文件 = 3（远低于 6 上限）
+      完成标准 12 条 / 测试用例 §S 共 11 条
+  - features.json：F209-c.phase = contract_agreed，active_sprint = F209-c
+  - phase 推进：design_ready → contract_agreed
+
+⚠️ 待你决策：
+  - 无（4 项已 yes）
+  - Q1（trendScore 阈值 60/40）/ Q3（列宽 5%）留 acceptance 阶段视觉验证
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F209-c-contract.md（新建）
+  - docs/需求/features.json（last_updated / _pipeline_status / F209-c.phase 三处）
+
+📊 功能状态：
+  F209-a ✅ done
+  F209-b ✅ done
+  F209-c 📋 contract_agreed（本次）
+
+[下一个 Session]
+  开 Sonnet，粘贴：
+  > 继续开发 F209-c，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-c-contract.md，
+  > 进入 Generator 模式，从开发顺序 step 8a 开始（AiSetupExplainerPopover.tsx 新建）。

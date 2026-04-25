@@ -1,79 +1,90 @@
 # SESSION HANDOFF
 
 > 生成时间：2026-04-25
-> 当前阶段：F209-b ✅ done（已验收）→ 准备 F209-c
+> 当前阶段：F209-c 📋 contract_agreed（待 Generator 模式开发）
 > 当前 branch：cockpit
 
 ---
 
 ## 本 session 完成的事
 
-**F209-b 最终验收（acceptance）**
+**F209-c Sprint Contract 协商**
 
 | 步骤 | 内容 | 状态 |
 |------|------|------|
-| 验收清单生成 | docs/验收/v1.8-F209-b-acceptance.md | ✅ |
-| 用户视觉 + 业务逻辑确认（V1-V9 / B1-B7 / E1-E3）| 用户在浏览器逐项核对 | ✅ 通过 |
-| features.json 状态更新 | F209-b.phase = done, completed_at = 2026-04-25 | ✅ |
-| _pipeline_status.active_sprint 清空 | 上一 sprint 收尾 | ✅ |
-| claude-progress.txt 追加 | 验收日志 | ✅ |
+| 读取 acceptance_criteria + schema + design-spec | features.json#F209-c / setup_explainer.py / §Widget5 | ✅ |
+| 识别核心字段不匹配（SetupItem.setupType vs schema.setup）| 7 大写 vs 5 小写 | ✅ |
+| 与用户 4 项决策对齐 | 全 yes | ✅ |
+| context7 查 shadcn/ui Popover 最新 API | 受控 open + asChild | ✅ |
+| Sprint Contract 落盘 | docs/开发/sprint-contracts/F209-c-contract.md | ✅ |
+| features.json 更新 | F209-c.phase = contract_agreed / active_sprint = F209-c | ✅ |
+| claude-progress.txt 追加 | Contract 协商日志 | ✅ |
 
 ---
 
-## 本次会话发现的环境陷阱（非 feature 缺陷，但下次会再踩）
+## Sprint Contract 摘要
 
-1. **Vite proxy 端口约定 = 8001，不是 8000** ⚠️
-   - `frontend/vite.config.ts` 的 `/api` proxy 指向 `127.0.0.1:8001`
-   - 本会话先前误起 `uvicorn --port 8000`，浏览器加载失败但 curl 直连 8000 正常
-   - **正确启动命令**：`uv run uvicorn app.main:app --reload --port 8001`
+**完整文档**：[docs/开发/sprint-contracts/F209-c-contract.md](docs/开发/sprint-contracts/F209-c-contract.md)
 
-2. **多个 Vite 实例共存导致端口顺延**
-   - 残留的 pnpm dev 进程没退干净时，新启动会顺延到 5174 / 5175
-   - 清理：`lsof -ti:5173,5174,5175 | xargs kill`
+### 实现范围
+SetupMonitorWidget 第 10 列加 `?` 按钮，仅 `BREAKOUT/PULLBACK/RECLAIM` 三种 setup 显示。点击打开 shadcn `Popover`，调 `POST /api/ai/setup_explainer`，渲染 4 状态（loading Skeleton / success label+quality+whyWatch+mainRisks / error "AI 暂不可用" / closed 不请求）。
 
-3. **vitest fork worker 残留**
-   - 测试结束后偶尔有 vitest fork worker 不退出
-   - 不影响功能，但占内存；按需 kill
+### 4 项已确认决策
+| # | 决策 | 选择 |
+|---|------|------|
+| 1 | setup 映射 | BREAKOUT→breakout / PULLBACK→pullback / RECLAIM→reversal；其余 4 种 setup 不渲染按钮 |
+| 2 | 触发方式 | **点击**（非 hover，与 features.json 一致；design-spec line 972 待 step 9 加偏离标注）|
+| 3 | 缓存策略 | 不写前端 cooldown；react-query `gcTime=24h` + 服务端 `ai_memos` 双层 |
+| 4 | 视觉布局 | 独立第 10 列 `?`，width=5%，align="end" |
 
----
+### 预计修改文件（共 3 个）
+| 路径 | 操作 |
+|------|------|
+| `frontend/src/cockpit/components/AiSetupExplainerPopover.tsx` | 新建（~130 行）|
+| `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` | +12 行 |
+| `frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx` | +220 行（§S 11 用例）|
 
-## features.json 当前状态
-
-| Feature | Phase | 说明 |
-|---------|-------|------|
-| F209-a | ✅ done | AI 后端 schema 注册 |
-| F209-b | ✅ done | Market Narrator 前端集成（**本次验收完成**） |
-| F209-c | ⬜ design_ready | Setup Explainer popover（依赖已全部 done，可起） |
-| F210 | ⬜ design_ready | Candidate Ranker + Trade Plan Generator |
-| F211 | ⬜ design_ready | Contradiction Detector + News Summarizer + Journal Assistant |
-
-**P0 待开发**：F205（Pool Builder）/ F206（Position Manager）/ F207（Daily Action List）—— 部署门禁需 P0 全部 done。
+附加规则 8 回写：`docs/设计/design-spec.md` line 972 加 hover→click 偏离标注（不计入 6 文件上限）。
 
 ---
 
-## 下个 Session 起点：F209-c
+## 下个 Session 起点：F209-c Generator 模式
 
-**触发指令**（粘贴到新 session）：
+**触发指令**（粘贴到新 session，建议 Sonnet）：
 
 ```
-开始开发 F209-c：AI Setup Explainer popover。
-读取 docs/需求/features.json#F209-c 的 acceptance_criteria，
-复用 frontend/src/cockpit/lib/api/aiApi.ts（F209-b 已建）。
-进入 feature-dev skill，类型 A（新功能），先做 Sprint Contract。
+继续开发 F209-c，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-c-contract.md，
+进入 Generator 模式，从开发顺序 step 8a 开始
+（AiSetupExplainerPopover.tsx 新建）。
 ```
 
-**F209-c 核心要点**（节省新 session 的探索时间）：
-- 复用 `callAiTask<TIn, TOut>('setup_explainer', input)` — aiApi.ts 已通用
-- 在 `SetupMonitor` 表格每行添加 popover 触发（hover or click，按 design-spec 决定）
-- popover 内容字段：rationale / key_levels / risks（schema 见 `backend/app/ai/schemas/setup_explainer.py`）
-- 可复用 F209-b 引入的路由式 fetch mock helper `makeRoutedFetch`（位于 `MarketRegimeWidget.test.tsx`）
-- API：`POST /api/ai/setup_explainer`（F209-a 已就位）
-- 错误统一文案 / cooldown / tokens 走 `var(--*)` —— 参照 F209-b 成熟模式
+### 开发顺序（严格执行，每步完成后立即 wip commit）
 
-**起 sprint 前需在 Contract 阶段澄清**：
-- popover 是否需要 cooldown？（每行独立请求，cooldown 策略与 widget 级不同）
-- popover 是否随表格 sort / filter 重置缓存？
-- mobile 端 popover 形态（design-spec 是否定义？）
+| Step | 内容 | 验证 | commit msg |
+|------|------|------|-----------|
+| 8a | 新建 `AiSetupExplainerPopover.tsx`（类型 + buildInput + useQuery + 4 状态渲染）| tsc 通过 | `wip(F209-c): popover component skeleton` |
+| 8b | `SetupMonitorWidget.tsx` 加第 10 列 + 条件渲染按钮 | 浏览器手动验证渲染 | `wip(F209-c): widget integration` |
+| 8c | `SetupMonitorWidget.test.tsx` §S 11 用例（S1-S11）| `pnpm test --run` 全绿 | `wip(F209-c): tests §S green` |
+| 9 | `design-spec.md` line 972 加偏离标注（规则 8）| grep 验证 | `chore(F209-c): design-spec deviation note` |
+| 10 | `pnpm tsc --noEmit` + `pnpm lint` 全绿 | 工程门禁 | — |
+| 11 | Evaluator 自检（11 项 + 全量回归）| Contract §5 自检清单 | feat(F209-c) 收尾 |
+
+### Contract 关键条款（避免回看）
+
+**输入构造**（buildSetupExplainerInput）：
+```ts
+setup: BREAKOUT→'breakout' / PULLBACK→'pullback' / RECLAIM→'reversal'
+trend: trendScore>=60→'up' / <=40→'down' / else 'sideways'
+rs: rsPercentile（int → float OK）
+risk: { entry: entryPrice, stop: stopPrice }
+```
+
+**Quality 徽章**：popover 内 inline 渲染（含 'D'），不复用 SetupQualityBadge（避免改组件签名）。
+
+**按钮 e.stopPropagation()**：阻止冒泡到 `<tr onClick>` 的 setSelectedTicker。
+
+**测试 mock**：复用 F209-b 的 `makeRoutedFetch`（位于 MarketRegimeWidget.test.tsx），按 URL 路由 setup-monitor + setup_explainer。
 
 ---
 
@@ -91,14 +102,31 @@ pnpm dev
 
 如果 5173 被占：`lsof -ti:5173,5174,5175 | xargs kill`
 
+> 上一 session 教训：vite proxy 指向 `127.0.0.1:8001`，**不是 8000**。
+
+---
+
+## features.json 当前状态
+
+| Feature | Phase | 说明 |
+|---------|-------|------|
+| F209-a | ✅ done | AI 后端 schema 注册 |
+| F209-b | ✅ done | Market Narrator 前端集成 |
+| **F209-c** | **📋 contract_agreed** | **本次 Contract 完成，待 Generator 启动** |
+| F210 | ⬜ design_ready | Candidate Ranker + Trade Plan |
+| F211 | ⬜ design_ready | Contradiction + News + Journal |
+
 ---
 
 ## 引用文档
 
-| 文档 | 节段 |
+| 文档 | 用途 |
 |------|------|
-| API-CONTRACT.md | §POST /api/ai/{task_type}（line 1655-1734）|
-| backend/app/ai/schemas/setup_explainer.py | F209-c 的 I-O schema |
-| design-spec.md | §Widget 2 SetupMonitor（含 popover wireframe）|
-| docs/验收/v1.8-F209-b-acceptance.md | F209-b 验收记录 |
-| frontend/src/cockpit/lib/api/aiApi.ts | F209-c 复用入口 |
+| docs/开发/sprint-contracts/F209-c-contract.md | **本 sprint 唯一权威**，开发期间必随时回看 |
+| backend/app/ai/schemas/setup_explainer.py | I/O Pydantic schema（字段命名权威）|
+| frontend/src/cockpit/lib/api/aiApi.ts | callAiTask 入口（不改）|
+| frontend/src/cockpit/widgets/MarketRegimeWidget.tsx#AiMarketNotes | F209-b 实现参考（4 状态渲染、ApiError 处理）|
+| frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx | 现有 SetupMonitor 测试（待扩展 §S）|
+| frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx | makeRoutedFetch 路由 mock 参考实现 |
+| docs/设计/design-spec.md §Widget 5（line 945-973）| SetupMonitor 视觉规格 + line 972 待打偏离标注 |
+| API-CONTRACT.md（line 1655-1734）| /api/ai/{task_type} 统一 envelope + 错误码 |
