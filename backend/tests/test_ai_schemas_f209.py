@@ -382,6 +382,147 @@ class TestGuardrail:
 
 
 # ---------------------------------------------------------------------------
-# §D — Endpoint end-to-end (mock LiteLLM + TestClient) — added in step5
-# §E — Live smoke — added in step6
+# §D — Endpoint end-to-end (mock LiteLLM + TestClient)
 # ---------------------------------------------------------------------------
+
+
+def _make_litellm_mock(output: dict, cost: Decimal = Decimal("0.001234")):
+    """Return a _call_litellm replacement that returns fixed data."""
+
+    def mock(model, input_dict, output_schema, api_key):
+        return output, 10, 5, cost
+
+    return mock
+
+
+class TestEndpointIntegration:
+    def test_D1_market_narrator_success(self, client, monkeypatch):
+        """POST /api/ai/market_narrator → 200, valid envelope, costUsd > 0 (D072)."""
+        import app.ai.gateway as gw
+
+        monkeypatch.setattr(gw, "_call_litellm", _make_litellm_mock(_MN_OUTPUT_VALID))
+        resp = client.post("/api/ai/market_narrator", json={"input": _MN_INPUT_VALID})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["message"] == "success"
+
+        d = body["data"]
+        assert isinstance(d["memoId"], int) and d["memoId"] > 0
+        assert d["taskType"] == "market_narrator"
+        assert d["schemaVersion"] == "v1"
+        assert d["output"] == _MN_OUTPUT_VALID
+
+        m = d["meta"]
+        assert float(m["costUsd"]) > 0
+        assert m["tokensIn"] == 10
+        assert m["tokensOut"] == 5
+        assert m["cacheHit"] is False
+        assert m["tier"] == "default"
+        assert "modelUsed" in m
+        assert "latencyMs" in m
+
+    def test_D2_setup_explainer_success(self, client, monkeypatch):
+        """POST /api/ai/setup_explainer → 200, valid envelope."""
+        import app.ai.gateway as gw
+
+        monkeypatch.setattr(gw, "_call_litellm", _make_litellm_mock(_SE_OUTPUT_VALID))
+        resp = client.post("/api/ai/setup_explainer", json={"input": _SE_INPUT_VALID})
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["message"] == "success"
+        d = body["data"]
+        assert d["taskType"] == "setup_explainer"
+        assert d["schemaVersion"] == "v1"
+        assert d["output"] == _SE_OUTPUT_VALID
+        assert float(d["meta"]["costUsd"]) > 0
+
+    def test_D3_guardrail_violation_returns_409(self, client, monkeypatch):
+        """mock returns 'buy now' in headline → guardrail catches → 409 AI_GUARDRAIL_VIOLATION."""
+        import app.ai.gateway as gw
+
+        bad_output = {**_MN_OUTPUT_VALID, "headline": "Just buy now the dip"}
+        monkeypatch.setattr(gw, "_call_litellm", _make_litellm_mock(bad_output))
+
+        resp = client.post("/api/ai/market_narrator", json={"input": _MN_INPUT_VALID})
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "AI_GUARDRAIL_VIOLATION"
+
+    def test_D4_missing_required_field_returns_422(self, client):
+        """Input missing marketScore → 422 VALIDATION_ERROR."""
+        bad_input = {k: v for k, v in _MN_INPUT_VALID.items() if k != "marketScore"}
+        resp = client.post("/api/ai/market_narrator", json={"input": bad_input})
+        assert resp.status_code == 422
+        assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    def test_D5_mn_cost_usd_written_to_db(self, client, db_session, monkeypatch):
+        """D072 verification: ai_memos row has cost_usd > 0 after market_narrator call."""
+        import app.ai.gateway as gw
+        from app.models.ai_memo import AiMemo
+
+        monkeypatch.setattr(gw, "_call_litellm", _make_litellm_mock(_MN_OUTPUT_VALID))
+        resp = client.post("/api/ai/market_narrator", json={"input": _MN_INPUT_VALID})
+
+        assert resp.status_code == 200
+        memo_id = resp.json()["data"]["memoId"]
+
+        # Expire any cached state and re-query
+        db_session.expire_all()
+        memo = db_session.query(AiMemo).filter(AiMemo.id == memo_id).first()
+        assert memo is not None
+        assert memo.cost_usd > 0
+
+    def test_D6_guardrail_violation_no_new_memo(self, client, db_session, monkeypatch):
+        """409 guardrail path: ai_memos count does not increase."""
+        import app.ai.gateway as gw
+        from app.models.ai_memo import AiMemo
+
+        bad_output = {**_MN_OUTPUT_VALID, "summary": "go sell now immediately"}
+        monkeypatch.setattr(gw, "_call_litellm", _make_litellm_mock(bad_output))
+
+        count_before = db_session.query(AiMemo).count()
+        resp = client.post("/api/ai/market_narrator", json={"input": _MN_INPUT_VALID})
+        assert resp.status_code == 409
+
+        db_session.expire_all()
+        assert db_session.query(AiMemo).count() == count_before
+
+
+# ---------------------------------------------------------------------------
+# §E — Live smoke (@pytest.mark.live, skipped when OPENAI_API_KEY absent)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+def test_E1_market_narrator_live_smoke(db_session):
+    """Real LiteLLM/OpenAI call — validates D072 cost fix is live on market_narrator.
+
+    Requires OPENAI_API_KEY env var; automatically skipped when absent.
+    Run manually: pytest backend/tests/test_ai_schemas_f209.py -m live -v
+    """
+    if not os.getenv("OPENAI_API_KEY"):
+        pytest.skip("OPENAI_API_KEY not set — skipping live smoke")
+
+    from app.ai.gateway import AiGateway
+    from app.ai.schemas.market_narrator import MarketNarratorOutput
+    from app.models.ai_memo import AiMemo
+
+    result = AiGateway(db_session).run(
+        task_type="market_narrator",
+        input_dict=_MN_INPUT_VALID,
+        no_cache=True,
+    )
+
+    # D072 verification: cost must be > 0 from real provider
+    assert result.meta.cost_usd > 0, "D072: cost_usd must be > 0 from real call"
+
+    # Output must parse against the schema
+    MarketNarratorOutput(**result.output)
+
+    # Verify ai_memos row
+    memo = db_session.query(AiMemo).filter(AiMemo.id == result.memo_id).first()
+    assert memo is not None
+    assert memo.cost_usd > 0, "D072: ai_memos.cost_usd must be > 0"
+    assert memo.task_type == "market_narrator"
+    assert memo.schema_version == "v1"
