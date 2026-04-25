@@ -1,24 +1,7 @@
-# SESSION-HANDOFF — 2026-04-24（F201-a done，进入 F201-b）
+# SESSION-HANDOFF — 2026-04-25（F203-a ✅ needs_review）
 
-> 覆盖上一版 handoff（F204-b done → F201）。本次完成 F201-a Market Regime 数据层，用户验收通过。
-
----
-
-## 完成的内容
-
-### F201-a Market Regime 数据层（`45fbb5d`）✅ done
-
-- **Alembic 迁移** `009_f201a_market_regime_snapshots.py`：建表 + `uq_market_regime_date` 唯一索引
-- **MarketRegimeSnapshot** ORM model（`backend/app/models/market_regime_snapshot.py`）
-- **MarketRegimeRepository**（`backend/app/repositories/market_regime_repository.py`）：upsert / get_latest / delete_old（90 天 retention）
-- **cockpit_params.py**（`backend/app/services/cockpit/cockpit_params.py`）：D070 首次落地
-  - `CockpitSharedParams §0`：MA_SHORT=50 / MA_LONG=200 / REGIME_LOOKBACK_DAYS=200 / RS_LOOKBACK_DAYS=20 / SECTOR_ETFS(11) / INDEX_ETFS(3)
-  - `CockpitRegimeParams §1`：打分 PTS / regime 阈值 / sector ratio 阈值（含 SECTOR_NEUTRAL_RATIO=1.0）/ exposure 表 / setup 推荐表，frozen=True Pydantic v2
-- **MarketRegimeService**（`backend/app/services/cockpit/market_regime_service.py`）：
-  - `compute_and_store(today)` — 6 维度打分，upsert market_regime_snapshots
-  - `get_indices_and_sectors_state()` — 返回 camelCase 字典，供 F201-b GET endpoint 直接调用
-  - 所有阈值通过 REGIME.* / SHARED.* 引入，D070 合规
-- **测试**：S1–S14 共 22 个用例全通过；全量回归 390/391（1 个预先存在的 test_news_api 失败）
+> 覆盖上一版（F203-a contract_agreed）。
+> F203-a 已完成开发 + 测试，进入 needs_review 状态。
 
 ---
 
@@ -26,68 +9,83 @@
 
 | Feature | 状态 |
 |---------|------|
-| F200-a Cockpit Skeleton（前端骨架） | ✅ done |
-| F200-b TopNav + ESLint 边界 | ✅ done |
-| F201-a Market Regime 数据层 | ✅ done（45fbb5d） |
-| **F201-b Market Regime 接入层** | **⬜ design_ready → 待 Sprint Contract 协商** |
-| F202 Setup Monitor | ⬜ design_ready（依赖 F201-a ✅ + F201-b） |
-| F203 Decision Panel | ⬜ design_ready（依赖 F201-b） |
-| F204-a/b Earnings Calendar | ✅ done |
+| F200-a / F200-b | ✅ done |
+| F201-a / F201-b | ✅ done |
+| F204-a / F204-b | ✅ done |
+| F202-a / F202-b / F202-c | ✅ done（F202-c 隐式验收）|
+| **F203-a** | **🔍 needs_review** |
+| F203-b/c/d | ⬜ ready_to_dev |
 
 ---
 
-## F201-b 内容速览（下一 Sprint）
+## F203-a 完成内容（6 个文件）
 
-**目标**：让 `GET /api/cockpit/regime` 可以返回 regime 打分 + indices + sectors 状态。
+| # | 文件 | 类型 | 状态 |
+|---|------|------|------|
+| 1 | `backend/app/services/cockpit/cockpit_params.py` | 修改 | ✅ §3 CockpitChartParams + CHART |
+| 2 | `backend/app/services/cockpit/chart_service.py` | 新建 | ✅ 4 纯函数 + CockpitChartService |
+| 3 | `backend/app/schemas/cockpit/chart.py` | 新建 | ✅ Pydantic 响应 schema |
+| 4 | `backend/app/routers/cockpit/chart.py` | 新建 | ✅ GET /api/cockpit/chart/{ticker} |
+| 5 | `backend/app/routers/cockpit/__init__.py` | 修改 | ✅ include_router(chart_router) |
+| 6 | `backend/tests/test_chart_f203a.py` | 新建 | ✅ S1–S14 全部通过（16 tests）|
 
-**7 生产文件 + 1 测试文件**：
+### 测试结果
+- S1–S14：16/16 PASSED
+- S15 全量回归：451 passed，1 pre-existing failure（test_news_api）
 
-| # | 文件 | 操作 |
+### 关键实现
+- 路由路径：`GET /api/cockpit/chart/{ticker}`（main.py prefix=`/api/cockpit`，chart router prefix=`/chart`）
+- ATR：Wilder（首条=SMA(TR,period)，后续=(ATR*(period-1)+TR)/period）
+- AVWAP：anchor 解析 explicit_anchor → earnings_events(最近 ≤ today) → None；AVWAP_FALLBACK_DAYS=0（不 fallback）
+- FMP fallback：D041 on-demand 拉取，不写 daily_bars；FMP miss → 404
+- MA 序列：前 period-1 个 bar 不输出（无 None 占位）
+
+---
+
+## F203 拆分（已确认）
+
+| 子 Feature | 范围 | 状态 |
+|---|---|---|
+| **F203-a** | CockpitChart 数据层 + 接入层 | ✅ needs_review |
+| **F203-b** | user_settings + Decision 数据/接入（model + repo + Alembic + 2 services + 2 routers + schemas） | ⬜ ready_to_dev |
+| F203-c | CockpitChartWidget 前端（widget + api client + Registry） | ⬜ depends on F203-a |
+| F203-d | Decision Card + Settings 表单 前端 | ⬜ depends on F203-b |
+
+---
+
+## F203-b 范围（下一 Sprint）
+
+**预计文件（6 个）**：
+
+| # | 文件 | 类型 |
 |---|------|------|
-| 1 | `backend/app/repositories/market_index_repository.py` | 修改：WINDOW 5→260，新增 SPY/QQQ/IWM + 11 sector ETF symbol 映射 |
-| 2 | `backend/app/services/market_refresh_service.py` | 修改：拉取 14 ETF 日线数据 |
-| 3 | `backend/app/config.py` | 修改：+REGIME_CRON_HOUR/MINUTE/DAY_OF_WEEK |
-| 4 | `backend/app/services/refresh_job.py` | 修改：注册 regime cron job（参照 EarningsCronJob 模式） |
-| 5 | `backend/app/schemas/cockpit/regime.py` | 新建：RegimeResponse Pydantic schema |
-| 6 | `backend/app/routers/cockpit/regime.py` | 新建：GET /api/cockpit/regime |
-| 7 | `backend/app/routers/cockpit/__init__.py` | 修改：注册 regime router |
-| 8 | `backend/tests/test_regime_f201b.py` | 新建 |
+| 1 | `backend/app/models/user_settings.py` | 新建 |
+| 2 | `backend/alembic/versions/xxx_add_user_settings.py` | 新建 |
+| 3 | `backend/app/repositories/user_settings_repository.py` | 新建 |
+| 4 | `backend/app/services/cockpit/decision_service.py` | 新建 |
+| 5 | `backend/app/routers/cockpit/decision.py` | 新建（+ 注册到 __init__.py） |
+| 6 | `backend/tests/test_decision_f203b.py` | 新建 |
 
-**关键注意事项**：
-- `market_index_repository.py` 现在 `WINDOW=5`，扩展到 260 须验证 `prune_to_window` 兼容性
-- FmpClient 当前只有 `get_index_recent_bars`（SPX/NDX/TNX），需确认是否支持 ETF symbol（如 SPY）
-- `MarketRegimeService.get_indices_and_sectors_state()` 已在 F201-a 实现，F201-b 只需在 router 调用
-- API-CONTRACT.md 已有 `GET /api/cockpit/regime` 完整定义，包括 404 when empty 行为
+**关键 API**：
+- `GET /api/cockpit/decision/{ticker}` — entry/stop/size 计算
+- `GET /api/cockpit/user-settings` — 读取 account 参数
+- `PUT /api/cockpit/user-settings` — 更新 account 参数
 
----
-
-## Sprint Contract 执行状态（F201-a，已完成）
-
-| 开发步骤 | 状态 |
-|---------|------|
-| DATA-MODEL 确认 | ✅ |
-| API-CONTRACT 确认 | ✅ |
-| Alembic 迁移 009 | ✅ |
-| MarketRegimeRepository | ✅ |
-| cockpit_params.py §0+§1 | ✅ |
-| MarketRegimeService 计分引擎 | ✅ |
-| 单元/集成测试 S1–S14 | ✅ 22/22 |
-| 全量回归 S15 | ✅ 390/391 |
-| Evaluator 自检清单 | ✅ 全部通过 |
+> ⚠️ F203-b 需要 Sprint Contract 协商才能开始开发。读取 API-CONTRACT.md §decision + §user-settings 和 DATA-MODEL.md §UserSettings 后起草。
 
 ---
 
-## 下一个 Session 继续的指令
+## 下一 Session 恢复指令
 
 ```
-我回来了，请读取：
-- CLAUDE.md
-- SESSION-HANDOFF.md
-- docs/需求/features.json（F201-b 部分）
-- docs/系统设计/API-CONTRACT.md（§GET /api/cockpit/regime 部分）
-- docs/系统设计/DECISIONS.md（D061 修订版）
-- backend/app/repositories/market_index_repository.py（了解现状）
-- backend/app/config.py（了解现有 cron 参数格式）
+继续项目，F203-a 已完成。
+读取 SESSION-HANDOFF.md，告诉我项目状态并建议下一步。
+```
 
-然后告诉我项目状态，准备开发 F201-b Market Regime 接入层。
+或直接开 F203-b Sprint Contract：
+
+```
+准备开发 F203-b（user_settings + Decision 数据接入层）。
+读取 SESSION-HANDOFF.md + docs/系统设计/API-CONTRACT.md + DATA-MODEL.md，
+起草 F203-b Sprint Contract。
 ```

@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F202a-contract",
+  "last_updated": "2026-04-25-F203a-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F202-a",
-    "active_sprint_phase": "design_ready"
+    "active_sprint": "F203-b",
+    "active_sprint_phase": "ready_to_dev"
   },
   "_iteration_log": [
     {
@@ -2443,15 +2443,18 @@
       "description": "个股决策面板。新建 CockpitChartWidget（frontend/src/cockpit/widgets/CockpitChartWidget.tsx），与 Workbench ChartWidget 完全独立不共享代码，K 线 + MA10/21/50/150/200 + AVWAP（anchor: earnings 日或用户指定）+ ATR 可视化 + Entry/Stop/2R/3R 四条水平叠加线。右侧 Decision Card：entry / stop / risk_per_share / position_size / account_risk / setup_quality / earnings_risk。新表 user_settings 单行单用户存储 account_size + max_exposure_pct + single_trade_risk_pct，通过 GET/PUT /api/cockpit/user-settings 读写。Position size = floor(account_size * risk_pct / (entry - stop))。",
       "user_story": "作为慢交易投资者，我看中一只股票要做决策时，需要一个独立面板：图表叠加 entry/stop/target 线，右侧显示计算好的 position size / R 倍数 / account risk，并能调整我的 account 参数",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "sub_phase_notes": "F203-a needs_review; F203-b/c/d ready_to_dev",
       "dependencies": [
         "F200-a",
         "F200-b",
         "F202"
       ],
       "estimated_sessions": 5,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "F203-a: 6 files (see sprint-contracts/F203-a-contract.md)"
+      ],
       "scope": {
         "pages": [
           "Cockpit"

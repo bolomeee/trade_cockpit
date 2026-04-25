@@ -208,3 +208,33 @@ class CockpitSetupParams(BaseModel):
 
 
 SETUP = CockpitSetupParams()
+
+
+class CockpitChartParams(BaseModel):
+    """§3 CHART — bars window / MA periods allowlist / ATR period / AVWAP fallback."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # ── Bars 窗口 ────────────────────────────────────────────────────────
+    DEFAULT_DAYS: int = Field(default=250, description="Default bars days when client omits ?days", ge=100, le=400)
+    MIN_DAYS: int = Field(default=100, description="Lower bound for ?days", ge=20, le=400)
+    MAX_DAYS: int = Field(default=400, description="Upper bound for ?days", ge=100, le=1000)
+
+    # ── MA 周期允许范围 ──────────────────────────────────────────────────
+    DEFAULT_MAS: list[int] = Field(default=[10, 21, 50, 150, 200], description="Default MA periods returned when ?mas omitted")
+    MA_MIN: int = Field(default=5, description="Min single MA period", ge=2, le=100)
+    MA_MAX: int = Field(default=250, description="Max single MA period", ge=50, le=500)
+    MA_MAX_COUNT: int = Field(default=8, description="Max number of MA series allowed in one request", ge=1, le=20)
+
+    # ── ATR ──────────────────────────────────────────────────────────────
+    ATR_PERIOD: int = Field(default=14, description="ATR rolling period", ge=5, le=50)
+
+    # ── AVWAP fallback ────────────────────────────────────────────────────
+    AVWAP_FALLBACK_DAYS: int = Field(
+        default=0,
+        description="If no anchor and no earnings_event, fall back to N days back from latest bar (0 = no fallback, return empty avwap series)",
+        ge=0, le=180,
+    )
+
+
+CHART = CockpitChartParams()
