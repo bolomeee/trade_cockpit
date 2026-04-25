@@ -1643,3 +1643,24 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 
 **影响**：`backend/app/ai/schemas/market_narrator.py`、`setup_explainer.py`（新建，字段名全 camelCase）。
 
+---
+
+## D075：F209-b sector state 5→3 归一化在前端做
+
+**日期**：2026-04-25（F209-b Sprint Contract §5 D-3，用户已确认）
+**触发**：`CockpitRegimeData.RegimeSector.state` 有 5 个值（`Strong / Constructive / Weak / Defensive / Neutral`），但后端 `MarketNarratorInput.sectors[].state` schema 只接受 3 个值（`Strong / Neutral / Weak`）。若直接传 5 值会被 backend 422 拒绝。
+
+**决策**：归一化逻辑放在 `MarketRegimeWidget.tsx`（私有函数 `normalizeSectorState`），不暴露到 `aiApi.ts`，不修改后端 schema：
+- `Strong` / `Constructive` → `Strong`
+- `Weak` / `Defensive` → `Weak`
+- `Neutral` → `Neutral`
+
+**理由**：
+1. 改后端 `MarketNarratorInput` 接受 5 值会破坏 F209-a 的 Pydantic 校验约束，影响 LLM JSON schema 生成。
+2. `aiApi.ts` 作为通用 AI 客户端，不应内嵌 market_narrator 专属归一化逻辑；其他 task type（如 F209-c setup_explainer）有不同的输入 schema。
+3. 前端归一化函数小且可测（S14.6 有显式 regression 覆盖），改动范围最小。
+
+**放弃了什么**：在后端扩展 schema 接受所有 5 值（改动后端 + 迁移，影响面更大）；或在 `aiApi.ts` 内做通用 5→3 映射（破坏通用性假设）。
+
+**影响**：`frontend/src/cockpit/widgets/MarketRegimeWidget.tsx`（`normalizeSectorState` 私有函数）。测试覆盖在 `MarketRegimeWidget.test.tsx §S14.6`。
+

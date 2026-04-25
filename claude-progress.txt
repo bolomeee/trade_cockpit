@@ -1218,3 +1218,48 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   active_sprint = F209-b
 
 ⏭ 下一步：开新 session（建议 Sonnet）进入 Generator 模式，从 Step 1（aiApi.ts）开始
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[2026-04-25] F209-b Generator 完成（needs_review）
+
+Sprint：F209-b Market Narrator 前端集成
+Branch：cockpit
+Commits：9abd80f → b81f977（4 wip commits）
+
+完成内容：
+  Step 1：frontend/src/cockpit/lib/api/aiApi.ts 新建（callAiTask<TIn,TOut> + MarketNarratorInput/Output 类型）
+           frontend/src/cockpit/lib/api/__tests__/aiApi.test.ts 新建（§A 7/7 pass）
+  Step 2+3：MarketRegimeWidget.tsx 末尾追加 AiMarketNotes 子组件
+            - normalizeSectorState（5→3 归一化）+ buildNarratorInput
+            - useQuery + forceNoCache ref + 1h cooldown（dataUpdatedAt）
+            - Refresh 按钮（disabled 三条件：loading/cooldown/budget_exceeded）
+            - 错误态显示 Refresh 按钮（disabled for BUDGET_EXCEEDED）
+            - 4 区块 0 行改动，仅 widget 末尾追加
+  Step 4：MarketRegimeWidget.test.tsx 追加 §S14 6/6 集成测试
+          路由式 fetch mock helper（makeRoutedFetch），修复 S3-S13 与 AI 调用的 mock 冲突
+
+测试结果：
+  §A aiApi 单测：7/7 ✅
+  §S14 集成测试：6/6 ✅
+  全量 frontend：78/78 ✅（+6 新增）
+  全量 backend：587/587 ✅（sanity check）
+
+Evaluator 自检（全通过）：
+  ✅ 文件清单 4 个，未越界
+  ✅ aiApi.ts 无 widget 专属逻辑（F209-c 可复用）
+  ✅ 现有 4 区块 0 行改动（diff 验证）
+  ✅ 无 console.error（S13 测试）
+  ✅ AiMarketNotes 颜色/字体全走 var(--color-*) / var(--font-size-*)
+  ✅ sector 归一化显式测试（S14.6）
+  ✅ Refresh cooldown 用 dataUpdatedAt，无 setInterval
+  ✅ 错误统一"AI 暂不可用"
+  ✅ 无新外部依赖（package.json 未改）
+  ✅ DECISIONS.md 追加 D075（sector 5→3 归一化决策）
+
+📊 features.json 状态：
+  F209-b：🔍 needs_review
+  active_sprint = F209-b
+  active_sprint_phase = needs_review
+
+⏭ 下一步：验收 F209-b → 如通过则开启 F209-c（Setup Explainer popover，复用 aiApi.ts）
