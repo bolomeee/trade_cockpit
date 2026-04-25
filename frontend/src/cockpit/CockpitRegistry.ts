@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LayoutItem } from 'react-grid-layout'
-import { PlaceholderWidget } from './widgets/PlaceholderWidget'
+import { MarketRegimeWidget } from './widgets/MarketRegimeWidget'
 import { SetupMonitorWidget } from './widgets/SetupMonitorWidget'
 import { CockpitChartWidget } from './widgets/CockpitChartWidget'
 import { DecisionPanelWidget } from './widgets/DecisionPanelWidget'
@@ -24,10 +24,10 @@ export type CockpitWidgetManifest = {
 }
 
 export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
-  'cockpit.placeholder': {
-    id: 'cockpit.placeholder',
-    title: 'Cockpit Placeholder',
-    component: PlaceholderWidget,
+  'cockpit.market-regime': {
+    id: 'cockpit.market-regime',
+    title: 'Market Regime',
+    component: MarketRegimeWidget,
     defaultLayout: { x: 0, y: 0, w: 4, h: 8, minW: 3, minH: 4 },
     category: 'regime',
   },
