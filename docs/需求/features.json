@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F209-a-done",
+  "last_updated": "2026-04-25-F209-b-contract-agreed",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F201-c",
-    "active_sprint_phase": "done"
+    "active_sprint": "F209-b",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -3134,8 +3134,9 @@
       "description": "在 MarketRegimeWidget 底部新增 AI Market Notes 区：Headline + Summary + Warnings 列表 + 手动 Refresh 按钮（cache TTL >1h 时启用）。新增通用 AI 客户端 frontend/src/cockpit/lib/api/aiApi.ts，封装 POST /api/ai/{task_type}。AI 输出失败/超预算时显示 'AI 暂不可用' 占位，不影响 widget 其他区块。",
       "user_story": "作为 Cockpit 用户，看完 regime 数值后我想读 AI 用一句话总结当前市场情绪和优先 setup，作为人类直觉的补充",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "contract_file": "docs/开发/sprint-contracts/F209-b-contract.md",
       "dependencies": [
         "F209-a",
         "F201-c"

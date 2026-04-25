@@ -1192,3 +1192,29 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 📊 功能状态：
   F209-a：✅ done
   F209-b：⬜ design_ready（等待开发）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract 协商：F209-b Market Narrator 前端集成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Contract 已确认：docs/开发/sprint-contracts/F209-b-contract.md
+
+实现范围：
+  - 新建 frontend/src/cockpit/lib/api/aiApi.ts（通用 callAiTask + market_narrator I-O 类型）
+  - 修改 MarketRegimeWidget.tsx 末尾追加 <AiMarketNotes>（4 区块 0 行改动）
+  - 新建 aiApi.test.ts（§A 7 单测）
+  - 修改 MarketRegimeWidget.test.tsx 追加 §S14（6 集成测试）
+  共 4 文件，未越界
+
+关键技术决策（待 Generator 阶段如出现非显然处则回写 DECISIONS.md）：
+  1. sector state 5→3 归一化在前端（Strong/Constructive→Strong；Weak/Defensive→Weak；Neutral→Neutral）
+  2. Refresh 1h 客户端 cooldown + 后端 24h server cache 双层
+  3. 错误统一文案"AI 暂不可用"（features.json AC 第 5 条）
+  4. react-query useQuery + forceNoCache ref 单数据流
+  5. 不实现 Cached/{age}、schemaVersion 过期、modelUsed/tokens tooltip（AC 未要求）
+
+📊 features.json 状态：
+  F209-b：🤝 contract_agreed
+  active_sprint = F209-b
+
+⏭ 下一步：开新 session（建议 Sonnet）进入 Generator 模式，从 Step 1（aiApi.ts）开始
