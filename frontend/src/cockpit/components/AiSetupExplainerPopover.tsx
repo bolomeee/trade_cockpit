@@ -44,9 +44,13 @@ function buildSetupExplainerInput(p: Props): SetupExplainerInput {
     p.setupType === 'PULLBACK' ? 'pullback' :
     'reversal'
   ) as const
+  // trend_score is a 0-5 MA-alignment ladder (backend setup_service._compute_trend_score):
+  //   4-5 → bullish stack (close>MA10>MA21>MA50…) → 'up'
+  //   2-3 → partial alignment → 'sideways'
+  //   0-1 → MA inverted → 'down'
   const trend =
-    p.trendScore >= 60 ? 'up' :
-    p.trendScore <= 40 ? 'down' :
+    p.trendScore >= 4 ? 'up' :
+    p.trendScore <= 1 ? 'down' :
     'sideways'
   return {
     ticker: p.ticker,

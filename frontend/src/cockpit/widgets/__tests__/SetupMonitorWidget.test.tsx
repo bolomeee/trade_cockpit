@@ -59,7 +59,7 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
     rewardRisk: 2.5,
     rsPercentile: 85,
     volumeStatus: 'HIGH',
-    trendScore: 70,
+    trendScore: 5,
     earningsRisk: 'SAFE',
     readySignal: true,
     suggestedAction: 'enter',
@@ -70,9 +70,9 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
 
 // 7 items covering all setupType branches
 const ITEMS_ALL_TYPES: SetupItem[] = [
-  makeItem({ ticker: 'AAPL', setupType: 'BREAKOUT', trendScore: 65, rsPercentile: 85 }),
-  makeItem({ ticker: 'MSFT', setupType: 'PULLBACK', trendScore: 50, rsPercentile: 75 }),
-  makeItem({ ticker: 'GOOGL', setupType: 'RECLAIM', trendScore: 35, rsPercentile: 60 }),
+  makeItem({ ticker: 'AAPL', setupType: 'BREAKOUT', trendScore: 4, rsPercentile: 85 }),
+  makeItem({ ticker: 'MSFT', setupType: 'PULLBACK', trendScore: 2, rsPercentile: 75 }),
+  makeItem({ ticker: 'GOOGL', setupType: 'RECLAIM', trendScore: 1, rsPercentile: 60 }),
   makeItem({ ticker: 'AMZN', setupType: 'EARNINGS_DRIFT', entryPrice: 0, stopPrice: 0 }),
   makeItem({ ticker: 'META', setupType: 'EXTENDED' }),
   makeItem({ ticker: 'NVDA', setupType: 'BROKEN' }),
@@ -95,7 +95,7 @@ const SETUP_MONITOR_OK_FETCH = () =>
 const BREAKOUT_ITEM = makeItem({
   ticker: 'AAPL',
   setupType: 'BREAKOUT',
-  trendScore: 65,
+  trendScore: 4,
   rsPercentile: 85,
   entryPrice: 180.0,
   stopPrice: 172.0,
@@ -265,11 +265,64 @@ describe('§S – Setup Explainer Popover', () => {
 
     expect(body.input.ticker).toBe('AAPL')
     expect(body.input.setup).toBe('breakout')         // BREAKOUT → 'breakout'
-    expect(body.input.trend).toBe('up')               // trendScore=65 → 'up'
+    expect(body.input.trend).toBe('up')               // trendScore=4 → 'up' (0-5 ladder)
     expect(body.input.rs).toBe(85)                    // rsPercentile passthrough
     expect(body.input.risk.entry).toBe(180.0)
     expect(body.input.risk.stop).toBe(172.0)
     expect(body.noCache).toBe(false)
+  })
+
+  // ── S8b: trendScore boundary mapping (0-5 ladder) ─────────────────────────
+  it.each([
+    [5, 'up'],
+    [4, 'up'],
+    [3, 'sideways'],
+    [2, 'sideways'],
+    [1, 'down'],
+    [0, 'down'],
+  ])('S8b: trendScore=%i → trend=%s', async (trendScore, expectedTrend) => {
+    const item = makeItem({
+      ticker: 'AAPL',
+      setupType: 'BREAKOUT',
+      trendScore,
+      entryPrice: 180.0,
+      stopPrice: 172.0,
+    })
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/setup-monitor': () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: {
+                summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                items: [item],
+              },
+            }),
+        } as FetchResponse),
+      '/ai/setup_explainer': AI_EXPLAINER_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explain AAPL BREAKOUT setup' }))
+
+    await waitFor(() => {
+      const aiCalls = fetchMock.mock.calls.filter(([url]) =>
+        (url as string).includes('/ai/setup_explainer'),
+      )
+      expect(aiCalls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    const aiCalls = fetchMock.mock.calls.filter(([url]) =>
+      (url as string).includes('/ai/setup_explainer'),
+    )
+    const body = JSON.parse(aiCalls[0][1].body as string) as {
+      input: { trend: string }
+    }
+    expect(body.input.trend).toBe(expectedTrend)
   })
 
   // ── S9: loading state shows Skeleton elements ──────────────────────────────
