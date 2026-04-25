@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F208-b-done",
+  "last_updated": "2026-04-25-F208-c-contract-agreed",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.0",
     "active_sprint": "F208-c",
-    "active_sprint_phase": "design_ready"
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -2940,11 +2940,11 @@
     {
       "id": "F208-c",
       "name": "AI Gateway 主流程 + LiteLLM 集成 + /api/ai/{task_type} endpoint",
-      "description": "F208 LLM Gateway 第三阶段（编排 + 对外）。把 F208-b 的 4 个核心模块编排为 AiGateway.run(task_type, input)：input_hash → memo dedup → budget check → routing → LiteLLM 调用（response_format=Pydantic）→ output schema 校验 → guardrail post-validate → 写 ai_memos → 返回。新增 guardrail 框架（默认 no-op，F210 trade_plan 在此挂 hook）和 schemas registry（task_type → input/output Pydantic schema；F208-c 内置 1 个 echo 测试 schema 用于验证基座，其他 6 个 task 留给 F209/F210/F211）。新增 POST /api/ai/{task_type} 统一 endpoint。",
+      "description": "F208 LLM Gateway 第三阶段（编排 + 对外）。把 F208-b 的 4 个核心模块编排为 AiGateway.run(task_type, input)：input_hash → memo dedup → budget check → routing → LiteLLM 调用（response_format=Pydantic）→ output schema 校验 → guardrail post-validate → 写 ai_memos → 返回。新增 guardrail 框架（默认 no-op，F210 trade_plan 在此挂 hook）和 schemas registry（task_type → input/output Pydantic schema；F208-c 内置 1 个 echo 测试 schema 用于验证基座，其他 6 个 task 留给 F209/F210/F211）。新增 POST /api/ai/{task_type} 统一 endpoint。Sprint 包含 1 条 @pytest.mark.live live smoke（用户提供 OPENAI_API_KEY 后真实打 OpenAI 一次验证基座）。",
       "user_story": "作为系统设计者，我需要一个 AiGateway.run() 统一入口和对外 endpoint，业务代码只写 task_type 和 input，不关心 LiteLLM 调用细节、缓存、预算、schema 校验",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "contract_agreed",
       "dependencies": [
         "F208-b"
       ],
@@ -2952,11 +2952,13 @@
       "estimated_files_changed": [
         "backend/app/ai/gateway.py (新建)",
         "backend/app/ai/guardrail.py (新建)",
-        "backend/app/ai/schemas/__init__.py (新建)",
-        "backend/app/routers/ai.py (新建)",
-        "backend/app/schemas/ai.py (新建)",
-        "backend/app/main.py (注册 ai router)",
-        "backend/tests/test_ai_gateway_e2e_f208c.py (新建)"
+        "backend/app/ai/schemas/__init__.py (新建，含 echo 测试 task)",
+        "backend/app/routers/ai.py (新建，含 Request/Response envelope 内联)",
+        "backend/app/main.py (修改 2 行：注册 ai router)",
+        "backend/tests/test_ai_gateway_e2e_f208c.py (新建：§A gateway 7 路径 + §B endpoint envelope/错误码 + §C live smoke)"
+      ],
+      "estimated_files_changed_minor": [
+        "backend/app/ai/routing.py (修改 1 行：_TASK_TIER 加 \"echo\": \"default\" 含 test-only 注释)"
       ],
       "scope": {
         "pages": [],
@@ -2989,7 +2991,8 @@
         "POST /api/ai/{task_type} 请求体 { input, noCache? } → 200 响应严格符合 API-CONTRACT §POST /api/ai/{task_type} 的 envelope（data.memoId / output / meta）",
         "错误码映射：unknown task_type → VALIDATION_ERROR 422；input schema 失败 → VALIDATION_ERROR 422；LiteLLM 异常 → AI_PROVIDER_ERROR 502；output schema 失败 → AI_SCHEMA_ERROR 502；超预算 → AI_BUDGET_EXCEEDED 429；guardrail 违规 → AI_GUARDRAIL_VIOLATION 409",
         "main.py 注册 ai router 后 GET /docs 可见 POST /api/ai/{task_type}",
-        "test_ai_gateway_e2e_f208c 覆盖（mock LiteLLM client）：成功 / cache hit / cache miss / budget 超限 / output schema 失败 / guardrail 违规 / no_cache=True 强制刷新 7 条路径"
+        "test_ai_gateway_e2e_f208c §A 覆盖（mock LiteLLM client）：成功 / cache hit / cache miss / budget 超限 / output schema 失败 / guardrail 违规 / no_cache=True 强制刷新 7 条路径",
+        "test_ai_gateway_e2e_f208c §C live smoke：标记 @pytest.mark.live；OPENAI_API_KEY 设置时真实打 OpenAI（echo task），ai_memos 写入真实 row，cost_usd > 0；未设置时 pytest.skip；默认全量回归 -m 'not live' 不触发"
       ],
       "test_cases": {
         "unit": [],
@@ -2997,7 +3000,9 @@
           "Gateway 编排 7 条路径（mock LiteLLM）",
           "Endpoint envelope 与错误码映射（FastAPI TestClient）"
         ],
-        "e2e": []
+        "e2e": [
+          "Live smoke：echo task 真实打 OpenAI（@pytest.mark.live, opt-in）"
+        ]
       },
       "iteration_history": [],
       "notes": "F209/F210/F211 的前置完结于本 sprint。LiteLLM 真实调用在测试中始终 mock，避免烧 token；live smoke test 留给后续 feature 自行覆盖。"

@@ -973,3 +973,34 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一步]
   进入 F208-c Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract：F208-c AI Gateway 主流程 + LiteLLM + endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Contract 协商完成：
+  - 文件清单：6 主文件 + 1 微调（routing.py 加 echo 一行），落在 6 文件上限内
+  - 主文件：gateway.py / guardrail.py / ai/schemas/__init__.py / routers/ai.py / main.py(改 2 行) / test_ai_gateway_e2e_f208c.py
+  - 范围偏离：Request/Response envelope 内联 routers/ai.py（不新建 app/schemas/ai.py），用户已确认
+  - 测试覆盖：§A gateway 7 路径（mock LiteLLM）+ §B endpoint envelope/错误码（TestClient）+ §C live smoke 1 测试（@pytest.mark.live opt-in）
+  - 用户提供 OpenAI key：走 backend/.env OPENAI_API_KEY（已在 .gitignore 第 5 行覆盖）
+  - phase: design_ready → contract_agreed
+  - active_sprint_phase: design_ready → contract_agreed
+
+⚠️ 待你决策：
+  - 无（Contract 6 项确认全部 ✅）
+
+🔧 系统变更：
+  - 新建：docs/开发/sprint-contracts/F208-c-contract.md
+  - 修改：docs/需求/features.json（F208-c phase / status / estimated_files_changed / acceptance_criteria / test_cases / last_updated / active_sprint_phase）
+  - 修改：claude-progress.txt（本条目）
+  - 重写：SESSION-HANDOFF.md
+
+📊 功能状态：
+  F208-a：✅ done
+  F208-b：✅ done
+  F208-c：🔄 contract_agreed（待 Generator session 启动）
+
+[下一步]
+  开新 session（Sonnet）执行 Generator 模式：
+  从 Contract §4 开发顺序 step 1（schemas/__init__.py）开始
