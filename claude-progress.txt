@@ -869,3 +869,29 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一步]
   开新 session（建议 Sonnet）粘贴恢复指令进入 F208-a Generator 模式
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F208-a Generator — AI 基座完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  步骤 1：backend/pyproject.toml 加 litellm>=1.83,<2.0 → uv lock（解析 litellm 1.83.13）
+  步骤 2：backend/app/config.py Settings 增 7 个 AI 字段（ai_model_default / ai_model_critical / ai_model_complex / openai_api_key / ai_monthly_budget_usd / ai_memo_cache_ttl_hours / ai_schema_version）
+  步骤 3：backend/app/models/ai_memo.py 新建（AiMemo ORM，13 列，类型对齐 DATA-MODEL §AiMemo）+ __init__.py 注册 AiMemo
+  步骤 4：backend/alembic/versions/012_f208a_ai_memos.py 新建（建表 + 2 个复合索引）+ 双向手动验证通过（upgrade/downgrade/re-upgrade）
+  步骤 5：backend/tests/test_ai_memo_schema_f208a.py 新建（5 个测试，全部通过）
+  步骤 6：test_schema.py EXPECTED_TABLES 追加 ai_memos（预期修正，非新增 bug）
+  全量回归：503 passed，0 新失败（+5 F208-a 新测试 +1 schema fix）
+  Evaluator：9 条完成标准全部 ✅
+
+⚠️ 待用户决策：
+  - F208-a 验收确认（infrastructure sprint，无 UI，Evaluator 已全过）
+  - 下一步：F208-b Sprint Contract 协商
+
+📊 功能状态：
+  F208-a AI 基座：🔍 needs_review（Evaluator 通过，等用户确认）
+  F208-b AI Gateway 核心模块：⬜ design_ready
+  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready
+
+[下一步]
+  用户确认 F208-a → done，然后开新 session 进入 F208-b Sprint Contract 协商
