@@ -1122,3 +1122,24 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   > 继续开发 F201-c，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F201-c-contract.md，
   > 进入 Generator 模式，从开发步骤 2（cockpitRegimeApi.ts）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract 协商完成：F209-a AI 后端 schema 注册
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Contract 已确认：
+  - 文件：docs/开发/sprint-contracts/F209-a-contract.md
+  - 范围：4 个文件（market_narrator.py / setup_explainer.py / schemas/__init__.py / test_ai_schemas_f209.py）
+  - 不改 gateway / router / routing 框架
+  - 字段命名决策（D-1 / 写入 D074）：schema 字段直接 camelCase，与 API-CONTRACT 示例字面一致；放弃 AC 原写的"内部 snake_case"
+  - SYSTEM_PROMPT 仅写入模块常量，本 sprint 不接入 LiteLLM messages（接入需改 gateway，超界）
+  - Live smoke 仅 market_narrator 1 次（验证 D072 cost fix 持续生效）
+
+📊 phase 流转：
+  F209-a：design_ready → contract_agreed
+
+[下一个 Session]
+  Sonnet 新 session，粘贴：
+  > 继续开发 F209-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-a-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（market_narrator.py）开始。
