@@ -1045,3 +1045,22 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 [下一步]
   用户验收 F208-c → 验收通过后执行 acceptance skill
   验收通过后开始 F209（Market Narrator + Setup Explainer）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] 验收通过：F208-c AI Gateway 主流程 + LiteLLM + endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 用户验收通过
+  - 业务逻辑 B1–B7 全部确认
+  - live smoke gpt-5.4-nano 真实响应，cost_usd > 0
+  - Evaluator bug D072 修复确认
+  - phase → done
+
+📊 F208 全系列：
+  F208-a：✅ done
+  F208-b：✅ done
+  F208-c：✅ done
+
+[下一步]
+  F209：Market Narrator + Setup Explainer（default tier）
+  执行 feature-dev skill，Sprint Contract 协商

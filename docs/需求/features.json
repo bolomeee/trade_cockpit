@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F208-c-eval-passed",
+  "last_updated": "2026-04-25-F208-c-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -2943,8 +2943,9 @@
       "description": "F208 LLM Gateway 第三阶段（编排 + 对外）。把 F208-b 的 4 个核心模块编排为 AiGateway.run(task_type, input)：input_hash → memo dedup → budget check → routing → LiteLLM 调用（response_format=Pydantic）→ output schema 校验 → guardrail post-validate → 写 ai_memos → 返回。新增 guardrail 框架（默认 no-op，F210 trade_plan 在此挂 hook）和 schemas registry（task_type → input/output Pydantic schema；F208-c 内置 1 个 echo 测试 schema 用于验证基座，其他 6 个 task 留给 F209/F210/F211）。新增 POST /api/ai/{task_type} 统一 endpoint。Sprint 包含 1 条 @pytest.mark.live live smoke（用户提供 OPENAI_API_KEY 后真实打 OpenAI 一次验证基座）。",
       "user_story": "作为系统设计者，我需要一个 AiGateway.run() 统一入口和对外 endpoint，业务代码只写 task_type 和 input，不关心 LiteLLM 调用细节、缓存、预算、schema 校验",
       "priority": "P0",
-      "status": "needs_review",
-      "phase": "eval_passed",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-25",
       "dependencies": [
         "F208-b"
       ],
