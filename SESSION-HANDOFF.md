@@ -31,7 +31,7 @@
 
 ## 中断位置
 
-Evaluator 通过，F208-a 进入 **needs_review**（等用户确认验收）。
+F208-a 用户验收通过（2026-04-25），状态 → **done**。下一步：F208-b Sprint Contract 协商。
 
 ---
 
