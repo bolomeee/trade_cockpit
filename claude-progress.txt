@@ -935,3 +935,42 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一步]
   开新 session（建议 Sonnet）粘贴 SESSION-HANDOFF.md 末尾恢复指令进入 F208-b Generator 模式
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F208-b Generator — AI Gateway 核心模块完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（6 文件，纯新增）：
+  1. backend/app/ai/__init__.py — 包初始化（docstring）
+  2. backend/app/ai/errors.py — AiError 基类 + AiProviderError/AiSchemaError/AiBudgetExceeded/AiGuardrailViolation
+  3. backend/app/ai/routing.py — _TASK_TIER dict（7 task_type）+ resolve_tier/resolve_model/resolve/known_task_types
+  4. backend/app/ai/memo_repo.py — AiMemoRepository class（find_cached/write）+ 模块级 compute_input_hash/_canonical_json
+  5. backend/app/ai/budget.py — month_to_date_cost + assert_within_budget（mtd ≥ cap 抛错）
+  6. backend/tests/test_ai_core_modules_f208b.py — 17 个测试（合同 16 + extra test_error_hierarchy），全部 PASSED
+
+✅ 测试结果：
+  新增测试：17/17 PASSED（0.15s）
+  全量回归：520 passed（503 基线 + 17 新增），0 新失败
+
+✅ Evaluator 自检（§5）全部通过：
+  - 无 litellm 运行时 import（grep clean）
+  - 无 error_code 引用（grep clean）
+  - 无硬编码 model 字符串（routing 全走 settings）
+  - 无硬编码 cap（budget 默认走 settings.ai_monthly_budget_usd）
+  - 无 pytest DeprecationWarning
+  - git status 干净
+  - D070 合规（routing 是 dispatch 字典，非可调阈值）
+  - 代码 AST parse OK（ruff 未安装，AST 代替）
+
+⚠️ 注意事项：
+  - contract §5 提及 ruff，但项目 pyproject.toml 未安装 ruff（contract 误记）；AST parse 确认语法无误
+  - 17 个测试（非 contract 的 16）：增加了 test_error_hierarchy 覆盖 §3 标准 #1
+
+📊 功能状态：
+  F208-a AI 基座：✅ done
+  F208-b AI Gateway 核心模块：🔍 needs_review（等待用户验收）
+  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready（依赖 F208-b 验收）
+
+[下一步]
+  用户验收 F208-b（运行 pytest tests/test_ai_core_modules_f208b.py 确认 17 个通过）
+  → 进入 F208-c Sprint Contract 协商
