@@ -970,6 +970,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - Tab 切换 → 改 `?filter=ready,near,...` 重发请求
 - 行点击 → setSelectedTicker(ticker) → CockpitChart / DecisionPanel / Earnings 全部联动
 - v2.0 增强：每行 `[?]` 图标 hover 触发 `POST /api/ai/setup_explainer`（缓存 24h），气泡弹出 1 句解释
+  > **实现偏离（F209-c）**：触发方式由 hover 改为**点击**，与 features.json acceptance_criteria 保持一致（acceptance_criteria 优先于 design-spec）。点击 `?` 按钮调用 `POST /api/ai/setup_explainer`，渲染 label / quality / whyWatch / mainRisks；仅 BREAKOUT / PULLBACK / RECLAIM 三种 setup 显示按钮。
 
 ---
 
