@@ -82,7 +82,9 @@ def test_input_hash_stable_with_unicode():
 
 def test_routing_seven_task_types_mapped():
     types = known_task_types()
-    assert len(types) == 7
+    # 7 production types + "echo" test-only entry (F208-c, not in API-CONTRACT)
+    production_types = [t for t in types if t != "echo"]
+    assert len(production_types) == 7
     expected_tiers = {
         "market_narrator": "default",
         "setup_explainer": "default",
