@@ -411,6 +411,116 @@ class TestEndpointEnvelope:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# §F210-a — C9/C10 guardrail integration (trade_plan + candidate_ranker)
+# ---------------------------------------------------------------------------
+
+_TP_INPUT = {
+    "ticker": "AAPL",
+    "setupType": "BREAKOUT",
+    "setupQuality": "A",
+    "entry": 182.50,
+    "stop": 178.00,
+    "target2r": 191.50,
+    "target3r": 196.00,
+    "size": 55,
+    "rewardRisk": 2.0,
+    "accountRiskPct": 1.0,
+    "earningsRisk": "SAFE",
+    "deterministicHash": "abcd1234",
+}
+
+_TP_OUTPUT_VALID = {
+    "memo": "AAPL breaks out above the pivot on strong volume. Earnings risk is SAFE. Trail stop with 21EMA after 2R.",
+    "management": ["Hold through initial volatility", "Move stop to BE near 2R"],
+    "entry": 182.50,
+    "stop": 178.00,
+    "size": 55,
+}
+
+_CR_INPUT = {
+    "regime": "CONSTRUCTIVE",
+    "regimeScore": 72,
+    "candidates": [
+        {
+            "ticker": "AAPL",
+            "setupType": "BREAKOUT",
+            "setupQuality": "A",
+            "trendScore": 4,
+            "rsPercentile": 85.0,
+            "distanceToEntryPct": 1.5,
+            "rewardRisk": 2.5,
+            "earningsRisk": "SAFE",
+            "readySignal": True,
+        },
+        {
+            "ticker": "MSFT",
+            "setupType": "PULLBACK",
+            "setupQuality": "B",
+            "trendScore": 3,
+            "rsPercentile": 70.0,
+            "distanceToEntryPct": 0.5,
+            "rewardRisk": 2.0,
+            "earningsRisk": "SAFE",
+            "readySignal": False,
+        },
+        {
+            "ticker": "NVDA",
+            "setupType": "RECLAIM",
+            "setupQuality": "A",
+            "trendScore": 5,
+            "rsPercentile": 95.0,
+            "distanceToEntryPct": 2.0,
+            "rewardRisk": 3.0,
+            "earningsRisk": "SAFE",
+            "readySignal": True,
+        },
+    ],
+}
+
+_CR_OUTPUT_VALID = {
+    "topCandidates": [
+        {"ticker": "AAPL", "rank": 1, "reason": "Strong RS breakout with ready signal.", "action": "enter"},
+        {"ticker": "NVDA", "rank": 2, "reason": "Highest RS reclaim with ready signal.", "action": "watch"},
+        {"ticker": "MSFT", "rank": 3, "reason": "Solid pullback to support.", "action": "wait"},
+    ]
+}
+
+
+class TestF210aGuardrailIntegration:
+    def test_C9_trade_plan_guardrail_violation_no_memo(self, db_session, monkeypatch):
+        """trade_plan: LLM returns modified size → AiGuardrailViolation, memo not written."""
+        tampered_output = {**_TP_OUTPUT_VALID, "size": 99}  # size mismatch
+
+        def mock_litellm(model, input_dict, output_schema, api_key):
+            return tampered_output, 15, 10, Decimal("0.002")
+
+        monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
+        count_before = db_session.query(AiMemo).count()
+
+        with pytest.raises(AiGuardrailViolation, match="size"):
+            AiGateway(db_session).run(task_type="trade_plan", input_dict=_TP_INPUT)
+
+        assert db_session.query(AiMemo).count() == count_before
+
+    def test_C10_candidate_ranker_no_guardrail_memo_written(self, db_session, monkeypatch):
+        """candidate_ranker: valid LLM output → memo written, no guardrail called."""
+        def mock_litellm(model, input_dict, output_schema, api_key):
+            return _CR_OUTPUT_VALID, 20, 15, Decimal("0.003")
+
+        monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
+        count_before = db_session.query(AiMemo).count()
+
+        result = AiGateway(db_session).run(
+            task_type="candidate_ranker", input_dict=_CR_INPUT
+        )
+
+        assert db_session.query(AiMemo).count() == count_before + 1
+        assert result.output == _CR_OUTPUT_VALID
+        assert result.meta.cache_hit is False
+
+
+# ---------------------------------------------------------------------------
 @pytest.mark.live
 def test_C_echo_live_smoke(db_session):
     """Real OpenAI call with echo task — verifies full path end-to-end."""
