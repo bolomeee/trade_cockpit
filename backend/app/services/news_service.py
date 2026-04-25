@@ -189,11 +189,12 @@ class NewsService:
 
         cached = cache_repo.get_cached(self._db, as_of_dates, since=None, limit=limit)
 
-        # Coverage check: enough rows AND oldest reaches the window boundary
-        window_start = datetime.combine(yesterday, datetime.min.time())
-        coverage_ok = len(cached) >= limit or (
-            cached and _parse_iso_naive(cached[-1].published_at) <= window_start
-        )
+        # Coverage check: must have at least `limit` rows in cache.
+        # Previously also short-circuited on "oldest cached row reaches window
+        # boundary" but that branch fires for stale single-row caches and
+        # prevents FMP from ever being called — observed in prod as
+        # "news stuck 2 days behind even after refresh".
+        coverage_ok = len(cached) >= limit
 
         if coverage_ok:
             return ArticleListResult(
@@ -281,11 +282,3 @@ class NewsService:
                 cache_hit=False, fmp_calls=fmp_calls, truncated=truncated
             ),
         )
-
-
-def _parse_iso_naive(iso: str) -> datetime:
-    """Parse 'YYYY-MM-DDTHH:MM:SSZ' → naive datetime. Falls back to epoch."""
-    try:
-        return datetime.strptime(iso[:19], "%Y-%m-%dT%H:%M:%S")
-    except ValueError:
-        return datetime(1970, 1, 1)
