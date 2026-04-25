@@ -3,6 +3,20 @@
 初始化：2026-04-16 | 本次更新：2026-04-25
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Acceptance：F209-c → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过：12/12 完成标准全 ✅
+🔴 验收发现 P0：trendScore 实际值域 0-5（非 0-100），原 60/40 阈值导致全部映射为 'down'，
+    LLM 收到错误前提。修复为 >=4 up / <=1 down / else sideways（commit 192d7f5）+ 6 边界测试。
+    95/95 tests pass，浏览器实测确认 AAPL(3)→sideways。
+📄 验收记录：docs/验收/v1.8-F209-c-acceptance.md
+📌 features.json：F209-c.phase = done
+
+下一步：F210 (Candidate Ranker + Trade Plan) design_ready → 可进入 feature-dev。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-25] Sprint：F201-c MarketRegimeWidget 前端实现
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
