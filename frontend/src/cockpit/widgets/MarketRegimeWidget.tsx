@@ -441,13 +441,35 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
     return (
       <>
         {divider}
-        <div
-          style={{
-            fontSize: 'var(--font-size-label)',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          AI 暂不可用
+        <div style={{ marginBottom: '12px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '6px',
+            }}
+          >
+            <div
+              style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)' }}
+            >
+              AI Market Notes
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={isRefreshDisabled}
+              onClick={handleRefresh}
+              style={{ fontSize: 'var(--font-size-label)', padding: '2px 6px', height: 'auto' }}
+            >
+              ↻ Refresh
+            </Button>
+          </div>
+          <div
+            style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)' }}
+          >
+            AI 暂不可用
+          </div>
         </div>
       </>
     )

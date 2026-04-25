@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { COCKPIT_WIDGET_REGISTRY, getCockpitDefaultLayout } from '../../CockpitRegistry'
 import { MarketRegimeWidget } from '../MarketRegimeWidget'
@@ -302,6 +302,53 @@ describe('S10 – 502 error state', () => {
   })
 })
 
+// ─── AI mock fixtures ─────────────────────────────────────────────────────
+
+const AI_SUCCESS_DATA = {
+  memoId: 42,
+  taskType: 'market_narrator',
+  schemaVersion: '1.0',
+  output: {
+    headline: 'Market holding constructive posture',
+    summary: 'Breadth improving, tech leading.',
+    riskPosture: 'balanced',
+    preferredSetups: ['BREAKOUT'],
+    avoid: ['SHORT'],
+    warnings: ['Elevated volatility detected'],
+  },
+  meta: {
+    modelUsed: 'claude-3-haiku',
+    tier: 'haiku',
+    tokensIn: 500,
+    tokensOut: 200,
+    costUsd: 0.001,
+    latencyMs: 1200,
+    cacheHit: false,
+  },
+}
+
+const AI_SUCCESS_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ data: AI_SUCCESS_DATA }),
+  } as FetchResponse)
+
+const AI_502_FETCH = () =>
+  Promise.resolve({
+    ok: false,
+    status: 502,
+    json: () => Promise.resolve({ error: { code: 'AI_PROVIDER_ERROR', message: 'LLM down' } }),
+  } as FetchResponse)
+
+const AI_429_FETCH = () =>
+  Promise.resolve({
+    ok: false,
+    status: 429,
+    json: () =>
+      Promise.resolve({ error: { code: 'AI_BUDGET_EXCEEDED', message: 'Budget exceeded' } }),
+  } as FetchResponse)
+
 // ─── S13 – no console errors ──────────────────────────────────────────────
 
 describe('S13 – no console errors on normal render', () => {
@@ -319,5 +366,102 @@ describe('S13 – no console errors on normal render', () => {
     await screen.findByText('CONSTRUCTIVE')
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+})
+
+// ─── S14 – AI Market Notes integration ───────────────────────────────────
+
+describe('S14 – AI Market Notes integration', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('S14.1: regime 200 + AI 200 → renders headline / summary / warnings', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH, '/ai/': AI_SUCCESS_FETCH }),
+    )
+    renderWidget()
+    expect(await screen.findByText('Market holding constructive posture')).toBeInTheDocument()
+    expect(await screen.findByText(/Breadth improving/)).toBeInTheDocument()
+    expect(await screen.findByText(/Elevated volatility detected/)).toBeInTheDocument()
+  })
+
+  it('S14.2: AI 502 → upper 4 blocks normal + AI area "AI 暂不可用"', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH, '/ai/': AI_502_FETCH }),
+    )
+    renderWidget()
+    expect(await screen.findByText('CONSTRUCTIVE')).toBeInTheDocument()
+    expect(await screen.findByText('AI 暂不可用')).toBeInTheDocument()
+  })
+
+  it('S14.3: AI 429 BUDGET_EXCEEDED → "AI 暂不可用" + Refresh disabled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH, '/ai/': AI_429_FETCH }),
+    )
+    renderWidget()
+    await screen.findByText('AI 暂不可用')
+    const refreshBtn = screen.getByRole('button', { name: /Refresh/ })
+    expect(refreshBtn).toBeDisabled()
+  })
+
+  it('S14.4: successful AI fetch → Refresh button immediately disabled (1h cooldown)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH, '/ai/': AI_SUCCESS_FETCH }),
+    )
+    renderWidget()
+    await screen.findByText('Market holding constructive posture')
+    const refreshBtn = screen.getByRole('button', { name: /Refresh/ })
+    expect(refreshBtn).toBeDisabled()
+  })
+
+  it('S14.5: Refresh click sends noCache: true in request body', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/regime': REGIME_OK_FETCH,
+      '/ai/': AI_502_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('AI 暂不可用')
+
+    const refreshBtn = screen.getByRole('button', { name: /Refresh/ })
+    fireEvent.click(refreshBtn)
+
+    await waitFor(() => {
+      const aiCalls = fetchMock.mock.calls.filter(([url]) =>
+        (url as string).includes('/ai/'),
+      )
+      expect(aiCalls.length).toBeGreaterThanOrEqual(2)
+    })
+
+    const aiCalls = fetchMock.mock.calls.filter(([url]) => (url as string).includes('/ai/'))
+    const lastBody = JSON.parse(aiCalls[aiCalls.length - 1][1].body as string)
+    expect(lastBody.noCache).toBe(true)
+  })
+
+  it('S14.6: sector normalization — Constructive/Defensive map to Strong/Weak in AI request', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/regime': REGIME_OK_FETCH,
+      '/ai/': AI_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('Market holding constructive posture')
+
+    const aiCalls = fetchMock.mock.calls.filter(([url]) => (url as string).includes('/ai/'))
+    expect(aiCalls.length).toBeGreaterThan(0)
+    const body = JSON.parse(aiCalls[0][1].body as string)
+    const sectorStates: string[] = body.input.sectors.map(
+      (s: { state: string }) => s.state,
+    )
+    expect(sectorStates).not.toContain('Constructive')
+    expect(sectorStates).not.toContain('Defensive')
+    // REGIME_OK: XLY=Constructive→Strong, XLE=Defensive→Weak
+    const xly = body.input.sectors.find((s: { symbol: string }) => s.symbol === 'XLY')
+    expect(xly.state).toBe('Strong')
+    const xle = body.input.sectors.find((s: { symbol: string }) => s.symbol === 'XLE')
+    expect(xle.state).toBe('Weak')
   })
 })
