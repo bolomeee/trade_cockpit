@@ -1178,3 +1178,17 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   F209-a：🔍 needs_review
 
 ⏭ 下一步：用户验收 F209-a → F209-b（Market Narrator 前端集成，依赖 F209-a）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] 验收：F209-a AI 后端 schema 注册
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过。phase → done
+
+验收发现：
+  - 开发数据库停在 migration 011，未运行 F208-a 的 012（ai_memos 表）
+  - 执行 `alembic upgrade head` 修复，不影响代码质量
+
+📊 功能状态：
+  F209-a：✅ done
+  F209-b：⬜ design_ready（等待开发）
