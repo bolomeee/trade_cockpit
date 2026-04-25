@@ -3,6 +3,23 @@
 初始化：2026-04-16 | 本次更新：2026-04-25
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F201-c MarketRegimeWidget 前端实现
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - cockpitRegimeApi.ts：CockpitRegimeData 类型 + getCockpitRegime()
+  - MarketRegimeWidget.tsx：Score Hero / 6-dim Subscores / Indices Card / Sector Heatmap / 4 种状态（loading/empty/error/normal）
+  - CockpitRegistry.ts：cockpit.placeholder → cockpit.market-regime
+  - 测试：S3-S13 单元测试 + S3 集成测试（cockpitApis.test.ts 追加），65/65 全过
+  - DECISIONS.md：D073 颜色 token 映射
+  - pnpm build 零 error
+
+📊 功能状态：
+  F201-c：✅ done（Evaluator 通过）
+
+⏭ 下一步：F209-a（Market Narrator 后端 schema）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-25] Sprint：F203-d DecisionPanel Widget + UserSettings Dialog
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

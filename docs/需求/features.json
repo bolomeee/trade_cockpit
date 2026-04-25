@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F208-c",
-    "active_sprint_phase": "eval_passed"
+    "active_sprint": "F201-c",
+    "active_sprint_phase": "done"
   },
   "_iteration_log": [
     {
@@ -2353,8 +2353,8 @@
       "description": "实现 Cockpit Widget 1 (MarketRegimeWidget) 前端：Score Hero（regime 标签 + marketScore 数值条 + allowedExposurePct + singleTradeRiskPct）、Subscores 6 子项卡片、Indices 行（SPY/QQQ/IWM 三联）、Sectors 11 ETF heatmap。调 GET /api/cockpit/regime（F201-b 已交付），不含任何 AI 内容。CockpitRegistry 中将 cockpit.placeholder（regime 槽）替换为 cockpit.market-regime。",
       "user_story": "作为慢交易投资者，打开 Cockpit 我要在左上看到今日 regime 状态、可用敞口、单笔风险区间，以及 indices/sectors 的 heatmap，3 秒内决定今天是否加仓",
       "priority": "P0",
-      "status": "planned",
-      "phase": "contract_agreed",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F201-b"
       ],
