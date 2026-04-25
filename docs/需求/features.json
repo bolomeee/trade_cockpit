@@ -2348,6 +2348,63 @@
       "notes": "依赖 F201-a。market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。Sprint Contract 待 F201-a 验收后协商。"
     },
     {
+      "id": "F201-c",
+      "name": "Market Regime 前端 Widget",
+      "description": "实现 Cockpit Widget 1 (MarketRegimeWidget) 前端：Score Hero（regime 标签 + marketScore 数值条 + allowedExposurePct + singleTradeRiskPct）、Subscores 6 子项卡片、Indices 行（SPY/QQQ/IWM 三联）、Sectors 11 ETF heatmap。调 GET /api/cockpit/regime（F201-b 已交付），不含任何 AI 内容。CockpitRegistry 中将 cockpit.placeholder（regime 槽）替换为 cockpit.market-regime。",
+      "user_story": "作为慢交易投资者，打开 Cockpit 我要在左上看到今日 regime 状态、可用敞口、单笔风险区间，以及 indices/sectors 的 heatmap，3 秒内决定今天是否加仓",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "contract_agreed",
+      "dependencies": [
+        "F201-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/widgets/MarketRegimeWidget.tsx",
+        "frontend/src/cockpit/lib/api/cockpitRegimeApi.ts",
+        "frontend/src/cockpit/CockpitRegistry.ts",
+        "frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx",
+        "frontend/src/cockpit/lib/api/__tests__/cockpitApis.test.ts"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/regime"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/regime"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketIndex"
+        ],
+        "decision_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "MarketRegimeWidget 渲染 Score Hero（regime 标签 + marketScore 数值条 + allowedExposurePct + singleTradeRiskPct）",
+        "Subscores 6 子项以网格卡片显示（trend / breadth / rs / volatility / sentiment / earnings）",
+        "Indices 区显示 SPY / QQQ / IWM，含 aboveMa50 / aboveMa200 / rsTrend / state",
+        "Sectors heatmap 显示 11 ETF 格子，按 state 着色（Strong=绿 / Constructive=浅绿 / Weak=橙 / Defensive=红），悬浮显示 changePct",
+        "颜色全部走 tokens.css CSS 变量（--color-regime-* / --color-state-*），无硬编码色值",
+        "四种状态完整：正常 / 空（404 显示 EmptyState）/ 加载（Skeleton）/ 错误（接口 502）",
+        "CockpitRegistry 中 regime 槽位由 PlaceholderWidget 替换为 MarketRegimeWidget，已有 e2e/snapshot 测试不回归",
+        "本 sprint 不实现：Score Hero 浮层 / Sector 过滤联动 / AI Market Notes（留给 F209-b）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F201 历史拆分中遗漏了前端实现，本 sprint 补齐。是 F209-b 的前置条件。AI Market Notes 区由 F209-b 后续追加，本 sprint 不实现。"
+    },
+    {
       "id": "F202-a",
       "name": "Setup Monitor 数据层",
       "description": "setup_snapshots 表 + SetupSnapshot ORM + SetupSnapshotRepository + cockpit_params §2 CockpitSetupParams + SetupService 计算引擎（纯函数 + compute_and_store_all + get_setup_monitor_data）",
@@ -3009,24 +3066,25 @@
       "notes": "F209/F210/F211 的前置完结于本 sprint。LiteLLM 真实调用在测试中始终 mock，避免烧 token；live smoke test 留给后续 feature 自行覆盖。"
     },
     {
-      "id": "F209",
-      "name": "AI: Market Narrator + Setup Explainer",
-      "description": "基于 F208 实现两个 default-tier AI task。task_type=market_narrator：输入 F201 的 regime 结构化数据，输出 headline / summary / risk_posture / preferred_setups / avoid / warnings；task_type=setup_explainer：输入单股 setup 结构化数据（trend / RS / setup / risk），输出 label / quality / why_watch / main_risks。前端：Market Regime Widget 增 AI Market Notes 区；Setup Monitor 每行可展开 AI 解释。",
-      "user_story": "作为投资者，我想让 AI 用自然语言解释当前市场 regime 和每个 setup 的逻辑，但不要让它做买卖决定，只做解释和归纳",
+      "id": "F209-a",
+      "name": "AI: 后端 schema 注册（market_narrator + setup_explainer）",
+      "description": "在 backend/app/ai/schemas/ 新增 market_narrator.py 与 setup_explainer.py 两个 Pydantic schema 文件，定义输入/输出结构（含 'extra: forbid'），在 schemas/__init__.py 的 REGISTRY 注册并在包内 import 使其生效。两个 task 均走 default tier（AI_MODEL_DEFAULT=gpt-5.4-nano）。Schema 内嵌 system prompt 与 post-validate guardrail（禁词：buy now / sell now / 承诺收益 / 忽略止损）。本 sprint 不写前端、不改 gateway/router 框架。",
+      "user_story": "作为后端开发者，我希望 F209 的两个 task_type 在 AI Gateway 中被注册和可调用，给前端 sprint 留好接口",
       "priority": "P1",
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
-        "F208-c",
-        "F201-b",
-        "F202"
+        "F208-c"
       ],
-      "estimated_sessions": 3,
-      "estimated_files_changed": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/ai/schemas/market_narrator.py",
+        "backend/app/ai/schemas/setup_explainer.py",
+        "backend/app/ai/schemas/__init__.py",
+        "backend/tests/test_ai_schemas_f209.py"
+      ],
       "scope": {
-        "pages": [
-          "Cockpit"
-        ],
+        "pages": [],
         "api_endpoints": [
           "POST /api/ai/market_narrator",
           "POST /api/ai/setup_explainer"
@@ -3036,25 +3094,28 @@
       },
       "contract": {
         "api_refs": [
-          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=narrate_regime / explain_setup / summarize_news / journal_reflect)"
+          "API-CONTRACT.md §POST /api/ai/{task_type}"
         ],
         "data_model_refs": [
           "DATA-MODEL.md §Entity: AiMemo"
         ],
         "decision_refs": [
           "D064 LiteLLM + 单一动态 endpoint",
+          "D068 guardrail post-validate",
           "D069 ai_memos 双用途"
         ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "task_type=market_narrator 和 setup_explainer 两个 Pydantic schema 在 backend/app/ai/schemas/ 定义",
-        "默认走 AI_MODEL_DEFAULT（tier=default）",
-        "prompt 严格禁止：'buy now' / 'sell now' / 承诺收益 / 编造数据 / 忽略止损（guardrail 通过 system prompt + post-validate 关键词检测）",
-        "Market Regime Widget 顶部展示 AI headline + summary，下方展示 preferred_setups / avoid / warnings 列表",
-        "Setup Monitor 每行右侧'?' 按钮点开 popover，显示 label / quality / why_watch / main_risks",
-        "AI 输出不覆盖 deterministic signal，只附加展示",
-        "Schema 校验失败 / 超预算时前端显示'AI 暂不可用'占位，不影响其他 widget"
+        "MarketNarratorInput 字段：regime / marketScore / subscores / sectors（与 API-CONTRACT 示例一致，camelCase 在 router 边界转换，schema 内部 snake_case）",
+        "MarketNarratorOutput 字段：headline / summary / riskPosture / preferredSetups / avoid / warnings",
+        "SetupExplainerInput 字段：ticker / trend / rs / setup / risk（含 entry/stop）",
+        "SetupExplainerOutput 字段：label / quality / whyWatch / mainRisks",
+        "两个 schema 均设置 model_config = {'extra': 'forbid'}，schema_version = 'v1'",
+        "REGISTRY['market_narrator'] 与 REGISTRY['setup_explainer'] 注册成功，get_schemas() 可取出",
+        "POST /api/ai/market_narrator 和 /api/ai/setup_explainer 端到端调用（mock LiteLLM）成功，cost_usd 正确写入 ai_memos（D072 修复后）",
+        "Guardrail 关键词检测：mock LiteLLM 输出含 'buy now' 时抛 AI_GUARDRAIL_VIOLATION，不写 ai_memos",
+        "live smoke test（pytest -m live）真实调用 gpt-5.4-nano，cost_usd > 0，输出符合 schema"
       ],
       "test_cases": {
         "unit": [],
@@ -3062,7 +3123,120 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": ""
+      "notes": "F209-a 是后端 sprint，前端两个 widget 集成由 F209-b（Market Narrator）和 F209-c（Setup Explainer）分别交付。本 sprint 必须含 live smoke 验证 D072 cost fix 在新 task 上仍生效。"
+    },
+    {
+      "id": "F209-b",
+      "name": "AI: Market Narrator 前端集成（MarketRegimeWidget AI Notes）",
+      "description": "在 MarketRegimeWidget 底部新增 AI Market Notes 区：Headline + Summary + Warnings 列表 + 手动 Refresh 按钮（cache TTL >1h 时启用）。新增通用 AI 客户端 frontend/src/cockpit/lib/api/aiApi.ts，封装 POST /api/ai/{task_type}。AI 输出失败/超预算时显示 'AI 暂不可用' 占位，不影响 widget 其他区块。",
+      "user_story": "作为 Cockpit 用户，看完 regime 数值后我想读 AI 用一句话总结当前市场情绪和优先 setup，作为人类直觉的补充",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F209-a",
+        "F201-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/lib/api/aiApi.ts",
+        "frontend/src/cockpit/widgets/MarketRegimeWidget.tsx",
+        "frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx",
+        "frontend/src/cockpit/lib/api/__tests__/aiApi.test.ts"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/market_narrator"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=market_narrator)"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "aiApi.ts 提供 callAiTask<TIn, TOut>(taskType, input, opts) 通用方法，支持 noCache 选项",
+        "MarketRegimeWidget 底部新增 'AI Market Notes' 区，渲染 headline / summary / warnings",
+        "Refresh 按钮：cache TTL <1h 时 disabled，>1h 启用；点击调 callAiTask('market_narrator', ...) noCache=true",
+        "loading 期间按钮 spinner，AI 区域显示 Skeleton",
+        "AI 输出失败（502 / 429 / 网络错误）时区域显示 'AI 暂不可用'，widget 其他区不受影响",
+        "AI 输出仅展示，不影响 deterministic regime 数值",
+        "颜色 / 字体走 tokens.css，无硬编码"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "依赖 F201-c 提供 widget shell。aiApi.ts 在 F209-c 中复用。"
+    },
+    {
+      "id": "F209-c",
+      "name": "AI: Setup Explainer 前端集成（SetupMonitor 每行 popover）",
+      "description": "在 SetupMonitorWidget 每行右侧新增 '?' 按钮，点击打开 shadcn/ui Popover 显示 AI 输出：label / quality / whyWatch / mainRisks。复用 F209-b 的 aiApi.ts。同 ticker 同 setup 24h 内点击命中 ai_memos 缓存，loading 期间 popover 显示 Skeleton。",
+      "user_story": "作为 Cockpit 用户，扫 Setup Monitor 行列时遇到不熟悉的 setup，我想点 '?' 1 秒看到 AI 解释为什么这是个机会、最大风险是什么",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F209-a",
+        "F209-b",
+        "F202-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/components/AiSetupExplainerPopover.tsx",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/setup_explainer"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=setup_explainer)"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "SetupMonitor 每行右侧出现 '?' 按钮（icon-only，--color-text-muted）",
+        "点击 '?' 打开 Popover，调 callAiTask('setup_explainer', { ticker, trend, rs, setup, risk })",
+        "Popover 显示 label / quality / whyWatch / mainRisks，loading 期间 Skeleton",
+        "失败时 Popover 显示 'AI 暂不可用'，不影响行其他列",
+        "AI 输出仅展示，不修改 deterministic setup_type / quality 列",
+        "同 ticker + 同 setup 24h 内命中 ai_memos 缓存（meta.cacheHit=true）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "复用 F209-b 的 aiApi.ts。Popover 用 shadcn/ui Popover 组件，使用前 context7 查询最新 API。"
     },
     {
       "id": "F210",

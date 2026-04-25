@@ -1064,3 +1064,44 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 [下一步]
   F209：Market Narrator + Setup Explainer（default tier）
   执行 feature-dev skill，Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract 协商：F201-c + F209 拆分
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 起点：用户准备开发 F209，发现两个阻塞：
+  1. F201 历史拆分中漏掉前端 — MarketRegimeWidget 实际不存在，
+     但 design-spec / data-mapping 都已描述
+  2. F209 整体预估 ≥9 文件，违反 6 文件原则
+
+✅ 决策：
+  - 方案 B：先补 F201-c（前端 widget shell，不含 AI）→ 再做 F209
+  - F209 拆 a/b/c：a 后端 schema(4)、b Market Narrator 前端(4)、c Setup Explainer popover(3)
+
+🔧 features.json 变更：
+  - 新增 F201-c "Market Regime 前端 Widget"（5 文件，phase=contract_agreed）
+  - 删除 F209 原条目，新增 F209-a / F209-b / F209-c
+    F209-a deps: F208-c
+    F209-b deps: F209-a + F201-c
+    F209-c deps: F209-a + F209-b + F202-c
+
+📄 Sprint Contract：F201-c
+  路径：docs/开发/sprint-contracts/F201-c-contract.md
+  范围：4 区块（Score Hero / Subscores / Indices / Sector Heatmap）+ 4 种状态 + Registry 替换
+  排除：AI Notes（F209-b）/ Score Hero 浮层 / 联动交互（v1.9）
+  3 个决策已用户确认：
+    D1 sector/index state 复用 --color-regime-* token（不新增 token）
+    D2 404 EmptyState 不实现 [手动触发] 按钮（POST endpoint 未定义）
+    D3 Subscore 满分前端硬编码常量（API 不返回 max）
+
+📊 功能状态：
+  F201-c：📝 contract_agreed
+  F209-a：⬜ design_ready
+  F209-b：⬜ design_ready（依赖 F201-c）
+  F209-c：⬜ design_ready
+
+[下一步]
+  开新 session（建议 Sonnet），粘贴：
+  > 继续开发 F201-c，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F201-c-contract.md，
+  > 进入 Generator 模式，从开发步骤 2（cockpitRegimeApi.ts）开始。
