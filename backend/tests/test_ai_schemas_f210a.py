@@ -107,6 +107,13 @@ class TestCandidateRankerInput:
         with pytest.raises(ValidationError):
             CandidateRankerInput(**data)
 
+    def test_I5b_all_five_regime_values_accepted(self):
+        """Regime literal must accept the 5 values returned by market_regime_service:
+        RISK_ON / CONSTRUCTIVE / NEUTRAL / DEFENSIVE / RISK_OFF."""
+        for regime in ("RISK_ON", "CONSTRUCTIVE", "NEUTRAL", "DEFENSIVE", "RISK_OFF"):
+            obj = CandidateRankerInput(**{**_RANKER_INPUT_VALID, "regime": regime})
+            assert obj.regime == regime
+
     def test_I6_trend_score_out_of_range(self):
         """trendScore=6 → ValidationError (le=5)."""
         bad_candidate = {**_CANDIDATE_VALID, "trendScore": 6}

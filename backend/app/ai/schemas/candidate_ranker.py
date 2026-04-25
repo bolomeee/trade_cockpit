@@ -50,7 +50,7 @@ class CandidateInput(BaseModel):
 
 
 class CandidateRankerInput(BaseModel):
-    regime: Literal["CONSTRUCTIVE", "NEUTRAL", "CAUTION", "RISK_OFF"]
+    regime: Literal["RISK_ON", "CONSTRUCTIVE", "NEUTRAL", "DEFENSIVE", "RISK_OFF"]
     regimeScore: int = Field(ge=0, le=100)
     candidates: list[CandidateInput] = Field(min_length=1, max_length=20)
     model_config = {"extra": "forbid"}
