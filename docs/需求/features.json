@@ -2287,8 +2287,8 @@
       "description": "market_indices 扩展 14 ETF symbol（MARKET_INDEX_WINDOW=260 + 新 SYMBOL_NAMES / _DB_TO_FMP_INDEX 映射）+ APScheduler regime cron job（config.py REGIME_CRON_*）+ Pydantic RegimeSchema + FastAPI GET /api/cockpit/regime router + routers/cockpit/__init__.py 注册。",
       "user_story": "作为慢交易投资者，打开 Cockpit 我要先看到今日 market regime（Risk-On/Constructive/Neutral/Defensive/Risk-Off），对应的 allowed exposure 和 single trade risk 区间，以及 SPY/QQQ/IWM 和 11 个 sector ETF 的状态 heatmap，用以决定今日是否开新仓",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F200-a",
         "F200-b",
@@ -2350,8 +2350,8 @@
       "name": "Setup Monitor 数据层",
       "description": "setup_snapshots 表 + SetupSnapshot ORM + SetupSnapshotRepository + cockpit_params §2 CockpitSetupParams + SetupService 计算引擎（纯函数 + compute_and_store_all + get_setup_monitor_data）",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "contract_agreed",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F200-a",
         "F200-b",
