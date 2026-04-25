@@ -1441,3 +1441,33 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
   F210-a ✅ done（2026-04-25）
   F210-b 🔜 design_ready（SetupMonitor AI 排序前端集成）
   F210-c 🔜 design_ready（DecisionPanel Generate AI Plan 前端集成）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] F210-a hotfix + F210-b Sprint Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 F210-a regime hotfix（commit 2853e3b）
+  - 缺陷：candidate_ranker.regime 是 4 值 Literal[CONSTRUCTIVE/NEUTRAL/CAUTION/RISK_OFF]，
+    与 market_regime_service.py 实际输出的 5 值（RISK_ON/CONSTRUCTIVE/NEUTRAL/DEFENSIVE/RISK_OFF）不一致。
+    真实 Cockpit 调用遇 RISK_ON 或 DEFENSIVE 会被 422 拒。
+  - 修复：替换为 5 值 Literal；添加 test_I5b_all_five_regime_values_accepted 用例。
+  - 验证：tests/test_ai_schemas_f210a.py 32/32 pass；全量 621/621 pass。
+  - 影响：F210-b 前端可直接透传 regimeApi.regime，无需有损映射。
+
+✅ F210-b Sprint Contract 已确认
+  - 契约文件：docs/开发/sprint-contracts/F210-b-contract.md
+  - 范围：SetupMonitor 顶部 "AI 排序" 按钮 → top 3 渲染（rank/ticker/actionBadge/reason + cache 徽章）
+  - 文件预计 3：AiCandidateRankerSection.tsx 新建 / SetupMonitorWidget.tsx 修改 / 测试 §R 11 用例
+  - 附加文档回写：design-spec Widget 5 + data-mapping §Cockpit-5.c
+  - 5 个开放问题全部采默认方案（不过滤 EXTENDED/BROKEN/NONE / 同行右侧按钮 / 行内 push down /
+    无重试按钮 / inputKey 不排序 ticker）
+
+📊 功能状态：
+  F210-a ✅ done（含 2853e3b hotfix）
+  F210-b 🤝 contract_agreed（待 Generator 启动）
+  F210-c ⬜ design_ready
+
+[下一个 Session（建议 Sonnet）]
+  > 继续开发 F210-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F210-b-contract.md，
+  > 进入 Generator 模式，从开发顺序 step 8a 开始（前端 sprint，DB/Repository/Service 已跳过）。
