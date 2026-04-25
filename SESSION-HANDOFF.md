@@ -1,81 +1,72 @@
 # SESSION HANDOFF
 
 > 生成时间：2026-04-25
-> 当前阶段：F209-b 🤝 contract_agreed → 等待 Generator 模式开发
+> 当前阶段：F209-b 🔍 needs_review → 等待验收
 > 当前 branch：cockpit
 
 ---
 
 ## 本 session 完成的事
 
-**F209-b：Sprint Contract 协商完成**
+**F209-b：Market Narrator 前端集成（Generator 完成）**
 
-| 步骤 | 输出 | 状态 |
-|------|------|------|
-| 读取 ARCHITECTURE / DATA-MODEL / API-CONTRACT / design-spec / data-mapping / features.json | 全部 confirmed | ✅ |
-| 起草 Sprint Contract | `docs/开发/sprint-contracts/F209-b-contract.md` | ✅ |
-| 用户确认 5 项关键技术决策 | sector 归一化 / 1h cooldown / 错误文案 / useQuery 模式 / scope 收敛 | ✅ |
-| 更新 features.json | F209-b phase → `contract_agreed`，active_sprint=F209-b | ✅ |
-| 更新 claude-progress.txt | 追加 Contract 协商记录 | ✅ |
+| Step | 内容 | Commit | 状态 |
+|------|------|--------|------|
+| 1 | `aiApi.ts` 新建 + §A 7 单测 | 9abd80f | ✅ |
+| 2+3 | `<AiMarketNotes>` 子组件 + useQuery + cooldown | ce2da50 | ✅ |
+| 4 | §S14 6 集成测试 + makeRoutedFetch helper | b81f977 | ✅ |
+| 5 | Evaluator 全量回归 + 自检逐条 | — | ✅ |
+| 6 | DECISIONS D075 + features.json needs_review + progress log | bfbcac6 | ✅ |
 
 ---
 
-## Sprint Contract 摘要
+## 实现摘要
 
-### 实现范围（共 4 文件，未越界）
+### 新建/修改文件（4 个，未越界）
 
 | 文件 | 类型 | 说明 |
 |------|------|------|
-| `frontend/src/cockpit/lib/api/aiApi.ts` | 🆕 新建 | 通用 `callAiTask<TIn, TOut>` + `MarketNarratorInput/Output` 类型 |
-| `frontend/src/cockpit/widgets/MarketRegimeWidget.tsx` | ✏️ 修改 | 末尾追加 `<AiMarketNotes>` 子组件，**现有 4 区块 0 行改动** |
+| `frontend/src/cockpit/lib/api/aiApi.ts` | 🆕 新建 | `callAiTask<TIn,TOut>` + `MarketNarratorInput/Output` 类型 |
 | `frontend/src/cockpit/lib/api/__tests__/aiApi.test.ts` | 🆕 新建 | §A 7 单测（成功/noCache/各错误码/网络错误） |
-| `frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx` | ✏️ 修改 | §S14 6 集成测试 + 路由式 fetch mock helper |
+| `frontend/src/cockpit/widgets/MarketRegimeWidget.tsx` | ✏️ 修改 | 末尾追加 `<AiMarketNotes>` + `normalizeSectorState` + `buildNarratorInput`，**现有 4 区块 0 行改动** |
+| `frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx` | ✏️ 修改 | §S14 6 集成测试 + `makeRoutedFetch` 路由式 mock helper（同时修复 S3-S13 与 AI 调用的 mock 冲突） |
 
-### 关键技术决策（用户已确认）
+### 关键实现点
 
-1. **sector state 5→3 归一化在前端做**（CockpitRegimeData 5 值 → MarketNarratorInput 3 值）：
-   - `Strong` / `Constructive` → `Strong`
-   - `Weak` / `Defensive` → `Weak`
-   - `Neutral` → `Neutral`
-   - ⚠️ Generator 阶段需回写 DECISIONS.md（D075 候选编号）
-2. **前端 1h cooldown + 后端 24h server cache 双层**：用 react-query `dataUpdatedAt` 判 disabled
-3. **错误统一文案"AI 暂不可用"**：不细分 502/429/网络（features.json AC 第 5 条原文）
-4. **react-query `useQuery` + `forceNoCache` ref 单数据流**：自动首次拉取 + 手动 Refresh noCache 共用一个 query
-5. **本 sprint 不做**：Cached `{age}` 副文案 / schemaVersion 过期提示 / modelUsed/tokens tooltip / 错误重试按钮 / 错误细分文案
+1. **sector state 归一化**：`normalizeSectorState(s: SectorState)` 私有函数在 widget 内，Strong/Constructive→Strong，Weak/Defensive→Weak，Neutral→Neutral
+2. **useQuery + forceNoCache ref**：单数据流，queryFn 闭包读 ref 决定 noCache；Refresh 按钮设 ref=true 再 refetch
+3. **1h cooldown**：`dataUpdatedAt > 0 && Date.now() - dataUpdatedAt < 3600000`，无 setInterval
+4. **错误态含 Refresh 按钮**：S14.3 要求 BUDGET_EXCEEDED 时 Refresh 可见但 disabled（原骨架错误态无按钮，已修正）
+5. **makeRoutedFetch**：按 URL substring 分发 mock 响应，防止 AI query 拿到 regime 数据导致崩溃
 
 ---
 
-## 开发顺序（Generator 模式从 Step 1 开始，不得跳步）
+## Evaluator 自检结果（全通过 ✅）
 
-| Step | 内容 | wip commit |
-|------|------|---------|
-| 1 | `aiApi.ts` 新建 + §A 7 单测全通过 | `wip(F209-b): step1 aiApi.ts + tests` |
-| 2 | `<AiMarketNotes>` 子组件骨架（loading/error/empty 外壳） | `wip(F209-b): step2 widget skeleton` |
-| 3 | sector state 归一化 + useQuery + Refresh + 1h cooldown | `wip(F209-b): step3 query + cooldown` |
-| 4 | §S14 6 集成测试通过 | `wip(F209-b): step4 integration tests` |
-| 5 | Evaluator §3 全量回归 + §4 自检逐条 | `feat(F209-b): market narrator frontend integration` |
-| 6 | features.json phase → needs_review + claude-progress + DECISIONS D075 | `chore(F209-b): phase needs_review + D075` |
+| 项 | 结果 |
+|----|------|
+| §A aiApi 单测 7/7 | ✅ |
+| §S14 集成测试 6/6 | ✅ |
+| S1-S13 既有测试 0 回归 | ✅ |
+| frontend 全量 78/78 | ✅ |
+| backend 全量 587/587 | ✅ |
+| 文件清单 4 个，未越界 | ✅ |
+| aiApi.ts 无 widget 专属逻辑 | ✅ |
+| 现有 4 区块 0 行改动 | ✅ |
+| 无 console.error（S13） | ✅ |
+| AiMarketNotes 颜色/字体走 tokens | ✅（10px/11px 在原有 SectorCell，非新增） |
+| sector 归一化有显式测试（S14.6） | ✅ |
+| cooldown 用 dataUpdatedAt | ✅ |
+| 错误统一"AI 暂不可用" | ✅ |
+| 无新外部依赖 | ✅ |
+| features.json phase=needs_review | ✅ |
+| DECISIONS.md D075 追加 | ✅ |
 
 ---
 
-## Evaluator 自检清单（开发完成后使用）
+## 未决事项
 
-- [ ] §A aiApi 单测 7/7
-- [ ] §S14 widget 集成 6/6
-- [ ] §S1-S13 既有测试 0 回归
-- [ ] frontend 全量 `pnpm vitest run` 通过
-- [ ] backend 全量 `uv run pytest tests/` 仍 587 通过（sanity check）
-- [ ] 4 文件未越界
-- [ ] aiApi.ts 不含 widget 专属逻辑（保持通用，F209-c 可复用）
-- [ ] MarketRegimeWidget 现有 4 区块 0 行改动（diff 验证）
-- [ ] 无 console.error 遗留
-- [ ] 颜色/字体/尺寸全部走 `var(--color-*)` / `var(--font-size-*)`，无硬编码
-- [ ] sector state 归一化函数有显式测试覆盖
-- [ ] Refresh cooldown 用 `dataUpdatedAt`，未引入 `setInterval`
-- [ ] 所有错误统一显示"AI 暂不可用"
-- [ ] 无新外部依赖（不动 package.json）
-- [ ] features.json#F209-b phase = needs_review
-- [ ] sector 归一化决策已写入 DECISIONS.md
+- 无
 
 ---
 
@@ -84,11 +75,8 @@
 | 文档 | 节段 |
 |------|------|
 | API-CONTRACT.md | §POST /api/ai/{task_type}（line 1655-1734） |
-| DATA-MODEL.md | §AiMemo（仅参考，前端不直接读 DB） |
 | design-spec.md | §Widget 1 MarketRegimeWidget AI Market Notes（line 808-822） |
-| data-mapping.md | §Cockpit-1.e + §Cockpit-AI-Wrapper（line 407-417 / 776-797） |
-| DECISIONS.md | D064 / D069 / D074 |
-| backend/app/ai/schemas/market_narrator.py | I-O Pydantic schema 权威 |
+| DECISIONS.md | D075（sector 5→3 归一化，本 sprint 新增） |
 | docs/开发/sprint-contracts/F209-b-contract.md | 本 sprint Contract |
 
 ---
@@ -96,9 +84,9 @@
 ## 恢复指令（粘贴到新 session）
 
 ```
-继续开发 F209-b，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-b-contract.md，
-进入 Generator 模式，从 Step 1（新建 frontend/src/cockpit/lib/api/aiApi.ts + §A 7 单测）开始。
+F209-b 已完成（needs_review）。
+读取 SESSION-HANDOFF.md，对 F209-b 做最终验收。
+验收通过后开启 F209-c（Setup Explainer popover，复用 aiApi.ts）。
 ```
 
 ---
@@ -108,23 +96,18 @@
 | Feature | Phase | 说明 |
 |---------|-------|------|
 | F209-a | ✅ done | AI 后端 schema 注册（market_narrator + setup_explainer） |
-| **F209-b** | 🤝 contract_agreed | Market Narrator 前端集成（**本 sprint，待 Generator**） |
+| **F209-b** | 🔍 needs_review | Market Narrator 前端集成（**本 sprint，待验收**） |
 | F209-c | ⬜ design_ready | Setup Explainer popover（依赖 F209-a + F209-b + F202-c） |
 
-active_sprint = F209-b · active_sprint_phase = contract_agreed
+active_sprint = F209-b · active_sprint_phase = needs_review
 
 ---
 
 ## git 状态
 
 branch：cockpit
-本 session 文档变更（未 commit，待 Generator Step 1 wip commit 一起带入或独立 chore commit）：
-- `docs/开发/sprint-contracts/F209-b-contract.md`（新建）
-- `docs/需求/features.json`（F209-b phase + active_sprint）
-- `claude-progress.txt`（追加 Contract 协商记录）
-- `SESSION-HANDOFF.md`（本文件覆写）
-
-最近 commits：
-- 10b4aa0 chore(F209-a): acceptance passed — phase=done + migration 012 applied
-- ecfad9e chore(F209-a): progress log + SESSION-HANDOFF (needs_review)
-- cf3c715 feat(F209-a): market_narrator + setup_explainer schema registration — 587 tests pass
+commits（本 sprint）：
+- 9abd80f wip(F209-b): step1 aiApi.ts + §A 7 unit tests pass
+- ce2da50 wip(F209-b): step2+3 AiMarketNotes skeleton + query + cooldown
+- b81f977 wip(F209-b): step4 §S14 6 integration tests pass
+- bfbcac6 feat(F209-b): market narrator frontend integration — 78/78 tests pass
