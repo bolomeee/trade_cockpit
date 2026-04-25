@@ -10,6 +10,7 @@ import {
 import { SetupTypeBadge } from '../components/SetupTypeBadge'
 import { SetupQualityBadge } from '../components/SetupQualityBadge'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
+import { AiSetupExplainerPopover } from '../components/AiSetupExplainerPopover'
 
 type FilterTab = 'all' | SetupFilterValue
 
@@ -183,6 +184,7 @@ export function SetupMonitorWidget() {
                 <Th width="10%">Dist</Th>
                 <Th width="8%">RS</Th>
                 <Th width="8%">Earn</Th>
+                <Th width="5%">?</Th>
               </tr>
             </thead>
             <tbody>
@@ -292,6 +294,20 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
       </td>
       <td style={tdStyle}>
         <EarningsRiskDot value={item.earningsRisk} />
+      </td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>
+        {(item.setupType === 'BREAKOUT' || item.setupType === 'PULLBACK' || item.setupType === 'RECLAIM') &&
+          item.entryPrice > 0 &&
+          item.stopPrice > 0 && (
+            <AiSetupExplainerPopover
+              ticker={item.ticker}
+              setupType={item.setupType}
+              trendScore={item.trendScore}
+              rsPercentile={item.rsPercentile}
+              entryPrice={item.entryPrice}
+              stopPrice={item.stopPrice}
+            />
+          )}
       </td>
     </tr>
   )
