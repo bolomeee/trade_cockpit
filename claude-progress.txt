@@ -836,3 +836,36 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一步]
   用户选下一个 Sprint，或先修 news_api 测试
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F208 拆分 + F208-a Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F208 LLM Gateway 文件扫描：~18 文件，超 6 上限
+  - 拆分为 3 个 sub-sprint（按 D064 模块边界 + 测试可独立验证）：
+      F208-a 依赖 + ai_memos 表 + 配置层（6 文件）
+      F208-b gateway 核心 errors/memo_repo/budget/routing（6 文件）
+      F208-c gateway 主流程 + LiteLLM + /api/ai/{task_type} endpoint（6 文件）
+  - features.json 更新：
+      _iteration_log v2.0 added 数组 F208 → F208-a/b/c
+      F208 原记录替换为 F208-a/b/c 三条
+      F209/F210/F211 dependencies "F208" → "F208-c"
+      _pipeline_status: current_iteration v1.8 → v2.0、active_sprint → F208-a、phase → contract_agreed
+      last_updated → 2026-04-25-F208-split-into-a-b-c
+  - F208-a Sprint Contract 协商完成（用户 2026-04-25 确认）：
+      落盘 docs/开发/sprint-contracts/F208-a-contract.md
+      6 文件清单：pyproject.toml + config.py + ai_memo.py + models/__init__.py + alembic 012 + test_ai_memo_schema_f208a.py
+      9 条完成标准（litellm lockfile / Settings 7 字段 / ORM 13 列 / alembic 双向 / 索引 / Numeric 精度 / 全量回归）
+  - F208-a phase → contract_agreed
+
+⚠️ 待你决策：
+  - 无（Contract 已确认，等新 session 进 Generator）
+
+📊 功能状态：
+  F208-a AI 基座：📝 contract_agreed（待 Generator）
+  F208-b AI Gateway 核心模块：⬜ design_ready
+  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready
+
+[下一步]
+  开新 session（建议 Sonnet）粘贴恢复指令进入 F208-a Generator 模式

@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F203b-done",
+  "last_updated": "2026-04-25-F208-split-into-a-b-c",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -11,9 +11,9 @@
     "ui_design": "done",
     "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v1.8",
-    "active_sprint": null,
-    "active_sprint_phase": null
+    "current_iteration": "v2.0",
+    "active_sprint": "F208-a",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -110,7 +110,9 @@
       "version": "v2.0",
       "date": "2026-04-24",
       "added": [
-        "F208",
+        "F208-a",
+        "F208-b",
+        "F208-c",
         "F209",
         "F210",
         "F211"
@@ -118,7 +120,7 @@
       "modified": [],
       "deprecated": [],
       "status": "planned",
-      "description": "Cockpit P2：AI 层。F208 LLM Gateway（LiteLLM Router 封装 + tier-based model config via env + budget gate + ai_memos 表 + Pydantic schema validation，provider-agnostic，可灵活切换 OpenAI / Anthropic / 本地模型）；F209 Market Narrator + Setup Explainer（走 default tier）；F210 Candidate Ranker + Trade Plan Generator（走 critical tier）；F211 Contradiction Detector + News Summarizer + Journal Assistant（复杂任务走 complex tier）。用户初始模型：gpt-5.4-nano / gpt-5.4-mini / gpt-5.4，通过 env 可覆盖。"
+      "description": "Cockpit P2：AI 层。F208 LLM Gateway（LiteLLM Router 封装 + tier-based model config via env + budget gate + ai_memos 表 + Pydantic schema validation，provider-agnostic，可灵活切换 OpenAI / Anthropic / 本地模型）；F209 Market Narrator + Setup Explainer（走 default tier）；F210 Candidate Ranker + Trade Plan Generator（走 critical tier）；F211 Contradiction Detector + News Summarizer + Journal Assistant（复杂任务走 complex tier）。用户初始模型：gpt-5.4-nano / gpt-5.4-mini / gpt-5.4，通过 env 可覆盖。F208 因 6 文件上限（D010 适用，但本次按职责清晰拆分而非脚手架豁免）拆为 F208-a（依赖 + ai_memos 表 + 配置层 5 文件）/ F208-b（gateway 核心模块 errors/memo_repo/budget/routing 6 文件）/ F208-c（gateway 主流程 + LiteLLM 集成 + /api/ai/{task_type} endpoint 6 文件），依赖链 a→b→c。"
     },
     {
       "iteration": "v1.8-system-design",
@@ -2818,56 +2820,187 @@
       "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。"
     },
     {
-      "id": "F208",
-      "name": "LLM Gateway (LiteLLM Router + Tier Config + Budget + Memo)",
-      "description": "Cockpit P2 AI 层基座。引入 litellm Python 依赖，新建 backend/app/ai/ 模块：gateway.py（AiGateway.run(task_type, input) 统一入口）/ routing.py（task_type → tier → model_id 映射，env 驱动）/ providers/（LiteLLM 自动处理 OpenAI/Anthropic/其他）/ schemas/（每 task_type 的 Pydantic 输出 schema）/ budget.py（月预算熔断）/ memo_repo.py（ai_memos 表持久化）。新表 ai_memos（task_type, input_hash, output_json, model_used, cost_usd, tokens_in, tokens_out, created_at）。env: AI_MODEL_DEFAULT/CRITICAL/COMPLEX + AI_MONTHLY_BUDGET_USD + OPENAI_API_KEY（未来可加 ANTHROPIC_API_KEY）。",
-      "user_story": "作为系统设计者，我需要一个 provider-agnostic 的 AI 入口：业务代码只写 task_type 和输入，不关心用哪个 model；通过 env 可在 nano/mini/full 三档之间切换，也可以换到 Anthropic 或本地模型；每次调用强制 Pydantic schema 校验、计费入库、超月预算熔断",
+      "id": "F208-a",
+      "name": "AI 基座：依赖 + ai_memos 表 + 配置层",
+      "description": "F208 LLM Gateway 第一阶段（数据 + 配置）。引入 litellm 依赖，新增 7 个 AI 相关 env，在 ORM 与 Alembic 中落地 ai_memos 表（DATA-MODEL §AiMemo 全字段）。本 sprint 不写任何 gateway 业务逻辑，只把'写得进表 + 配得到 model'两件事跑通，给 F208-b/c 提供运行底座。",
+      "user_story": "作为开发者，我需要把 AI 层的依赖、配置和持久化 schema 准备好，使后续 gateway 模块开发不被基础设施阻塞",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "contract_agreed",
       "dependencies": [],
-      "estimated_sessions": 4,
-      "estimated_files_changed": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/pyproject.toml",
+        "backend/app/config.py",
+        "backend/app/models/ai_memo.py (新建)",
+        "backend/app/models/__init__.py (注册 AiMemo)",
+        "backend/alembic/versions/012_f208a_ai_memos.py (新建)",
+        "backend/tests/test_ai_memo_schema_f208a.py (新建)"
+      ],
       "scope": {
         "pages": [],
-        "api_endpoints": [
-          "POST /api/ai/{task_type}（统一入口）"
-        ],
+        "api_endpoints": [],
         "db_tables": [
           "ai_memos"
         ],
         "design_figma_link": null
       },
       "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-a-contract.md",
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §AiMemo（ai_memos 表完整字段定义）"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint（依赖与 env 由本 sprint 落地）",
+          "D069 ai_memos 双用途（schema_version + 索引由本 sprint 落地）"
+        ],
+        "acceptance_type": "infrastructure"
+      },
+      "acceptance_criteria": [
+        "pyproject.toml 增 litellm>=1.83,<2.0",
+        "config.py Settings 增 7 个字段：ai_model_default / ai_model_critical / ai_model_complex / openai_api_key / ai_monthly_budget_usd / ai_memo_cache_ttl_hours / ai_schema_version，全部含合理默认值",
+        "AiMemo ORM 模型字段类型与 DATA-MODEL.md 完全一致（含 Numeric(10,6) cost_usd / String(64) input_hash 等）",
+        "Alembic 012 迁移可正向 upgrade 到 head + downgrade 回 011 不报错",
+        "辅助索引 (task_type, input_hash, created_at DESC) 与 created_at DESC 在迁移中正确创建",
+        "test_ai_memo_schema_f208a 验证：模型字段完整、写入读取一次、索引存在"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [
+          "alembic upgrade/downgrade 双向跑通",
+          "AiMemo 写入并查询，input_hash + tier 字段正常"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "v2.0 AI 层 3 拆中的第 1 步。F208-b 必须等本 sprint Evaluator 通过后才能启动。"
+    },
+    {
+      "id": "F208-b",
+      "name": "AI Gateway 核心模块（errors / memo_repo / budget / routing）",
+      "description": "F208 LLM Gateway 第二阶段（核心纯函数模块，不打 LLM）。建立 backend/app/ai/ Python 包，落地 4 个支撑模块：errors（4 个异常类）/ memo_repo（写入 + 按 (task_type, input_hash, schema_version) + TTL 查询命中）/ budget（月度 SUM cost_usd 熔断）/ routing（task_type → tier → env model_id 映射）。本 sprint 不引入 LiteLLM 调用、不暴露 endpoint，所有模块可单独 unit-test。",
+      "user_story": "作为开发者，我需要 AI gateway 的支撑层（错误模型 / 持久化 / 预算 / 路由）独立可测，再到 F208-c 把它们编排成主流程",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F208-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/ai/__init__.py (新建)",
+        "backend/app/ai/errors.py (新建)",
+        "backend/app/ai/memo_repo.py (新建)",
+        "backend/app/ai/budget.py (新建)",
+        "backend/app/ai/routing.py (新建)",
+        "backend/tests/test_ai_core_modules_f208b.py (新建)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-b-contract.md",
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §AiMemo（memo_repo 操作的目标表）"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + tier 分层（routing 实现）",
+          "D069 ai_memos 双用途（memo_repo 命中规则、budget SUM）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "errors.py 定义 AiProviderError / AiSchemaError / AiBudgetExceeded / AiGuardrailViolation 四个异常",
+        "memo_repo.write(task_type, input_dict, output_dict, ...) 写入 ai_memos 并返回 memo_id",
+        "memo_repo.find_cached(task_type, input_hash, schema_version) 在 TTL 内命中返回 memo，否则 None；schema_version 不一致一律 miss",
+        "budget.assert_within_budget(session) 当月累计 < AI_MONTHLY_BUDGET_USD 不抛错；≥ 抛 AiBudgetExceeded",
+        "routing.resolve(task_type) → (tier, model_id)，7 种 task_type 映射齐全（market_narrator/setup_explainer→default、candidate_ranker/trade_plan→critical、contradiction_detector/news_summarizer→default、journal_assistant→complex），未知 task_type 抛 ValueError",
+        "input_hash 计算：json.dumps(input, sort_keys=True, separators=(',',':')) 后 SHA-256，相同 dict 不同顺序产出相同哈希（单元测试覆盖）",
+        "test_ai_core_modules_f208b 单元 + DB 集成测试全部通过"
+      ],
+      "test_cases": {
+        "unit": [
+          "input_hash 顺序无关性",
+          "routing 7 种映射 + 未知 task_type",
+          "budget SUM 边界（恰好等于上限抛错）"
+        ],
+        "integration": [
+          "memo_repo 写入 + 命中查询 + TTL 过期 miss + schema_version 失效"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "本 sprint 不接 LiteLLM。LiteLLM 真实调用与编排在 F208-c。"
+    },
+    {
+      "id": "F208-c",
+      "name": "AI Gateway 主流程 + LiteLLM 集成 + /api/ai/{task_type} endpoint",
+      "description": "F208 LLM Gateway 第三阶段（编排 + 对外）。把 F208-b 的 4 个核心模块编排为 AiGateway.run(task_type, input)：input_hash → memo dedup → budget check → routing → LiteLLM 调用（response_format=Pydantic）→ output schema 校验 → guardrail post-validate → 写 ai_memos → 返回。新增 guardrail 框架（默认 no-op，F210 trade_plan 在此挂 hook）和 schemas registry（task_type → input/output Pydantic schema；F208-c 内置 1 个 echo 测试 schema 用于验证基座，其他 6 个 task 留给 F209/F210/F211）。新增 POST /api/ai/{task_type} 统一 endpoint。",
+      "user_story": "作为系统设计者，我需要一个 AiGateway.run() 统一入口和对外 endpoint，业务代码只写 task_type 和 input，不关心 LiteLLM 调用细节、缓存、预算、schema 校验",
+      "priority": "P0",
+      "status": "planned",
+      "phase": "design_ready",
+      "dependencies": [
+        "F208-b"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [
+        "backend/app/ai/gateway.py (新建)",
+        "backend/app/ai/guardrail.py (新建)",
+        "backend/app/ai/schemas/__init__.py (新建)",
+        "backend/app/routers/ai.py (新建)",
+        "backend/app/schemas/ai.py (新建)",
+        "backend/app/main.py (注册 ai router)",
+        "backend/tests/test_ai_gateway_e2e_f208c.py (新建)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "POST /api/ai/{task_type}（统一入口）"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-c-contract.md",
         "api_refs": [
-          "API-CONTRACT.md §POST /api/ai/{task_type}"
+          "API-CONTRACT.md §POST /api/ai/{task_type}（请求/响应/错误码完整契约）"
         ],
         "data_model_refs": [
-          "DATA-MODEL.md §Entity: AiMemo"
+          "DATA-MODEL.md §AiMemo"
         ],
         "decision_refs": [
           "D064 LiteLLM + 单一动态 endpoint",
+          "D068 F210 trade_plan 确定性护栏（guardrail 框架由本 sprint 落地，trade_plan 具体 hook 在 F210）",
           "D069 ai_memos 双用途"
         ],
         "acceptance_type": "functional"
       },
       "acceptance_criteria": [
-        "pyproject.toml 添加 litellm 依赖",
-        "backend/app/ai/ 目录建立，gateway/routing/providers/schemas/budget/memo_repo 六个模块齐备",
-        "AiGateway.run(task_type, input_dict) → 返回 schema-validated dict，schema 校验失败抛 AiSchemaError",
-        "env 覆盖验证：AI_MODEL_DEFAULT=gpt-5.4-nano 走 nano，改为 claude-haiku-4.5 后无代码改动即生效（通过 LiteLLM model 字符串映射）",
-        "超月预算（AI_MONTHLY_BUDGET_USD）时抛 AiBudgetExceeded，不降级不 fallback",
-        "每次调用写入 ai_memos 表，字段齐全（含 model_used 和 cost_usd）",
-        "POST /api/ai/{task_type} 对外统一 endpoint，body 传 input_dict，响应 schema-validated output + memo_id",
-        "config tier → model_id 映射支持 YAML 或 .env 两种加载方式，优先 .env"
+        "AiGateway.run(task_type, input_dict, no_cache=False) 编排：input_hash → memo dedup → budget → routing → LiteLLM → schema → guardrail → memo write",
+        "缓存命中路径：返回 memo.output_json + meta.cacheHit=true / tokensIn=0 / costUsd=0 / modelUsed='cache'",
+        "schemas registry 内置 echo task（仅 F208-c 测试用）：input { text: str } → output { echoed: str }，F209/F210/F211 在各自 sprint 注册真实 task",
+        "guardrail.run(task_type, input_dict, output_dict) 默认 no-op；可注册 hook，hook 抛 AiGuardrailViolation 时 gateway 不写 memo 直接抛",
+        "POST /api/ai/{task_type} 请求体 { input, noCache? } → 200 响应严格符合 API-CONTRACT §POST /api/ai/{task_type} 的 envelope（data.memoId / output / meta）",
+        "错误码映射：unknown task_type → VALIDATION_ERROR 422；input schema 失败 → VALIDATION_ERROR 422；LiteLLM 异常 → AI_PROVIDER_ERROR 502；output schema 失败 → AI_SCHEMA_ERROR 502；超预算 → AI_BUDGET_EXCEEDED 429；guardrail 违规 → AI_GUARDRAIL_VIOLATION 409",
+        "main.py 注册 ai router 后 GET /docs 可见 POST /api/ai/{task_type}",
+        "test_ai_gateway_e2e_f208c 覆盖（mock LiteLLM client）：成功 / cache hit / cache miss / budget 超限 / output schema 失败 / guardrail 违规 / no_cache=True 强制刷新 7 条路径"
       ],
       "test_cases": {
         "unit": [],
-        "integration": [],
+        "integration": [
+          "Gateway 编排 7 条路径（mock LiteLLM）",
+          "Endpoint envelope 与错误码映射（FastAPI TestClient）"
+        ],
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "v2.0 其他 AI feature（F209/F210/F211）的前置。本 feature 只建基座不实现具体 task。初始用户模型：AI_MODEL_DEFAULT=gpt-5.4-nano / AI_MODEL_CRITICAL=gpt-5.4-mini / AI_MODEL_COMPLEX=gpt-5.4（模型名以用户提供为准，未来可在 .env 自由更改）。"
+      "notes": "F209/F210/F211 的前置完结于本 sprint。LiteLLM 真实调用在测试中始终 mock，避免烧 token；live smoke test 留给后续 feature 自行覆盖。"
     },
     {
       "id": "F209",
@@ -2878,7 +3011,7 @@
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
-        "F208",
+        "F208-c",
         "F201-b",
         "F202"
       ],
@@ -2934,7 +3067,7 @@
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
-        "F208",
+        "F208-c",
         "F202",
         "F203"
       ],
@@ -2993,7 +3126,7 @@
       "status": "planned",
       "phase": "design_ready",
       "dependencies": [
-        "F208",
+        "F208-c",
         "F203",
         "F206"
       ],

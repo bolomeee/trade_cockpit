@@ -1,98 +1,126 @@
 # SESSION HANDOFF
-> 更新：2026-04-25 | 阶段：v1.8 全部已开发 sprint 校准 done，待启动 P0 F208
+
+> 生成时间：2026-04-25
+> 当前 Skill：feature-dev（F208-a Sprint Contract 已确认，待进入 Generator 模式）
+> 当前 Feature：F208-a — AI 基座（依赖 + ai_memos 表 + 配置层）
+> 上一阶段：v1.8 全部 done；本阶段：v2.0 Cockpit P2 AI 层启动
 
 ---
 
-## 当前状态
+## 完成的内容（本 session）
 
-### 已完成（v1.8 sprint）
+1. **F208 拆分**（按职责清晰，每子 sprint ≤6 文件）
+   - F208-a 依赖 + ai_memos 表 + 配置层（6 文件）
+   - F208-b gateway 核心模块 errors/memo_repo/budget/routing（6 文件）
+   - F208-c gateway 主流程 + LiteLLM + `/api/ai/{task_type}` endpoint（6 文件）
+   - 依赖链：F208-a → F208-b → F208-c → F209/F210/F211
 
-| Sprint | Phase | 验收 |
-|---|---|---|
-| F200-a Cockpit Shell | ✅ done | 验收合格 |
-| F200-b TopNav + ResetLayout | ✅ done | 通过 |
-| F201-a Market Regime 数据层 | ✅ done | 早前验收通过 |
-| F201-b Market Regime 接入层 | ✅ done | 跟 F201-a 配套出货 |
-| F202-a Setup 数据层 | ✅ done | 跟 F202-c 配套出货 |
-| F202-b Setup 接入层 | ✅ done | 代码已合 |
-| F202-c Setup 共享组件 | ✅ done | UI 验证通过 |
-| F203-a/b1/b2/c/d Decision Cockpit | ✅ done | 全套已合 |
-| F204-a Earnings 数据层 | ✅ done | 12/12 测试通过 |
-| F204-b Earnings 接入层 | ✅ done | 已合 |
+2. **features.json 更新**
+   - `_iteration_log` v2.0 added：F208 → F208-a/b/c
+   - 原 F208 记录替换为 F208-a/b/c 三条独立记录（参考 F200-a/b 格式）
+   - F209/F210/F211 `dependencies` 中的 `"F208"` → `"F208-c"`
+   - `_pipeline_status`：`current_iteration` v1.8 → v2.0；`active_sprint` → `F208-a`；`active_sprint_phase` → `contract_agreed`
+   - `last_updated` → `2026-04-25-F208-split-into-a-b-c`
 
-### features.json `_pipeline_status`
-- `current_iteration`: v1.8
-- `active_sprint`: null（待选）
-- `active_sprint_phase`: null
+3. **F208-a Sprint Contract 已确认**（用户 2026-04-25 接受）
+   - 落盘：`docs/开发/sprint-contracts/F208-a-contract.md`
+   - 6 文件清单（精确 6 个，不超限）
+   - 9 条完成标准 + 7 步 Generator 顺序 + Evaluator 自检清单
 
 ---
 
-## 本 session 主要产出
+## 中断位置
 
-1. **F204-a 状态核对 + 清理** — `chore(F204-a)`：删 `sqlite_insert` 死 import、Contract §1.3 澄清 FMP 路径
-2. **工作区大清扫（5 commit）** — F202-b 接入层、F203-b1 model 注册补丁、F200-a Cockpit Shell、F203-d a11y 收尾、docs 累积归档
-3. **news bug 修复（2 commit）**:
-   - `_fetch_with_cache` coverage 误判（虽然不在生产路径上）
-   - **真正 bug**：`useNewsArticles.ts` 的 `staleTime: persisted ? Infinity : 0` 让 localStorage 有数据时永不自动 refetch；改为 5 分钟。同时把 ↻ 按钮换成蓝色（blue-500）
-4. **features.json 全量校准** — F200-a/b、F201-b、F202-a/b、F202-c 全部推进至 `done`
-5. **feature-dev skill 升级**（在 `~/.claude/skills/feature-dev/SKILL.md`）:
-   - **A-2 Generator 模式**：新增"每完成一步且通过最小验证 → wip commit"
-   - **规则 7**：禁用 `git add -A`，分 sprint 内（wip 检查点）/ sprint 收尾 / sprint 间杂项 三段式
-   - **规则 7 新增 Session 结束清点**：`git status` 必须干净
+Sprint Contract 协商完成，**强制停止于 Generator 模式之前**（按 feature-dev SKILL A-1 规定，Contract 确认后必须开新 session 进 Generator，不在同一 session 中继续）。
 
 ---
 
-## 下一步：启动 P0 F208
+## Sprint Contract 执行状态
 
-### F208 — Cockpit P2 AI 层基座
+**当前 Contract**：`docs/开发/sprint-contracts/F208-a-contract.md`
 
-| 项目 | 说明 |
-|---|---|
-| 优先级 | **P0**（F209/F210/F211 三个 AI task 的依赖前置） |
-| 范围 | 引入 `litellm` Python 依赖；新建 `backend/app/ai/` 模块 |
-| 风险 | 文件数可能超 6 文件上限，Sprint Contract 协商时需评估是否拆 a/b |
-| 前置 | 无（直接读 PRD + ARCHITECTURE.md 即可起草 Contract） |
+| 开发步骤 | 状态 |
+|---------|------|
+| Sprint Contract 协商 | ✅ 已确认 |
+| DATA-MODEL 确认（§AiMemo 已存在） | ✅ 不需改动 |
+| API-CONTRACT 确认（本 sprint 不涉及 endpoint） | ✅ 不适用 |
+| pyproject.toml 加 litellm | ⬜ 未开始 |
+| config.py 加 7 个 AI 字段 | ⬜ 未开始 |
+| AiMemo ORM + 注册 | ⬜ 未开始 |
+| 数据库迁移（Alembic 012） | ⬜ 未开始 |
+| 测试 test_ai_memo_schema_f208a | ⬜ 未开始 |
+| 全量回归 | ⬜ 未开始 |
+| Evaluator 评估 | ⬜ 未开始 |
 
-### 触发指令（新 session 用）
+---
+
+## 已创建/修改的文件（本 session）
+
+- `docs/需求/features.json` — 修改（F208 拆分 + 依赖更新 + pipeline status）
+- `docs/开发/sprint-contracts/F208-a-contract.md` — 新建
+- `claude-progress.txt` — 追加 F208 拆分 + F208-a Contract 协商记录
+- `SESSION-HANDOFF.md` — 本文件，覆盖更新
+
+⚠️ 这些是 docs/进度类改动，**未 commit**。下一 session 进 Generator 前，先按规则 7"sprint 间杂项"立即 commit：
+
+```bash
+git add docs/需求/features.json docs/开发/sprint-contracts/F208-a-contract.md claude-progress.txt SESSION-HANDOFF.md
+git commit -m "chore(F208): 拆为 F208-a/b/c + F208-a Sprint Contract 确认"
+```
+
+然后再进入 Generator 步骤 1。
+
+---
+
+## 遗留决策
+
+无（D064/D069 已定方案，本 sprint 仅执行，不需新决策）。
+
+---
+
+## F208-a Sprint Contract 摘要
+
+**实现范围**（详见 contract 文件）：
+
+1. `backend/pyproject.toml` 增 `litellm>=1.83,<2.0`
+2. `backend/app/config.py` Settings 增 7 字段：
+   - `ai_model_default` / `ai_model_critical` / `ai_model_complex`
+   - `openai_api_key`
+   - `ai_monthly_budget_usd` / `ai_memo_cache_ttl_hours` / `ai_schema_version`
+3. `backend/app/models/ai_memo.py` 新建（13 字段对齐 DATA-MODEL §AiMemo）
+4. `backend/app/models/__init__.py` 注册 AiMemo
+5. `backend/alembic/versions/012_f208a_ai_memos.py` 建表 + 2 个复合索引：
+   - `ix_ai_memos_task_input_created` (task_type, input_hash, created_at DESC) — dedup 查询
+   - `ix_ai_memos_created_at_desc` — budget SUM 月度扫描
+6. `backend/tests/test_ai_memo_schema_f208a.py` 5 个测试（columns / upgrade / downgrade / Numeric 精度 / env override）
+
+**Generator 开发顺序**（详见 contract §4）：
+```
+1. pyproject.toml + uv lock                         → wip commit
+2. config.py 加 7 字段                              → wip commit
+3. ai_memo.py + models/__init__.py 注册              → wip commit
+4. alembic 012 迁移 + 双向手动验证                    → wip commit
+5. test_ai_memo_schema_f208a.py + pytest 通过        → wip commit
+6. 全量回归 uv run pytest -m 'not live'              → 进 Evaluator
+```
+
+每步严格按文件名 `git add <path>`，**禁用 `git add -A`**。
+
+---
+
+## 下一个 Session 继续的指令
+
+> ⚠️ 建议用 **Sonnet** 开新 session（Contract 已定，纯执行阶段无需 Opus）。复制以下指令：
 
 ```
-准备开发 F208
+继续开发 F208-a，Sprint Contract 已确认。
+请读取：
+- SESSION-HANDOFF.md
+- CLAUDE.md
+- docs/开发/sprint-contracts/F208-a-contract.md
+- claude-progress.txt（最后部分）
+
+第一步：先把 docs/进度类改动按 chore(F208) 提交。
+然后进入 Generator 模式，从开发顺序步骤 1 开始：
+backend/pyproject.toml 加 litellm>=1.83,<2.0 → uv lock。
 ```
-
-新 session 启动后，feature-dev skill 会：
-1. 读取 `docs/需求/features.json` 中 F208 的 acceptance_criteria
-2. 读取 ARCHITECTURE.md / DATA-MODEL.md / API-CONTRACT.md（AI 相关章节）
-3. 扫码估算文件清单 → 若 > 6 文件，停下来跟你协商拆 F208-a / F208-b
-4. 输出 Sprint Contract 草案到 `docs/开发/sprint-contracts/F208-contract.md`
-5. 暂停等你确认后才进入 Generator
-
-⚠️ 新 session 启动后会按**新版规则 7** 执行 commit：
-- WIP 检查点：每完成 migration / repo / service / router / 测试 / 前端 都 commit 一次
-- 显式 add 文件，禁用 `git add -A`
-- Session 结束前必做 `git status` 清点
-
----
-
-## v1.8 之后未做的 P1/P2
-
-| 优先级 | feature | 说明 |
-|---|---|---|
-| P1 | F205 | Cockpit P1 第一 widget — Setup 多维筛选漏斗 |
-| P1 | F206 | positions/pending_orders 表（手动录入嘉信持仓） |
-| P1 | F207 | 今日决策聚合 |
-| P1 | F209 | AI default-tier — market regime narrative |
-| P1 | F210 | AI critical-tier — candidate ranker |
-| P2 | F211 | AI 混合 tier — contradiction detector |
-| P1 | F103 | 财报数据真实接入（D034 待决） |
-
----
-
-## 参考路径
-
-| 文件 | 说明 |
-|---|---|
-| `docs/需求/features.json` | 状态权威，已全量校准 |
-| `docs/系统设计/ARCHITECTURE.md` | F208 Sprint Contract 起草必读 |
-| `docs/开发/sprint-contracts/` | 已归档 sprint contract，新 sprint 可参考格式 |
-| `claude-progress.txt` | 进度日志，新 session 可读取最近条目 |
-| `~/.claude/skills/feature-dev/SKILL.md` | 已升级 commit 规则 |
