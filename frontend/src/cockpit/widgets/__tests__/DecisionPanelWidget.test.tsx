@@ -588,7 +588,7 @@ describe('T12 – new decision hash (via Recompute) → AI auto-refetches', () =
     const mockDecision2 = { ...mockDecision, deterministicHash: 'xyz789ab012345' }
     let decisionCallCount = 0
 
-    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn((url: string) => {
       const urlStr = url as string
       if (urlStr.includes('/cockpit/decision/')) {
         decisionCallCount++
