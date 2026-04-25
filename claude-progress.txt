@@ -1004,3 +1004,44 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 [下一步]
   开新 session（Sonnet）执行 Generator 模式：
   从 Contract §4 开发顺序 step 1（schemas/__init__.py）开始
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F208-c AI Gateway 主流程 + LiteLLM + endpoint（Generator 完成 + Evaluator 通过）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - gateway.py（178 行）：AiGateway.run 11 步编排 + _call_litellm lazy import + GatewayResult/GatewayMeta dataclass
+  - guardrail.py（22 行）：registry pattern + 默认 no-op + register/run
+  - ai/schemas/__init__.py（44 行）：SchemaPair NamedTuple + REGISTRY + echo 内置 task
+  - routers/ai.py（105 行）：POST /api/ai/{task_type} + 7 Literal enum + camelCase envelope + 6 错误码映射
+  - main.py：注册 ai router 2 行
+  - routing.py：加 "echo": "default" 1 行（test-only 注释）
+  - test_ai_gateway_e2e_f208c.py（434 行）：§A 7 路径 + §B 10 case + §C live smoke
+  - Evaluator bug fix：litellm.completion_cost(response, model=model)（D072）
+  - 回归测试：540 passed，10 deselected（live）
+  - live smoke：gpt-5.4-nano 真实响应，echoed='ping'，cost_usd > 0，memo 写入验证
+  - Evaluator 自检清单 23 条全部通过
+  - DECISIONS.md 追加 D071（run 豁免）/ D072（completion_cost model 参数）
+  - phase → needs_review
+
+⚠️ 注意事项：
+  - OpenAI 返回版本化 model name（gpt-5.4-nano-2026-03-17），litellm.completion_cost 必须显式传 model= 参数（D072）
+  - AiGateway.run 103 行豁免（D071），实际可执行约 50 行，其余为步骤注释
+  - OPENAI_API_KEY 需在 backend/.env 中手动设置（pytest 不自动 source .env，需 set -a && source .env 方式运行 live smoke）
+
+🔧 系统变更：
+  - 新建：backend/app/ai/gateway.py / guardrail.py / schemas/__init__.py
+  - 新建：backend/app/routers/ai.py
+  - 新建：backend/tests/test_ai_gateway_e2e_f208c.py
+  - 修改：backend/app/main.py（+2 行）/ backend/app/ai/routing.py（+1 行）
+  - 修改：docs/系统设计/DECISIONS.md（追加 D071 + D072）
+  - 修改：docs/需求/features.json（F208-c status → needs_review，phase → eval_passed）
+
+📊 功能状态：
+  F208-a AI 基座：✅ done
+  F208-b AI Gateway 核心模块：✅ done
+  F208-c AI Gateway 主流程 + endpoint：🔍 needs_review（待用户验收）
+
+[下一步]
+  用户验收 F208-c → 验收通过后执行 acceptance skill
+  验收通过后开始 F209（Market Narrator + Setup Explainer）

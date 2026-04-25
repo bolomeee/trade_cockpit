@@ -73,7 +73,7 @@ def _call_litellm(
     tokens_in: int = int(getattr(response.usage, "prompt_tokens", 0) or 0)
     tokens_out: int = int(getattr(response.usage, "completion_tokens", 0) or 0)
     try:
-        cost_usd = Decimal(str(litellm.completion_cost(response) or 0))
+        cost_usd = Decimal(str(litellm.completion_cost(response, model=model) or 0))
     except Exception:
         cost_usd = Decimal("0")
 

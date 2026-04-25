@@ -1563,3 +1563,39 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 - 新文件 `backend/app/services/cockpit/cockpit_params.py`（F201-a 起）
 - F201–F211 Sprint Contract 模板追加 D070 合规自检项
 
+---
+
+## D071：AiGateway.run 50 行约束豁免
+
+**日期**：2026-04-25（F208-c Evaluator 阶段，用户明确批准）
+**触发**：Contract §5.2 要求单函数 ≤ 50 行，`AiGateway.run` 实际 103 行（含空行和步骤注释），Evaluator 阶段提出。
+
+**决策**：保留 103 行，不拆 `_check_cache` / `_call_and_validate` 私有方法。
+
+**理由**：
+1. `run()` 是严格线性的 11 步编排流程（Contract §1.1.1 明确列出）；每步用注释标注，注释即文档
+2. 拆成私有方法只是机械地把线性序列折叠为"调用序列 + 两段 body"，增加间接层，可读性下降
+3. 实际可执行代码约 45–50 行，103 行里约 50% 是结构化空行和步骤注释
+4. 所有功能测试通过，无代码质量缺陷
+
+**约束**：此豁免仅限 `AiGateway.run`（编排层的线性流程）；其他新增函数仍执行 50 行约束。
+
+---
+
+## D072：litellm.completion_cost 必须显式传 model 参数
+
+**日期**：2026-04-25（F208-c Evaluator live smoke 发现）
+**触发**：live smoke 测试 `cost_usd > Decimal("0")` 断言失败，`cost_usd` 实际为 0。
+
+**根因**：
+- 我们发送 `model='gpt-5.4-nano'`
+- OpenAI API 返回的 `response.model = 'gpt-5.4-nano-2026-03-17'`（带日期版本号）
+- `litellm.completion_cost(response)` 用 `response.model` 查定价库
+- `gpt-5.4-nano-2026-03-17` 不在 LiteLLM 定价库 → 抛异常 → gateway except 兜底 → `Decimal("0")`
+
+**修复**：在 `_call_litellm` 中改为 `litellm.completion_cost(response, model=model)`，用我们发送的短名（`gpt-5.4-nano`）查价，不依赖 OpenAI 返回的版本化名称。
+
+**影响**：`backend/app/ai/gateway.py` L76，1 行改动，mock 测试 + live smoke 全通过。
+
+**教训**：凡调用 `litellm.completion_cost(response)` 的场景，都应显式传 `model=` 参数，防止 provider 返回版本化 model name 导致定价查询失败。
+
