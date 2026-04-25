@@ -3256,6 +3256,27 @@
       "priority": "P1",
       "status": "planned",
       "phase": "design_ready",
+      "sub_phase_notes": "拆 a/b/c 三段（参 F208/F209 先例）：F210-a 后端 schemas + trade_plan guardrail（4 文件）/ F210-b SetupMonitor 'AI 排序' 集成 / F210-c DecisionPanel 'Generate AI Plan' 集成",
+      "sub_phases": {
+        "F210-a": {
+          "phase": "done",
+          "scope": "backend candidate_ranker + trade_plan Pydantic schemas + trade_plan D068 guardrail（entry/stop/size 三字段锚点 + BANNED_PHRASES）+ REGISTRY 注册 + 单元/集成测试",
+          "contract": "docs/开发/sprint-contracts/F210-a-contract.md",
+          "files": "4（candidate_ranker.py + trade_plan.py + schemas/__init__.py + tests/test_ai_schemas_f210a.py）",
+          "completed_at": "2026-04-25",
+          "tests": "31 unit (I1-I9/O1-O6/TI1-TI4/G1-G7/R1-R5) + 2 e2e (C9-C10) = 33 passing"
+        },
+        "F210-b": {
+          "phase": "design_ready",
+          "scope": "前端 SetupMonitor 顶部 'AI 排序' 按钮 + AiCandidateRankerSection 组件（top 3 渲染 + slice(0,20) + 缓存徽章 + 错误态）+ widget 集成 + 测试",
+          "contract": null
+        },
+        "F210-c": {
+          "phase": "design_ready",
+          "scope": "前端 DecisionPanel 'Generate AI Plan' 按钮 + AiTradePlanSection 组件（memo + management list + AI_GUARDRAIL_VIOLATION 红色 banner + cache meta）+ widget 集成 + 测试",
+          "contract": null
+        }
+      },
       "dependencies": [
         "F208-c",
         "F202",

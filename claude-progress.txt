@@ -3,6 +3,43 @@
 初始化：2026-04-16 | 本次更新：2026-04-25
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract：F210-a → contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 F210 拆 a/b/c 三段（参 F208/F209 先例，整体超 6 文件上限 + 双独立前端落点）：
+  - F210-a：后端 schemas + trade_plan guardrail（4 文件）← 本次定稿
+  - F210-b：SetupMonitor "AI 排序" 集成（待 F210-a Evaluator 后启动）
+  - F210-c：DecisionPanel "Generate AI Plan" 集成
+
+📄 契约：docs/开发/sprint-contracts/F210-a-contract.md
+🎯 范围（4 文件）：
+  + backend/app/ai/schemas/candidate_ranker.py（新建，~110 行）
+  + backend/app/ai/schemas/trade_plan.py（新建，~140 行，含 D068 guardrail）
+  M backend/app/ai/schemas/__init__.py（REGISTRY +2 行 / register +1 行）
+  + backend/tests/test_ai_schemas_f210a.py（新建，~22 用例）
+
+🔑 关键决策（用户确认 4 项默认）：
+  Q1 candidates > 20 → schema 422 严格校验（前端 slice），不做 silent truncate + meta
+  Q2 trade_plan guardrail 不复算 SHA-256，仅比 entry/stop/size 三字段（2 位小数对齐 + size int）
+  Q3 candidate_ranker 不做 BANNED_PHRASES 扫描（reason 短句风险低）
+  Q4 candidate_ranker 输出硬性 3 项，候选不足由前端不发请求兜底
+
+🔗 引用文档（起草前已通读）：
+  API-CONTRACT.md §POST /api/ai/{task_type} line 1655-1734 / §GET /api/cockpit/decision/{ticker} line 1155-1216
+  DATA-MODEL.md §SetupSnapshot / §UserSettings / §AiMemo
+  DECISIONS.md D064 / D066 / D068 / D069 / D074
+  design-spec.md §Widget 5 SetupMonitor / §Widget 6 DecisionPanel
+  data-mapping.md §Cockpit-6.c
+  backend/app/ai/schemas/__init__.py（REGISTRY 占位 line 31-36）
+  backend/app/ai/schemas/setup_explainer.py（F209-a 模板）
+  backend/app/services/cockpit/decision_service.py line 41-51（_compute_hash）
+
+📌 features.json：F210.sub_phases.F210-a.phase = contract_agreed
+🚦 下一步：开新 session，Sonnet Generator 模式落地 F210-a
+
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-25] Acceptance：F209-c → done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1380,3 +1417,27 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
   - trendScore 阈值实际值域观察（Q1）
   - 列宽 5% 视觉确认（Q3）
   - 后端 smoke test：实际调用 POST /api/ai/setup_explainer 验证 cacheHit
+
+---
+## [2026-04-25] F210-a — backend schemas + trade_plan guardrail (D068)
+
+**完成内容**：
+- 新建 `backend/app/ai/schemas/candidate_ranker.py`（CandidateInput + CandidateRankerInput/Output，camelCase，max 20 candidates，top 3 output）
+- 新建 `backend/app/ai/schemas/trade_plan.py`（TradePlanInput 12 字段 + TradePlanOutput + guardrail() 函数，HASH_PRICE_DECIMALS 从 cockpit_params.DECISION import）
+- 修改 `backend/app/ai/schemas/__init__.py`（REGISTRY 注册 candidate_ranker + trade_plan；guardrail 注册 trade_plan，candidate_ranker 无 guardrail）
+- 新建 `backend/tests/test_ai_schemas_f210a.py`（31 用例：I1-I9 / O1-O6 / TI1-TI4 / G1-G7 / R1-R5）
+- 扩展 `backend/tests/test_ai_gateway_e2e_f208c.py`（C9：guardrail violation 时 memo 不入表；C10：candidate_ranker memo 入表）
+
+**测试结果**：33 passed（31 unit + 2 e2e）；全量 620/620 pass；mypy schemas/ 0 errors
+
+**关键决策执行**：
+- Q2：guardrail 不复算 SHA-256，仅比 entry/stop/size（避免跨服务耦合）
+- G5：round(., 2) 兼容 LLM 浮点漂移
+- HASH_PRICE_DECIMALS = DECISION.HASH_PRICE_DECIMALS = 2（单一来源）
+
+**F210-a phase → done**
+
+📊 功能状态：
+  F210-a ✅ done（2026-04-25）
+  F210-b 🔜 design_ready（SetupMonitor AI 排序前端集成）
+  F210-c 🔜 design_ready（DecisionPanel Generate AI Plan 前端集成）

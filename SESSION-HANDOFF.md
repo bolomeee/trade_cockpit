@@ -1,45 +1,51 @@
 # SESSION HANDOFF
 
 > 生成时间：2026-04-25
-> 当前阶段：F209-c ✅ done（Acceptance 通过，含一次 P0 bug 修复）
+> 当前阶段：F210-a ✅ done（620/620 tests pass）
 > 当前 branch：cockpit
+> 上一阶段：F209-c ✅ done（acceptance 通过，含一次 trendScore 阈值 P0 修复）
 
 ---
 
 ## 本 session 完成的事
 
-**F209-c Acceptance**
+**F210-a：后端 schemas + trade_plan guardrail（D068）**
 
-| 检查 | 结果 |
-|------|------|
-| C1 条件渲染 ? 按钮（仅 BREAKOUT/PULLBACK/RECLAIM）| ✅ 实测 35 行 |
-| C2 列位置 / 列宽 | ✅ |
-| C3 API body 字段映射 | ✅ Network 验证 setup/trend/rs/risk/noCache |
-| C4 stopPropagation | ✅ CockpitChart 不联动 |
-| C5 Skeleton 加载态 | ✅ |
-| C6 success 4 区块渲染 | ✅ |
-| C7 错误态"AI 暂不可用" | ✅（单测 S11） |
-| C8 cacheHit | ✅ 同 input 二次 hit |
-| C11 全量回归 | ✅ 95/95（含新增 6 边界） |
+按契约 §4 Generator 模式严格执行完毕：
 
-**验收发现并修复的 P0**：trendScore 阈值不匹配
-- 后端 `trend_score` 是 0-5 的 MA 排列阶梯（非 0-100）
-- 旧阈值 60/40 → 实际所有行被映射为 'down'，AI 接收错误前提
-- 修复：`>=4 up / <=1 down / else sideways`
-- 测试 fixtures 同步 + S8b 6 个边界用例
-- commit 192d7f5
+| 步骤 | 内容 | 状态 |
+|------|------|------|
+| 8a | 新建 `backend/app/ai/schemas/candidate_ranker.py` | ✅ |
+| 8b | 新建 `backend/app/ai/schemas/trade_plan.py`（含 guardrail）| ✅ |
+| 8c | 修改 `backend/app/ai/schemas/__init__.py`（REGISTRY +2 行 + register +1 行）| ✅ |
+| 8d | 跑 `test_ai_schemas_f210a.py -v` → **31/31 pass**（I1-I9/O1-O6/TI1-TI4/G1-G7/R1-R5）| ✅ |
+| 9 | 扩展 `test_ai_gateway_e2e_f208c.py` 添加 C9/C10 → **2/2 pass** | ✅ |
+| 10 | 全量 `uv run pytest backend/tests/` → **620/620 pass** | ✅ |
+| 10 | `uv run mypy backend/app/ai/schemas/` → **0 errors**（4 pre-existing errors 在 memo_repo/gateway，同 F209-a 基线）| ✅ |
+| 11 | Evaluator 自检全通过 | ✅ |
+
+**4 项决策执行确认**：
+- Q1：candidates > 20 → `max_length=20` 严格 422（silent truncate deferred to F210-b）
+- Q2：guardrail 不复算 SHA-256（仅比 entry/stop/size 三字段）
+- Q3：candidate_ranker 不做 BANNED_PHRASES 扫描
+- Q4：candidate_ranker 输出硬性 3 项
+
+**关键实现细节**：
+- `HASH_PRICE_DECIMALS` 从 `cockpit_params.DECISION` import，单一来源不漂移
+- `guardrail._HOOKS["trade_plan"]` 已注册；`candidate_ranker` 未注册（R3/R4 验证）
+- C9：trade_plan size 被 LLM 篡改 → `AiGuardrailViolation`，`AiMemo` 数量不增
+- C10：candidate_ranker 合法输出 → memo 入表，无 guardrail 调用
 
 ---
 
 ## Git 历史
 
 ```
-192d7f5 fix(F209-c): correct trendScore threshold for 0-5 ladder
-5e23e82 feat(F209-c): AI Setup Explainer Popover — 89/89 tests pass
-76b5c08 chore(F209-c): design-spec deviation note
-d8f61b6 wip(F209-c): tests §S green
-539f350 wip(F209-c): widget integration
-c07e49d wip(F209-c): popover component skeleton
+ec4b4a3 wip(F210-a): e2e guardrail test (C9/C10) + unit tests (I/O/TI/G/R)
+14f0210 wip(F210-a): registry wiring
+37f2e06 wip(F210-a): trade_plan schema + guardrail
+1755e31 wip(F210-a): candidate_ranker schema
+f725fa5 chore(F209-c): acceptance passed — phase=done
 ```
 
 ---
@@ -48,25 +54,41 @@ c07e49d wip(F209-c): popover component skeleton
 
 | Feature | Phase |
 |---------|-------|
-| F209-a | ✅ done |
-| F209-b | ✅ done |
-| **F209-c** | ✅ **done**（本次 acceptance 通过）|
-| F210 | ⬜ design_ready |
-| F211 | ⬜ design_ready |
-
-## P0 全局完成度
-
-P0 feature 中仍有 design_ready：F205 / F206 / F207 / F210 / F211。
-**未到 v1.8 部署阶段**（需要先开发完 P0 剩余项或单独发版 F209 块）。
+| F209-a / b / c | ✅ done |
+| **F210-a** | ✅ **done**（2026-04-25，33 tests）|
+| F210-b | design_ready |
+| F210-c | design_ready |
+| F211 | design_ready |
+| F205 / F206 / F207 | design_ready |
 
 ---
 
-## 下一步：F210（建议新 session）
+## 下一步：F210-b — SetupMonitor "AI 排序" 集成（建议新 session + Sonnet）
 
-F210 = AI: Candidate Ranker + Trade Plan Generator。
-- 已有 design_ready 状态，未起草 Sprint Contract。
-- 触发：在新 session 说"开始 F210"或"为 F210 写 sprint contract"。
-- 流程：feature-dev skill → Sprint Contract 协商 → Generator → Evaluator → Acceptance。
+**触发**：在新 session 说"开始 F210-b"。
+
+**F210-b 核心任务**（参契约 §8 骨架预览）：
+1. 新建 `frontend/src/cockpit/components/AiCandidateRankerSection.tsx`
+   - 顶部按钮 + 加载/成功/错误三态 + top 3 列表 + 缓存命中徽章
+2. 修改 `SetupMonitorWidget.tsx`
+   - 表格上方追加按钮区，点击调 `callAiTask<CandidateRankerInput, CandidateRankerOutput>('candidate_ranker', ...)`
+   - 输入从当前 items[] 取 `slice(0, 20)` 并按 §1.1.1 字段映射
+3. 扩展 `SetupMonitorWidget.test.tsx` §R 段（~10 用例：按钮渲染 / slice 截断 / top 3 展示 / 错误态 / cache）
+
+**后端输入映射（F210-a schema → widget items）**：
+- `regime` / `regimeScore` → Cockpit regime store
+- `candidates[].ticker` → SetupSnapshot.ticker
+- `candidates[].setupType` → SetupSnapshot.setup_type（大写枚举 BREAKOUT/PULLBACK/...）
+- `candidates[].trendScore` → SetupSnapshot.trend_score（0-5）
+- `candidates[].rsPercentile` → SetupSnapshot.rs_percentile
+- `candidates[].distanceToEntryPct` → SetupSnapshot.distance_to_entry_pct
+- `candidates[].rewardRisk` → SetupSnapshot.reward_risk
+- `candidates[].earningsRisk` → SetupSnapshot.earnings_risk（SAFE/CAUTION/DANGER）
+- `candidates[].readySignal` → SetupSnapshot.ready_signal（bool）
+
+**前端 API 函数**：`callAiTask` 已在 F209 封装，F210-b 直接复用（需确认入参泛型格式）
+
+**注意**：candidates.length < 3 时，前端主动不发请求（契约 Q4 决策）
 
 ---
 
@@ -74,10 +96,10 @@ F210 = AI: Candidate Ranker + Trade Plan Generator。
 
 | 文档 | 用途 |
 |------|------|
-| docs/验收/v1.8-F209-c-acceptance.md | 本次验收记录（含 P0 修复细节）|
-| docs/开发/sprint-contracts/F209-c-contract.md | Sprint 权威 |
-| frontend/src/cockpit/components/AiSetupExplainerPopover.tsx | 主组件（已修复阈值）|
-| frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx | 测试（11 + 6 边界 = 17 §S 用例）|
+| docs/开发/sprint-contracts/F210-a-contract.md | F210-a 契约（含 §8 F210-b 骨架）|
+| docs/系统设计/API-CONTRACT.md line 1655-1734 | POST /api/ai/{task_type} 统一 envelope |
+| docs/设计/design-spec.md line 945-973 | Widget 5 SetupMonitor AI 排序区域视觉规格 |
+| backend/app/ai/schemas/candidate_ranker.py | F210-b 输入/输出字段权威 |
 
 ## 启动开发环境命令
 
@@ -89,4 +111,8 @@ uv run uvicorn app.main:app --reload --port 8001
 # 前端（端口 5173）
 cd "/Users/wonderer/Desktop/Claude workspace/stock_portal/frontend"
 pnpm dev
+
+# 回归测试
+cd "/Users/wonderer/Desktop/Claude workspace/stock_portal/backend"
+uv run pytest tests/ -v
 ```
