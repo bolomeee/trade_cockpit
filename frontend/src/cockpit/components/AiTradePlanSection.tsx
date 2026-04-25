@@ -19,7 +19,7 @@ export type TradePlanInput = {
   size: number
   rewardRisk: number
   accountRiskPct: number
-  earningsRisk: EarningsRisk
+  earningsRisk: EarningsRisk | null
   deterministicHash: string
 }
 

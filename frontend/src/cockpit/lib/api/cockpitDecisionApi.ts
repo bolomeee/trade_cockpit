@@ -17,7 +17,7 @@ export type CockpitDecisionData = {
   effectiveRiskPct: number
   regimeCap: number
   userSettingCap: number
-  earningsRisk: EarningsRisk
+  earningsRisk: EarningsRisk | null
   earningsDate: string | null
   deterministicHash: string
 }

@@ -644,3 +644,34 @@ describe('T12 – new decision hash (via Recompute) → AI auto-refetches', () =
     expect(lastBody.input.deterministicHash).toBe('xyz789ab012345')
   })
 })
+
+describe('T13 – earningsRisk null → AI request still 200 (no client validation drop)', () => {
+  it('decision.earningsRisk=null is forwarded as null in body.input; success path renders memo', async () => {
+    let capturedInput: Record<string, unknown> | null = null
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        decisionSequence: [{ earningsRisk: null }],
+        onAiCall: (b) => {
+          capturedInput = b.input
+        },
+      }),
+    )
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    renderWidget()
+
+    await waitFor(() => expect(screen.getByTestId('ai-plan-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-plan-trigger'))
+    await waitFor(() => expect(capturedInput).not.toBeNull())
+
+    // earningsRisk null is preserved literally (not omitted, not stringified)
+    expect(capturedInput).toHaveProperty('earningsRisk', null)
+    expect(Object.keys(capturedInput!).length).toBe(12)
+
+    // Success path completes — memo + Guardrail passed render
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-plan-memo')).toBeInTheDocument()
+      expect(screen.getByTestId('ai-plan-guardrail-passed')).toBeInTheDocument()
+    })
+  })
+})

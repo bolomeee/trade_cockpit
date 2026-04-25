@@ -228,6 +228,12 @@ class TestTradePlanInput:
         with pytest.raises(ValidationError):
             TradePlanInput(**data)
 
+    def test_TI5_earnings_risk_null_accepted(self):
+        """earningsRisk=None passes (no earnings data — common for non-US-equity tickers)."""
+        data = {**_TRADE_PLAN_INPUT_VALID, "earningsRisk": None}
+        obj = TradePlanInput(**data)
+        assert obj.earningsRisk is None
+
 
 # ---------------------------------------------------------------------------
 # §G — trade_plan guardrail

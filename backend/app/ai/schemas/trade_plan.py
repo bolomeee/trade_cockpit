@@ -24,6 +24,7 @@ Rules:
 - memo: 2-4 sentences, ≤ 600 chars; cite setup type and earnings risk if non-SAFE
 - management: 1-5 short imperative rules (e.g. "Move stop to BE near 2R", "Trail with 21EMA")
 - entry / stop / size: copy input values exactly, do not round, do not adjust
+- earningsRisk null means no earnings data available; treat as SAFE for risk planning
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
@@ -49,7 +50,7 @@ class TradePlanInput(BaseModel):
     size: int = Field(ge=1)
     rewardRisk: float = Field(ge=0)
     accountRiskPct: float = Field(ge=0, le=100)
-    earningsRisk: Literal["SAFE", "CAUTION", "DANGER"]
+    earningsRisk: Literal["SAFE", "CAUTION", "DANGER"] | None = None
     deterministicHash: str = Field(min_length=8)
     model_config = {"extra": "forbid"}
 
