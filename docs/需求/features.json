@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F208-b-needs-review",
+  "last_updated": "2026-04-25-F208-b-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F208-b",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": "F208-c",
+    "active_sprint_phase": "design_ready"
   },
   "_iteration_log": [
     {
@@ -2882,8 +2882,8 @@
       "description": "F208 LLM Gateway 第二阶段（核心纯函数模块，不打 LLM）。建立 backend/app/ai/ Python 包，落地 4 个支撑模块：errors（AiError 基类 + 4 个具体异常）/ memo_repo（AiMemoRepository class 风格，写入 + 按 (task_type, input_hash, schema_version) + TTL 查询命中）/ budget（月度 SUM cost_usd 熔断，mtd ≥ cap 抛错）/ routing（task_type → tier → env model_id 映射，模块级 dict）。本 sprint 不引入 LiteLLM 调用、不暴露 endpoint，所有模块可单独 unit-test。",
       "user_story": "作为开发者，我需要 AI gateway 的支撑层（错误模型 / 持久化 / 预算 / 路由）独立可测，再到 F208-c 把它们编排成主流程",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F208-a"
       ],

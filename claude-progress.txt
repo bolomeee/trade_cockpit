@@ -968,9 +968,8 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 📊 功能状态：
   F208-a AI 基座：✅ done
-  F208-b AI Gateway 核心模块：🔍 needs_review（等待用户验收）
-  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready（依赖 F208-b 验收）
+  F208-b AI Gateway 核心模块：✅ done（用户验收通过 2026-04-25）
+  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready
 
 [下一步]
-  用户验收 F208-b（运行 pytest tests/test_ai_core_modules_f208b.py 确认 17 个通过）
-  → 进入 F208-c Sprint Contract 协商
+  进入 F208-c Sprint Contract 协商

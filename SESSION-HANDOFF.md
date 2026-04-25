@@ -4,8 +4,8 @@
 > 当前 Skill：feature-dev（F208-b Generator + Evaluator 完成）
 > 当前 Feature：F208-b — AI Gateway 核心模块（errors / memo_repo / budget / routing）
 > 上一阶段：F208-a 用户验收通过 → done；F208-b Sprint Contract 协商确认
-> 本阶段：F208-b Generator 全 5 步完成 + Evaluator §5 全部通过 → needs_review
-> 下一阶段：用户验收 F208-b → F208-c Sprint Contract 协商
+> 本阶段：F208-b Generator 全 5 步完成 + Evaluator §5 全部通过 → 用户验收通过 → done
+> 下一阶段：F208-c Sprint Contract 协商
 
 ---
 
