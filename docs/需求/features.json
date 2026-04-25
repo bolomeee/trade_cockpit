@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F203a-done",
+  "last_updated": "2026-04-25-F203b-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F203-b",
+    "active_sprint": "F203-c",
     "active_sprint_phase": "ready_to_dev"
   },
   "_iteration_log": [
@@ -2445,7 +2445,7 @@
       "priority": "P0",
       "status": "in_progress",
       "phase": "in_progress",
-      "sub_phase_notes": "F203-a needs_review; F203-b/c/d ready_to_dev",
+      "sub_phase_notes": "F203-a done; F203-b split→b1(user_settings)+b2(decision); F203-b1 contract_agreed; F203-b2/c/d ready_to_dev",
       "dependencies": [
         "F200-a",
         "F200-b",
@@ -2453,7 +2453,11 @@
       ],
       "estimated_sessions": 5,
       "estimated_files_changed": [
-        "F203-a: 6 files (see sprint-contracts/F203-a-contract.md)"
+        "F203-a: 6 files (done)",
+        "F203-b1: 6 files (user_settings model+alembic+repo+schema+router+tests; cockpit/__init__.py 注册行不计入)",
+        "F203-b2: 6 files (decision_service+cockpit_params §4+schema+router+tests)",
+        "F203-c: ~4 files (CockpitChartWidget + api client + Registry)",
+        "F203-d: ~5 files (DecisionCardWidget + UserSettingsForm + 2 api clients + Registry)"
       ],
       "scope": {
         "pages": [
@@ -2502,7 +2506,13 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "本 feature 超过常规 6 文件上限，feature-dev Sprint Contract 阶段需要拆分（建议 F203-a CockpitChart 基础、F203-b Entry/Stop/Size 计算 + user_settings、F203-c Decision Card UI）。"
+      "notes": "本 feature 超过常规 6 文件上限，feature-dev Sprint Contract 阶段需要拆分（建议 F203-a CockpitChart 基础、F203-b Entry/Stop/Size 计算 + user_settings、F203-c Decision Card UI）。",
+      "sub_features": {
+        "F203-b1": {
+          "phase": "needs_review",
+          "contract": "docs/开发/sprint-contracts/F203-b1-contract.md"
+        }
+      }
     },
     {
       "id": "F204-a",

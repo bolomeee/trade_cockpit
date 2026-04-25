@@ -606,3 +606,77 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   F203-b：user_settings + Decision 数据/接入层
   - UserSettings model + repo + Alembic migration
   - decision_service + 2 routers (decision + user-settings)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] F203-b1：UserSettings 数据/接入栈 — Sprint Contract 已确认
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 协商结论：
+  F203-b 总文件 9 个超 6 上限 → 拆为 b1（UserSettings 全栈）+ b2（Decision 全栈）
+  方案 B 共识：routers/cockpit/__init__.py 注册行不计入 6 文件主清单
+
+✅ Contract 确认要点（用户全部 OK）：
+  1. F203-b1 范围：UserSettings 全栈（不含 Decision）
+  2. 主清单 6 文件：model + alembic(含默认行 INSERT) + repo + schema + router + tests
+  3. PUT 请求体 partial update（exclude_unset=True）
+  4. default_risk_per_trade_pct 校验范围 [0, 5]（与 single_trade 同档）
+  5. 表为空时 GET 返回 updatedAt=null（不替成 now()）
+  6. alembic data migration 走 raw SQL `INSERT ... VALUES (1, ...)`
+  7. 临时清理 routers/cockpit/__init__.py 中的 decision_router 脏区（b2 加回）
+
+📁 主清单（6 文件）：
+  1. backend/app/models/user_settings.py
+  2. backend/alembic/versions/011_f203b1_user_settings.py
+  3. backend/app/repositories/user_settings_repository.py
+  4. backend/app/schemas/cockpit/user_settings.py
+  5. backend/app/routers/cockpit/user_settings.py
+  6. backend/tests/test_user_settings_f203b1.py
+
+📁 注册行（不计入主清单）：
+  - backend/app/routers/cockpit/__init__.py（+ user_settings_router 注册 / - decision_router 脏区）
+  - backend/app/models/__init__.py 已预置 UserSettings import（不再修改）
+
+⚠️ 已知预置脏区：
+  - models/__init__.py 已 import UserSettings 但 user_settings.py 不存在
+  - routers/cockpit/__init__.py 已 import decision_router 但 decision.py 不存在
+  → 当前 backend 无法启动；F203-b1 落地后即修复
+
+[下一 Session — Generator 模式]
+  > 继续开发 F203-b1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F203-b1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25 02:00] Sprint：F203-b1 UserSettings 数据/接入栈
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - models/user_settings.py 落地（CheckConstraint id=1，单行表）
+  - alembic 011_f203b1_user_settings（upgrade/downgrade/upgrade 三步验证通过）
+  - repositories/user_settings_repository.py（get / get_or_default / upsert）
+  - schemas/cockpit/user_settings.py（camelCase GET/PUT schema）
+  - routers/cockpit/user_settings.py（GET + PUT /api/cockpit/user-settings）
+  - routers/cockpit/__init__.py 清理 decision_router 脏区 + 注册 user_settings_router
+  - 单元测试 S1–S6：8/8 通过
+  - 集成测试 S7（Alembic）+ S8–S12（TestClient）：10/10 通过
+  - 全量回归 S13：469 passed，1 pre-existing failure（test_news_api，非本 Sprint 引入）
+  - Evaluator 自检清单：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - DB：新增 user_settings 表（默认行 id=1 已插入）
+  - Backend：修复脏区，backend 可正常启动
+
+📊 功能状态：
+  F200-a/b：✅ done
+  F201-a/b：✅ done
+  F204-a/b：✅ done
+  F202-a/b/c：✅ done
+  F203-a：🔍 needs_review
+  F203-b1：🔍 needs_review（本次完成）
+  F203-b2：⬜ ready_to_dev（依赖 b1 ✅）
+  F203-c：⬜ ready_to_dev（依赖 a）
+  F203-d：⬜ ready_to_dev（依赖 b2）
+
+[下一 Session]
+  可继续开发 F203-b2（Decision 全栈）或先验收 F203-a/b1。
