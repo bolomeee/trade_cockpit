@@ -1,7 +1,11 @@
-"""Task schema registry (F208-c): SchemaPair + REGISTRY + echo internal task."""
+"""Task schema registry (F208-c / F209-a): SchemaPair + REGISTRY + task schemas."""
 from typing import NamedTuple
 
 from pydantic import BaseModel
+
+from app.ai.schemas import market_narrator as _mn
+from app.ai.schemas import setup_explainer as _se
+from app.ai import guardrail as _gr
 
 
 class SchemaPair(NamedTuple):
@@ -22,15 +26,19 @@ class _EchoOutput(BaseModel):
 
 REGISTRY: dict[str, SchemaPair] = {
     "echo": SchemaPair(_EchoInput, _EchoOutput),
-    # F209/F210/F211 register 7 production task schemas here:
-    # "market_narrator":       SchemaPair(...),
-    # "setup_explainer":       SchemaPair(...),
+    "market_narrator": SchemaPair(_mn.MarketNarratorInput, _mn.MarketNarratorOutput),
+    "setup_explainer": SchemaPair(_se.SetupExplainerInput, _se.SetupExplainerOutput),
+    # F210/F211 register remaining 5 production task schemas here:
     # "candidate_ranker":      SchemaPair(...),
     # "trade_plan":            SchemaPair(...),
     # "contradiction_detector":SchemaPair(...),
     # "news_summarizer":       SchemaPair(...),
     # "journal_assistant":     SchemaPair(...),
 }
+
+# Guardrail hooks — registered as module load side effect (D068)
+_gr.register("market_narrator", _mn.guardrail)
+_gr.register("setup_explainer", _se.guardrail)
 
 
 def get_schemas(task_type: str) -> SchemaPair:
