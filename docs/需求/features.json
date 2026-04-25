@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F209-c-contract-agreed",
+  "last_updated": "2026-04-25-F209-c-needs-review",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.0",
     "active_sprint": "F209-c",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3194,9 +3194,10 @@
       "description": "在 SetupMonitorWidget 每行右侧新增 '?' 按钮，点击打开 shadcn/ui Popover 显示 AI 输出：label / quality / whyWatch / mainRisks。复用 F209-b 的 aiApi.ts。同 ticker 同 setup 24h 内点击命中 ai_memos 缓存，loading 期间 popover 显示 Skeleton。",
       "user_story": "作为 Cockpit 用户，扫 Setup Monitor 行列时遇到不熟悉的 setup，我想点 '?' 1 秒看到 AI 解释为什么这是个机会、最大风险是什么",
       "priority": "P1",
-      "status": "planned",
-      "phase": "contract_agreed",
+      "status": "in_review",
+      "phase": "needs_review",
       "contract_agreed_at": "2026-04-25",
+      "dev_completed_at": "2026-04-25",
       "contract_path": "docs/开发/sprint-contracts/F209-c-contract.md",
       "dependencies": [
         "F209-a",

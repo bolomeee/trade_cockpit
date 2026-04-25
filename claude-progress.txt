@@ -1318,3 +1318,51 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
   > 继续开发 F209-c，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-c-contract.md，
   > 进入 Generator 模式，从开发顺序 step 8a 开始（AiSetupExplainerPopover.tsx 新建）。
+
+═══════════════════════════════════════════════════════════════
+[2026-04-25] F209-c Generator 模式完成 → needs_review
+═══════════════════════════════════════════════════════════════
+
+✅ 已完成：
+  - Step 8a：新建 AiSetupExplainerPopover.tsx（~200 行）
+    • Props：ticker / setupType(3种) / trendScore / rsPercentile / entryPrice / stopPrice
+    • buildSetupExplainerInput：BREAKOUT→breakout / PULLBACK→pullback / RECLAIM→reversal；trend 60/40 阈值
+    • useQuery：enabled=open / staleTime=gcTime=24h / retry=false
+    • 4 状态：loading(3×Skeleton) / error("AI 暂不可用") / success(label+QualityBadge+whyWatch+mainRisks) / closed(不请求)
+    • Popover 受控 open/onOpenChange；按钮 e.stopPropagation()
+    • Quality 徽章 inline 渲染（方案 B，含 D；var(--color-regime-*)）
+  - Step 8b：SetupMonitorWidget.tsx 加第 10 列 `?`（width=5%）+ 条件渲染
+    • 仅 BREAKOUT/PULLBACK/RECLAIM 且 entryPrice>0 && stopPrice>0 渲染 AiSetupExplainerPopover
+    • 其他 setupType 渲染空 <td> 保持列对齐
+    • 不动既有 9 列、不改 setSelectedTicker 逻辑
+  - Step 8c：SetupMonitorWidget.test.tsx 新建（11 用例 §S 全绿）
+    • S1-S3：BREAKOUT/PULLBACK/RECLAIM 渲染 ? 按钮 ✅
+    • S4-S6：EARNINGS_DRIFT/EXTENDED/BROKEN 不渲染 ✅
+    • S7：stopPropagation 隔离 setSelectedTicker ✅
+    • S8：POST body 验证（setup 映射 / trend 映射 / risk / noCache）✅
+    • S9：loading 显示 3×Skeleton ✅
+    • S10：成功渲染 label/quality/whyWatch/mainRisks ✅
+    • S11：502 错误显示"AI 暂不可用"，行点击仍可触发 setSelectedTicker ✅
+  - Step 9：design-spec.md line 973 加 hover→click 偏离标注（规则 8）
+  - Step 10：tsc 通过 / 新增文件 lint 0 warning（预存问题非本 sprint）
+  - Step 11：Evaluator 自检 12 项全通过
+
+📊 测试结果：
+  全量 89 tests pass（含既有 78 + 新增 11）
+
+🔧 系统变更（3 文件 + 1 附加）：
+  + frontend/src/cockpit/components/AiSetupExplainerPopover.tsx（新建）
+  + frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx（新建）
+  M frontend/src/cockpit/widgets/SetupMonitorWidget.tsx（+16行）
+  M docs/设计/design-spec.md（偏离标注 +2行）
+
+📊 功能状态：
+  F209-a ✅ done
+  F209-b ✅ done
+  F209-c 🔍 needs_review（本次）
+
+[待 Acceptance]
+  - 视觉验证：? 按钮位置 / popover 对齐 / Quality 徽章色
+  - trendScore 阈值实际值域观察（Q1）
+  - 列宽 5% 视觉确认（Q3）
+  - 后端 smoke test：实际调用 POST /api/ai/setup_explainer 验证 cacheHit
