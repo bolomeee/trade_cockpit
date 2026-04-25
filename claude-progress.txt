@@ -1263,3 +1263,20 @@ Evaluator 自检（全通过）：
   active_sprint_phase = needs_review
 
 ⏭ 下一步：验收 F209-b → 如通过则开启 F209-c（Setup Explainer popover，复用 aiApi.ts）
+
+═══════════════════════════════════════════════════════════
+2026-04-25  F209-b 验收通过 ✅
+═══════════════════════════════════════════════════════════
+Feature: AI Market Narrator 前端集成（MarketRegimeWidget AI Notes）
+Phase:   needs_review → done
+验收记录: docs/验收/v1.8-F209-b-acceptance.md
+features.json: F209-b.phase = done, completed_at = 2026-04-25
+
+环境备注（非 feature 缺陷）：
+  vite.config.ts 的 /api proxy 指向 127.0.0.1:8001（项目约定）。
+  本会话先前手动起 uvicorn 时误用 --port 8000，导致浏览器加载失败。
+  切回 8001 后正常。
+
+⏭ 下一步：F209-c — Setup Explainer popover（复用 F209-b 的 aiApi.ts）
+   依赖：F209-a ✅ + F209-b ✅ + F202-c ✅
+   触发：feature-dev skill，类型 A（新功能）

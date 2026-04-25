@@ -1,93 +1,39 @@
 # SESSION HANDOFF
 
 > 生成时间：2026-04-25
-> 当前阶段：F209-b 🔍 needs_review → 等待验收
+> 当前阶段：F209-b ✅ done（已验收）→ 准备 F209-c
 > 当前 branch：cockpit
 
 ---
 
 ## 本 session 完成的事
 
-**F209-b：Market Narrator 前端集成（Generator 完成）**
+**F209-b 最终验收（acceptance）**
 
-| Step | 内容 | Commit | 状态 |
-|------|------|--------|------|
-| 1 | `aiApi.ts` 新建 + §A 7 单测 | 9abd80f | ✅ |
-| 2+3 | `<AiMarketNotes>` 子组件 + useQuery + cooldown | ce2da50 | ✅ |
-| 4 | §S14 6 集成测试 + makeRoutedFetch helper | b81f977 | ✅ |
-| 5 | Evaluator 全量回归 + 自检逐条 | — | ✅ |
-| 6 | DECISIONS D075 + features.json needs_review + progress log | bfbcac6 | ✅ |
-
----
-
-## 实现摘要
-
-### 新建/修改文件（4 个，未越界）
-
-| 文件 | 类型 | 说明 |
+| 步骤 | 内容 | 状态 |
 |------|------|------|
-| `frontend/src/cockpit/lib/api/aiApi.ts` | 🆕 新建 | `callAiTask<TIn,TOut>` + `MarketNarratorInput/Output` 类型 |
-| `frontend/src/cockpit/lib/api/__tests__/aiApi.test.ts` | 🆕 新建 | §A 7 单测（成功/noCache/各错误码/网络错误） |
-| `frontend/src/cockpit/widgets/MarketRegimeWidget.tsx` | ✏️ 修改 | 末尾追加 `<AiMarketNotes>` + `normalizeSectorState` + `buildNarratorInput`，**现有 4 区块 0 行改动** |
-| `frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx` | ✏️ 修改 | §S14 6 集成测试 + `makeRoutedFetch` 路由式 mock helper（同时修复 S3-S13 与 AI 调用的 mock 冲突） |
-
-### 关键实现点
-
-1. **sector state 归一化**：`normalizeSectorState(s: SectorState)` 私有函数在 widget 内，Strong/Constructive→Strong，Weak/Defensive→Weak，Neutral→Neutral
-2. **useQuery + forceNoCache ref**：单数据流，queryFn 闭包读 ref 决定 noCache；Refresh 按钮设 ref=true 再 refetch
-3. **1h cooldown**：`dataUpdatedAt > 0 && Date.now() - dataUpdatedAt < 3600000`，无 setInterval
-4. **错误态含 Refresh 按钮**：S14.3 要求 BUDGET_EXCEEDED 时 Refresh 可见但 disabled（原骨架错误态无按钮，已修正）
-5. **makeRoutedFetch**：按 URL substring 分发 mock 响应，防止 AI query 拿到 regime 数据导致崩溃
+| 验收清单生成 | docs/验收/v1.8-F209-b-acceptance.md | ✅ |
+| 用户视觉 + 业务逻辑确认（V1-V9 / B1-B7 / E1-E3）| 用户在浏览器逐项核对 | ✅ 通过 |
+| features.json 状态更新 | F209-b.phase = done, completed_at = 2026-04-25 | ✅ |
+| _pipeline_status.active_sprint 清空 | 上一 sprint 收尾 | ✅ |
+| claude-progress.txt 追加 | 验收日志 | ✅ |
 
 ---
 
-## Evaluator 自检结果（全通过 ✅）
+## 本次会话发现的环境陷阱（非 feature 缺陷，但下次会再踩）
 
-| 项 | 结果 |
-|----|------|
-| §A aiApi 单测 7/7 | ✅ |
-| §S14 集成测试 6/6 | ✅ |
-| S1-S13 既有测试 0 回归 | ✅ |
-| frontend 全量 78/78 | ✅ |
-| backend 全量 587/587 | ✅ |
-| 文件清单 4 个，未越界 | ✅ |
-| aiApi.ts 无 widget 专属逻辑 | ✅ |
-| 现有 4 区块 0 行改动 | ✅ |
-| 无 console.error（S13） | ✅ |
-| AiMarketNotes 颜色/字体走 tokens | ✅（10px/11px 在原有 SectorCell，非新增） |
-| sector 归一化有显式测试（S14.6） | ✅ |
-| cooldown 用 dataUpdatedAt | ✅ |
-| 错误统一"AI 暂不可用" | ✅ |
-| 无新外部依赖 | ✅ |
-| features.json phase=needs_review | ✅ |
-| DECISIONS.md D075 追加 | ✅ |
+1. **Vite proxy 端口约定 = 8001，不是 8000** ⚠️
+   - `frontend/vite.config.ts` 的 `/api` proxy 指向 `127.0.0.1:8001`
+   - 本会话先前误起 `uvicorn --port 8000`，浏览器加载失败但 curl 直连 8000 正常
+   - **正确启动命令**：`uv run uvicorn app.main:app --reload --port 8001`
 
----
+2. **多个 Vite 实例共存导致端口顺延**
+   - 残留的 pnpm dev 进程没退干净时，新启动会顺延到 5174 / 5175
+   - 清理：`lsof -ti:5173,5174,5175 | xargs kill`
 
-## 未决事项
-
-- 无
-
----
-
-## 引用文档
-
-| 文档 | 节段 |
-|------|------|
-| API-CONTRACT.md | §POST /api/ai/{task_type}（line 1655-1734） |
-| design-spec.md | §Widget 1 MarketRegimeWidget AI Market Notes（line 808-822） |
-| DECISIONS.md | D075（sector 5→3 归一化，本 sprint 新增） |
-| docs/开发/sprint-contracts/F209-b-contract.md | 本 sprint Contract |
-
----
-
-## 恢复指令（粘贴到新 session）
-
-```
-F209-b 已完成（needs_review）。
-读取 SESSION-HANDOFF.md，对 F209-b 做最终验收。
-验收通过后开启 F209-c（Setup Explainer popover，复用 aiApi.ts）。
-```
+3. **vitest fork worker 残留**
+   - 测试结束后偶尔有 vitest fork worker 不退出
+   - 不影响功能，但占内存；按需 kill
 
 ---
 
@@ -95,19 +41,64 @@ F209-b 已完成（needs_review）。
 
 | Feature | Phase | 说明 |
 |---------|-------|------|
-| F209-a | ✅ done | AI 后端 schema 注册（market_narrator + setup_explainer） |
-| **F209-b** | 🔍 needs_review | Market Narrator 前端集成（**本 sprint，待验收**） |
-| F209-c | ⬜ design_ready | Setup Explainer popover（依赖 F209-a + F209-b + F202-c） |
+| F209-a | ✅ done | AI 后端 schema 注册 |
+| F209-b | ✅ done | Market Narrator 前端集成（**本次验收完成**） |
+| F209-c | ⬜ design_ready | Setup Explainer popover（依赖已全部 done，可起） |
+| F210 | ⬜ design_ready | Candidate Ranker + Trade Plan Generator |
+| F211 | ⬜ design_ready | Contradiction Detector + News Summarizer + Journal Assistant |
 
-active_sprint = F209-b · active_sprint_phase = needs_review
+**P0 待开发**：F205（Pool Builder）/ F206（Position Manager）/ F207（Daily Action List）—— 部署门禁需 P0 全部 done。
 
 ---
 
-## git 状态
+## 下个 Session 起点：F209-c
 
-branch：cockpit
-commits（本 sprint）：
-- 9abd80f wip(F209-b): step1 aiApi.ts + §A 7 unit tests pass
-- ce2da50 wip(F209-b): step2+3 AiMarketNotes skeleton + query + cooldown
-- b81f977 wip(F209-b): step4 §S14 6 integration tests pass
-- bfbcac6 feat(F209-b): market narrator frontend integration — 78/78 tests pass
+**触发指令**（粘贴到新 session）：
+
+```
+开始开发 F209-c：AI Setup Explainer popover。
+读取 docs/需求/features.json#F209-c 的 acceptance_criteria，
+复用 frontend/src/cockpit/lib/api/aiApi.ts（F209-b 已建）。
+进入 feature-dev skill，类型 A（新功能），先做 Sprint Contract。
+```
+
+**F209-c 核心要点**（节省新 session 的探索时间）：
+- 复用 `callAiTask<TIn, TOut>('setup_explainer', input)` — aiApi.ts 已通用
+- 在 `SetupMonitor` 表格每行添加 popover 触发（hover or click，按 design-spec 决定）
+- popover 内容字段：rationale / key_levels / risks（schema 见 `backend/app/ai/schemas/setup_explainer.py`）
+- 可复用 F209-b 引入的路由式 fetch mock helper `makeRoutedFetch`（位于 `MarketRegimeWidget.test.tsx`）
+- API：`POST /api/ai/setup_explainer`（F209-a 已就位）
+- 错误统一文案 / cooldown / tokens 走 `var(--*)` —— 参照 F209-b 成熟模式
+
+**起 sprint 前需在 Contract 阶段澄清**：
+- popover 是否需要 cooldown？（每行独立请求，cooldown 策略与 widget 级不同）
+- popover 是否随表格 sort / filter 重置缓存？
+- mobile 端 popover 形态（design-spec 是否定义？）
+
+---
+
+## 启动开发环境的标准命令
+
+```bash
+# 后端（端口 8001，匹配 vite proxy）
+cd "/Users/wonderer/Desktop/Claude workspace/stock_portal/backend"
+uv run uvicorn app.main:app --reload --port 8001
+
+# 前端（端口 5173）
+cd "/Users/wonderer/Desktop/Claude workspace/stock_portal/frontend"
+pnpm dev
+```
+
+如果 5173 被占：`lsof -ti:5173,5174,5175 | xargs kill`
+
+---
+
+## 引用文档
+
+| 文档 | 节段 |
+|------|------|
+| API-CONTRACT.md | §POST /api/ai/{task_type}（line 1655-1734）|
+| backend/app/ai/schemas/setup_explainer.py | F209-c 的 I-O schema |
+| design-spec.md | §Widget 2 SetupMonitor（含 popover wireframe）|
+| docs/验收/v1.8-F209-b-acceptance.md | F209-b 验收记录 |
+| frontend/src/cockpit/lib/api/aiApi.ts | F209-c 复用入口 |

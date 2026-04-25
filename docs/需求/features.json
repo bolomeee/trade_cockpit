@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F209-b",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": null,
+    "active_sprint_phase": null
   },
   "_iteration_log": [
     {
@@ -3135,7 +3135,7 @@
       "user_story": "作为 Cockpit 用户，看完 regime 数值后我想读 AI 用一句话总结当前市场情绪和优先 setup，作为人类直觉的补充",
       "priority": "P1",
       "status": "in_progress",
-      "phase": "needs_review",
+      "phase": "done",
       "contract_file": "docs/开发/sprint-contracts/F209-b-contract.md",
       "dependencies": [
         "F209-a",
@@ -3184,7 +3184,9 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "依赖 F201-c 提供 widget shell。aiApi.ts 在 F209-c 中复用。"
+      "notes": "依赖 F201-c 提供 widget shell。aiApi.ts 在 F209-c 中复用。",
+      "completed_at": "2026-04-25",
+      "last_updated": "2026-04-25"
     },
     {
       "id": "F209-c",
