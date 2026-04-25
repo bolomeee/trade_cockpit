@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-25-F210-b-contract-agreed",
+  "last_updated": "2026-04-25-F210-b-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.0",
     "active_sprint": "F210-b",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint_phase": "done"
   },
   "_iteration_log": [
     {
@@ -3274,7 +3274,7 @@
           ]
         },
         "F210-b": {
-          "phase": "contract_agreed",
+          "phase": "done",
           "scope": "前端 SetupMonitor 顶部 'AI 排序' 按钮 + AiCandidateRankerSection 组件（top 3 渲染 + slice(0,20) + 缓存徽章 + 错误态）+ widget 集成 + 测试",
           "contract": "docs/开发/sprint-contracts/F210-b-contract.md"
         },
