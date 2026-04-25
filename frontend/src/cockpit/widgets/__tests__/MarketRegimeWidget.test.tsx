@@ -49,6 +49,28 @@ function renderWidget() {
   )
 }
 
+type FetchResponse = { ok: boolean; status: number; json: () => Promise<unknown> }
+
+/**
+ * Routes fetch mocks by URL substring.
+ * Unmatched URLs get a never-resolving promise (component stays loading).
+ */
+function makeRoutedFetch(routes: Record<string, () => Promise<FetchResponse>>) {
+  return vi.fn().mockImplementation((url: string) => {
+    for (const [pattern, handler] of Object.entries(routes)) {
+      if (url.includes(pattern)) return handler()
+    }
+    return new Promise(() => {})
+  })
+}
+
+const REGIME_OK_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ data: REGIME_OK }),
+  } as FetchResponse)
+
 const REGIME_OK = {
   date: '2026-04-24',
   regime: 'CONSTRUCTIVE' as const,
@@ -92,11 +114,7 @@ describe('S3 – Score Hero normal state', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -124,11 +142,7 @@ describe('S4 – 6-dim Subscores', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -152,11 +166,7 @@ describe('S5 – Indices Card', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -197,11 +207,7 @@ describe('S6 – Sector Heatmap', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -220,11 +226,7 @@ describe('S7 – Sector null data fallback', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())
@@ -306,11 +308,7 @@ describe('S13 – no console errors on normal render', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: REGIME_OK }),
-      }),
+      makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH }),
     )
   })
   afterEach(() => vi.unstubAllGlobals())

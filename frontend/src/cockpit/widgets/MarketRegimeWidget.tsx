@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +14,11 @@ import {
   type RegimeSector,
   type RegimeSubscores,
 } from '../lib/api/cockpitRegimeApi'
+import {
+  callAiTask,
+  type MarketNarratorInput,
+  type MarketNarratorOutput,
+} from '../lib/api/aiApi'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -351,6 +357,182 @@ function RegimeError({ onRetry }: { onRetry: () => void }) {
   )
 }
 
+// ── ai market notes ───────────────────────────────────────────────────────────
+
+function normalizeSectorState(s: SectorState): 'Strong' | 'Neutral' | 'Weak' {
+  if (s === 'Strong' || s === 'Constructive') return 'Strong'
+  if (s === 'Weak' || s === 'Defensive') return 'Weak'
+  return 'Neutral'
+}
+
+function buildNarratorInput(data: CockpitRegimeData): MarketNarratorInput {
+  return {
+    regime: data.regime,
+    marketScore: data.marketScore,
+    subscores: data.subscores,
+    sectors: data.sectors.map((s) => ({
+      symbol: s.symbol,
+      closePct: s.changePct ?? 0,
+      state: normalizeSectorState(s.state),
+    })),
+  }
+}
+
+function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
+  const forceNoCache = useRef(false)
+
+  const {
+    data: aiData,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    dataUpdatedAt,
+  } = useQuery({
+    queryKey: ['ai', 'market_narrator', data.date],
+    queryFn: () => {
+      const nc = forceNoCache.current
+      return callAiTask<MarketNarratorInput, MarketNarratorOutput>(
+        'market_narrator',
+        buildNarratorInput(data),
+        { noCache: nc },
+      )
+    },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  })
+
+  const isBudgetExceeded = error instanceof ApiError && error.code === 'AI_BUDGET_EXCEEDED'
+  const isCooldown = dataUpdatedAt > 0 && Date.now() - dataUpdatedAt < 60 * 60 * 1000
+  const isRefreshDisabled = isLoading || isFetching || isCooldown || isBudgetExceeded
+
+  const handleRefresh = () => {
+    forceNoCache.current = true
+    refetch().finally(() => {
+      forceNoCache.current = false
+    })
+  }
+
+  const divider = (
+    <div
+      style={{
+        height: '1px',
+        backgroundColor: 'var(--color-border)',
+        margin: '12px 0',
+      }}
+    />
+  )
+
+  if (isLoading || (isFetching && !aiData)) {
+    return (
+      <>
+        {divider}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Skeleton data-testid="ai-skeleton" style={{ height: '20px', borderRadius: '4px' }} />
+          <Skeleton data-testid="ai-skeleton" style={{ height: '40px', borderRadius: '4px' }} />
+          <Skeleton data-testid="ai-skeleton" style={{ height: '20px', borderRadius: '4px' }} />
+        </div>
+      </>
+    )
+  }
+
+  if (error) {
+    return (
+      <>
+        {divider}
+        <div
+          style={{
+            fontSize: 'var(--font-size-label)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          AI 暂不可用
+        </div>
+      </>
+    )
+  }
+
+  if (!aiData) return null
+
+  const output = aiData.output
+
+  return (
+    <>
+      {divider}
+      <div style={{ marginBottom: '12px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '6px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 'var(--font-size-label)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            AI Market Notes
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={isRefreshDisabled}
+            onClick={handleRefresh}
+            style={{ fontSize: 'var(--font-size-label)', padding: '2px 6px', height: 'auto' }}
+          >
+            {isFetching ? '…' : '↻ Refresh'}
+          </Button>
+        </div>
+
+        <div
+          style={{
+            fontSize: 'var(--font-size-body)',
+            fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            marginBottom: '4px',
+          }}
+        >
+          {output.headline}
+        </div>
+
+        <div
+          style={{
+            fontSize: 'var(--font-size-body)',
+            fontWeight: 400,
+            color: 'var(--color-text-secondary)',
+            lineHeight: 1.5,
+            marginBottom: '6px',
+          }}
+        >
+          {output.summary}
+        </div>
+
+        {output.warnings.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {output.warnings.map((w, i) => (
+              <div
+                key={i}
+                style={{
+                  fontSize: 'var(--font-size-label)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: `color-mix(in srgb, var(--color-log-warn) 25%, var(--color-card))`,
+                }}
+              >
+                ⚠️ {w}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ── shell ─────────────────────────────────────────────────────────────────────
 
 export function MarketRegimeWidget() {
@@ -380,6 +562,7 @@ export function MarketRegimeWidget() {
       <SubscoresGrid subscores={data.subscores} />
       <IndicesCard indices={data.indices} />
       <SectorHeatmap sectors={data.sectors} />
+      <AiMarketNotes data={data} />
     </div>
   )
 }
