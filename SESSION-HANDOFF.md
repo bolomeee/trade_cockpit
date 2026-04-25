@@ -1,115 +1,82 @@
-# SESSION-HANDOFF — F210-c Generator 启动
+# SESSION-HANDOFF.md
 
-> 生成时间：2026-04-25
-> 上一个 session：F210-b ✅ done（SetupMonitor "AI 排序" 集成，commit 5bacb52）
-> 下一个 session：F210-c Generator 模式（前端开发）
-> 当前 branch：cockpit
+> 更新时间：2026-04-26
+> 阶段：F210-c needs_review，等待 acceptance
 
 ---
 
-## 1. 立即执行指令（粘贴到新 session）
+## 当前状态
 
-> 继续开发 F210-c，参考 F210-b 已完成的模式。
-> 读取本文件 + `docs/开发/sprint-contracts/`（F210-c contract 待起草）。
-> 先草拟 F210-c Sprint Contract，与用户确认后进入 Generator 模式。
+**Pipeline 位置**：v2.0 Cockpit P2（AI 层）开发完成，待验收
+- F210-a ✅ done（trade_plan + candidate_ranker schemas + D068 guardrail + REGISTRY；含 2853e3b regime 5 值 hotfix）
+- F210-b ✅ done（SetupMonitor "AI 排序" top 3 + AiCandidateRankerSection + 11 测试用例）
+- **F210-c 🔍 needs_review**（本 handoff 焦点）
+- F211 ⬜ planned（F210 收尾后启动 contradiction_detector + news_summarizer + journal_assistant）
 
----
-
-## 2. F210 整体状态
-
-| 子 sprint | phase | 说明 |
-|----------|-------|------|
-| F210-a | ✅ done | 后端 schemas + trade_plan guardrail；含 2853e3b regime 5 值 hotfix |
-| F210-b | ✅ **done** | SetupMonitor "AI 排序" 集成（commit 5bacb52） |
-| **F210-c** | ⬜ design_ready（下一个 sprint）| DecisionPanel "Generate AI Plan" 集成 |
+**features.json 字段同步**：
+- `_pipeline_status.active_sprint` = `F210-c`
+- `_pipeline_status.active_sprint_phase` = `needs_review`
+- `F210.sub_phases.F210-c.phase` = `needs_review`
 
 ---
 
-## 3. F210-b 完成内容（本 session）
+## F210-c 完成摘要
 
-### 3.1 新建文件
+**目标**：DecisionPanel 集成 trade_plan AI（critical tier），收尾 F210。
 
-**`frontend/src/cockpit/components/AiCandidateRankerSection.tsx`**（325 行）：
-- 类型：`CandidateInput` / `CandidateRankerInput` / `RankedCandidate` / `CandidateRankerOutput`
-- `buildCandidateRankerInput`：9 字段精确映射，`slice(0,20)`，null 容错
-- `ActionBadge`：enter→breakout色 / watch→warn色 / wait→muted色（三色枚举）
-- 主组件：5 状态渲染（closed / spinning skeleton / error / success / empty→disabled）
-- `flexBasis: 100%` 使 result panel 在 flex-wrap tabs 容器内另起一行
-- cache badge：`meta.cacheHit ? 'Cached' : 'Generated · {modelUsed}'`
-- ✕ 关闭：仅 `setOpen(false)`，不 invalidate（缓存保留）
+**实现结果**：
 
-### 3.2 修改文件
+| 文件 | 操作 | 行数 |
+|------|------|------|
+| `frontend/src/cockpit/components/AiTradePlanSection.tsx` | 新建 | +308 |
+| `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx` | 修改 | +13 |
+| `frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx` | 修改 | +409 |
 
-**`frontend/src/cockpit/widgets/SetupMonitorWidget.tsx`**（+13 行）：
-- 新增 `getCockpitRegime` + `AiCandidateRankerSection` import
-- 新增 regime `useQuery`（key `['cockpit-regime']`，staleTime 5min）
-- Filter Tabs div 末尾挂 `<AiCandidateRankerSection items={items} regime={regimeData?.regime ?? null} regimeScore={regimeData?.marketScore ?? null} />`
+**Evaluator 自检结果**：全部通过
+- 测试：119/119（§T T1-T12 + §S3-S8/S17 + F210-b §R + F209-c §S）
+- tsc：0 错误
+- Lint：F210-c 文件 0 新增 warning（存量 8 个 pre-existing errors 不在本 sprint 范围）
 
-**`frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx`**（+414 行）：
-- §R 11 用例全部通过（R1–R11）
-- 复用 F209-c `makeRoutedFetch` 路由 mock 模板
-- R11 验证缓存命中（fetch spy 计数 = 1）
+**关键实现点**：
+- 6 状态渲染：关闭 / 加载(2 Skeleton) / 409 红 banner / 一般错误 / 成功(memo+mgmt+guardrail badge+cache badge) / defensive null
+- 3 处字段重命名：`entryPrice→entry` / `stopPrice→stop` / `suggestedShares→size`（T4/T5 严格验证）
+- cache hit：同 (ticker, deterministicHash) 关闭再打开 fetch count=1（T11）
+- hash 变自动 refetch：Recompute 返回新 hash → AI queryKey 变 → 自动 refetch（T12）
+- 颜色全走 token：`--color-error`（409 红 banner）/ `--color-success`（guardrail passed）/ `--color-border`（divider）
 
-### 3.3 文档回写（规则 8）
-
-- `docs/设计/design-spec.md` Widget 5 新增 v2.0 AI 排序段
-- `docs/设计/data-mapping.md` 新增 §5.c AI Candidate Ranker（输入/输出映射表）
-
-### 3.4 测试结果
-
-- 全量 106/106 通过（前端）
-- tsc --noEmit：零错
-- lint：我们的文件零新增 error
+**Commit 历史**：
+```
+af9ec41 wip(F210-c): trade plan section component
+81e4f67 wip(F210-c): decision panel integration
+1d2e4c1 wip(F210-c): tests §T green
+7bac29c feat(F210-c): DecisionPanel AI trade plan + guardrail banner
+```
 
 ---
 
-## 4. F210-c 骨架预览（下一个 sprint，来自 F210-b 合约 §8）
+## F210 整体验收条件
 
-**核心**：DecisionPanelWidget 接入 `POST /api/ai/trade_plan`：
-- 新建 `AiTradePlanSection.tsx`（按钮 + 4 状态 + memo 段 + management 列表 + Guardrail 红 banner / 通过 ✓）
-- `DecisionPanelWidget.tsx` 在 Decision Card 下方追加该 section，从 `decision` query 取字段构造 input
-- 测试 ~12 用例（含 409 AI_GUARDRAIL_VIOLATION 红 banner、memo / management 渲染、cache 命中）
+F210-c done 后，F210 整体进入 acceptance：
 
-预计 3 文件，与 F210-b 风格对称。
-
----
-
-## 5. 技术约束（F210-c Generator 需要知道的）
-
-- **F210-a 落地的 trade_plan schema**：`backend/app/ai/schemas/trade_plan.py`
-  - 输入 `TradePlanInput`：11 字段（ticker / regime / regimeScore / setupType / setupQuality / trendScore / rsPercentile / entryPrice / stopPrice / rewardRisk / earningsRisk）
-  - 输出 `TradePlanOutput`：memo（string）+ management（list[TradeManagementStep]）
-  - Guardrail：`TradePlanGuardrail` 策略，409 = `AI_GUARDRAIL_VIOLATION`
-- **Decision 数据来源**：`DecisionPanelWidget` 的 `decision` useQuery 已有所有 11 字段
-- **regime 来源**：同 F210-b，`useQuery(['cockpit-regime'], getCockpitRegime, {staleTime: 5min})`
-- **缓存**：`staleTime/gcTime: 24h`，`retry: false`（与 F210-b / F209-c 一致）
-- **AI_GUARDRAIL_VIOLATION** 需单独处理：红色 banner，文案来自 `error.detail` 或固定文案
+| AC | 内容 | 覆盖 |
+|----|------|------|
+| AC1 | schema 齐全（trade_plan + candidate_ranker） | F210-a ✅ |
+| AC2 | critical tier 路由 | F210-a ✅ |
+| AC3 | trade_plan entry/stop/size 等于 deterministic 输入（guardrail） | F210-a ✅ + F210-c T9 验证 |
+| AC4 | candidate_ranker ≤ 20 候选 | F210-a + F210-b ✅ |
+| AC5 | top 3 + reason | F210-b ✅ |
+| AC6 | DecisionPanel memo + management 列表 | **F210-c ✅** |
 
 ---
 
-## 6. 关键文件路径
+## 已知 Pre-existing 问题（不阻塞验收）
 
-| 文件 | 用途 |
-|------|------|
-| `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx` | 注入点 |
-| `frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx` | 扩展测试 |
-| `frontend/src/cockpit/components/AiCandidateRankerSection.tsx` | F210-b 模板 |
-| `frontend/src/cockpit/components/AiSetupExplainerPopover.tsx` | F209-c 模板 |
-| `backend/app/ai/schemas/trade_plan.py` | schema 权威 |
-| `docs/系统设计/API-CONTRACT.md` | §POST /api/ai/{task_type} |
+- `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx:364` 与 `UserSettingsDialog.tsx:106` 使用未定义的 `var(--color-signal-danger)`，浏览器降级为黑色。F210-c 新代码改用 `--color-error`（已定义）。pre-existing 调用点留后续独立 chore commit。
+- lint 存量 8 errors（`aiApi.test.ts`, `MarketRegimeWidget.tsx`, `AddStockCard.tsx`, `CsvImportDialog.tsx`, `button.tsx` 等），均 pre-existing，不在 F210-c 范围。
 
 ---
 
-## 7. 未决事项（F210-b acceptance 阶段）
+## 下一 Session 恢复指令（建议 Sonnet 4.6）
 
-- 视觉验证：result panel 在 widget 默认高度内的占位（3 行 card ≈ 90px）
-- 真实 cache hit smoke：第一次调返回 `meta.cacheHit=false`；24h 内复调 `meta.cacheHit=true`
-- AI 输出 ticker 不在当前 items 集合的容错行为（渲染孤立 ticker，无 setSelectedTicker 联动）
-
----
-
-## 8. git 状态
-
-- branch：`cockpit`
-- 最新 commit：`5bacb52 feat(F210-b): SetupMonitor AI rank top 3`
-- features.json：`F210-b.phase = "done"`，`active_sprint_phase = "done"`
+> 触发 /acceptance，验收 F210-c（DecisionPanel AI trade plan + guardrail banner）。
+> 读取 SESSION-HANDOFF.md 了解当前状态，然后开始 acceptance 流程。

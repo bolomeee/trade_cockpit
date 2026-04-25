@@ -1,6 +1,6 @@
 === PROJECT PROGRESS LOG ===
 项目：MA150 Tracker → Workbench → Cockpit
-初始化：2026-04-16 | 本次更新：2026-04-25
+初始化：2026-04-16 | 本次更新：2026-04-26
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-25] Sprint Contract：F210-a → contract_agreed
@@ -1471,3 +1471,74 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
   > 继续开发 F210-b，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F210-b-contract.md，
   > 进入 Generator 模式，从开发顺序 step 8a 开始（前端 sprint，DB/Repository/Service 已跳过）。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] F210-c Sprint Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F210-c Sprint Contract 已确认
+  - 契约文件：docs/开发/sprint-contracts/F210-c-contract.md
+  - 定位：F210 收尾 sprint —— DecisionPanel "Generate AI Plan" 集成 trade_plan critical-tier
+  - 范围：
+    * AiTradePlanSection.tsx 新建（按钮 + 6 状态 + 红 banner / Memo / Mgmt / Guardrail badge / cache 徽章）
+    * DecisionPanelWidget.tsx 修改（仅 data 分支挂载，加 divider，+8 行）
+    * 测试扩展 §T 12 用例（含 makeRoutedFetch 路由 mock、409 红 banner、override hash 变 → 自动 refetch）
+  - 文件预计 3，远低于 6 文件上限
+  - 不触发文档回写：design-spec §Widget 6 + data-mapping §Cockpit-6.c 已完整描述本 sprint 全部行为
+  - 8 个开放问题全部采默认方案：
+    * Q1 仅 data 分支挂载（gcTime 24h 保留缓存）
+    * Q2 红 banner 中文 "AI 输出被拦截 — 数字不匹配"（design-spec line 1022 措辞）
+    * Q3 不附 [Report] 按钮
+    * Q4 2 个 Skeleton（memo + mgmt 占位）
+    * Q5 hash 变化 → react-query 自动 refetch
+    * Q6 同 container 内（border-top divider）
+    * Q7 management 用 <ol> 自然编号
+    * Q8 红色用 --color-error（已定义 token）；不修复 line 364 既有 --color-signal-danger undefined bug
+  - 关键正确性点：3 处字段重命名（entryPrice→entry / stopPrice→stop / suggestedShares→size），T4/T5 严格验证
+
+🔧 系统变更：
+  - features.json：F210-c.phase = contract_agreed / contract 路径填入 / files_predicted=3
+  - features.json：_pipeline_status.active_sprint = F210-c / active_sprint_phase = contract_agreed
+  - features.json：last_updated = 2026-04-26-F210-c-contract-agreed
+
+📊 功能状态：
+  F210-a ✅ done（含 2853e3b regime hotfix）
+  F210-b ✅ done（commit 5bacb52 + ab65b44 验收）
+  F210-c 🤝 contract_agreed（待 Generator 启动）
+  F211   ⬜ planned（F210 收尾后启动）
+
+[下一个 Session（建议 Sonnet）]
+  > 触发 /acceptance，验收 F210-c（DecisionPanel AI trade plan + guardrail banner）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26 06:42] Sprint：F210-c DecisionPanel "Generate AI Plan" 集成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 AiTradePlanSection.tsx（308 行）：按钮 + 6 状态（关闭/加载/409 红 banner/一般错误/成功/defensive）
+  - 修改 DecisionPanelWidget.tsx（+13 行）：data 分支挂载 AI section，border-top divider 隔离
+  - 扩展 DecisionPanelWidget.test.tsx（+409 行）：§T 12 用例全绿（T1-T12）
+  - 单元测试：T1/T2/T3 通过
+  - 集成测试：T4-T12 通过（含 T4/T5 字段重命名验证 / T9 红 banner / T11 cache hit / T12 hash 变自动 refetch）
+  - 全量回归：119/119 通过（含 F209-c §S / F210-b §R / DecisionPanel §S3-S8/S17 全绿）
+  - tsc --noEmit：0 错误
+  - Lint：F210-c 文件 0 新增 warning
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+  - 最终 commit：7bac29c feat(F210-c): DecisionPanel AI trade plan + guardrail banner
+
+🔧 系统变更：
+  - 新建：frontend/src/cockpit/components/AiTradePlanSection.tsx
+  - 修改：frontend/src/cockpit/widgets/DecisionPanelWidget.tsx
+  - 修改：frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx
+  - features.json：F210-c.phase = needs_review / _pipeline_status.active_sprint_phase = needs_review
+
+📊 功能状态：
+  F210-a ✅ done（后端 schemas + guardrail）
+  F210-b ✅ done（SetupMonitor AI 排序 top 3）
+  F210-c 🔍 needs_review（DecisionPanel AI trade plan，待验收）
+  F211   ⬜ planned（contradiction_detector + news_summarizer + journal_assistant）
+
+[下一个 Session（建议 Sonnet）]
+  > 触发 /acceptance，验收 F210-c（DecisionPanel AI trade plan + guardrail banner）。
