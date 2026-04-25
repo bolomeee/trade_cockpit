@@ -1291,3 +1291,275 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - `backend/app/services/universe_refresh_service.py`：新增正则 + 过滤分支
 - `backend/tests/test_universe_refresh_service.py`：新增 `test_refresh_skips_mutual_fund_tickers`
 - 既有污染的 `market_scan_universe` 行：下一次月度 refresh 不再续期 `last_seen_at`，`MarketScannerService.list_active(since=latest)` 自动将其排除；breakout 表每次扫描 `replace_scan` 覆盖写，下次扫描即清空。
+
+
+## D060：Cockpit 作为独立第三页（不并入 Workbench）
+
+**日期**：2026-04-24
+**触发**：v1.8 Cockpit Epic 启动，需决定 Cockpit 与现有 Workbench 的关系。
+
+**决策**：新建独立页 `/cockpit`，TopNav 三页并列（`/workbench` / `/news` / `/cockpit`）。`frontend/src/cockpit/` 与 `src/workbench/` 零交叉引用，cockpit 拥有独立 `cockpitStore`（不复用 `useAppStore.selectedSymbol`），`CockpitChartWidget` 独立实现、不共享 `ChartWidget` 代码。
+
+**放弃**：
+- 方案 B：Cockpit 作为 Workbench 新 widget。放弃原因：Cockpit 是**决策工作流**（regime → setup → decision → order），Workbench 是**自由观察工作台**，语义冲突；将 7 个 cockpit widget 塞进 Workbench 会污染 Workbench 的 SMA150 验证场景，也会让 cockpitStore / useAppStore 的所有权混乱。
+- 方案 C：共享 ChartWidget 代码。放弃原因：Cockpit 需要在图表上叠加 entry/stop/target 三条 horizontal line 及 setup annotation，Workbench 不需要；强行抽象会引入条件分支污染两端。接受代码重复换取模块解耦。
+
+**布局引擎说明（2026-04-24 design-bridge 阶段补充）**：Cockpit **沿用 react-grid-layout**（而非"固定 3 栏不可拖"），与 Workbench 共用 RGL 引擎但拥有独立的 `CockpitRegistry` / `useCockpitLayoutStore` / localStorage key（`ma150.cockpit.layouts.v1`）。默认布局按 3 列信息分组（左：regime/earnings/pool；中：chart/setup/decision；右：position/order/action），但用户可拖拽/缩放/重置。理由：(1) 易于后续迭代（增减 widget 不需改框架）；(2) 与 Workbench 视觉一致性高（WidgetShell / 紧凑表规格全站统一）；(3) Cockpit 与 Workbench 的解耦由"工作流语义 + 目录隔离 + cockpitStore 独立 + ChartWidget 不共享"四条硬约束保证，与 RGL 复用无关。
+
+**影响**：
+- 新目录 `frontend/src/cockpit/`（pages / widgets / hooks / store / api / types）
+- 新目录 `backend/app/routers/cockpit/` / `services/cockpit/`
+- ARCHITECTURE.md 依赖规则：`cockpit/` 不得 import `workbench/`，反之亦然（由 ESLint `no-restricted-imports` 硬约束）
+- CSS Token 可共享（design-spec.md 的 palette / spacing / typography 保持全站唯一）
+
+---
+
+## D061：market_indices 扩展至 17 symbol（不新建 sector_etfs）
+
+**日期**：2026-04-24
+**触发**：F201 Market Regime 需要市场宽度（SPY/QQQ/IWM）与 sector rotation（11 sector ETF）信号源。
+
+**决策**：在既有 `market_indices` 表增加 14 行 symbol：SPY / QQQ / IWM + XLK / XLY / XLF / XLI / XLE / XLV / XLC / XLP / XLU / XLB / XLRE，总计 17 行（原有 SPX / NDX / TNX 保留）。不新建 `sector_etfs` 表。
+
+**放弃**：
+- 方案 B：新建 `sector_etfs` 表。放弃原因：schema 几乎与 `market_indices` 完全一致（都是日度 OHLC + 可选辅助指标），拆两张表引入 JOIN 无净收益；ETF 与 index 都是"市场级时间序列"，语义并无本质区别。
+
+**Regime 评分默认阈值**（存入 `cockpit_params.py §1`，D070 修订，不进 .env）：
+- `RISK_ON` ≥ 80
+- `CONSTRUCTIVE` 60–80
+- `NEUTRAL` 40–60
+- `DEFENSIVE` 20–40
+- `RISK_OFF` < 20
+
+**Subscore 权重**（总分 0–100；权威来源 DATA-MODEL.md + API-CONTRACT.md；2026-04-24 F201 Sprint Contract 协商时修订）：
+SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Risk appetite(10) + Volatility stress(10) = 100
+
+> ⚠️ D061 原草案（system-design 阶段）写了不同的 6 维名称（breadth/trend/volatility/credit/rates/sentiment），与 DATA-MODEL.md 及 API-CONTRACT.md 字段冲突，已在 F201 Sprint Contract 协商阶段按 DATA-MODEL 优先级修订为上述版本。
+
+**影响**：
+- `market_indices` retention 由 5 个交易日扩展至 260 个交易日（覆盖 52-week 需求）
+- 新调度 `fetch_sector_etfs_daily`（复用既有 indices 日度 fetch 框架）
+- Regime 阈值与子项权重均写入 `cockpit_params.py §1`（D070 约定）；不新增 .env 变量
+
+---
+
+## D062：Setup 存储使用独立表 setup_snapshots（不扩 signals 表）
+
+**日期**：2026-04-24
+**触发**：F202 Setup Monitor 需要每日快照 setup 质量、distance_to_entry、reward_risk 等 cockpit 特有字段。
+
+**决策**：新建 `setup_snapshots` 表，60 天 retention。不扩 `signals` 表字段。
+
+**放弃**：
+- 方案 B：扩展 `signals` 表，增加 `setup_type` / `quality` / `distance_to_entry` / `reward_risk` 等列。放弃原因：`signals` 是 Workbench watchlist 的 EOD 信号缓存，语义是"单资产多指标快照"；Cockpit 的 setup 是"**候选交易机会**"，二者生命周期不同（signals 每日覆写、setup 有状态流转 new → triggered → invalidated），混表会让 `signals` 膨胀并破坏现有 F104 watchlist 的数据契约。
+
+**影响**：
+- 新表 `setup_snapshots`（Alembic migration）
+- 新 service `cockpit/setup_service.py`（复用 workbench 的 TA 计算但独立落表）
+- 60 天 retention 由 APScheduler 日度任务清理
+
+---
+
+## D063：CockpitChartWidget 独立实现 + 独立 `/api/cockpit/chart/{ticker}` endpoint
+
+**日期**：2026-04-24
+**触发**：Cockpit Decision Panel 需要在图表上叠加 entry / stop / target 横线 + setup annotation；Workbench `ChartWidget` 不具备这些需求。
+
+**决策**：新建 `CockpitChartWidget`（基于 lightweight-charts 重新实现，不 import Workbench 的 `ChartWidget`）+ 新 endpoint `GET /api/cockpit/chart/{ticker}?range=...`（复用后端 OHLC repository 但走独立 service 层）。
+
+**放弃**：方案 B：ChartWidget 抽象出可配置 overlay prop。放弃原因：见 D060。
+
+**影响**：
+- `frontend/src/cockpit/widgets/CockpitChartWidget.tsx`
+- `backend/app/routers/cockpit/chart.py` + `services/cockpit/chart_service.py`
+
+---
+
+## D064：选 LiteLLM 作为 AI 抽象层 + 单一动态 endpoint `/api/ai/{task_type}`
+
+**日期**：2026-04-24
+**触发**：v2.0 AI 层需要跨 provider（OpenAI / Anthropic / local）、结构化输出、fallback、成本追踪。
+
+**决策**：
+1. 选 LiteLLM `>=1.83,<2.0`（pin 到 pyproject.toml），已通过 context7 文档验证四项核心能力：Router / `response_format=Pydantic` / fallbacks / budget。
+2. AI endpoint 采用**单一动态入口** `POST /api/ai/{task_type}`，`task_type` 为 path param（narrate_regime / explain_setup / rank_pool / contradict_plan / summarize_news / journal_reflect 等），后端 dispatch 到对应 handler。
+3. **三 tier 模型配置**（.env 驱动，provider 可自由替换）：
+   - `AI_MODEL_DEFAULT` — 低成本 nano（narrate / summarize / journal_reflect）
+   - `AI_MODEL_CRITICAL` — 中等 mini（contradict_plan / decision-critical 路径）
+   - `AI_MODEL_COMPLEX` — 完整 full（rank_pool 等推理密集任务）
+
+**放弃**：
+- 直接调用 OpenAI SDK：放弃原因：provider lock-in、无法 fallback。
+- 方案 B：每 task 独立 endpoint（如 `POST /api/ai/narrate/regime`）。放弃原因：endpoint 蔓延；task_type 本质是 string dispatch，单入口 + `AiTaskType` enum 更易扩展。
+
+**AI Gateway 架构**（`backend/app/ai/`）：
+- `gateway.py` — 入口：校验 task_type → 查 memo 去重 → budget check → routing → guardrail → 落 ai_memos
+- `routing.py` — task_type → tier → LiteLLM Router config
+- `schemas/` — 每个 task_type 的 Pydantic 响应 schema（response_format 锁定）
+- `budget.py` — 月度预算 cap（`AI_MONTHLY_BUDGET_USD`）
+- `memo_repo.py` — 读写 `ai_memos`
+- `guardrail.py` — 每个 task_type 的 post-validate hook
+- `errors.py` — `AiProviderError` / `AiSchemaError` / `AiBudgetExceeded` / `AiGuardrailViolation`
+
+**影响**：
+- pyproject.toml 增 `litellm>=1.83,<2.0`
+- .env 增 `OPENAI_API_KEY` / `AI_MODEL_DEFAULT` / `AI_MODEL_CRITICAL` / `AI_MODEL_COMPLEX` / `AI_MONTHLY_BUDGET_USD` / `AI_MEMO_CACHE_TTL_HOURS` / `AI_SCHEMA_VERSION`
+- 新表 `ai_memos`（audit + dedup cache 双用途）
+- API-CONTRACT.md 新增 AI 错误码：`AI_PROVIDER_ERROR` / `AI_SCHEMA_ERROR` / `AI_BUDGET_EXCEEDED` / `AI_GUARDRAIL_VIOLATION`
+
+---
+
+## D065：Earnings 数据仅 Cockpit 消费 + 每日增量 upsert
+
+**日期**：2026-04-24
+**触发**：F204 Earnings Panel 需要财报日历；Workbench / News widget 是否也应消费？
+
+**决策**：
+1. Earnings 数据只给 Cockpit 使用（Workbench / News 不读取 `earnings_events`），避免 widget 边界污染。
+2. 使用 FMP `/stable/earnings-calendar`，每日一次增量 upsert（FMP 对未来 estimate 会更新，必须 upsert 而非 append）。
+3. 拉取范围：`today - 7d ~ today + 14d`，老数据按 90 天 retention 清理。
+
+**放弃**：方案 B：每周一次拉取。放弃原因：estimate 更新频率高于每周，会遗漏分析师调整。
+
+**影响**：
+- 新表 `earnings_events`
+- 新调度 `EARNINGS_CRON`（default `0 18 * * *` 美东时间）
+- `backend/app/routers/cockpit/earnings.py`
+- FMP endpoint 映射新增 `/stable/earnings-calendar`
+
+---
+
+## D066：user_settings 单行单用户（CHECK id=1）+ 仓位公式
+
+**日期**：2026-04-24
+**触发**：F207 Position Manager 需要持久化 account size / risk per trade / exposure caps / regime override。
+
+**决策**：
+1. 新表 `user_settings`，`CHECK(id=1)` 约束强制单行（当前为个人单用户；未来多用户场景再改 schema）。
+2. 不走 localStorage（localStorage 不同步后端，无法支撑服务端 regime 计算时的风险上限）。
+3. **仓位公式**（F207 硬约束）：
+   ```
+   shares = floor(account_size × min(user_risk_pct, regime_risk_pct, override_pct) / 100
+                  / (entry_price - stop_price))
+   ```
+   三个 risk pct 取**最小值**（安全优先），其中 `regime_risk_pct` 来自 regime 分层默认值，`override_pct` 允许用户在 user_settings 中手动下调。
+
+**放弃**：方案 B：risk 参数每次交易手输。放弃原因：易错、不符合"慢交易系统"的纪律化目标。
+
+**影响**：
+- 新表 `user_settings`
+- `cockpit/position_sizer.py`（纯函数，不走 LLM）
+- F206 Position Manager 新建/编辑 position 时调用 position_sizer 自动计算 shares
+
+---
+
+## D067：positions / pending_orders 的 ticker 字段不设 FK
+
+**日期**：2026-04-24
+**触发**：Position / Pending Order 表需要引用 ticker，是否 FK 到 `market_scan_universe.ticker`？
+
+**决策**：`positions.ticker` 和 `pending_orders.ticker` 不设 FK，仅建 index。原因：
+1. `market_scan_universe` 的 `active` 状态会变化（月度 refresh 后部分 ticker 退出），但 positions / pending_orders 是**历史不可变**记录，不应随 universe 变动而受限。
+2. 用户可能持有不在 scan universe 中的 ticker（OTC / 新上市），FK 会阻止录入。
+
+**放弃**：方案 B：FK 到 `market_scan_universe`。放弃原因：如上。
+
+**影响**：
+- `positions` / `pending_orders` 表仅对 `ticker` 建 index（用于按 ticker 查询）
+- 前端 ticker 输入时做**软校验**（查不到 scan universe 给 warning 但不阻止提交）
+
+---
+
+## D068：F210 trade_plan 确定性护栏（entry / stop / size post-validate）
+
+**日期**：2026-04-24
+**触发**：F210 Ranker/Planner 由 LLM 生成 trade_plan；LLM 可能幻觉出不符合风险约束的 entry / stop / size。
+
+**决策**：
+1. LLM 生成 `(entry, stop, target)` 后，后端 `guardrail.py` **必须重算** shares（使用 D066 的公式）并**覆写** LLM 返回的 shares 字段。
+2. `/api/cockpit/decision/{ticker}` 响应中增加 `deterministicHash` 字段：`SHA256(ticker + entry + stop + risk_pct + date)`，作为幂等锚点；前端在创建 pending_order 时必须回传该 hash，后端校验一致才入表。
+3. 任何 guardrail 失败（entry ≤ stop、reward_risk < 1、stop 超过 ATR×3 等）抛 `AiGuardrailViolation`，不落表不返回计划。
+
+**放弃**：完全信任 LLM。放弃原因：违反"慢交易系统"的安全原则。
+
+**影响**：
+- `backend/app/ai/guardrail.py` 为每个 task_type 实现 post-validate hook
+- API-CONTRACT.md `POST /api/ai/rank_pool` 和 `/api/cockpit/decision/{ticker}` 响应 schema 增 `deterministicHash`
+
+---
+
+## D069：ai_memos 双用途（audit + dedup cache）+ schema_version 失效
+
+**日期**：2026-04-24
+**触发**：AI 调用需要审计（成本 / 错误追踪）+ 去重（同一 ticker + task_type + setup_hash 在短窗口内重复调用会烧钱）。
+
+**决策**：
+1. `ai_memos` 表同时承担审计和缓存双角色，不拆两表。
+2. 缓存 key：`(task_type, input_hash, schema_version)`，其中 `input_hash = SHA256(normalized_input_json)`。
+3. 命中缓存条件：同 key + `created_at > now() - AI_MEMO_CACHE_TTL_HOURS`（默认 24h）+ `schema_version` 相同。
+4. `AI_SCHEMA_VERSION` 升级（例如 Pydantic schema 字段变更）时，旧缓存自动失效。
+5. 月度预算 `AI_MONTHLY_BUDGET_USD` 由 `budget.py` 累加 `ai_memos.cost_usd`；超额抛 `AiBudgetExceeded`。
+
+**放弃**：拆 `ai_audit` + `ai_cache` 两表。放弃原因：字段 95% 重叠，拆表只是概念洁癖，无实际收益。
+
+**影响**：
+- 新表 `ai_memos`（字段：task_type / input_hash / schema_version / response_json / model / tier / cost_usd / latency_ms / error_code / created_at）
+- 唯一索引 `(task_type, input_hash, schema_version)` 支持快速去重查询
+- `budget.py` 每次调用前 SUM 当月 cost_usd
+
+---
+
+## D070：Cockpit 参数管理用 Pydantic BaseModel 单文件集中
+
+**日期**：2026-04-24（F200-a Sprint Contract 起草同步确定）
+**触发**：F201–F204 涉及大量算法阈值 / 权重 / 规则参数（regime 6 子项权重 / 5 档阈值 / ready 7 门 / setup quality A/B/C / earnings risk 天数 / entry/stop 规则 / 2R/3R 倍数 / MA 周期 / RS 窗口 / retention 天数 等），需要在"散落魔法值"与"过度工程化（YAML / DB / UI）"之间取平衡。
+
+**决策**：
+1. Cockpit 所有算法参数统一落到 `backend/app/services/cockpit/cockpit_params.py`，用 Pydantic v2 `BaseModel` 组织
+2. 每个字段必须带 `Field(description=..., ge=..., le=...)`（description 为业务含义说明，ge/le 为合理范围校验）
+3. 文件内按 feature 分 section，命名前缀 `SHARED_* / REGIME_* / SETUP_* / DECISION_* / EARNINGS_*`
+4. 参数仍是"Python 常量"性质，改参数 = 改代码重启，**不做**运行时热更新 / .env 覆盖 / DB 读取 / YAML 加载 / admin UI
+5. Pydantic 启动时自动校验所有阈值范围，阈值配置错误则进程启动失败（fail fast）
+
+**不进 cockpit_params.py 的参数**：
+- cron 时间（`REGIME_CRON_*` / `SETUP_CRON_*` / `EARNINGS_CRON_*`）→ `.env`（部署差异）
+- `user_settings` 4 字段（account_size / max_exposure_pct / single_trade_risk_pct / default_risk_per_trade_pct）→ DB 表（用户运行时调）
+- AI 模型名 / 预算 / memo TTL / schema_version → `.env`（ARCHITECTURE.md 已定，属部署选项）
+- FMP rate limit / API key → `.env` + `fmp_client.py`（跨模块设施）
+- 前端默认布局 / debounce 时长 / react-query staleTime → 前端代码
+
+**放弃**：
+- 拆文件（`regime_params.py` / `setup_params.py` / `decision_params.py`）— 共享参数（MA_PERIODS / RS_LOOKBACK_DAYS / SECTOR_ETFS）需被多 feature 引用，拆文件多一层 import 无收益
+- 运行时可调（DB / UI 可视化）— 单用户项目 YAGNI；Pydantic 结构化已为未来可视化铺路，真有需求时加 1 步"持久化 overrides"即可
+
+**理由**：
+- 集中常量 → 调参 / 审计 / 测试断言只改一处，grep 不漏
+- Pydantic 结构化 → 启动时自动校验，且字段 description 在用户设计阈值时顺手写最省脑（事后补痛苦）
+- 单文件 → 跨 feature 共享常量零冗余
+- 先例：`backend/app/services/scanner_params.py`（D045）是同款模式（纯 Python 常量版），D070 是其 Pydantic 升级
+
+**Evaluator 强制检查**（写入每个 F201–F211 Sprint Contract 自检清单）：
+- [ ] cockpit service 代码内无魔法数字 / 字符串字面量阈值（grep 确认）
+- [ ] 所有阈值通过 `from app.services.cockpit.cockpit_params import X` 引入
+- [ ] 新增字段必带 `Field(description=..., ge=..., le=...)`
+- [ ] 进程启动时 Pydantic 校验通过（启动 smoke test）
+
+**首次落地**：F201-a Sprint（同时新建 §0 SHARED 部分 + §1 F201 REGIME 部分）。F200-a 纯前端无后端参数，不新建此文件，只立此规矩。
+
+**§4 DECISION 参数（F203-b2 落地，2026-04-25）**：
+- `HASH_DIGEST_LENGTH: int = 16` — deterministicHash 取 SHA-256 前 16 位 hex
+- `HASH_PRICE_DECIMALS: int = 2` — hash preimage 中 entry/stop 小数位数
+- `HASH_RISK_DECIMALS: int = 4` — hash preimage 中 effective_risk_pct 小数位数
+- `PRICE_DECIMAL_PLACES: int = 2` — 价格 / 金额输出字段的小数位
+- `ACCOUNT_RISK_DECIMAL_PLACES: int = 2` — accountRiskPct 输出小数位
+- `OVERRIDE_RECOMPUTE_RR: bool = False` — override 改 entry/stop 后是否重算 rewardRisk；当前 False（保留 setup_snapshots 原值，防副作用扩散）；留作 F210 扩展位
+- `REGIME_FALLBACK: str = "NEUTRAL"` — market_regime_snapshots 表空时 fallback regime 标签
+- `DEFAULT_ACCOUNT_SIZE: float = 100000.0` — user_settings 行不存在时的默认账户规模（镜像 user_settings_repository._DEFAULTS）
+- `DEFAULT_SINGLE_TRADE_RISK_PCT: float = 1.0` — user_settings 行不存在时的默认单笔风险 %（镜像 user_settings_repository._DEFAULTS）
+
+**OVERRIDE_RECOMPUTE_RR 决策理由**：entry/stop override 时保留 setup_snapshots.reward_risk 原值（不重算），避免 override 副作用扩散至下游指标。若业务需要重算（如 F210 AI 校验场景），将此字段改为 True 并在 decision_service 中读取即可，不改接口契约。
+
+**影响**：
+- 新文件 `backend/app/services/cockpit/cockpit_params.py`（F201-a 起）
+- F201–F211 Sprint Contract 模板追加 D070 合规自检项
+

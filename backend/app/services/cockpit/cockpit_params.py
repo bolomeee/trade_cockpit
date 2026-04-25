@@ -238,3 +238,47 @@ class CockpitChartParams(BaseModel):
 
 
 CHART = CockpitChartParams()
+
+
+class CockpitDecisionParams(BaseModel):
+    """§4 DECISION — position sizing, hash, override policy, and fallback values (D070)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # ── Deterministic hash (D068) ────────────────────────────────────────────
+    HASH_DIGEST_LENGTH: int = Field(default=16, description="Hex characters to keep from SHA-256 digest", ge=8, le=64)
+    HASH_PRICE_DECIMALS: int = Field(default=2, description="Decimal places for entry/stop in hash preimage", ge=0, le=6)
+    HASH_RISK_DECIMALS: int = Field(default=4, description="Decimal places for effective_risk_pct in hash preimage", ge=2, le=8)
+
+    # ── Price output precision ────────────────────────────────────────────────
+    PRICE_DECIMAL_PLACES: int = Field(default=2, description="Decimal places for price/value output fields", ge=0, le=6)
+    ACCOUNT_RISK_DECIMAL_PLACES: int = Field(default=2, description="Decimal places for accountRiskPct output", ge=0, le=6)
+
+    # ── Override policy ──────────────────────────────────────────────────────
+    OVERRIDE_RECOMPUTE_RR: bool = Field(
+        default=False,
+        description=(
+            "When True, recompute rewardRisk from overridden entry/stop. "
+            "False (default): preserve setup_snapshots reward_risk regardless of overrides."
+        ),
+    )
+
+    # ── Fallbacks ────────────────────────────────────────────────────────────
+    REGIME_FALLBACK: str = Field(
+        default="NEUTRAL",
+        description="Regime label used when market_regime_snapshots table is empty",
+    )
+    DEFAULT_ACCOUNT_SIZE: float = Field(
+        default=100000.0,
+        description="Account size used when no user_settings row exists (mirrors _DEFAULTS)",
+        gt=0,
+    )
+    DEFAULT_SINGLE_TRADE_RISK_PCT: float = Field(
+        default=1.0,
+        description="Single-trade risk % used when no user_settings row exists (mirrors _DEFAULTS)",
+        ge=0,
+        le=5,
+    )
+
+
+DECISION = CockpitDecisionParams()
