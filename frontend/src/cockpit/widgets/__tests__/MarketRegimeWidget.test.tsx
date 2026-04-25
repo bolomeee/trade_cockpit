@@ -88,7 +88,7 @@ const REGIME_OK = {
 
 // ─── S3 – Score Hero normal state ─────────────────────────────────────────
 
-describe.skip('S3 – Score Hero normal state', () => {
+describe('S3 – Score Hero normal state', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -120,7 +120,7 @@ describe.skip('S3 – Score Hero normal state', () => {
 
 // ─── S4 – 6-dim Subscores ─────────────────────────────────────────────────
 
-describe.skip('S4 – 6-dim Subscores', () => {
+describe('S4 – 6-dim Subscores', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -135,18 +135,20 @@ describe.skip('S4 – 6-dim Subscores', () => {
 
   it('renders 6 subscore cards', async () => {
     renderWidget()
+    // unique values
     expect(await screen.findByText('18 / 25')).toBeInTheDocument()
-    expect(await screen.findByText('14 / 20')).toBeInTheDocument()
     expect(await screen.findByText('9 / 15')).toBeInTheDocument()
-    expect(await screen.findByText('14 / 20')).toBeInTheDocument()
     expect(await screen.findByText('7 / 10')).toBeInTheDocument()
     expect(await screen.findByText('6 / 10')).toBeInTheDocument()
+    // '14 / 20' appears twice (qqqTrend=14 and sectorParticipation=14)
+    const fourteenCells = screen.getAllByText('14 / 20')
+    expect(fourteenCells).toHaveLength(2)
   })
 })
 
 // ─── S5 – Indices Card ────────────────────────────────────────────────────
 
-describe.skip('S5 – Indices Card', () => {
+describe('S5 – Indices Card', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -191,7 +193,7 @@ describe.skip('S5 – Indices Card', () => {
 
 // ─── S6 – Sector Heatmap ──────────────────────────────────────────────────
 
-describe.skip('S6 – Sector Heatmap', () => {
+describe('S6 – Sector Heatmap', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -214,7 +216,7 @@ describe.skip('S6 – Sector Heatmap', () => {
 
 // ─── S7 – Sector close=null → "—" ─────────────────────────────────────────
 
-describe.skip('S7 – Sector null data fallback', () => {
+describe('S7 – Sector null data fallback', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -236,7 +238,7 @@ describe.skip('S7 – Sector null data fallback', () => {
 
 // ─── S8 – Loading skeleton ─────────────────────────────────────────────────
 
-describe.skip('S8 – Loading skeleton', () => {
+describe('S8 – Loading skeleton', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows skeleton while loading', () => {
@@ -252,7 +254,7 @@ describe.skip('S8 – Loading skeleton', () => {
 
 // ─── S9 – 404 EmptyState ──────────────────────────────────────────────────
 
-describe.skip('S9 – 404 EmptyState', () => {
+describe('S9 – 404 EmptyState', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -279,7 +281,7 @@ describe.skip('S9 – 404 EmptyState', () => {
 
 // ─── S10 – 502 error state ────────────────────────────────────────────────
 
-describe.skip('S10 – 502 error state', () => {
+describe('S10 – 502 error state', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
@@ -300,7 +302,7 @@ describe.skip('S10 – 502 error state', () => {
 
 // ─── S13 – no console errors ──────────────────────────────────────────────
 
-describe.skip('S13 – no console errors on normal render', () => {
+describe('S13 – no console errors on normal render', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
