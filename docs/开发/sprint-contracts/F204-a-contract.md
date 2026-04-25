@@ -76,7 +76,7 @@ def get_earnings_calendar(self, from_date: str, to_date: str) -> list[Any]:
 
 - 走现有 `_request` + 限流器（不引入新 HTTP 逻辑）
 - 参数：`{ "from": from_date, "to": to_date }`
-- 路径：`/stable/earnings-calendar`
+- 路径常量：`/earnings-calendar`（注意 `FMP_BASE` 已含 `/stable` 前缀，最终命中 `https://financialmodelingprep.com/stable/earnings-calendar`）
 
 ### 1.4 EarningsEventRepository
 

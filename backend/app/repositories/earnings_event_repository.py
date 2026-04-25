@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timezone
 
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from app.models.earnings_event import EarningsEvent

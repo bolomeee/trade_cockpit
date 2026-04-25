@@ -815,3 +815,24 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [2026-04-25] F203-c 验收通过 → done
   CockpitChartWidget 用户验收合格，active_sprint 切换至 F203-d
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F204-a 状态核对 + 清理
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 核对 F204-a 实现 vs Sprint Contract：6 文件齐全且符合规范
+  - 测试：F204-a 12/12 ✅；全量 497/498（预先存在 1 个 news_api 失败）
+  - 清理 1：移除 earnings_event_repository.py 未使用的 sqlite_insert import
+  - 清理 2：F204-a-contract §1.3 docstring 澄清 FMP 路径（常量 /earnings-calendar + FMP_BASE 已含 /stable）
+
+⚠️ 待你决策：
+  - test_news_api::test_fmp_failure_with_cached_data_returns_degraded 预先存在失败
+  - 下一个 Sprint 方向（features.json 中 F204-a/b 已 done，未明确 active_sprint）
+
+📊 功能状态：
+  F204-a Earnings Calendar 数据层：✅ done
+  F204-b Earnings 接入层：✅ done
+
+[下一步]
+  用户选下一个 Sprint，或先修 news_api 测试

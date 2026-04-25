@@ -1,5 +1,5 @@
 # SESSION HANDOFF
-> 更新：2026-04-25 | 阶段：F203-d Evaluator 通过，awaiting needs_review 验收
+> 更新：2026-04-25 | 阶段：F204-a / F204-b 已完成 ✅，待选下一 Sprint
 
 ---
 
@@ -11,53 +11,41 @@
 | F203-b1 | ✅ done | UserSettings 数据/接入栈 |
 | F203-b2 | ✅ done | Decision 计算服务 + GET /api/cockpit/decision |
 | F203-c | ✅ done | CockpitChart 前端 Widget |
-| **F203-d** | 🔍 **needs_review** | DecisionPanel Widget + UserSettings Dialog |
+| F203-d | ✅ done | DecisionPanel Widget + UserSettings Dialog |
+| F204-a | ✅ done | Earnings Calendar 数据层（model + repo + FMP + service） |
+| F204-b | ✅ done | Earnings 接入层（router + cron） |
+
+> 上一份 handoff 写的 "F204-a ready_to_dev" 与 features.json 不一致；实际代码与测试此前已完成。本 session 仅做了两处清理（见下）。
 
 ---
 
-## F203-d 完成内容（本 session）
+## 本 session 所做
 
-### 新建文件
-- `frontend/src/cockpit/lib/api/userSettingsApi.ts`：GET/PUT /api/cockpit/user-settings + UserSettings 类型
-- `frontend/src/cockpit/components/UserSettingsDialog.tsx`：shadcn Dialog + react-hook-form + zod (z.number()+valueAsNumber) + PUT dirty fields + invalidateQueries
-- `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx`：4态 UI（空/loading/正常/错误）+ DecisionCard + OverrideForm + debounce 500ms + Recompute 按钮 + PendingOrder disabled+tooltip
-- 测试文件：userSettingsApi.test.ts / UserSettingsDialog.test.tsx / DecisionPanelWidget.test.tsx / CockpitRegistry.test.ts（新增 S14）/ TopNav.test.tsx（新建）
-
-### 修改文件
-- `frontend/src/cockpit/CockpitRegistry.ts`：注册 `cockpit.decision-panel`（category=decision, x=9 y=0 w=3 h=10 minW=3 minH=8）
-- `frontend/src/components/features/topnav/TopNav.tsx`：/cockpit 路由下 ⚙ Settings 按钮 + UserSettingsDialog open 状态
-
-### 测试结果
-- 前端：42/42 ✅
-- 后端回归：497/498（1 个 pre-existing：test_news_api F113-b）
-- TypeScript build：✅
-- Lint：无新增 warning
-
-### 技术决策
-- `z.coerce.number()` 在 zod 4.x 使输入类型变 unknown → 改用 `z.number()` + `valueAsNumber: true`（RHF 标准做法，无 TS 错误）
-- S10 测试 race condition fix：`mockSettings.accountSize=99999` 作为 sentinel，等 form.reset() 后再修改值
+1. **核对 F204-a 实现 vs Sprint Contract**：6 个文件均存在并符合 Contract（alembic 008、EarningsEvent model、repo、FmpClient.get_earnings_calendar、EarningsService）
+2. **测试结果**：
+   - F204-a 专项 12/12 ✅
+   - 全量回归 497/498（唯一失败 `test_news_api::test_fmp_failure_with_cached_data_returns_degraded` 为预先存在，与 F204-a 无关）
+3. **清理**：
+   - `backend/app/repositories/earnings_event_repository.py`：删除未使用的 `from sqlalchemy.dialects.sqlite import insert as sqlite_insert`
+   - `docs/开发/sprint-contracts/F204-a-contract.md` §1.3：澄清 FMP 路径 — 常量是 `/earnings-calendar`，但 `FMP_BASE` 已含 `/stable` 前缀，最终命中 `/stable/earnings-calendar`（避免后续 sprint 误读）
+4. **未处理**：`test_news_api` 预先存在失败（建议单独开 task）
 
 ---
 
-## 未决事项
+## 下一步候选
 
-- [ ] 用户在浏览器中验收 F203-d（DecisionPanel Widget + UserSettings Dialog）
-- [ ] 如验收通过：将 F203-d phase 改为 `done`，可开始 F204-a
+| 方向 | 说明 |
+|------|------|
+| 修 `test_news_api::test_fmp_failure_with_cached_data_returns_degraded` | 预先存在失败，独立 bug 修复 |
+| 选下一个 Sprint | 根据 features.json 的 P0/P1 优先级挑选；handoff 此前文档没提及候选 |
 
----
-
-## 下一步建议
-
-### 验收 F203-d
-在 `/cockpit` 页面：
-1. 检查右侧 DecisionPanel Widget 是否渲染（需先在 Setup Monitor 选一只股票）
-2. TopNav 右侧出现 ⚙ Settings → 点击打开 UserSettings Dialog → 修改 accountSize → Save → 检查 decision 重算
-
-### 开始 F204-a（下一个 ready_to_dev feature）
+触发命令示例：
 ```
-开始开发 F204-a，Sprint Contract 还未确认，需要先协商。
-读取 SESSION-HANDOFF.md + docs/需求/features.json，进入 feature-dev skill，
-对 F204-a（Earnings Calendar 数据层）执行 Sprint Contract 协商流程（A-1 步骤）。
+开始开发 FXXX-y
+```
+或
+```
+修 test_news_api 那个失败
 ```
 
 ---
@@ -66,7 +54,8 @@
 
 | 文件 | 说明 |
 |------|------|
-| `docs/开发/sprint-contracts/F203-d-contract.md` | 本次 Sprint Contract |
-| `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx` | 主组件（394行，含内部 DecisionCard/OverrideForm/SkeletonCard） |
-| `frontend/src/cockpit/components/UserSettingsDialog.tsx` | 设置 Dialog |
-| `frontend/src/cockpit/lib/api/userSettingsApi.ts` | API 客户端 |
+| `docs/开发/sprint-contracts/F204-a-contract.md` | F204-a Sprint Contract（已标注 FMP 路径澄清） |
+| `backend/app/services/cockpit/earnings_service.py` | EarningsService（fetch_and_store + get_next_earnings） |
+| `backend/app/repositories/earnings_event_repository.py` | upsert_batch（actual 字段 None 保护） |
+| `backend/tests/test_earnings_f204a.py` | 12 个测试，覆盖 Contract §3 标准 1–11 |
+| `docs/需求/features.json` | F204-a / F204-b → done |
