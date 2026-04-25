@@ -1143,3 +1143,38 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   > 继续开发 F209-a，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F209-a-contract.md，
   > 进入 Generator 模式，从开发步骤 1（market_narrator.py）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F209-a AI 后端 schema 注册（market_narrator + setup_explainer）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend/app/ai/schemas/market_narrator.py（新建）
+    MarketNarratorInput（含嵌套 Subscores/Sector）/ MarketNarratorOutput
+    SCHEMA_VERSION="v1" / SYSTEM_PROMPT / BANNED_PHRASES(6条) / guardrail()
+  - backend/app/ai/schemas/setup_explainer.py（新建）
+    SetupExplainerInput（含嵌套 SetupRisk）/ SetupExplainerOutput
+    SCHEMA_VERSION="v1" / SYSTEM_PROMPT / BANNED_PHRASES(同上) / guardrail()
+  - backend/app/ai/schemas/__init__.py（修改）
+    import 两个新模块 + guardrail as _gr
+    REGISTRY 追加 market_narrator / setup_explainer 两条（删除 6 条注释占位）
+    _gr.register() 两次（模块加载副作用）
+  - backend/tests/test_ai_schemas_f209.py（新建，~290行）
+    §A schema 字段约束（23 tests）/ §B registry（6）/ §C guardrail（12）/ §D endpoint（6）/ §E live smoke
+  - backend/tests/test_ai_gateway_e2e_f208c.py：market_narrator_schema fixture save/restore 修复
+  - docs/系统设计/DECISIONS.md：D074 camelCase 字段命名决策
+  - docs/需求/features.json：F209-a phase → needs_review
+
+📊 测试结果：
+  §A-§D 全量：47/47 pass（-k "not live"）
+  全量回归：587/587 pass，0 fail
+
+⚠️ 记录事项：
+  - F208-c market_narrator_schema fixture 的 REGISTRY.pop() cleanup 会覆盖 F209-a 注册的真实 schema
+    → 改为 save/restore 模式（`original = REGISTRY.get(...)；finally: 恢复`）
+  - D074 决策：字段命名 camelCase（与 API-CONTRACT 示例一致）；不改 gateway/router
+
+📊 功能状态：
+  F209-a：🔍 needs_review
+
+⏭ 下一步：用户验收 F209-a → F209-b（Market Narrator 前端集成，依赖 F209-a）
