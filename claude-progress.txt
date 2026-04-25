@@ -1,6 +1,39 @@
 === PROJECT PROGRESS LOG ===
 项目：MA150 Tracker → Workbench → Cockpit
-初始化：2026-04-16 | 本次更新：2026-04-24
+初始化：2026-04-16 | 本次更新：2026-04-25
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F203-d DecisionPanel Widget + UserSettings Dialog
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - userSettingsApi.ts：GET/PUT /api/cockpit/user-settings + TypeScript 类型
+  - UserSettingsDialog.tsx：Dialog + react-hook-form + z.number() + valueAsNumber + PUT dirty fields + invalidate
+  - DecisionPanelWidget.tsx：4态（空/loading/正常/错误）+ DecisionCard + OverrideForm + debounce 500ms + Recompute + PendingOrder disabled+tooltip
+  - CockpitRegistry.ts：注册 cockpit.decision-panel（x=9 w=3 h=10 minW=3 minH=8）
+  - TopNav.tsx：/cockpit 路由下 ⚙ Settings 按钮 + UserSettingsDialog open 状态
+  - 测试 S1–S17：42/42 全过（vitest）
+  - 构建：pnpm build 通过，无 TS 错误
+  - Lint：无新增 warning（6 个 pre-existing）
+  - 后端回归：497/498（1 个预先存在 test_news_api F113-b 引入）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+⚠ 记录事项：
+  - z.coerce.number() 在 zod 4.x 产生 unknown 输入类型导致 TS 错误 → 改用 z.number() + valueAsNumber: true（RHF 推荐方式）
+  - S10 测试需等 form.reset()（GET 完成后）才能做有效修改 → 改 mockSettings.accountSize=99999 作为 sentinel
+
+📊 功能状态：
+  F203-a：✅ done
+  F203-b1：✅ done
+  F203-b2：✅ done
+  F203-c：✅ done
+  F203-d：🔍 needs_review
+
+[下一个 Session]
+  F203 全部子 feature 已 done/needs_review，等待用户验收 F203-d。
+  下一个建议开发目标：F204-a（Earnings Calendar 数据层）。
+
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-24] Pipeline 阶段 0（迭代模式）：v1.8/v1.9/v2.0 Cockpit Epic 需求规划完成
@@ -743,3 +776,42 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
   > 继续开发 F203-c，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F203-c-contract.md，
   > 进入 Generator 模式，从开发步骤 1（tokens.css 补齐）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F203-c CockpitChart 前端 Widget
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - tokens.css / tokens.json 补齐 --color-chart-entry/stop/target/avwap 短名别名
+  - 新建 cockpitChartApi.ts（ChartBarItem / ChartSeriesPoint / ChartAvwap / CockpitChartData）
+  - 新建 cockpitDecisionApi.ts（CockpitDecisionData + overrides）
+  - 新建 CockpitChartWidget.tsx（340 行）：
+    Candlestick + Volume + 5 MA + AVWAP LineSeries（D063 独立）
+    + decision 联合 4 条 priceLine（失败容忍）
+    + ResizeObserver + 切 ticker 重建实例
+  - 修改 CockpitRegistry.ts：注册 cockpit.cockpit-chart
+  - 新增前端测试基础设施（vitest 4.1.5 + RTL + MSW）
+  - 单元测试：S1-S2 通过（API URL 构建）
+  - 集成测试：S3-S8 通过（Widget 行为）
+  - Registry 测试：S9 通过
+  - 静态检查：S10 通过（无硬编码 hex）
+  - 全量回归：15/15 通过；lint 新增文件 0 errors；build 通过
+  - Evaluator 自检清单全部打勾
+  - phase → needs_review
+  - commit: feat(F203-c): CockpitChart 前端 Widget
+
+🔧 系统变更：
+  - frontend 新增测试框架 vitest + RTL + MSW（pnpm devDeps）
+  - vite.config.ts 添加 test 配置（jsdom 环境）
+  - tsconfig.app.json 排除测试文件（避免 tsc -b 编译测试代码）
+
+📊 功能状态：
+  F203-c CockpitChartWidget：🔍 needs_review
+  F203-d DecisionPanelWidget：⬜ ready_to_dev
+
+[下一步]
+  验收 F203-c（CockpitChartWidget 可视效果 + 横线联动）
+  然后准备 F203-d Sprint Contract
+
+[2026-04-25] F203-c 验收通过 → done
+  CockpitChartWidget 用户验收合格，active_sprint 切换至 F203-d

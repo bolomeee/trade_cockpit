@@ -3,6 +3,7 @@ import type { LayoutItem } from 'react-grid-layout'
 import { PlaceholderWidget } from './widgets/PlaceholderWidget'
 import { SetupMonitorWidget } from './widgets/SetupMonitorWidget'
 import { CockpitChartWidget } from './widgets/CockpitChartWidget'
+import { DecisionPanelWidget } from './widgets/DecisionPanelWidget'
 
 export type CockpitWidgetCategory =
   | 'regime'
@@ -43,6 +44,13 @@ export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
     component: CockpitChartWidget,
     defaultLayout: { x: 4, y: 0, w: 5, h: 10, minW: 4, minH: 8 },
     category: 'chart',
+  },
+  'cockpit.decision-panel': {
+    id: 'cockpit.decision-panel',
+    title: 'Decision Panel',
+    component: DecisionPanelWidget,
+    defaultLayout: { x: 9, y: 0, w: 3, h: 10, minW: 3, minH: 8 },
+    category: 'decision',
   },
 }
 

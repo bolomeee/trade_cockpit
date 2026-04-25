@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
+import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
+import { UserSettingsDialog } from '@/cockpit/components/UserSettingsDialog'
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
+  { to: '/cockpit', label: 'Cockpit', end: false },
   { to: '/journal', label: 'Journal', end: false },
   { to: '/news', label: 'News', end: false },
   { to: '/logs', label: 'Logs', end: false },
@@ -27,6 +31,8 @@ export function TopNav() {
   const { lastRefreshedAt, isRefreshing, refresh } = useRefreshStatus()
   const { pathname } = useLocation()
   const showResetLayout = pathname === '/'
+  const showCockpitReset = pathname === '/cockpit'
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <nav
@@ -84,6 +90,30 @@ export function TopNav() {
         </span>
         <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
         {showResetLayout && <ResetLayoutButton />}
+        {showCockpitReset && <CockpitResetLayoutButton />}
+        {showCockpitReset && (
+          <>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 8px',
+                fontSize: 'var(--font-size-caption)',
+                color: 'var(--color-text-secondary)',
+                background: 'none',
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              ⚙ Settings
+            </button>
+            <UserSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          </>
+        )}
       </div>
     </nav>
   )

@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.8",
-    "active_sprint": "F203-c",
-    "active_sprint_phase": "ready_to_dev"
+    "active_sprint": "F203-d",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -2445,7 +2445,7 @@
       "priority": "P0",
       "status": "in_progress",
       "phase": "in_progress",
-      "sub_phase_notes": "F203-a/b1/b2 done; F203-c needs_review (2026-04-25); F203-d ready_to_dev",
+      "sub_phase_notes": "F203-a/b1/b2/b3/c done; F203-d needs_review",
       "dependencies": [
         "F200-a",
         "F200-b",
@@ -2515,6 +2515,21 @@
         "F203-b2": {
           "phase": "contract_agreed",
           "contract": "docs/开发/sprint-contracts/F203-b2-contract.md"
+        },
+        "F203-c": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F203-c-contract.md"
+        },
+        "F203-d": {
+          "phase": "needs_review",
+          "contract": "docs/开发/sprint-contracts/F203-d-contract.md",
+          "estimated_files_changed": [
+            "frontend/src/cockpit/lib/api/userSettingsApi.ts",
+            "frontend/src/cockpit/components/UserSettingsDialog.tsx",
+            "frontend/src/cockpit/widgets/DecisionPanelWidget.tsx",
+            "frontend/src/cockpit/CockpitRegistry.ts",
+            "frontend/src/components/features/topnav/TopNav.tsx"
+          ]
         }
       }
     },
