@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.0",
     "active_sprint": "F210-c",
-    "active_sprint_phase": "needs_review"
+    "active_sprint_phase": "needs_review (bug fixed, ready to retry acceptance)"
   },
   "_iteration_log": [
     {
@@ -3283,7 +3283,17 @@
           "scope": "前端 DecisionPanel 'Generate AI Plan' 按钮 + AiTradePlanSection 组件（memo + management list + AI_GUARDRAIL_VIOLATION 红色 banner + cache meta）+ widget 集成 + 测试",
           "contract": "docs/开发/sprint-contracts/F210-c-contract.md",
           "files_predicted": 3,
-          "contract_agreed_at": "2026-04-26"
+          "contract_agreed_at": "2026-04-26",
+          "bugfix_history": [
+            {
+              "date": "2026-04-26",
+              "issue": "earningsRisk=null 时 trade_plan 100% 422",
+              "root_cause": "backend schema earningsRisk 强制 SAFE/CAUTION/DANGER；decision API 无 earnings 数据时返回 null",
+              "fix": "backend schema 接受 None + system prompt 加 null 语义说明 + 前端类型 EarningsRisk|null + 测试新增 TI5/T13",
+              "instruction": "docs/开发/指令/20260426-F210c-earningsRisk-null-bug.md",
+              "user_decision": "方案 A"
+            }
+          ]
         }
       },
       "dependencies": [
