@@ -266,11 +266,16 @@ def market_narrator_schema():
         model_config = {"extra": "forbid"}
 
     pair = SchemaPair(_MNInput, _MNOutput)
+    # Save original (F209-a registers the real schema on module load)
+    original = REGISTRY.get("market_narrator")
     REGISTRY["market_narrator"] = pair
     try:
         yield pair
     finally:
-        REGISTRY.pop("market_narrator", None)
+        if original is not None:
+            REGISTRY["market_narrator"] = original
+        else:
+            REGISTRY.pop("market_narrator", None)
 
 
 # ---------------------------------------------------------------------------

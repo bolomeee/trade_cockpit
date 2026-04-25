@@ -1624,3 +1624,22 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 
 **影响**：`MarketRegimeWidget.tsx`（`indexStateColor` / `sectorStateColor` / `subscoreBarColor` 三个 helper 函数）。
 
+
+---
+
+## D074：F209-a schema 字段命名 = camelCase
+
+**日期**：2026-04-25（F209-a Sprint Contract §6 D-1）
+**触发**：Pydantic schema 字段命名应与 API-CONTRACT 示例字面一致，但 features.json AC 原写"schema 内部 snake_case，router 边界转换"，与实际 router 实现（不做 camel↔snake 转换）冲突。
+
+**决策**：`MarketNarratorInput/Output` 和 `SetupExplainerInput/Output` 所有字段名直接采用 **camelCase**，与 API-CONTRACT.md line 1733-1734 示例完全一致。
+
+**理由**：
+1. F208-c `routers/ai.py` 把 `body.input` 原样传给 `pair.input_schema(**input_dict)`，无 camel↔snake 自动转换。
+2. 本 sprint 范围"不改 gateway/router 框架"，无法在不动 router 的前提下支持 snake_case schema。
+3. LiteLLM `response_format=Pydantic class` 以 Pydantic 字段名生成 JSON schema，schema 字段名即 LLM 输出字段名，camelCase 保持与前端零阻抗。
+
+**放弃了什么**：features.json AC 描述的"schema 内部 snake_case"。该方案需要 router 改造（在 `routers/ai.py` 做 camel↔snake 自动转换），归档为 v2 改进项（可参考 Pydantic v2 `model_config.alias_generator = to_camel` 方案）。
+
+**影响**：`backend/app/ai/schemas/market_narrator.py`、`setup_explainer.py`（新建，字段名全 camelCase）。
+
