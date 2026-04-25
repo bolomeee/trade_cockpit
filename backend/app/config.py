@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     setup_cron_hour: int = 22
     setup_cron_minute: int = 30
 
+    # v2.0 F208 AI Gateway (D064 / D069)
+    ai_model_default: str = "gpt-5.4-nano"      # default tier (F209 / F211 contradiction/news)
+    ai_model_critical: str = "gpt-5.4-mini"     # critical tier (F210)
+    ai_model_complex: str = "gpt-5.4"           # complex tier (F211 journal_assistant)
+    openai_api_key: str = ""                    # F208-c 调用 LiteLLM 时使用
+    ai_monthly_budget_usd: float = 20.0         # 月度熔断阈值 (D069)
+    ai_memo_cache_ttl_hours: int = 24           # memo dedup 命中窗口 (D069)
+    ai_schema_version: str = "v1"              # schema 失效旗标 (D069)
+
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 
