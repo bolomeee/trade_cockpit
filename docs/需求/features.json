@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.0",
     "active_sprint": "F210-c",
-    "active_sprint_phase": "needs_review (bug fixed, ready to retry acceptance)"
+    "active_sprint_phase": "done"
   },
   "_iteration_log": [
     {
@@ -3254,8 +3254,9 @@
       "description": "critical-tier AI task。candidate_ranker 输入 setup monitor 候选列表，输出 top_candidates 排序（rank / reason / action）；trade_plan 输入单股 setup + user_settings，输出结构化 trade_plan（action / entry / stop / size / targets / management / memo）。前端：Setup Monitor 顶部'AI 排序'按钮；Decision Panel 新增'Generate Trade Plan'按钮。",
       "user_story": "作为投资者，当我 watchlist 有很多 setup 同时接近触发时，我需要 AI 帮我排序 top 3 优先；当我决定交易某只股票时，我需要 AI 帮我生成一份完整的 trade memo（在 deterministic 数字之上做叙述和 management rule）",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "completed",
+      "phase": "done",
+      "completed_at": "2026-04-26",
       "sub_phase_notes": "拆 a/b/c 三段（参 F208/F209 先例）：F210-a 后端 schemas + trade_plan guardrail（4 文件）/ F210-b SetupMonitor 'AI 排序' 集成 / F210-c DecisionPanel 'Generate AI Plan' 集成",
       "sub_phases": {
         "F210-a": {
@@ -3279,11 +3280,13 @@
           "contract": "docs/开发/sprint-contracts/F210-b-contract.md"
         },
         "F210-c": {
-          "phase": "needs_review",
+          "phase": "done",
+          "completed_at": "2026-04-26",
           "scope": "前端 DecisionPanel 'Generate AI Plan' 按钮 + AiTradePlanSection 组件（memo + management list + AI_GUARDRAIL_VIOLATION 红色 banner + cache meta）+ widget 集成 + 测试",
           "contract": "docs/开发/sprint-contracts/F210-c-contract.md",
           "files_predicted": 3,
           "contract_agreed_at": "2026-04-26",
+          "acceptance_record": "docs/验收/v2.0-F210-c-acceptance.md",
           "bugfix_history": [
             {
               "date": "2026-04-26",

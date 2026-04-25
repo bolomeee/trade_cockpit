@@ -1542,3 +1542,49 @@ features.json: F209-b.phase = done, completed_at = 2026-04-25
 
 [下一个 Session（建议 Sonnet）]
   > 触发 /acceptance，验收 F210-c（DecisionPanel AI trade plan + guardrail banner）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26 07:25] Sprint：F210-c 验收（含 bug 修复后第二轮）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 第一轮验收（07:00）：发现阻断 bug
+  - earningsRisk=null 时 trade_plan 100% 422
+  - 原因：backend schema earningsRisk 强制 SAFE/CAUTION/DANGER；decision API 无 earnings 数据时返回 null
+  - 测试盲区：mockDecision 全用 SAFE，未覆盖 null 路径
+  - phase 回退 → in_progress
+  - 修复指令：docs/开发/指令/20260426-F210c-earningsRisk-null-bug.md
+
+🔧 Bug 修复（07:15，方案 A）：
+  - backend/app/ai/schemas/trade_plan.py：earningsRisk Literal[...]|None=None + system prompt 加 null 语义
+  - frontend/src/cockpit/components/AiTradePlanSection.tsx：TradePlanInput 类型同步
+  - frontend/src/cockpit/lib/api/cockpitDecisionApi.ts：CockpitDecisionData.earningsRisk 同步
+  - backend/tests/test_ai_schemas_f210a.py：新增 TI5（earningsRisk None accepted）
+  - frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx：新增 T13（null 端到端）
+  - 测试通过：backend 622/622 + frontend 120/120 + tsc 0 错 + lint 修改文件无新增 warning
+  - commit：7c95061 fix(F210-c) + f802109 chore(F210-c) bug 记录
+
+✅ 第二轮验收（07:30）：全部通过
+  - B1-B7 / V1-V10 / E1-E2 全绿
+  - 浏览器实测：VALE earningsRisk=null → 端到端 200，memo + 5 mgmt + Guardrail passed + Cached
+  - V2 颜色 token 验证：guardrail badge rgb(16,185,129)=--color-success
+  - V9 红 banner 背景 = --color-error × 15%
+  - E2 409 文案严格 "AI 输出被拦截 — 数字不匹配"
+  - E1 502 → "AI 暂不可用" + 主体隔离
+  - B5 cache hit fetch 计数不增
+  - B6 集成测试 T12 覆盖（react-query queryKey 含 hash）
+  - phase → done
+
+📊 功能状态：
+  F210-a ✅ done
+  F210-b ✅ done
+  F210-c ✅ done
+  F210   ✅ done（整体）
+  F211   ⬜ planned
+
+🎓 经验沉淀（Harness 漏洞）：
+  - Sprint Contract §7 风险表只列了 setupQuality null typing；遗漏 earningsRisk null schema 校验
+  - 教训：backend schema 与 decision API nullable 字段对齐应作为 contract 通用 checklist
+  - 不修订模板（轻量改进），下次 contract 起草时主动检查
+
+[下一个 Session]
+  > F210 整体 done。可触发 /feature-dev 启动 F211（AI: Contradiction Detector + News Summarizer + Journal Assistant）。
