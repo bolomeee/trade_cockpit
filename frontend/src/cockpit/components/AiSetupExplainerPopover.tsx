@@ -69,6 +69,7 @@ const QUALITY_COLOR: Record<'A' | 'B' | 'C' | 'D', string> = {
 function QualityBadge({ value }: { value: 'A' | 'B' | 'C' | 'D' }) {
   return (
     <span
+      data-testid="ai-explainer-quality"
       style={{
         display: 'inline-block',
         padding: '1px 6px',
