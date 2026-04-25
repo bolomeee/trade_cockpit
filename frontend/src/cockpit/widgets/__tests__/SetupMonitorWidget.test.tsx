@@ -150,6 +150,420 @@ const AI_EXPLAINER_502_FETCH = () =>
       Promise.resolve({ error: { code: 'AI_PROVIDER_ERROR', message: 'LLM down' } }),
   } as FetchResponse)
 
+// ─── §R fixtures ─────────────────────────────────────────────────────────────
+
+const REGIME_DATA = {
+  date: '2026-04-25',
+  regime: 'CONSTRUCTIVE' as const,
+  marketScore: 65,
+  subscores: {
+    spyTrend: 70,
+    qqqTrend: 65,
+    iwmBreadth: 55,
+    sectorParticipation: 60,
+    riskAppetite: 70,
+    volatilityStress: 30,
+  },
+  allowedExposurePct: 80,
+  singleTradeRiskPct: 1,
+  preferredSetups: ['BREAKOUT', 'PULLBACK'],
+  avoidSetups: ['BROKEN'],
+  indices: [],
+  sectors: [],
+  computedAt: '2026-04-25T10:00:00Z',
+}
+
+const REGIME_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ data: REGIME_DATA }),
+  } as FetchResponse)
+
+const AI_RANKER_SUCCESS_DATA = {
+  memoId: 2,
+  taskType: 'candidate_ranker',
+  schemaVersion: 'v1',
+  output: {
+    topCandidates: [
+      { ticker: 'AAPL', rank: 1 as const, reason: 'Strong momentum with RS at highs', action: 'enter' as const },
+      { ticker: 'MSFT', rank: 2 as const, reason: 'Tight base near breakout level', action: 'watch' as const },
+      { ticker: 'GOOGL', rank: 3 as const, reason: 'Extended, wait for pullback', action: 'wait' as const },
+    ],
+  },
+  meta: {
+    modelUsed: 'claude-haiku-4-5',
+    tier: 'haiku',
+    tokensIn: 800,
+    tokensOut: 300,
+    costUsd: 0.002,
+    latencyMs: 1200,
+    cacheHit: false,
+  },
+}
+
+const AI_RANKER_SUCCESS_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ data: AI_RANKER_SUCCESS_DATA }),
+  } as FetchResponse)
+
+const AI_RANKER_502_FETCH = () =>
+  Promise.resolve({
+    ok: false,
+    status: 502,
+    json: () =>
+      Promise.resolve({ error: { code: 'AI_PROVIDER_ERROR', message: 'LLM down' } }),
+  } as FetchResponse)
+
+const SETUP_MONITOR_EMPTY_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () =>
+      Promise.resolve({
+        data: {
+          summary: { total: 0, ready: 0, near: 0, extended: 0, broken: 0, none: 0 },
+          items: [],
+        },
+      }),
+  } as FetchResponse)
+
+// 21 items: first 20 only sent to AI
+const ITEMS_21: SetupItem[] = Array.from({ length: 21 }, (_, i) =>
+  makeItem({ ticker: `TK${String(i + 1).padStart(2, '0')}` }),
+)
+
+const SETUP_MONITOR_21_FETCH = () =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () =>
+      Promise.resolve({
+        data: {
+          summary: { total: 21, ready: 21, near: 0, extended: 0, broken: 0, none: 0 },
+          items: ITEMS_21,
+        },
+      }),
+  } as FetchResponse)
+
+// ─── §R – AI Candidate Ranker ─────────────────────────────────────────────────
+
+describe('§R – AI Candidate Ranker', () => {
+  beforeEach(() => {
+    mockSetSelectedTicker.mockClear()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  // ── R1: button enabled when items + regime loaded ──────────────────────────
+  it('R1: items + regime loaded → AI 排序 button enabled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+  })
+
+  // ── R2: button disabled when regime not yet loaded ─────────────────────────
+  it('R2: regime pending → button disabled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+        // no '/cockpit/regime' → never resolves
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.getByTestId('ai-rank-trigger')).toBeDisabled()
+  })
+
+  // ── R3: button disabled when items empty ───────────────────────────────────
+  it('R3: empty items (empty filter) → button disabled', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_EMPTY_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+      }),
+    )
+    renderWidget()
+    await screen.findByText('No setups')
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-rank-trigger')).toBeDisabled()
+    })
+  })
+
+  // ── R4: click → POST body has correct regime + regimeScore (C9 field mapping) ──
+  it('R4: click → POST body.input.regime and .regimeScore match regime API response', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+      '/cockpit/regime': REGIME_FETCH,
+      '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([url]) =>
+        (url as string).includes('/ai/candidate_ranker'),
+      )
+      expect(calls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    const call = fetchMock.mock.calls.find(([url]) =>
+      (url as string).includes('/ai/candidate_ranker'),
+    )!
+    const body = JSON.parse(call[1].body as string) as {
+      input: { regime: string; regimeScore: number; candidates: unknown[] }
+      noCache: boolean
+    }
+
+    expect(body.input.regime).toBe('CONSTRUCTIVE')
+    expect(body.input.regimeScore).toBe(65) // marketScore → regimeScore field adaptation (C9)
+    expect(body.noCache).toBe(false)
+  })
+
+  // ── R5: candidates capped at 20 ────────────────────────────────────────────
+  it('R5: 21 items → body.input.candidates.length === 20', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/setup-monitor': SETUP_MONITOR_21_FETCH,
+      '/cockpit/regime': REGIME_FETCH,
+      '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('TK01')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([url]) =>
+        (url as string).includes('/ai/candidate_ranker'),
+      )
+      expect(calls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    const call = fetchMock.mock.calls.find(([url]) =>
+      (url as string).includes('/ai/candidate_ranker'),
+    )!
+    const body = JSON.parse(call[1].body as string) as {
+      input: { candidates: unknown[] }
+    }
+    expect(body.input.candidates).toHaveLength(20)
+  })
+
+  // ── R6: 9-field candidate, no extras ──────────────────────────────────────
+  it('R6: candidate has exactly 9 fields, no stockName/volumeStatus/entryPrice/stopPrice', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+      '/cockpit/regime': REGIME_FETCH,
+      '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls.filter(([url]) =>
+        (url as string).includes('/ai/candidate_ranker'),
+      )
+      expect(calls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    const call = fetchMock.mock.calls.find(([url]) =>
+      (url as string).includes('/ai/candidate_ranker'),
+    )!
+    const body = JSON.parse(call[1].body as string) as {
+      input: { candidates: Record<string, unknown>[] }
+    }
+    const c = body.input.candidates[0]
+    const keys = Object.keys(c).sort()
+
+    expect(keys).toEqual([
+      'distanceToEntryPct',
+      'earningsRisk',
+      'readySignal',
+      'rewardRisk',
+      'rsPercentile',
+      'setupQuality',
+      'setupType',
+      'ticker',
+      'trendScore',
+    ])
+    expect(c).not.toHaveProperty('stockName')
+    expect(c).not.toHaveProperty('volumeStatus')
+    expect(c).not.toHaveProperty('entryPrice')
+    expect(c).not.toHaveProperty('stopPrice')
+    expect(c).not.toHaveProperty('suggestedAction')
+    expect(c).not.toHaveProperty('scanDate')
+  })
+
+  // ── R7: loading state shows 3 skeletons ────────────────────────────────────
+  it('R7: loading → 3 Skeleton rows visible', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+        '/ai/candidate_ranker': () => new Promise(() => {}), // never resolves
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      const skeletons = document.querySelectorAll('[data-testid="ai-rank-skeleton"]')
+      expect(skeletons.length).toBe(3)
+    })
+  })
+
+  // ── R8: success renders top 3 with rank / ticker / action / reason ─────────
+  it('R8: success response renders top 3 cards with rank, ticker, action badge, reason', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+        '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    // Card 1
+    const card1 = await screen.findByTestId('ai-rank-card-1')
+    expect(card1).toHaveTextContent('#1')
+    expect(card1).toHaveTextContent('AAPL')
+    expect(card1).toHaveTextContent('enter')
+    expect(card1).toHaveTextContent('Strong momentum with RS at highs')
+
+    // Card 2
+    const card2 = screen.getByTestId('ai-rank-card-2')
+    expect(card2).toHaveTextContent('#2')
+    expect(card2).toHaveTextContent('MSFT')
+    expect(card2).toHaveTextContent('watch')
+    expect(card2).toHaveTextContent('Tight base near breakout level')
+
+    // Card 3
+    const card3 = screen.getByTestId('ai-rank-card-3')
+    expect(card3).toHaveTextContent('#3')
+    expect(card3).toHaveTextContent('GOOGL')
+    expect(card3).toHaveTextContent('wait')
+    expect(card3).toHaveTextContent('Extended, wait for pullback')
+  })
+
+  // ── R9: truncation notice when items > 20 ─────────────────────────────────
+  it('R9: items.length > 20 → result header shows "Top 20 / N" truncation notice', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_21_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+        '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+      }),
+    )
+    renderWidget()
+    await screen.findByText('TK01')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    const badge = await screen.findByTestId('ai-rank-truncated')
+    expect(badge).toHaveTextContent('Top 20 / 21')
+  })
+
+  // ── R10: 502 shows error; row click setSelectedTicker still works ──────────
+  it('R10: 502 AI_PROVIDER_ERROR → "AI 排序暂不可用"; table row click still fires setSelectedTicker', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+        '/cockpit/regime': REGIME_FETCH,
+        '/ai/candidate_ranker': AI_RANKER_502_FETCH,
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    expect(await screen.findByTestId('ai-rank-error')).toHaveTextContent('AI 排序暂不可用')
+
+    // Table row click must still work
+    fireEvent.click(screen.getByText('AAPL'))
+    expect(mockSetSelectedTicker).toHaveBeenCalledWith('AAPL')
+  })
+
+  // ── R11: close + reopen → react-query cache hit (fetch count = 1) ─────────
+  it('R11: close then reopen with same inputKey → fetch count for candidate_ranker = 1', async () => {
+    const fetchMock = makeRoutedFetch({
+      '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH,
+      '/cockpit/regime': REGIME_FETCH,
+      '/ai/candidate_ranker': AI_RANKER_SUCCESS_FETCH,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    // Use an explicit client so cache persists across interactions
+    const client = makeClient()
+    render(
+      <QueryClientProvider client={client}>
+        <SetupMonitorWidget />
+      </QueryClientProvider>,
+    )
+    await screen.findByText('AAPL')
+
+    const btn = screen.getByTestId('ai-rank-trigger')
+    await waitFor(() => expect(btn).not.toBeDisabled())
+
+    // First open → triggers fetch
+    fireEvent.click(btn)
+    await screen.findByTestId('ai-rank-card-1')
+
+    // Close
+    fireEvent.click(screen.getByTestId('ai-rank-close'))
+    expect(screen.queryByTestId('ai-rank-panel')).toBeNull()
+
+    // Reopen → cache hit, no new fetch
+    fireEvent.click(btn)
+    await screen.findByTestId('ai-rank-card-1')
+
+    const rankerCalls = fetchMock.mock.calls.filter(([url]) =>
+      (url as string).includes('/ai/candidate_ranker'),
+    )
+    expect(rankerCalls).toHaveLength(1)
+  })
+})
+
 // ─── §S – Setup Explainer Popover ─────────────────────────────────────────────
 
 describe('§S – Setup Explainer Popover', () => {

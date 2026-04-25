@@ -577,6 +577,38 @@ Tab 切换 → 改 `?filter=ready,near,...` 重发请求。
 
 行点击 → `cockpitStore.setSelectedTicker(ticker)`，联动 Chart / Decision / Earnings widget。
 
+### 5.c AI Candidate Ranker（F210-b）
+
+数据源：`GET /api/cockpit/regime`（regime + marketScore）+ `POST /api/ai/candidate_ranker`
+
+**输入构造（SetupItem → CandidateInput）**：
+
+| 前端字段 | API/store 来源 | 传入 schema 字段 | 备注 |
+|---|---|---|---|
+| `regime` | `regimeData.regime` | `CandidateRankerInput.regime` | 5 值 RegimeLabel |
+| `regimeScore` | `regimeData.marketScore` | `CandidateRankerInput.regimeScore` | 字段名在前端适配 |
+| `candidates[].ticker` | `item.ticker` | 直传 | — |
+| `candidates[].setupType` | `item.setupType` | 直传 | 7 值 SetupType |
+| `candidates[].setupQuality` | `item.setupQuality` | 直传 | A/B/C/null |
+| `candidates[].trendScore` | `item.trendScore` | 直传 | 0-5 |
+| `candidates[].rsPercentile` | `item.rsPercentile` | 直传 | 0-100 |
+| `candidates[].distanceToEntryPct` | `item.distanceToEntryPct ?? 0` | null → 0 容错 | — |
+| `candidates[].rewardRisk` | `Math.max(item.rewardRisk ?? 0, 0)` | null/负 → 0 | schema ge=0 |
+| `candidates[].earningsRisk` | `item.earningsRisk` | 直传 | SAFE/CAUTION/DANGER |
+| `candidates[].readySignal` | `item.readySignal` | 直传 | boolean |
+
+截断：前端 `items.slice(0, 20)`，超 20 时 result header 显示 "Top 20 / N"。
+
+**输出渲染（CandidateRankerOutput → AiCandidateRankerSection）**：
+
+| UI 元素 | schema 字段路径 | 渲染规则 |
+|---|---|---|
+| rank 数字 | `output.topCandidates[].rank` | `#1` / `#2` / `#3` |
+| ticker 文本 | `output.topCandidates[].ticker` | 粗体 |
+| action badge | `output.topCandidates[].action` | enter → breakout 色 / watch → warn 色 / wait → muted 色（三色枚举）|
+| reason 文本 | `output.topCandidates[].reason` | 单行 ellipsis |
+| cache 徽章 | `meta.cacheHit` | true → "Cached"；false → "Generated · {modelUsed}" |
+
 ---
 
 ## §Cockpit-6：DecisionPanelWidget（F203 + F210/F211）

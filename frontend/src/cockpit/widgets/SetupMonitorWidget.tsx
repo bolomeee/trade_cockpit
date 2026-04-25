@@ -11,6 +11,8 @@ import { SetupTypeBadge } from '../components/SetupTypeBadge'
 import { SetupQualityBadge } from '../components/SetupQualityBadge'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
 import { AiSetupExplainerPopover } from '../components/AiSetupExplainerPopover'
+import { getCockpitRegime } from '../lib/api/cockpitRegimeApi'
+import { AiCandidateRankerSection } from '../components/AiCandidateRankerSection'
 
 type FilterTab = 'all' | SetupFilterValue
 
@@ -49,6 +51,12 @@ export function SetupMonitorWidget() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cockpit-setup-monitor', activeTab],
     queryFn: () => getSetupMonitor(currentTab.filters),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: regimeData } = useQuery({
+    queryKey: ['cockpit-regime'],
+    queryFn: getCockpitRegime,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -117,6 +125,11 @@ export function SetupMonitorWidget() {
             {tab.label(data?.summary)}
           </button>
         ))}
+        <AiCandidateRankerSection
+          items={items}
+          regime={regimeData?.regime ?? null}
+          regimeScore={regimeData?.marketScore ?? null}
+        />
       </div>
 
       {/* Table */}

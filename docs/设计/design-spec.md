@@ -971,6 +971,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - 行点击 → setSelectedTicker(ticker) → CockpitChart / DecisionPanel / Earnings 全部联动
 - v2.0 增强：每行 `[?]` 图标 hover 触发 `POST /api/ai/setup_explainer`（缓存 24h），气泡弹出 1 句解释
   > **实现偏离（F209-c）**：触发方式由 hover 改为**点击**，与 features.json acceptance_criteria 保持一致（acceptance_criteria 优先于 design-spec）。点击 `?` 按钮调用 `POST /api/ai/setup_explainer`，渲染 label / quality / whyWatch / mainRisks；仅 BREAKOUT / PULLBACK / RECLAIM 三种 setup 显示按钮。
+- v2.0 增强（F210-b）：Filter Tabs 行右侧提供 **[AI 排序]** 按钮（regime 未就绪或 items 为空时 disabled），点击调用 `POST /api/ai/candidate_ranker`，将当前过滤 items 前 20 条送 AI 综合评分，结果区行内插入 Filter Tabs 与 Table 之间，展示 top 3（rank / ticker / action badge [enter·watch·wait 三色] / reason 文本），结果可 ✕ 关闭；缓存 24h，同 (regime, items 集合) 复点 0 网络请求。
 
 ---
 
