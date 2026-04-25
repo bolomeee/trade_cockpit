@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     regime_cron_hour: int = 22
     regime_cron_minute: int = 15
 
+    # F202-b setup snapshot scan (weekdays 22:30 UTC, after regime at 22:15)
+    setup_cron_hour: int = 22
+    setup_cron_minute: int = 30
+
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
 

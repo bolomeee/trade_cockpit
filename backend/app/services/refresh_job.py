@@ -29,6 +29,7 @@ from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.earnings_service import EarningsService
 from app.services.cockpit.market_regime_service import MarketRegimeService
+from app.services.cockpit.setup_service import SetupService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
 from app.services.market_scanner_service import MarketScannerService
@@ -45,6 +46,7 @@ SCANNER_JOB_ID = "ma150_market_scanner"
 UNIVERSE_JOB_ID = "ma150_universe_refresh"
 EARNINGS_JOB_ID = "cockpit_earnings_refresh"
 REGIME_JOB_ID = "cockpit_regime_refresh"
+SETUP_JOB_ID = "cockpit_setup_refresh"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -242,6 +244,19 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F202-b: setup snapshot scan, weekdays 22:30 UTC (after regime at 22:15)
+        sched.add_job(
+            _setup_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.setup_cron_hour,
+                minute=settings.setup_cron_minute,
+                timezone="UTC",
+            ),
+            id=SETUP_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -318,6 +333,18 @@ def _regime_tick(
             MarketRegimeService(db).compute_and_store()
     except Exception:  # noqa: BLE001
         logger.error("regime tick failed\n%s", traceback.format_exc())
+
+
+def _setup_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for setup snapshot scan (F202-b): weekdays 22:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            SetupService(db).compute_and_store_all()
+    except Exception:  # noqa: BLE001
+        logger.error("setup tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

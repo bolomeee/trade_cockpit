@@ -130,7 +130,9 @@ def test_s2_alembic_downgrade_drops_table(alembic_db: str) -> None:
     db_path = alembic_db
     cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.downgrade(cfg, "-1")
+    # Downgrade to the revision before 010 (009); using revision ID is more stable
+    # than "-1" which changes meaning when new migrations are added on top.
+    command.downgrade(cfg, "009_f201a_market_regime_snapshots")
     engine = create_engine(f"sqlite:///{db_path}")
     assert "setup_snapshots" not in inspect(engine).get_table_names()
 

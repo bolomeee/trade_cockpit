@@ -386,7 +386,9 @@ class SetupService:
         today: date | None = None,
     ) -> dict:
         today = today or date.today()
-        active_tickers = [s.ticker for s in self.stock_repo.list_active()]
+        active_stocks = self.stock_repo.list_active()
+        active_tickers = [s.ticker for s in active_stocks]
+        name_map = {s.ticker: s.name for s in active_stocks}
         all_rows = self.repo.get_latest_all_active(active_tickers)
 
         if not all_rows:
@@ -408,7 +410,7 @@ class SetupService:
         else:
             filtered = all_rows
 
-        items = [_row_to_dict(r) for r in filtered]
+        items = [_row_to_dict(r, name_map.get(r.ticker)) for r in filtered]
         return {"summary": summary, "items": items}
 
     # ── Private helpers ────────────────────────────────────────────────────────
@@ -461,10 +463,11 @@ class SetupService:
         return self.db.execute(stmt).scalar_one_or_none() is not None
 
 
-def _row_to_dict(r: Any) -> dict:
+def _row_to_dict(r: Any, stock_name: str | None = None) -> dict:
     """Convert SetupSnapshot ORM row to API-CONTRACT camelCase dict."""
     return {
         "ticker": r.ticker,
+        "stockName": stock_name,
         "setupType": r.setup_type,
         "setupQuality": r.setup_quality,
         "entryPrice": r.entry_price,
