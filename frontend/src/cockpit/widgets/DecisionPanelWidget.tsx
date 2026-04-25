@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api/client'
 import { useCockpitStore } from '@/store/cockpitStore'
 import { getCockpitDecision, type CockpitDecisionData, type GetCockpitDecisionOverrides } from '../lib/api/cockpitDecisionApi'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
+import { AiTradePlanSection } from '../components/AiTradePlanSection'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -384,10 +385,18 @@ export function DecisionPanelWidget() {
           <OverrideForm {...overrideFormProps} />
         </div>
       ) : data ? (
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <DecisionCard data={data} />
-          <OverrideForm {...overrideFormProps} />
-        </div>
+        <>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <DecisionCard data={data} />
+            <OverrideForm {...overrideFormProps} />
+          </div>
+          <div
+            data-testid="ai-plan-divider"
+            style={{ borderTop: '1px solid var(--color-border)', paddingTop: '8px', marginTop: '4px' }}
+          >
+            <AiTradePlanSection decision={data} />
+          </div>
+        </>
       ) : null}
     </div>
   )
