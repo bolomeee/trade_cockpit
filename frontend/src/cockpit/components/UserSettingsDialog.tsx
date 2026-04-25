@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -113,6 +114,7 @@ export function UserSettingsDialog({ open, onClose }: Props) {
       <DialogContent showCloseButton>
         <DialogHeader>
           <DialogTitle>User Settings</DialogTitle>
+          <DialogDescription>实际 risk% = min(regime 推荐, 上方设置, 单次 override)</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -187,18 +189,6 @@ export function UserSettingsDialog({ open, onClose }: Props) {
                 )}
               />
             </div>
-
-            <p
-              style={{
-                fontSize: 'var(--font-size-caption)',
-                color: 'var(--color-text-secondary)',
-                borderTop: '1px solid var(--color-border)',
-                paddingTop: '8px',
-                marginTop: '4px',
-              }}
-            >
-              实际 risk% = min(regime 推荐, 上方设置, 单次 override)
-            </p>
 
             {mutation.isError && (
               <p style={{ ...errorStyle, marginTop: 0 }}>
