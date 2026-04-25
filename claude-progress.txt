@@ -680,3 +680,66 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一 Session]
   可继续开发 F203-b2（Decision 全栈）或先验收 F203-a/b1。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint Contract：F203-b2 Decision 服务（接入栈）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 起草并确认 docs/开发/sprint-contracts/F203-b2-contract.md
+  - 6 文件预算（cockpit_params §4 + decision_service + schema + router + __init__ 注册 + tests）
+  - 13 项测试用例（S1–S7 单元 / S8–S12 集成 / S13 全量回归）
+  - 关键决策已敲定：override 只能向下、RISK_OFF 不抛错、不重算 RR、hash 用 snapshot_date、ticker 大小写归一
+  - phase: ready_to_dev → contract_agreed
+
+⚠️ 待下一 session：
+  - 用 Sonnet 新开 session 进入 Generator 模式
+  - 开发顺序：cockpit_params §4 → schema → service → router → __init__ → tests
+
+📊 功能状态：
+  F203-b1：🔍 needs_review
+  F203-b2：📝 contract_agreed（本次）
+  F203-c / F203-d：⬜ ready_to_dev
+
+[下一 Session]
+  > 继续开发 F203-b2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F203-b2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（cockpit_params §4 DECISION 参数）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F203-c CockpitChart 前端 Widget — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 草案输出并经用户确认
+  - 已确认 6 项条款（拆分范围 / 排除项 / 失败容忍 / tokens 补齐 / 测试策略）
+  - 预计修改 4 文件：
+    1. frontend/src/cockpit/lib/api/cockpitChartApi.ts（新建）
+    2. frontend/src/cockpit/lib/api/cockpitDecisionApi.ts（新建）
+    3. frontend/src/cockpit/widgets/CockpitChartWidget.tsx（新建）
+    4. frontend/src/cockpit/CockpitRegistry.ts（修改）
+  - 完成标准 S1–S11 已锁定
+  - phase: ready_to_dev → contract_agreed
+
+⚠️ 待你决策：
+  - 无（全部条款已确认）
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F203-c-contract.md（新建）
+  - SESSION-HANDOFF.md 更新
+
+📊 功能状态：
+  F200-a/b：✅ done
+  F201-a/b：✅ done
+  F202-a/b/c：✅ done
+  F203-a：🔍 needs_review
+  F203-b1：🔍 needs_review
+  F203-b2：✅ done
+  F203-c：📜 contract_agreed（本次）
+  F203-d：⬜ ready_to_dev
+  F204-a/b：✅ done
+
+[下一 Session]
+  > 继续开发 F203-c，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F203-c-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（tokens.css 补齐）开始。
