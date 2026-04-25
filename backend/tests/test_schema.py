@@ -26,6 +26,7 @@ EXPECTED_TABLES = {
     "market_regime_snapshots",  # F201-a
     "setup_snapshots",          # F202-a
     "user_settings",            # F203-b
+    "ai_memos",                 # F208-a
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {
