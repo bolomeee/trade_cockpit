@@ -2111,8 +2111,8 @@
       "description": "新建 /cockpit 路由页的前端骨架：独立 react-grid-layout 容器 + 独立 CockpitRegistry + 独立 layout localStorage key（ma150.cockpit.layouts.v1）+ 独立 cockpit client store，与 Workbench / News 三页彻底解耦。本 sprint 仅写 6 个前端文件（pages/Cockpit.tsx、cockpit/CockpitShell.tsx、cockpit/CockpitRegistry.ts、cockpit/useCockpitLayoutStore.ts、cockpit/widgets/PlaceholderWidget.tsx、store/cockpitStore.ts）+ App.tsx 2 行 lazy import + Route 豁免（D010 脚手架例外）。不改 TopNav（F200-b），不建 backend 目录（F200-b）。",
       "user_story": "作为慢交易投资者，我希望在主 Workbench 之外有一个独立的 Cockpit 页面，专用于慢交易工作流，与 Workbench 布局和状态完全解耦",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -2167,8 +2167,8 @@
       "description": "F200-a 完成后的收尾工作：(1) TopNav 新增 Cockpit 链接 + ResetLayoutButton 根据 pathname 条件渲染（/cockpit 时指向 cockpit store）；(2) 新建 backend/app/routers/cockpit/__init__.py 和 backend/app/services/cockpit/__init__.py 空目录骨架；(3) 在 frontend/eslint.config 或 tsconfig paths 强制 cockpit ⇄ workbench 零交叉引用（no-restricted-imports rule）。",
       "user_story": "作为慢交易投资者，我在 TopNav 看到 Cockpit 入口，点击切换到 /cockpit；Reset Layout 按钮只在 /cockpit 时操作 cockpit 布局",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F200-a"
       ],
@@ -2386,8 +2386,8 @@
       "name": "Setup Monitor 接入层",
       "description": "config cron 参数 + refresh_job setup tick + Pydantic Schema + FastAPI Router GET /api/cockpit/setup-monitor",
       "priority": "P0",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F202-a"
       ],
@@ -2412,8 +2412,8 @@
       "name": "Setup Monitor 前端 Widget",
       "description": "3 共享组件（SetupTypeBadge / SetupQualityBadge / EarningsRiskDot）+ SetupMonitorWidget + API client + CockpitRegistry 注册",
       "priority": "P0",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F202-b"
       ],
