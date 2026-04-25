@@ -53,7 +53,7 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
                   onClick={refresh}
                   disabled={isRefreshing}
                   title="Refresh news"
-                  className="rounded p-0.5 opacity-60 transition-opacity hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="rounded p-0.5 text-blue-500 transition-colors hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <RefreshCw
                     size={13}
