@@ -895,3 +895,43 @@ Sprint：F200-b — Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界
 
 [下一步]
   开新 session 进入 F208-b Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-25] Sprint：F208-b Contract — AI Gateway 核心模块协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F208-b Sprint Contract 落盘：docs/开发/sprint-contracts/F208-b-contract.md（已确认）
+  - 6 文件清单（与 features.json 锁定一致）：
+      backend/app/ai/__init__.py（新建，空包初始化）
+      backend/app/ai/errors.py（新建，AiError 基类 + 4 个具体异常）
+      backend/app/ai/memo_repo.py（新建，AiMemoRepository class + 模块级 compute_input_hash）
+      backend/app/ai/budget.py（新建，month_to_date_cost + assert_within_budget）
+      backend/app/ai/routing.py（新建，模块级 _TASK_TIER dict + resolve_tier/resolve_model/resolve）
+      backend/tests/test_ai_core_modules_f208b.py（新建，16 个 unit + 集成测试）
+  - 14 条可测试完成标准 + 16 测试用例 + 5 项风险点（精度 / 月初边界 / tier 顺序 / Settings 单例 monkeypatch / 无循环依赖）
+  - 用户确认 5 项设计点（2026-04-25）：
+      1. memo_repo 用 Repository class 风格（统一现有 repository 习惯，self.db）
+      2. error_code 列不写（DATA-MODEL v2.0 schema 表无此列）
+      3. budget mtd ≥ cap 即抛错（含等号）
+      4. AiError 共同基类保留（便利 endpoint 兜底）
+      5. routing 用模块级 dict（不走 Pydantic / D070 不适用）
+  - features.json 更新：
+      F208-b phase: design_ready → contract_agreed
+      F208-b description 补充设计点摘要
+      _pipeline_status.active_sprint_phase: design_ready → contract_agreed
+      last_updated → 2026-04-25-F208-b-contract-agreed
+
+⚠️ 待你决策：
+  - 无（Contract 已确认，等新 session 进 Generator）
+
+🔧 系统变更：
+  - 无代码改动；仅 contract / progress / SESSION-HANDOFF / features.json 文档层
+
+📊 功能状态：
+  F208-a AI 基座：✅ done
+  F208-b AI Gateway 核心模块：📝 contract_agreed（待 Generator）
+  F208-c AI Gateway 主流程 + endpoint：⬜ design_ready
+
+[下一步]
+  开新 session（建议 Sonnet）粘贴 SESSION-HANDOFF.md 末尾恢复指令进入 F208-b Generator 模式
