@@ -1599,3 +1599,28 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 
 **教训**：凡调用 `litellm.completion_cost(response)` 的场景，都应显式传 `model=` 参数，防止 provider 返回版本化 model name 导致定价查询失败。
 
+---
+
+## D073：Cockpit Widget 1 颜色 token 映射（MarketRegimeWidget）
+
+**日期**：2026-04-25（F201-c Sprint Contract D1）
+**触发**：`tokens.css` 只有 `--color-regime-*` 系列，无独立的 sector/index state token；design-spec §Widget 1 描述了 state 着色需求。
+
+**决策**：sector state / index state 全部复用现有 `--color-regime-*` 系列，不新增 token。映射表如下：
+
+| 维度 | 枚举值 | 复用 token |
+|------|--------|-----------|
+| Sector state | Strong | `--color-regime-risk-on` |
+| Sector state | Constructive | `--color-regime-constructive` |
+| Sector state | Neutral | `--color-regime-neutral` |
+| Sector state | Weak | `--color-regime-defensive` |
+| Sector state | Defensive | `--color-regime-risk-off` |
+| Index state | Bullish / Leading | `--color-regime-risk-on` |
+| Index state | Constructive | `--color-regime-constructive` |
+| Index state | Neutral | `--color-regime-neutral` |
+| Index state | Weak | `--color-regime-defensive` |
+| Index state | Defensive | `--color-regime-risk-off` |
+| Subscore 进度条 | ≥80% / ≥60% / ≥40% / ≥20% / <20% | risk-on / constructive / `--color-log-warn` / regime-defensive / regime-risk-off |
+
+**影响**：`MarketRegimeWidget.tsx`（`indexStateColor` / `sectorStateColor` / `subscoreBarColor` 三个 helper 函数）。
+
