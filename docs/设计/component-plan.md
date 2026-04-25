@@ -1,6 +1,6 @@
 # component-plan.md
 
-> 最后更新：2026-04-17 | 维护者：design-bridge skill
+> 最后更新：2026-04-24 | 维护者：design-bridge skill
 > ⚠️ feature-dev 阶段开发组件前必须查阅本文件确认边界。不要引入未规划的组件。
 > 技术栈：React 18 + TypeScript + Vite (SPA) + Tailwind CSS v4 + shadcn/ui。
 > 项目不是 Next.js，**不使用 Server Components / 'use client'**；所有组件都是 React 函数组件。
@@ -294,3 +294,276 @@ src/
 3. 往 ui/ 目录放业务组件（ui/ 只放 shadcn 基础）
 4. 直接在组件中写 hex 颜色值（必须用 `--color-*` token）
 5. 把 Journal 完整表单拆到 Dashboard Widget（Dashboard 只保留 quick add 3 字段，完整字段在 Dialog 录）
+
+---
+
+# v1.8 / v1.9 / v2.0 · Cockpit 章节（2026-04-24 design-bridge 扩展）
+
+> 关联 Feature：F200–F211
+> 关联 design-spec：`design-spec.md` v1.8/v1.9/v2.0 Cockpit 章节
+> 关联架构：D060（Cockpit 独立第三页 ⟂ Workbench）+ D060-a（沿用 RGL 引擎，独立 Registry/Store/localStorage）
+
+---
+
+## §Cockpit-1：页面与区块拆解
+
+| 页面 | 路由 | 区块 |
+|---|---|---|
+| Cockpit | `/cockpit` | TopNav（共享 + Settings 齿轮 + ResetLayout）、MarketOverviewBar（共享）、CockpitGrid（react-grid-layout）、9 个 widget、UserSettingsDialog |
+
+CockpitGrid 默认布局见 `design-spec.md` 表格（左 4 cols / 中 5 cols / 右 3 cols；rowHeight 40 / margin 12 / padding 16，与 Workbench 一致）。
+
+---
+
+## §Cockpit-2：组件清单
+
+### 基础组件 `src/components/ui/`（既有，无新增）
+
+shadcn/ui 全局复用；Cockpit 不引入新基础组件。
+
+### Cockpit 共享子组件 `src/cockpit/components/`
+
+> 多个 Cockpit widget 内复用，不在 Workbench 里出现。位于 cockpit/ 子目录，不放 features/ 全局区。
+
+| 组件 | 复用于 widget | 说明 |
+|---|---|---|
+| `RegimePill` | MarketRegime | 5 枚举 → token `--color-regime-*`，badge 风格 |
+| `SetupTypeBadge` | SetupMonitor / DecisionPanel / PoolBuilder / Position / PendingOrder / Chart 标题 | 7 枚举 → token `--color-setup-*`；NONE 渲染 "—" |
+| `SetupQualityBadge` | SetupMonitor / DecisionPanel / Chart 标题 | A/B/C/null → `--color-setup-quality-*` |
+| `EarningsRiskDot` | SetupMonitor / DecisionPanel / Position / Earnings | SAFE/CAUTION/DANGER → token；DANGER 附 "D-{n}" |
+| `ChartHorizontalLine` | CockpitChart | 封装 lightweight-charts `createPriceLine`，props `{ price, color, lineStyle, title }` |
+| `WidgetShell`（共享自 Workbench） | 全部 cockpit widget | 复用既有，不重新实现；通过 props/className 适配 |
+
+> WidgetShell 在 `src/components/widgets/WidgetShell.tsx`（shared 跨页）；cockpit 仅 import 不修改。
+
+### Cockpit Widget 组件 `src/cockpit/widgets/`
+
+| 组件 | 关联 Feature | 主接口 |
+|---|---|---|
+| `MarketRegimeWidget` | F201 | `GET /api/cockpit/regime` + `POST /api/ai/market_narrator`（v2.0） |
+| `EarningsWidget` | F204 | `GET /api/cockpit/earnings?ticker=` |
+| `PoolBuilderWidget` | F205（v1.9） | `GET /api/cockpit/pool` + `POST /api/watchlist` |
+| `CockpitChartWidget` | F203 | `GET /api/cockpit/chart/{ticker}` + `GET /api/cockpit/decision/{ticker}` |
+| `SetupMonitorWidget` | F202 | `GET /api/cockpit/setup-monitor?filter=` + `POST /api/ai/setup_explainer`（v2.0 hover） |
+| `DecisionPanelWidget` | F203 + F210/F211 | `GET /api/cockpit/decision/{ticker}` + `POST /api/ai/trade_plan` + `POST /api/ai/contradiction_detector` + `POST /api/cockpit/pending-orders` |
+| `PositionListWidget` | F206（v1.9） | `GET / POST / PATCH / DELETE /api/cockpit/positions` |
+| `PendingOrdersWidget` | F206（v1.9） | `GET / POST / PATCH / DELETE /api/cockpit/pending-orders` |
+| `ActionListWidget` | F207（v1.9） | `GET /api/cockpit/actions/today` + `POST /api/ai/contradiction_detector`（v2.0 brief） |
+
+### Cockpit Dialog 组件
+
+| 组件 | 关联 Feature | 主接口 |
+|---|---|---|
+| `UserSettingsDialog` | F203 | `GET / PUT /api/cockpit/user-settings` |
+| `PositionFormDialog` | F206（v1.9） | `POST / PATCH /api/cockpit/positions` |
+| `PendingOrderFormDialog` | F206（v1.9） | `POST / PATCH /api/cockpit/pending-orders` |
+| `SaveAsPendingOrderConfirm` | F203 | `POST /api/cockpit/pending-orders`（DecisionPanel 触发） |
+
+### Cockpit 框架组件
+
+| 组件 | 关联 Feature | 说明 |
+|---|---|---|
+| `CockpitPage` | F200 | 顶层路由组件，初始化 `useCockpitLayoutStore` + 渲染 RGL Grid |
+| `CockpitRegistry`（`src/cockpit/CockpitRegistry.ts`） | F200 | 9 个 widget 的 manifest（id / component / defaultLayout / minW/H）；与 `WidgetRegistry.ts` 完全独立 |
+| `useCockpitLayoutStore`（`src/cockpit/store/useCockpitLayoutStore.ts`） | F200 | zustand + persist；localStorage key `ma150.cockpit.layouts.v1`；与 `useAppStore` 零交叉 |
+| `useCockpitStore`（`src/cockpit/store/useCockpitStore.ts`） | F200 | 共享 cockpit 范围内状态：`selectedTicker`、`setSelectedTicker(t)`、`mas` 选择、`timeframe`；不持久化（运行时） |
+
+### Cockpit 路由 / 页面
+
+| 页面组件 | 路由 | 关键接口 |
+|---|---|---|
+| CockpitPage | `/cockpit` | 初始化 layout store；TopNav 高亮；齿轮按钮挂载 UserSettingsDialog |
+
+### TopNav / MarketOverviewBar 沿用
+
+不为 Cockpit 单独实现 nav 组件；TopNav 内部按 `useLocation` 增加 `/cockpit` 高亮分支 + 在 `/cockpit` 路由下额外渲染 `[Reset Layout]` + `[⚙ Settings]` 两个按钮。MarketOverviewBar 共享。
+
+---
+
+## §Cockpit-3：组件边界定义
+
+> 仅列出 Cockpit 业务组件 props 契约。基础组件 / shadcn 用法见官方文档。
+
+### CockpitPage
+- Props：无（react-router 路由组件）
+- 职责：初始化 `useCockpitLayoutStore` + 渲染 RGL Grid + 遍历 `CockpitRegistry` 渲染 widgets
+- 不包含：数据获取（每个 widget 自取）
+
+### CockpitRegistry（不是 React 组件，是 manifest 数组）
+- 形态：`{ id, component, title, defaultLayout: { x, y, w, h, minW, minH }, version }[]`
+- 用途：CockpitPage 遍历渲染；ResetLayout 按钮恢复 defaultLayout
+
+### useCockpitLayoutStore
+- State：`layouts: Layouts`（react-grid-layout 标准结构，按断点 `{ lg, md, sm }`）
+- Actions：`setLayouts(next)`、`reset()`
+- 持久化：localStorage key `ma150.cockpit.layouts.v1`，version 字段嵌入 layouts 末位（schema 升级时 reset）
+
+### useCockpitStore
+- State：`selectedTicker: string | null`、`mas: number[]`（默认 `[10,21,50,150,200]`）、`timeframe: 'D' | 'W'`（默认 'D'）
+- Actions：`setSelectedTicker(t)`、`setMas(m)`、`setTimeframe(tf)`
+- 持久化：无（运行时）
+
+### MarketRegimeWidget
+- Props：无
+- 内部：自取 `GET /api/cockpit/regime`；点击 indices 行 → `useCockpitStore.setSelectedTicker(symbol)`
+- AI 子区：v2.0 起渲染 AI Notes 区域，按钮触发 `POST /api/ai/market_narrator`，cache TTL 由 backend 控制（meta.cacheHit）
+- 不包含：sector 点击的 SetupMonitor 过滤逻辑（直接派发到 SetupMonitor 自己的 query 状态，需要在 useCockpitStore 加 `sectorFilter` 字段或局部 state — v1.8 决策见 design-spec "待 feature-dev 阶段细化的项"）
+
+### EarningsWidget
+- Props：无
+- 内部：subscribe `useCockpitStore.selectedTicker`，selectedTicker 改变时调 `GET /api/cockpit/earnings?ticker=`；watchlist 多 ticker 时循环调用（v1.8 简化）
+
+### PoolBuilderWidget（v1.9）
+- Props：无
+- 内部：filter 状态 = local React state（不入 store；切页签即丢）；调 `GET /api/cockpit/pool`，debounce 300ms
+- `[+ Add]` 按钮：调 `POST /api/watchlist` + react-query invalidate `['cockpit-pool']` + `['watchlist']`
+
+### CockpitChartWidget
+- Props：无
+- 内部：subscribe `useCockpitStore.{selectedTicker, mas, timeframe}`；selectedTicker 改变时联合 fetch `GET /api/cockpit/chart/{ticker}` + `GET /api/cockpit/decision/{ticker}`；通过 `ChartHorizontalLine` 子组件叠加 entry/stop/target 横线
+- ⚠️ 必须：useEffect cleanup 销毁 lightweight-charts 实例
+- 技术约束（D063）：独立组件，不复用 Workbench `ChartWidget`，不 import workbench 任何文件
+
+### SetupMonitorWidget
+- Props：无
+- 内部：filter 状态 = local React state（[Ready/Near/...] tab）；调 `GET /api/cockpit/setup-monitor?filter=`
+- 行点击 → `useCockpitStore.setSelectedTicker(ticker)` 联动 Chart/Decision/Earnings
+- v2.0 hover [?] → 调 `POST /api/ai/setup_explainer`，缓存 24h（meta.cacheHit）
+
+### DecisionPanelWidget
+- Props：无
+- 内部：subscribe `useCockpitStore.selectedTicker`；override 输入 = local React state（debounce 500ms 触发 query 重发）；调 `GET /api/cockpit/decision/{ticker}?entryOverride=&stopOverride=&riskPctOverride=`；user-settings 通过独立 query `['cockpit-user-settings']` 获取
+- AI 子区：v2.0 [Generate AI Plan] 按钮 → `POST /api/ai/trade_plan`，guardrail 失败 (HTTP 409) 显示红 banner
+- [Save as PendingOrder] → 弹 `SaveAsPendingOrderConfirm`，确认后 `POST /api/cockpit/pending-orders` + invalidate `['cockpit-pending-orders']`
+
+### PositionListWidget（v1.9）
+- Props：无
+- 内部：subscribe `status` 切换 (open/closed/all) = local state；调 `GET /api/cockpit/positions?status=`
+- [+ New Position] → 弹 `PositionFormDialog`
+- 行内联编辑（stop / status / closedAt / closePrice / notes）→ `PATCH /api/cockpit/positions/{id}`
+- 删除 → `DELETE /api/cockpit/positions/{id}`，AlertDialog 二次确认
+
+### PendingOrdersWidget（v1.9）
+- Props：无
+- 内部：subscribe `status` 切换 = local state；调 `GET /api/cockpit/pending-orders?status=`
+- [+ New Order] → 弹 `PendingOrderFormDialog`
+- [Triggered] → confirm "已在券商手动下单？" → `PATCH` body `{ status: "TRIGGERED" }` + invalidate `['cockpit-pending-orders']` + `['cockpit-positions']`（若 v1.9 决定自动创建 position）
+- [Cancel] → `PATCH` body `{ status: "CANCELLED" }`，无二次确认
+
+### ActionListWidget（v1.9）
+- Props：无
+- 内部：调 `GET /api/cockpit/actions/today`；行点击 ticker → `setSelectedTicker(t)`
+- v2.0 AI Daily Brief 折叠区：默认收起；展开时调 `POST /api/ai/contradiction_detector`
+
+### UserSettingsDialog
+- Props：`open: boolean`、`onClose: () => void`
+- 内部：mount 时 `GET /api/cockpit/user-settings`；`react-hook-form` + `zod` 校验；提交 `PUT /api/cockpit/user-settings` + invalidate `['cockpit-user-settings']` + `['cockpit-decision', selectedTicker]`（user_setting_cap 影响 effective risk）
+- 触发：CockpitPage 在 TopNav 渲染齿轮按钮 → `setOpen(true)`
+
+### PositionFormDialog
+- Props：`open: boolean`、`mode: 'new' | 'edit'`、`initialPosition?: Position`、`onClose: () => void`、`onSaved: () => void`
+- 内部：`react-hook-form` + `zod`（entry > 0；stop > 0；entry > stop；shares > 0）；POST/PATCH 后 onSaved → invalidate `['cockpit-positions']`
+- 提示行（仅 New 模式）：从 `useCockpitStore.selectedTicker` 联合 `['cockpit-decision', t]` 取 `suggestedShares`，下方灰字 "Cockpit 推荐 {n} shares"
+
+### PendingOrderFormDialog
+- Props：`open`、`mode`、`initialOrder?`、`onClose`、`onSaved`
+- 校验：entry > stop；shares > 0；expirationDate ≥ today（可选字段，不强制）
+
+### SaveAsPendingOrderConfirm
+- Props：`open`、`payload: PendingOrderInput`、`onConfirm() => Promise<void>`、`onClose() => void`
+- 简单 AlertDialog 形态，文案见 design-spec
+
+### RegimePill / SetupTypeBadge / SetupQualityBadge / EarningsRiskDot / ChartHorizontalLine
+（共享子组件）
+- Props 见 design-spec "共享子组件"小节定义；纯展示，不发请求
+- 必须使用 token，不允许内联 hex
+
+---
+
+## §Cockpit-4：数据获取职责划分（react-query 缓存策略）
+
+| query key | 数据接口 | staleTime | 失效触发 |
+|---|---|---|---|
+| `['cockpit-regime']` | GET /api/cockpit/regime | 5min | 手动刷新；regime cron 跑完（v1.8 暂无 push 通道，靠 staleTime） |
+| `['cockpit-setup-monitor', filter]` | GET /api/cockpit/setup-monitor | 5min | 同上 |
+| `['cockpit-chart', ticker, mas, timeframe]` | GET /api/cockpit/chart/{ticker} | 5min | 切换 ticker 自动 refetch |
+| `['cockpit-decision', ticker, overrides]` | GET /api/cockpit/decision/{ticker} | 30s | overrides 改变（debounce 500ms 触发 invalidate） |
+| `['cockpit-earnings', ticker]` | GET /api/cockpit/earnings?ticker= | 1h | 手动刷新 |
+| `['cockpit-pool', filters]` | GET /api/cockpit/pool | 1min | filters 改变（debounce 300ms） |
+| `['cockpit-positions', status]` | GET /api/cockpit/positions?status= | 30s | POST/PATCH/DELETE 后 invalidate |
+| `['cockpit-pending-orders', status]` | GET /api/cockpit/pending-orders?status= | 30s | POST/PATCH/DELETE 后 invalidate |
+| `['cockpit-actions-today']` | GET /api/cockpit/actions/today | 5min | 手动刷新 |
+| `['cockpit-user-settings']` | GET /api/cockpit/user-settings | Infinity | PUT 后 invalidate（同时 invalidate decision） |
+| `['ai-memo', taskType, inputHash]` | POST /api/ai/{task_type} | Infinity | 由 backend memo 表去重；前端不 invalidate（schema 升级时 backend 自动失效） |
+
+---
+
+## §Cockpit-5：目录结构（cockpit 子树）
+
+```
+src/
+├── cockpit/                       # ⟂ workbench/，零交叉 import（ESLint enforce）
+│   ├── CockpitPage.tsx
+│   ├── CockpitRegistry.ts
+│   ├── store/
+│   │   ├── useCockpitLayoutStore.ts    # zustand + persist (key: ma150.cockpit.layouts.v1)
+│   │   └── useCockpitStore.ts          # zustand 运行时（selectedTicker / mas / timeframe）
+│   ├── components/
+│   │   ├── RegimePill.tsx
+│   │   ├── SetupTypeBadge.tsx
+│   │   ├── SetupQualityBadge.tsx
+│   │   ├── EarningsRiskDot.tsx
+│   │   └── ChartHorizontalLine.tsx
+│   ├── widgets/
+│   │   ├── MarketRegimeWidget.tsx
+│   │   ├── EarningsWidget.tsx
+│   │   ├── PoolBuilderWidget.tsx
+│   │   ├── CockpitChartWidget.tsx
+│   │   ├── SetupMonitorWidget.tsx
+│   │   ├── DecisionPanelWidget.tsx
+│   │   ├── PositionListWidget.tsx
+│   │   ├── PendingOrdersWidget.tsx
+│   │   └── ActionListWidget.tsx
+│   ├── dialogs/
+│   │   ├── UserSettingsDialog.tsx
+│   │   ├── PositionFormDialog.tsx
+│   │   ├── PendingOrderFormDialog.tsx
+│   │   └── SaveAsPendingOrderConfirm.tsx
+│   └── lib/
+│       └── api/                   # cockpit 专属 API 客户端 + 类型定义
+│           ├── regime.ts
+│           ├── setup-monitor.ts
+│           ├── chart.ts
+│           ├── decision.ts
+│           ├── earnings.ts
+│           ├── pool.ts
+│           ├── positions.ts
+│           ├── pending-orders.ts
+│           ├── actions.ts
+│           ├── user-settings.ts
+│           └── ai.ts              # POST /api/ai/{task_type} 通用 client
+```
+
+---
+
+## §Cockpit-6：边界红线（追加）
+
+开发 Cockpit 时发现以下需求，**先回到 design-bridge** 更新文档：
+
+1. `src/cockpit/*` import `src/workbench/*`（ESLint `no-restricted-imports` 强制）
+2. CockpitChartWidget 复用 Workbench `ChartWidget`（D063 禁止）
+3. cockpit widget 直接调 LiteLLM 而不走 `POST /api/ai/{task_type}`（D064 / D068 / D069 禁止）
+4. 在 CockpitRegistry 之外手写 widget 实例（必须经 manifest 才能纳入 RGL）
+5. 修改 `localStorage` key `ma150.cockpit.layouts.v1`（破坏既有用户布局；如必须升级 schema，按 layouts 末位 version 字段递增并提供 reset）
+6. 在 cockpit widget 内引用 `useAppStore`（Workbench store）— 全部 cockpit 状态走 `useCockpitStore` / `useCockpitLayoutStore`
+7. 在 cockpit widget 内硬编码 hex 颜色（必须用 `--color-regime-* / --color-setup-* / --color-earnings-* / --color-action-*-bg / --color-chart-*` 等 token）
+
+---
+
+## §Cockpit-7：v1.8 / v1.9 / v2.0 渐进式实施清单
+
+| 阶段 | 必须落地 | 暂不实现 |
+|---|---|---|
+| v1.8 P0（F200/F201/F202/F203/F204） | CockpitPage / CockpitRegistry / 两个 store / RegimePill / SetupTypeBadge / SetupQualityBadge / EarningsRiskDot / ChartHorizontalLine / MarketRegimeWidget / EarningsWidget / CockpitChartWidget / SetupMonitorWidget / DecisionPanelWidget / UserSettingsDialog | PoolBuilder / Position / PendingOrders / ActionList / 全部 AI 子区 |
+| v1.9 P1（F205/F206/F207） | PoolBuilderWidget / PositionListWidget / PendingOrdersWidget / ActionListWidget / PositionFormDialog / PendingOrderFormDialog / SaveAsPendingOrderConfirm | AI 子区仍延后 |
+| v2.0 AI（F208/F209/F210/F211） | `lib/api/ai.ts` 客户端封装 / 各 widget 内的 AI 子区域（不新增 widget） | — |

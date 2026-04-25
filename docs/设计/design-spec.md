@@ -625,3 +625,546 @@ MSFT,"Microsoft Corporation"
 1. **Watchlist 搜索结果呈现**：Figma 的 Add Stock Card 仅显示 Input + Button，没画"搜索出多个候选"的 UI。MVP 建议用 `GET /api/stocks/search?q=` 即时结果显示在 Input 下方的浮层（shadcn Combobox）。
 2. **SignalCard 上的 Distance 色彩**：Figma 示例只展示 BUY_ZONE 的正向，绝对值显示"+10.6MA150"格式。开发时按 distancePct 正负取色；INSUFFICIENT 情况下隐藏 Distance 文字。
 3. **Pullback 标记在 K 线上**：Figma 图表未显式画出 Pullback 标记。开发时用 `lightweight-charts` 的 `createSeriesMarkers` 在 pullback.date 处加向下小三角（颜色 `--color-signal-buyzone`）。
+
+---
+
+# v1.8 / v1.9 / v2.0 · Cockpit（慢交易决策驾驶舱）
+
+> 最后更新：2026-04-24（design-bridge skill 扩展）
+> 关联 Feature：F200–F211（v1.8 P0 / v1.9 P1 / v2.0 AI Layer）
+> 输入来源：参考稿 `slow_trading_system_proposal.md` + `DATA-MODEL.md` + `API-CONTRACT.md` + `DECISIONS.md`（D060–D069）
+> 无 Figma 设计稿 — 本章用 ASCII wireframe + 字段绑定 + 状态描述定义视觉契约。
+> 数据绑定细节统一在 `data-mapping.md` 的 Cockpit 章节，组件边界统一在 `component-plan.md` 的 Cockpit 章节。
+
+---
+
+## 全局结构
+
+```
+┌─ TopNav（共享，64px）──────────────────────────────────────────────┐
+│  MA150 Tracker · [Workbench] [Cockpit] [News] · Last refresh · Refresh Data · ResetLayout (cockpit) │
+├─ MarketOverviewBar（共享，41.78px，仅 SPX/NDX/TNX 三指标）────────┤
+├─ Cockpit 网格（剩余高度，react-grid-layout）─────────────────────┤
+│                                                                    │
+│   左列（4 cols）           中列（5 cols）         右列（3 cols）   │
+│   ┌─MarketRegime──┐        ┌─CockpitChart──┐     ┌─PositionList─┐ │
+│   │               │        │               │     │              │ │
+│   ├─Earnings──────┤        ├─SetupMonitor──┤     ├─PendingOrders┤ │
+│   │               │        │               │     │              │ │
+│   ├─PoolBuilder───┤        ├─DecisionPanel─┤     ├─ActionList───┤ │
+│   │               │        │               │     │              │ │
+│   └───────────────┘        └───────────────┘     └──────────────┘ │
+│                            （UserSettings 抽屉，齿轮图标触发）    │
+│                                                                    │
+│  右下：Reset Layout 按钮（仅 /cockpit 可见）                       │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### 路由与入口
+
+- 新路由：`/cockpit`
+- TopNav 三页并列：`/workbench`（既有）/ `/cockpit`（v1.8 新增）/ `/news`（v1.7 既有）
+- 高亮规则与现有 NavLink 一致：当前路由 `--color-nav-active`，其他 `--color-nav-inactive`
+- `Reset Layout` 按钮逻辑同 Workbench（仅在 `/cockpit` 可见，调用 `useCockpitLayoutStore.reset()`）
+
+### Cockpit 网格规格
+
+| 规格 | 值 | 备注 |
+|---|---|---|
+| 引擎 | `react-grid-layout` 1.x | D060-a（沿用 Workbench 引擎，独立 Registry / Store / localStorage） |
+| 列数 | 12（桌面）/ 4（< 1024px 单列堆叠） | 与 Workbench 一致 |
+| rowHeight | 40px | 与 Workbench 一致 |
+| margin | `[12, 12]` | 与 Workbench 一致 |
+| containerPadding | `[16, 16]` | 与 Workbench 一致 |
+| 拖拽 handle | WidgetShell 标题栏 | 复用 Workbench 模式 |
+| localStorage key | `ma150.cockpit.layouts.v1` | 与 Workbench `ma150.workbench.layouts.v5` 完全独立 |
+
+### 默认布局（首次访问 / Reset 后）
+
+| Widget | x | y | w | h | minW | minH | 说明 |
+|---|---|---|---|---|---|---|---|
+| MarketRegimeWidget | 0 | 0 | 4 | 8 | 3 | 6 | 左上 |
+| EarningsWidget | 0 | 8 | 4 | 5 | 3 | 4 | 左中 |
+| PoolBuilderWidget | 0 | 13 | 4 | 8 | 3 | 6 | 左下（v1.9） |
+| CockpitChartWidget | 4 | 0 | 5 | 10 | 4 | 8 | 中上 |
+| SetupMonitorWidget | 4 | 10 | 5 | 7 | 4 | 5 | 中中 |
+| DecisionPanelWidget | 4 | 17 | 5 | 6 | 4 | 5 | 中下 |
+| PositionListWidget | 9 | 0 | 3 | 9 | 3 | 6 | 右上（v1.9） |
+| PendingOrdersWidget | 9 | 9 | 3 | 6 | 3 | 4 | 右中（v1.9） |
+| ActionListWidget | 9 | 15 | 3 | 8 | 3 | 6 | 右下（v1.9） |
+
+> v1.8 P0 阶段（F200/F201/F202/F203/F204）只渲染左列前 2 个 + 中列 3 个；右列 3 个和左下 PoolBuilder 在 v1.9 加入；v2.0 AI 层不新增 widget，而是在既有 widget 内嵌入 AI 输出区域（见各 widget 章节"AI 增强"小节）。
+
+### WidgetShell 与紧凑表规格
+
+完全沿用 v1.1 章节 — 标题栏 36px / `#ebf2fa` 背景、内容区 `padding 16px overflow-auto`、根元素 `marginTop -5px / marginLeft -5px`、子组件间 `gap-1`、表格 `text-[11px] / h-5 表头 / py-[3px] 单元格 / 全部左对齐 / Ticker 列 w-14`、表头 `sticky top-0 z-10 bg-card`。
+
+### Cockpit 专属新增设计 Token
+
+下表的 token 由 design-bridge 阶段提议，开发时一并加入 `tokens.css`（**不需要新增 hex，全部复用现有 token + 命名别名**）：
+
+| 用途 | Token | 取值 / 来源 | DATA-MODEL 对应 |
+|---|---|---|---|
+| Regime: RISK_ON | `--color-regime-risk-on` | `var(--color-change-positive)` (#10b981) | `MarketRegimeSnapshot.regime` |
+| Regime: CONSTRUCTIVE | `--color-regime-constructive` | `#22c55e`（绿系略浅） | 同上 |
+| Regime: NEUTRAL | `--color-regime-neutral` | `var(--color-signal-neutral)` (#9ca3af) | 同上 |
+| Regime: DEFENSIVE | `--color-regime-defensive` | `var(--color-log-warn)` (#f59e0b) | 同上 |
+| Regime: RISK_OFF | `--color-regime-risk-off` | `var(--color-change-negative)` (#ef4444) | 同上 |
+| Setup Quality A | `--color-setup-quality-a` | `var(--color-signal-breakout)` (#2962ff) | `SetupSnapshot.setup_quality` |
+| Setup Quality B | `--color-setup-quality-b` | `#0891b2`（青蓝） | 同上 |
+| Setup Quality C | `--color-setup-quality-c` | `var(--color-text-secondary)` (#717182) | 同上 |
+| Setup: BREAKOUT | `--color-setup-breakout` | `var(--color-signal-breakout)` | `SetupSnapshot.setup_type` |
+| Setup: PULLBACK | `--color-setup-pullback` | `#8b5cf6`（紫，复用 MA20 色） | 同上 |
+| Setup: RECLAIM | `--color-setup-reclaim` | `#f59e0b`（橙，复用 MA5 色） | 同上 |
+| Setup: EARNINGS_DRIFT | `--color-setup-earnings` | `#ec4899`（粉） | 同上 |
+| Setup: EXTENDED | `--color-setup-extended` | `var(--color-text-muted)` | 同上 |
+| Setup: BROKEN | `--color-setup-broken` | `var(--color-change-negative)` | 同上 |
+| Earnings Risk: SAFE | `--color-earnings-safe` | `var(--color-change-positive)` | `SetupSnapshot.earnings_risk` |
+| Earnings Risk: CAUTION | `--color-earnings-caution` | `var(--color-log-warn)` | 同上 |
+| Earnings Risk: DANGER | `--color-earnings-danger` | `var(--color-change-negative)` | 同上 |
+| Action: mustAct 栏背景 | `--color-action-must-bg` | `rgba(239, 68, 68, 0.06)` | F207 actions/today.mustAct |
+| Action: monitor 栏背景 | `--color-action-monitor-bg` | `rgba(245, 158, 11, 0.06)` | 同上.monitor |
+| Action: noAction 栏背景 | `--color-action-noaction-bg` | `rgba(16, 185, 129, 0.04)` | 同上.noAction |
+| Chart: entry 横线 | `--color-chart-entry-line` | `var(--color-signal-buyzone)` (#10b981) | F203 entryPrice |
+| Chart: stop 横线 | `--color-chart-stop-line` | `var(--color-change-negative)` (#ef4444) | F203 stopPrice |
+| Chart: target 横线 | `--color-chart-target-line` | `var(--color-signal-breakout)` (#2962ff) | F203 target2r/3r |
+| Chart: AVWAP 线 | `--color-chart-avwap-line` | `#a855f7`（紫） | F203 avwap.series |
+| Chart: earnings marker | `--color-chart-earnings-marker` | `#ec4899` | F204 earnings_events |
+
+> 全部走 token，禁止组件内硬编码 hex（沿用 v1.1 设计纪律）。
+
+---
+
+## 共享子组件（Cockpit 内多 widget 复用）
+
+### RegimePill — `regime` 文字徽章（5 枚举 → token 配色）
+
+```
+[ RISK_ON ]   [ CONSTRUCTIVE ]   [ NEUTRAL ]   [ DEFENSIVE ]   [ RISK_OFF ]
+  绿底白字       浅绿底白字          灰底白字        橙底白字          红底白字
+```
+
+- 字号 `--font-size-badge` (10px)、`--radius-badge` (full)、padding 0/6
+- 颜色映射 `--color-regime-*`
+
+### SetupTypeBadge
+
+7 枚举 → 配色：`BREAKOUT/PULLBACK/RECLAIM/EARNINGS_DRIFT/EXTENDED/BROKEN/NONE`，token 同上表。`NONE` 显示为短横线 `—`（不渲染 Badge）。
+
+### SetupQualityBadge
+
+`A/B/C/null`：A 蓝、B 青、C 灰；null 显示 `—`。
+
+### EarningsRiskDot — earnings_risk 圆点
+
+`SAFE`（绿小圆）/ `CAUTION`（橙）/ `DANGER`（红，附小数字 `D-N` 表示距离天数）。复用于 SetupMonitor / Decision / Position 多处。
+
+### ChartHorizontalLine — 图表横线渲染封装
+
+CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `price / color / lineStyle / title`。entry 实线、stop 虚线、target 点线。
+
+---
+
+## Widget 1：MarketRegimeWidget（F201）
+
+数据源：`GET /api/cockpit/regime`
+
+```
+┌─MarketRegimeWidget Shell─────────────────────────┐
+│ Market Regime                          [Refresh] │
+├──────────────────────────────────────────────────┤
+│  ┌──── Score Hero（顶 ~96px）──────────────────┐ │
+│  │  [ CONSTRUCTIVE ]  Score 68 / 100           │ │ ← regime + marketScore
+│  │  Allowed Exposure: 70%                       │ │
+│  │  Single Trade Risk: 1.0%                     │ │
+│  └──────────────────────────────────────────────┘ │
+│                                                   │
+│  6-dim Subscores（2×3 网格，每格高 ~52px）        │
+│  ┌─Breadth(IWM)─┐ ┌─Trend(SPY+QQQ)┐ ┌─Volatility┐│
+│  │   9 / 15     │ │   32 / 45     │ │  6 / 10   ││ ← subscores.iwmBreadth etc.
+│  │  ▓▓▓▓▓▓░░░░  │ │  ▓▓▓▓▓▓▓░░░  │ │  ▓▓▓▓▓░░░ ││ ← progress bar，色按等级
+│  └──────────────┘ └───────────────┘ └───────────┘│
+│  ┌─Sector Part. ┐ ┌─Risk Appetite ┐ ┌─Sentiment ┐│
+│  │  14 / 20     │ │   7 / 10      │ │  6 / 10   ││
+│  └──────────────┘ └───────────────┘ └───────────┘│
+│                                                   │
+│  Indices Card（3 行：SPY/QQQ/IWM）               │
+│  ┌──────────────────────────────────────────────┐ │
+│  │ SPY  $520.50  +0.43%  • 50MA✓ 200MA✓  Bullish│ │ ← indices[0]
+│  │ QQQ  $450.20  +0.62%  • 50MA✓ 200MA✓  Leading│ │
+│  │ IWM  $210.10  -0.15%  • 50MA✗ 200MA✓  Weak   │ │
+│  └──────────────────────────────────────────────┘ │
+│                                                   │
+│  Sector Heatmap（11 sector ETF，3×4 网格 1 占位） │
+│  ┌──┬──┬──┬──┐                                    │
+│  │XLK│XLY│XLF│XLI│  ← 单元格背景按 state 着色：    │
+│  │ + │ + │ + │ + │     Strong=绿、Constructive=浅绿│
+│  ├──┼──┼──┼──┤        Weak=橙、Defensive=红       │
+│  │XLE│XLV│XLC│XLP│     悬浮显示 changePct          │
+│  ├──┼──┼──┼──┤                                    │
+│  │XLU│XLB│XLRE│ ／│  ← 11 个 ETF + 1 个空占位     │
+│  └──┴──┴──┴──┘                                    │
+│                                                   │
+│  ── AI Market Notes（v2.0 起，F209 market_narrator）── │
+│  Headline: "Constructive but breadth incomplete"  │
+│  Summary:  Two lines text（≤140 char each）       │
+│  Warnings: ⚠️ Small-cap breadth weak               │
+│           [↻ Refresh AI summary]（手动触发，cache 24h）│
+└───────────────────────────────────────────────────┘
+```
+
+**字段绑定**：见 `data-mapping.md` §Cockpit-1。
+
+**交互**：
+- Score Hero：点击展开浮层，显示 6 子项详细计算依据 + 当前阈值（`REGIME_THRESHOLD_*`）
+- Indices 行：点击 ticker → cockpitStore.setSelectedTicker(symbol)，CockpitChartWidget 切换到该 symbol
+- Sector 单元格：点击 → 在 SetupMonitor 应用 sector 过滤
+- AI Refresh：按钮 disabled until cache TTL（>1h），点击调用 `POST /api/ai/market_narrator`，loading 期间按钮 spinner
+
+**四种状态**：
+
+| 状态 | 说明 |
+|---|---|
+| 正常 | 上方 wireframe |
+| 空 | `regime` 接口 404（冷启动 snapshot 未生成）：Shell 内显示 EmptyState "首日 regime 计算中，明日开盘后可见"，`--color-text-secondary`，按钮 `[手动触发]` 调 `POST /api/cockpit/regime/recompute`（v1.8 内部用） |
+| 加载 | 首次拉取：Score Hero 用 Skeleton（高 96 + 标签 + 数值条），Subscores 6 个 Skeleton 方块，Indices 3 行 Skeleton，Sector heatmap 12 格灰底 |
+| 错误 | 接口 502：替换 Hero 为 `[加载失败，重试]`（`--color-error`），不显示其他区块 |
+
+---
+
+## Widget 2：EarningsWidget（F204）
+
+数据源：`GET /api/cockpit/earnings?ticker={cockpitStore.selectedTicker}`（多 ticker 时前端循环或后端聚合 — v1.8 简化：单 ticker）
+
+```
+┌─EarningsWidget Shell─────────────────────────────┐
+│ Earnings                                         │
+├──────────────────────────────────────────────────┤
+│  Selected: NVDA                                  │ ← cockpitStore.selectedTicker
+│  ┌──────────────────────────────────────────────┐│
+│  │ Next earnings: 2026-05-22 (AMC)              ││ ← nextEarningsDate + timeOfDay
+│  │ Days until: 28           ⚠️ EarningsRiskDot  ││ ← daysUntil + risk badge
+│  │ EPS estimate: $5.20                          ││
+│  │ Revenue estimate: $48.0B                     ││
+│  └──────────────────────────────────────────────┘│
+│                                                  │
+│  Watchlist 下一周 earnings（v1.8 简化为列表）   │
+│  Date          Ticker  Time                     │
+│  04-25 Tue     MSFT    AMC  ⚠ DANGER (D-1)     │ ← 距 ≤3 = 红
+│  04-29 Wed     META    AMC    CAUTION (D-5)    │
+│  05-01 Fri     GOOG    AMC    CAUTION (D-7)    │
+│  05-22 Wed     NVDA    AMC    SAFE    (D-28)   │
+└──────────────────────────────────────────────────┘
+```
+
+**字段绑定**：见 `data-mapping.md` §Cockpit-2。
+
+**交互**：
+- 上方"Selected" 卡片随 cockpitStore.selectedTicker 切换
+- 列表行点击 → setSelectedTicker(ticker) 联动其他 widget
+- v1.8 列表数据来源：循环调用 `/api/cockpit/earnings?ticker=...` 对每个 watchlist active ticker；后端将来可能加 `GET /api/cockpit/earnings/upcoming?days=7` 简化前端
+
+**四种状态**：
+- 正常 / 空（"未来 30 天无 earnings"，note 文案直接由 API 提供）/ 加载（行 Skeleton）/ 错误同其他 widget
+
+---
+
+## Widget 3：PoolBuilderWidget（F205，v1.9）
+
+数据源：`GET /api/cockpit/pool?...筛选参数...`
+
+```
+┌─PoolBuilderWidget Shell──────────────────────────┐
+│ Pool Builder                          [Filters ▼]│
+├──────────────────────────────────────────────────┤
+│  Funnel（横向 5 段，点击过滤层级）                │
+│  ┌─Tradable─┬─Trend─┬─RS─┬─Fundamental─┬─Action─┐│
+│  │  1,850   │  820  │210 │     95      │   22   ││ ← funnel.{tradable→action}
+│  └──────────┴───────┴────┴─────────────┴────────┘│
+│                                                  │
+│  Filter Bar（一行，shadcn Select × N）           │
+│  [Sector ▼ All] [Setup ▼ All] [TrendMin 3] [RSMin 70] [Limit 50] │
+│                                                  │
+│  候选表（默认 22 行，分页）                      │
+│  Ticker  Sector  Price   Trend  RS   Setup    Dist  Earn  Action  ＋ │
+│  NVDA    XLK     $850    5      88   BREAKOUT 1.25%  D-28  enter  [+]│
+│  CRWD    XLK     $342    5      84   PULLBACK 0.80%  D-15  watch  [+]│
+│  ...                                                                │
+└──────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-3。
+
+交互：
+- Funnel 段点击 → 切换前端展示该层数据（不重发请求，前端持有完整漏斗 items）
+- `[+]` 按钮：调 `POST /api/watchlist`；按钮变 `[✓ in watchlist]` 灰态（`item.inWatchlist=true` 时初始即灰）
+- Filter 改变 → debounce 300ms 重发 `/api/cockpit/pool`
+
+---
+
+## Widget 4：CockpitChartWidget（F203 一部分）
+
+数据源：`GET /api/cockpit/chart/{ticker}` + `GET /api/cockpit/decision/{ticker}` 联合
+
+```
+┌─CockpitChartWidget Shell──────────────────────────────────────┐
+│ Chart · NVDA · BREAKOUT · A     [D|W] [MA: 10/21/50/150/200]│ ← cockpitStore.selectedTicker / setupType / quality
+├──────────────────────────────────────────────────────────────┤
+│  ┌─ 主图（80% 高）─────────────────────────────────────────┐ │
+│  │  Candlestick + MA10/21/50/150/200 多线                   │ │
+│  │  ─── ─── ─── target 940 (3R) 点线  --color-chart-target│ │
+│  │  ─── ─── ─── target 910 (2R) 点线                       │ │
+│  │  ─── ─── ─── entry  850 实线   --color-chart-entry      │ │
+│  │  ─── ─── ─── stop   820 虚线   --color-chart-stop       │ │
+│  │  AVWAP（紫细线，从 anchor=2026-02-15 起）                │ │
+│  │  Earnings marker ▼（粉色，时间轴上）                    │ │
+│  │  Setup annotation 文本气泡："BREAKOUT pivot @850"       │ │
+│  ├─ 成交量（20% 高）──────────────────────────────────────┤ │
+│  │  Volume histogram，up/down 半透明（参考 F107 配色）     │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│  Legend（左上 absolute）：MA10/21/50/150/200 + AVWAP 颜色图例 │
+└───────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-4。
+
+技术约束（D063）：
+- 独立组件 `CockpitChartWidget`，不复用 workbench `ChartWidget`
+- `lightweight-charts` 实例独立创建；MA 颜色规范沿用 F107（MA5/20 暖冷色），cockpit 新增 MA21/50/200 用 `--color-text-muted` / `--color-signal-neutral` / `--color-text-secondary` 阶梯灰
+- entry/stop/target 用 `createPriceLine`，title 显示价格
+- AVWAP 用单独 lineSeries
+- 不订阅 hover 事件供 cockpitStore 共享 — selectedTicker 改变才重渲
+
+交互：
+- D|W 切换：日/周线（v1.8 仅 D；W 留 v1.9 实现）
+- MA toggle：勾选哪些周期返回（影响 `?mas=` 参数）
+- 双击图表 entry/stop/target 横线 → 弹出 mini DecisionPanel 编辑（v2.0 增强，v1.8 read-only）
+
+---
+
+## Widget 5：SetupMonitorWidget（F202）
+
+数据源：`GET /api/cockpit/setup-monitor?filter=...`
+
+```
+┌─SetupMonitorWidget Shell─────────────────────────────────────┐
+│ Setup Monitor                                                │
+├──────────────────────────────────────────────────────────────┤
+│  Filter Tabs：[All 32] [Ready 3] [Near 7] [Extended 4] [Broken 2] │ ← summary.*
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ Ticker Setup     Q  Entry  Stop  R:R  Dist   RS  Earn   ││
+│  │ NVDA   BREAKOUT  A  850.0  820.0 2.0  +1.25% 88  SAFE ●││ ← items[]
+│  │ CRWD   PULLBACK  A  342.5  323.2 2.6  +0.80% 84  SAFE ●││
+│  │ AMD    BREAKOUT  B  180.0  173.0 2.0  +1.98% 72  SAFE ●││
+│  │ MSFT   EARN_DRFT B  410.0  395.0 2.5  +0.50% 65  DANG ●││ ← earnings 红点
+│  │ ...                                                      ││
+│  └──────────────────────────────────────────────────────────┘│
+│  排序默认：suggestedAction enter > watch > wait > null > reduce > exit │
+│  Ready 行有左侧 `▍` 蓝色高亮条（readySignal=true）            │
+└──────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-5。
+
+交互：
+- Tab 切换 → 改 `?filter=ready,near,...` 重发请求
+- 行点击 → setSelectedTicker(ticker) → CockpitChart / DecisionPanel / Earnings 全部联动
+- v2.0 增强：每行 `[?]` 图标 hover 触发 `POST /api/ai/setup_explainer`（缓存 24h），气泡弹出 1 句解释
+
+---
+
+## Widget 6：DecisionPanelWidget（F203 + F210/F211 AI 增强）
+
+数据源：`GET /api/cockpit/decision/{cockpitStore.selectedTicker}` + `GET /api/cockpit/user-settings`
+
+```
+┌─DecisionPanelWidget Shell────────────────────────────────────┐
+│ Decision · NVDA · BREAKOUT (A)                               │
+├──────────────────────────────────────────────────────────────┤
+│  ┌─ Decision Card（左半）──────────┐ ┌─ Override Form（右半）─┐│
+│  │ Entry:        850.00           │ │ Entry override:  [    ]│ │ ← entryOverride
+│  │ Stop:         820.00           │ │ Stop override:   [    ]│ │ ← stopOverride
+│  │ Target 2R:    910.00           │ │ Risk% override:  [    ]│ │ ← riskPctOverride
+│  │ Target 3R:    940.00           │ │                        │ │
+│  │ Risk/share:   $30.00           │ │ Effective Risk%: 1.0   │ │ ← effectiveRiskPct
+│  │ Suggested:    33 shares        │ │   = min(regime 1.0,    │ │
+│  │ Position $:   $28,050          │ │         user 1.0,      │ │
+│  │ Account Risk: 0.99%            │ │         override —)    │ │
+│  │ Earnings:     SAFE (D-28)      │ │                        │ │
+│  │ ─────────────                  │ │ [↻ Recompute]          │ │
+│  │ deterministicHash: 7f2a9b...   │ │ [📋 Save as PendingOrder]│ ← POST /pending-orders
+│  └────────────────────────────────┘ └────────────────────────┘│
+│                                                                │
+│  ── AI Trade Plan（v2.0，F210 trade_plan）────────────────── │
+│  [Generate AI Plan]  ← cache miss 时显示                     │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ Memo: NVDA repricing thesis valid; entry above pivot...│  │ ← AI output.memo
+│  │ Mgmt: ① Move stop to BE near 2R                         │  │ ← .management[]
+│  │       ② Trail with 21EMA                                │  │
+│  │ ⚠ Guardrail: passed（hash matches）                     │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ── AI Contradictions（v2.0，F211）────────────────────────── │
+│  ⚠ Earnings in 28d (LOW)                                     │
+│  ⚠ R:R 2.0 (MEDIUM, prior resistance ~870)                   │
+│  Recommendation: Open at 75% sized                            │
+└────────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-6。
+
+交互：
+- Override 输入框：onChange debounce 500ms 重发 `/api/cockpit/decision/{ticker}` 带 query 参数
+- `[Recompute]`：手动触发刷新（不依赖 debounce）
+- `[Save as PendingOrder]`：弹 confirm Dialog（"将以 entry 850 / stop 820 / 33 股 / risk 0.99% 创建 pending order？"），确认后调 `POST /api/cockpit/pending-orders`；成功后 PendingOrdersWidget 自动 react-query invalidate 刷新
+- AI Plan：v2.0 起显示 `[Generate AI Plan]`，点击调 `POST /api/ai/trade_plan` body `{ input: { ticker, entry, stop, ... } }`；后端 guardrail 校验 `deterministicHash` 必须等于 GET decision 返回的 hash，否则 409 错误，前端显示红色 banner "AI 输出被拦截 — 数字不匹配"
+
+**四种状态**：
+- 正常 / 空（cockpitStore.selectedTicker 未选：显示 "请在 SetupMonitor 或 Chart 选择一只股票"）/ 加载 / 错误（404 = "无 setup 数据，可手动 override entry/stop"）
+
+---
+
+## Widget 7：PositionListWidget（F206，v1.9）
+
+数据源：`GET /api/cockpit/positions?status=open`
+
+```
+┌─PositionListWidget Shell─────────────────────────────────────┐
+│ Positions               [+ New Position]   [Closed] [All]    │
+├──────────────────────────────────────────────────────────────┤
+│  Summary 顶条                                                │
+│  Open Risk: 2.5% · Exposure: 45% · Pending: 1.0% · 5 pos · 2 ord │ ← summary.*
+│                                                              │
+│  Ticker  Entry   Last    Stop    R     P/L      Earn  Next   │
+│  NVDA    850.00  875.00  820.00  0.83  +$825    D-28  hold   │ ← items[]
+│          (33 sh)                                              │
+│  AMD     180.00  176.50  173.00  -0.50 -$140    SAFE  hold   │
+│  MSFT    410.00  408.00  395.00  -0.13 -$200    D-2   reduce │ ← reduce_before_earnings 红字
+│  ...                                                         │
+│                                                              │
+│  行点击 → 展开内联编辑（移动 stop / 转 CLOSED）              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-7。
+
+交互：
+- `[+ New Position]` → 弹 PositionFormDialog（字段同 `POST /api/cockpit/positions` 请求体，`shares` 字段右下角显示"Cockpit 推荐 33 shares"小字，取自 `/decision/{ticker}.suggestedShares`）
+- 行展开：内联表单（stop / status / closedAt / closePrice / notes），保存调 `PATCH /api/cockpit/positions/{id}`
+- 行右上 [✕] 删除：AlertDialog 二次确认 → `DELETE`
+- nextAction 列：`hold` 灰、`raise_stop` 蓝、`reduce` 橙、`exit` 红，点击文字弹气泡说明 rationale
+
+---
+
+## Widget 8：PendingOrdersWidget（F206，v1.9）
+
+数据源：`GET /api/cockpit/pending-orders?status=active`
+
+```
+┌─PendingOrdersWidget Shell────────────────────────────────────┐
+│ Pending Orders          [+ New Order]   [Active|All]         │
+├──────────────────────────────────────────────────────────────┤
+│  Ticker  Setup     Entry   Stop    Last   Dist   Risk%  Exp  │
+│  AMD     BREAKOUT  180.00  173.00  176.50 +1.98% 0.70%  05-15│
+│  CRWD    PULLBACK  342.50  323.20  338.10 +1.30% 0.50%  —    │
+│  ...                                                          │
+│                                                              │
+│  行右侧：[Triggered] [Cancel] 两个按钮                        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-8。
+
+交互：
+- `[Triggered]`：弹 confirm "已在券商手动下单？将触发创建 Position（v1.9 后续决定是否自动）"，调 `PATCH /api/cockpit/pending-orders/{id}` body `{ status: "TRIGGERED" }`
+- `[Cancel]`：直接 `PATCH` body `{ status: "CANCELLED" }`，无二次确认（reversible — 用户可重新创建）
+- Dist 列：> 5% 灰色，1-5% 默认色，<1% 加粗
+
+---
+
+## Widget 9：ActionListWidget（F207，v1.9）
+
+数据源：`GET /api/cockpit/actions/today`
+
+```
+┌─ActionListWidget Shell───────────────────────────────────────┐
+│ Today's Actions                                  2026-04-24  │
+├──────────────────────────────────────────────────────────────┤
+│  ╔══ Must Act（红底淡）═══════════════════════════════════╗ │
+│  ║ AAPL  raise_stop          New swing low 195.50;        ║ │ ← mustAct[]
+│  ║                           tighten 190 → 195            ║ │
+│  ║ MSFT  reduce_before_earn  Earnings in 2d (AMC); 50%    ║ │
+│  ╚════════════════════════════════════════════════════════╝ │
+│  ┌── Monitor（橙底淡）─────────────────────────────────────┐ │
+│  │ NVDA  approaching_trigger Pending @850; current 843    │ │ ← monitor[]
+│  │       (-0.83%)                                          │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│  ── No Action（绿底淡）───────────────────────────────────── │
+│  GOOG  stable_position  Trend intact, no rule change       │ ← noAction[]
+│  ─────────────────────────────────────────────────────────── │
+│                                                              │
+│  ── AI Daily Brief（v2.0，F209/F211 综合）（可折叠）─────── │
+│  Top priority: AAPL stop tighten(low risk if missed)        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+字段绑定：见 `data-mapping.md` §Cockpit-9。
+
+交互：
+- 行点击 ticker → setSelectedTicker(ticker) 联动；hover 显示完整 rationale
+- 三栏背景色用 `--color-action-{must,monitor,noaction}-bg`
+- AI Brief 折叠态默认收起；展开时调 `POST /api/ai/contradiction_detector` + 内部聚合（v2.0 feature-dev 阶段细化）
+
+---
+
+## UserSettingsDialog（F203 配置弹窗，全局齿轮触发）
+
+数据源：`GET / PUT /api/cockpit/user-settings`
+
+```
+┌─Dialog 480 × 520─────────────────────────────────┐
+│  User Settings                              [✕]  │
+├──────────────────────────────────────────────────┤
+│  Account size:           [ $100,000      ]       │ ← accountSize
+│  Max exposure %:         [ 80           ]        │ ← maxExposurePct
+│  Single-trade risk %:    [ 1.0          ]        │ ← singleTradeRiskPct
+│  Default risk per trade %:[ 0.75         ]       │ ← defaultRiskPerTradePct
+│  Base currency:          [ USD ▼        ]        │ ← baseCurrency
+│  ─────────────────                                │
+│  说明：实际 risk% = min(regime 推荐, 上方设置, 单次 override)│
+│                                                  │
+│            [ Cancel ]   [ Save Settings ]        │
+└──────────────────────────────────────────────────┘
+```
+
+触发入口：Cockpit 页面 TopNav 右侧"齿轮 (Settings)"按钮（仅 `/cockpit` 路由可见，紧邻 Reset Layout）。
+
+校验：accountSize > 0；maxExposurePct ∈ [0,100]；singleTradeRiskPct ∈ [0,5]；非法字段下方红字提示。
+
+---
+
+## 动效 / 过渡（Cockpit 专属补充）
+
+- WidgetShell 拖拽：与 Workbench 一致，光标 grab → grabbing
+- AI 按钮 loading：spinner + "Generating..." 文字
+- Cache hit 提示：AI 输出区上方显示小字"Cached · 12h ago" 灰色（`meta.cacheHit=true && tokensIn=0`）
+- `deterministicHash` 校验失败：DecisionPanel AI Plan 区显示红色 banner "Guardrail violation - AI output rejected"，附 `[Report]` 按钮（v2.0 后续决定是否上报）
+
+---
+
+## 响应式（Cockpit）
+
+| 断点 | 规则 |
+|---|---|
+| ≥ 1024px | 12 列完整布局，3 列分组 |
+| 768–1023px | RGL 响应式降为 6 列（中列 widget 撑满 6，左右列各 6 堆叠） |
+| < 768px | 4 列单列堆叠（与 Workbench 一致） |
+
+---
+
+## 待 feature-dev 阶段细化的项
+
+1. **CockpitChart 的 setup annotation 文本气泡**：lightweight-charts 不直接支持文本框，需要用 `createSeriesMarkers` + `tooltip` 自定义；具体样式 v1.8 F203 实现时确定
+2. **PoolBuilder funnel 分段点击是否真的过滤前端 items**：v1.9 实现时用 fixture 验证（API 是否一次返回完整 items 还是只返回 action 层；当前 contract 写"items 是最终层"，意味着前端只能展示最终层，funnel 数字是参考）
+3. **PendingOrder Triggered 后是否自动创建 Position**：v1.9 feature-dev 阶段 Sprint Contract 决策（D060-a 留空）
+4. **AI Daily Brief 的具体 prompt schema**：F209/F211 feature-dev 阶段在 `backend/app/ai/schemas/` 落地，本 design-spec 不约束
