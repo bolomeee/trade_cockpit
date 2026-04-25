@@ -2445,7 +2445,7 @@
       "priority": "P0",
       "status": "in_progress",
       "phase": "in_progress",
-      "sub_phase_notes": "F203-a/b1/b2 done; F203-c contract_agreed (2026-04-25); F203-d ready_to_dev",
+      "sub_phase_notes": "F203-a/b1/b2 done; F203-c needs_review (2026-04-25); F203-d ready_to_dev",
       "dependencies": [
         "F200-a",
         "F200-b",

@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { LayoutItem } from 'react-grid-layout'
 import { PlaceholderWidget } from './widgets/PlaceholderWidget'
 import { SetupMonitorWidget } from './widgets/SetupMonitorWidget'
+import { CockpitChartWidget } from './widgets/CockpitChartWidget'
 
 export type CockpitWidgetCategory =
   | 'regime'
@@ -35,6 +36,13 @@ export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
     component: SetupMonitorWidget,
     defaultLayout: { x: 4, y: 0, w: 8, h: 10, minW: 6, minH: 6 },
     category: 'setup',
+  },
+  'cockpit.cockpit-chart': {
+    id: 'cockpit.cockpit-chart',
+    title: 'Cockpit Chart',
+    component: CockpitChartWidget,
+    defaultLayout: { x: 4, y: 0, w: 5, h: 10, minW: 4, minH: 8 },
+    category: 'chart',
   },
 }
 

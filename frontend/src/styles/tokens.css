@@ -68,6 +68,49 @@
   /* ---------- 颜色 · 遮罩 ---------- */
   --color-overlay-backdrop: rgba(0, 0, 0, 0.40);
 
+  /* ---------- 颜色 · Cockpit Regime（对齐 MarketRegimeSnapshot.regime） ---------- */
+  --color-regime-risk-on: var(--color-change-positive);
+  --color-regime-constructive: #22c55e;
+  --color-regime-neutral: var(--color-signal-neutral);
+  --color-regime-defensive: var(--color-log-warn);
+  --color-regime-risk-off: var(--color-change-negative);
+
+  /* ---------- 颜色 · Cockpit Setup Quality（对齐 SetupSnapshot.setup_quality） ---------- */
+  --color-setup-quality-a: var(--color-signal-breakout);
+  --color-setup-quality-b: #0891b2;
+  --color-setup-quality-c: var(--color-text-secondary);
+
+  /* ---------- 颜色 · Cockpit Setup Type（对齐 SetupSnapshot.setup_type） ---------- */
+  --color-setup-breakout: var(--color-signal-breakout);
+  --color-setup-pullback: #8b5cf6;
+  --color-setup-reclaim: #f59e0b;
+  --color-setup-earnings: #ec4899;
+  --color-setup-extended: var(--color-text-muted);
+  --color-setup-broken: var(--color-change-negative);
+  /* NONE 不渲染 Badge，无需 token */
+
+  /* ---------- 颜色 · Cockpit Earnings Risk（对齐 SetupSnapshot.earnings_risk） ---------- */
+  --color-earnings-safe: var(--color-change-positive);
+  --color-earnings-caution: var(--color-log-warn);
+  --color-earnings-danger: var(--color-change-negative);
+
+  /* ---------- 颜色 · Cockpit Action List 三栏背景（对齐 actions/today actionType 分组） ---------- */
+  --color-action-must-bg: rgba(239, 68, 68, 0.06);
+  --color-action-monitor-bg: rgba(245, 158, 11, 0.06);
+  --color-action-noaction-bg: rgba(16, 185, 129, 0.04);
+
+  /* ---------- 颜色 · Cockpit Chart 横线 / AVWAP / Earnings marker ---------- */
+  --color-chart-entry-line: var(--color-signal-buyzone);
+  --color-chart-stop-line: var(--color-change-negative);
+  --color-chart-target-line: var(--color-signal-breakout);
+  --color-chart-avwap-line: #a855f7;
+  --color-chart-earnings-marker: #ec4899;
+  /* 短名别名（供 CockpitChartWidget 使用，对齐 design-spec 线框图命名） */
+  --color-chart-entry: var(--color-chart-entry-line);
+  --color-chart-stop: var(--color-chart-stop-line);
+  --color-chart-target: var(--color-chart-target-line);
+  --color-chart-avwap: var(--color-chart-avwap-line);
+
   /* ---------- 字体 ---------- */
   --font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-family-numeric: Helvetica, Arial, sans-serif;
