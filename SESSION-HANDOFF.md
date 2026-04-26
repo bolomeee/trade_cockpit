@@ -1,46 +1,32 @@
-# SESSION-HANDOFF — F206-c1 Done
+# SESSION-HANDOFF — F206-c2 Contract Agreed
 
-> 生成：2026-04-26 | 阶段：done
-> 当前 active sprint：**F206-c2 PendingOrdersWidget**（下一个）
+> 生成：2026-04-26 | 阶段：contract_agreed
+> 当前 active sprint：**F206-c2 PendingOrdersWidget**（待 Generator）
 
 ---
 
 ## 已完成内容（本 session）
 
-### F206-c1 PositionListWidget — 完成
+### F206-c2 Sprint Contract 协商 — 完成
 
-**新建文件（生产）：**
-- `frontend/src/cockpit/lib/api/cockpitPositionsApi.ts` — 4 endpoint client + TS types（Position / PositionSummary / GetPositionsResponse / PositionInput / PositionPatch）
-- `frontend/src/cockpit/widgets/PositionListWidget.tsx` — 主 widget（状态过滤 + summary 顶条 + 表格 + 对话框触发）
-- `frontend/src/cockpit/widgets/_positionListRow.tsx` — 拆分子组件（RiskSummaryBar / InlineEditRow / PositionRow，因 350 行限制）
-- `frontend/src/cockpit/dialogs/PositionFormDialog.tsx` — new/edit 双模式表单（react-hook-form v7 + zod v4）
-- `frontend/src/cockpit/dialogs/_positionFormSchemas.ts` — zod schemas 拆分（因 350 行限制）
+- 读取 DATA-MODEL §PendingOrder / API-CONTRACT §pending-orders / design-spec §Widget 8 / data-mapping §Cockpit-8 / component-plan §PendingOrdersWidget / 后端 `_enrich` 计算口径
+- 起草 [docs/开发/sprint-contracts/F206-c2-contract.md](docs/开发/sprint-contracts/F206-c2-contract.md)
+- 6 文件预算检查通过（生产 6 + 测试 3）
+- §7 六项待确认条款全部由用户确认：
+  1. ✅ D060-a：Triggered 后**不**自动建 Position，仅切 status + toast 引导手工录入
+  2. ✅ distance 颜色按**绝对值**阈值（>5% 灰 / 1-5% 默认 / <1% 加粗）
+  3. ✅ Edit dialog 不暴露 status 字段；status 转换只走行按钮
+  4. ✅ Cancel 直接 PATCH 无确认 / Triggered 弹 AlertDialog 含 toast 引导
+  5. ✅ defaultLayout `{ x: 6, y: 8, w: 6, h: 8, minW: 4, minH: 6 }`（c1 PositionList 右侧）
+  6. ✅ category 复用 `'position'`（不新增 union 值）
 
-**新建文件（测试）：**
-- `frontend/src/cockpit/lib/api/__tests__/cockpitPositionsApi.test.ts` — S1–S4（12 tests）
-- `frontend/src/cockpit/widgets/__tests__/PositionListWidget.test.tsx` — S5–S13（15 tests）
-- `frontend/src/cockpit/dialogs/__tests__/PositionFormDialog.test.tsx` — S14–S17（10 tests）
+### 文档变更
 
-**修改文件：**
-- `frontend/src/cockpit/CockpitRegistry.ts` — 注册 `cockpit.position-list` manifest
-- `frontend/src/cockpit/__tests__/CockpitRegistry.test.ts` — S18 tests（3 tests）
-- `docs/设计/design-spec.md` §1057 — nextAction 设计偏离回写
-- `docs/系统设计/DECISIONS.md` — D076 设计偏离决策
-- `frontend/src/cockpit/components/AiSetupExplainerPopover.tsx` — 修复 TS1355（`as const` on conditional → 显式类型）
-- `docs/需求/features.json` — F206-c1 phase: done，active_sprint → F206-c2
-- `claude-progress.txt` — 进度追加
-
-**关键技术决策：**
-- Zod v4：`invalid_type_error` → `error`（breaking change，影响 number schema）
-- target2r/target3r 用 `setValueAs` 而非 `valueAsNumber`，避免 NaN 阻断 superRefine
-- FilterBtn 必须在 component 外定义（ESLint react-refresh/only-export-components）
-- 非组件 helpers（fmt2 等）从 _positionListRow.tsx 移除 export（同一规则）
-- `form.watch()` 用 local useState 替代（react-hooks/incompatible-library）
-
-**测试结果：**
-- S1–S18 全过，160/160 tests pass
-- lint: 新建/修改文件零 warning/error（存量 lint errors 均为 pre-existing）
-- build: `pnpm -C frontend run build` ✅
+- `docs/开发/sprint-contracts/F206-c2-contract.md` — 新建
+- `docs/需求/features.json`：
+  - `last_updated` → `2026-04-26-F206-c2-contract-agreed`
+  - `_pipeline_status.active_sprint_phase` → `contract_agreed`
+- `claude-progress.txt` — 追加本 session 记录
 
 ---
 
@@ -49,50 +35,54 @@
 | 项 | 值 |
 |---|---|
 | Feature | F206 Position Manager |
-| Sprint | F206-c1 ✅ done |
-| 下一 Sprint | F206-c2 PendingOrdersWidget（需起草 contract） |
-| 后端依赖 | `/api/cockpit/pending-orders` 4 endpoint 已上线（F206-b1 ✅） |
+| Sprint | F206-c2 PendingOrdersWidget |
+| Phase | contract_agreed → 待 Generator |
+| 后端依赖 | `/api/cockpit/pending-orders` 4 endpoint 已上线（F206-b1/b2 ✅） |
+| 完成标准 | S1–S20（详见 contract §3） |
+| 文件预算 | 6 生产 + 3 测试（已对齐上限） |
 
 ---
 
-## 下一步任务（F206-c2）
+## 下一 Session 任务（Generator 模式）
 
-F206-c2 = PendingOrdersWidget 前端，镜像 c1 结构：
+按 contract §5 开发顺序：
 
-**预计文件：**
-1. `cockpitPendingOrdersApi.ts` — 4 endpoint client（GET/POST/PATCH/DELETE /api/cockpit/pending-orders）
-2. `PendingOrdersWidget.tsx` + `_pendingOrdersRow.tsx`（若超 350 行则拆）
-3. `PendingOrderFormDialog.tsx` + `_pendingOrderFormSchemas.ts`（若需要）
-4. `CockpitRegistry.ts` 新增 `cockpit.pending-orders` manifest
-
-**关键字段（来自 API-CONTRACT §pending-orders）：**
-- PendingOrder: id / ticker / setupType / entryPrice / stopPrice / shares / riskPct / expiresAt / status / distanceToTriggerPct / createdAt / updatedAt
-- Status 枚举：ACTIVE / TRIGGERED / CANCELLED / EXPIRED
-- GET response 不含 summary（与 positions 不同）
-
-**注意：**
-- F206-c1 测试文件命名规范：`__tests__/XxxWidget.test.tsx`（RTL + msw）
-- EarningsRiskDot 不适用于 PendingOrders（无 earnings 字段）
-- distanceToTriggerPct 可能需要自定义格式化
+1. 写 `cockpitPendingOrdersApi.ts` + `__tests__/cockpitPendingOrdersApi.test.ts` → vitest 通过
+2. WIP commit `wip(F206-c2): cockpitPendingOrdersApi`
+3. 写 `_pendingOrderFormSchemas.ts` + `PendingOrderFormDialog.tsx` + 测试 → vitest 通过
+4. WIP commit `wip(F206-c2): PendingOrderFormDialog`
+5. 写 `_pendingOrderRow.tsx` + 单测（distance 3 档 + 按钮可见性）→ 通过
+6. WIP commit `wip(F206-c2): _pendingOrderRow`
+7. 写 `PendingOrdersWidget.tsx` + 测试 → vitest 通过
+8. WIP commit `wip(F206-c2): PendingOrdersWidget`
+9. 修改 `CockpitRegistry.ts` 注册 manifest（如扩展 Registry test，附带）
+10. 决策回写：DECISIONS.md 追加 D060-a + design-spec.md §Widget 8 「待 feature-dev #3」 标注已决策
+11. WIP commit `wip(F206-c2): registry + 决策回写`
+12. `pnpm -C frontend run lint && pnpm -C frontend test && pnpm -C frontend run build`
+13. Evaluator 自检（contract §4）→ 全过
+14. 最终 commit `feat(F206-c2): PendingOrdersWidget + PendingOrderFormDialog`（封 F206 收尾）
 
 ---
 
-## 未决事项
+## 关键提示（避免 Generator 重复踩坑，c1 教训）
 
-- 存量 ESLint errors（8 个 pre-existing，不在 F206-c1 范围）：
-  - `aiApi.test.ts`: beforeEach unused
-  - `MarketRegimeWidget.tsx`: Date.now() impure
-  - `AddStockCard.tsx` / `CsvImportDialog.tsx`: setState in effect（4 errors）
-  - `JournalEntryForm.tsx`: form.watch incompatible-library warning
-  - `button-group.tsx` / `button.tsx` / `toggle.tsx`: only-export-components（shadcn ui files）
-  - 建议：开专项 session 修复，不混入 feature session
+- **Zod v4**：用 `error` 字段，不用 `invalid_type_error`（breaking change，c1 已踩）
+- **react-hook-form 数字字段**：用 `setValueAs` 而非 `valueAsNumber`，避免 NaN 阻断 superRefine
+- **react-refresh/only-export-components**：组件外 helper（fmt2、distanceClass、FilterBtn 等）不要从组件文件 export；放在 `_xxx.tsx` 的纯 helper 模块并避免与组件混 export
+- **form.watch()**：用 local useState 替代以满足 incompatible-library lint
+- **dirty fields PATCH**：edit 模式用 `formState.dirtyFields` 仅传修改字段
+- **toast**：复用项目现有 toast 实现 — Generator 第一步先 grep 项目 toast 库（sonner / shadcn useToast / 自建）；若未引入需停下报告用户（属于 contract 隐含依赖，rule 9 新依赖流程）
 
 ---
 
 ## 恢复指令
 
+新 session 粘贴：
+
 ```
-继续开发 F206-c2 PendingOrdersWidget。
-读取 SESSION-HANDOFF.md + API-CONTRACT.md §pending-orders + design-spec.md §Widget 8，
-起草 F206-c2 Sprint Contract，用户确认后进入 Generator 模式。
+继续开发 F206-c2，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
+进入 Generator 模式，从开发步骤 1 开始。
 ```
+
+建议用 **Sonnet** 开新 session（contract 阶段 Opus，开发阶段 Sonnet 性价比高）。

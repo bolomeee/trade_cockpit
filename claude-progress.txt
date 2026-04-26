@@ -237,3 +237,38 @@ phase 更新：F206 → done（features.json 已同步）
   > 继续开发 F206-c2 PendingOrdersWidget。
   > 读取 SESSION-HANDOFF.md + API-CONTRACT.md §pending-orders + design-spec.md §Widget 8，
   > 起草 F206-c2 Sprint Contract，用户确认后进入 Generator 模式。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-c2 PendingOrdersWidget — Contract Agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 起草并由用户确认（§7 六项决策全部 OK）
+  - docs/开发/sprint-contracts/F206-c2-contract.md 落盘
+  - 范围：6 生产文件 + 3 测试文件，镜像 c1 拆分模式
+    - cockpitPendingOrdersApi.ts（4 endpoint client + camelCase types）
+    - PendingOrdersWidget.tsx + _pendingOrderRow.tsx（行渲染拆分）
+    - PendingOrderFormDialog.tsx + _pendingOrderFormSchemas.ts（zod 拆分）
+    - CockpitRegistry.ts 注册 cockpit.pending-orders（x:6 y:8 w:6 h:8）
+  - 完成标准：S1–S20（4 单测 + 14 集成 + 1 静态 + 1 回归）
+
+⚠️ 待你决策：
+  - 无（§7 六项已确认）
+
+🔧 系统变更：
+  - features.json：active_sprint_phase: planned → contract_agreed
+  - features.json：last_updated → 2026-04-26-F206-c2-contract-agreed
+  - DECISIONS.md：D060-a 决策待 Generator 阶段回写（v1.9 Triggered 不自动建 Position）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：✅ done
+    F206-b1：✅ done
+    F206-b2：✅ done
+    F206-c1：✅ done
+    F206-c2：📜 contract_agreed（本 sprint，待 Generator）
+
+[下一个 Session]
+  > 继续开发 F206-c2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。

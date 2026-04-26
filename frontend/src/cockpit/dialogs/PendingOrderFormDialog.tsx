@@ -33,23 +33,14 @@ import {
   type EditOrderFormValues,
 } from './_pendingOrderFormSchemas'
 
-// ── styles ────────────────────────────────────────────────────────────────────
-
 const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '4px' }
-const errorStyle: React.CSSProperties = {
-  fontSize: 'var(--font-size-caption)',
-  color: 'var(--color-signal-danger)',
-  marginTop: '2px',
-}
-
-// ── props ─────────────────────────────────────────────────────────────────────
+const errorStyle: React.CSSProperties = { fontSize: 'var(--font-size-caption)', color: 'var(--color-signal-danger)', marginTop: '2px' }
 
 type Props =
   | { mode: 'new'; open: boolean; onClose: () => void; onSaved: () => void; initialOrder?: never }
   | { mode: 'edit'; open: boolean; onClose: () => void; onSaved: () => void; initialOrder: PendingOrder }
 
-// ── new form ──────────────────────────────────────────────────────────────────
-
+// new form
 function NewOrderForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const queryClient = useQueryClient()
 
@@ -186,7 +177,7 @@ function NewOrderForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
   )
 }
 
-// ── edit form ─────────────────────────────────────────────────────────────────
+// edit form
 
 function EditOrderForm({
   order,
@@ -339,7 +330,7 @@ function EditOrderForm({
   )
 }
 
-// ── wrapper ───────────────────────────────────────────────────────────────────
+// wrapper
 
 export function PendingOrderFormDialog({ mode, open, onClose, onSaved, initialOrder }: Props) {
   return (
