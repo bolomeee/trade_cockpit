@@ -1,94 +1,111 @@
 # SESSION-HANDOFF.md
 
 > 更新时间：2026-04-26
-> 阶段：F206-b1 needs_review → 待 F206-b2 Sprint Contract 协商
+> 阶段：F206-b2 Sprint Contract 已确认（contract_agreed） → 待 Generator 模式开发
 
 ---
 
 ## 当前状态
 
-**Pipeline 位置**：F206-b1 Generator + Evaluator 全部通过，phase = needs_review
+**Pipeline 位置**：F206-b2 Sprint Contract 协商完成，5 个开放问题全部按默认值确认
 
 **分支**：`cockpit`
-**最新 commit**：`d307408` feat(F206-b1): PendingOrder 数据层 + CRUD
+**最新 commit**：`709fc2a` chore: update SESSION-HANDOFF for F206-b1 needs_review
+**未提交**：`backend/uv.lock`（M）+ 新增 `docs/开发/sprint-contracts/F206-a-contract.md` / `F206-b1-contract.md` / `F206-b2-contract.md`（??）
 
-**v1.9 Cockpit P1 开发计划**（按优先序）：
+**v1.9 Cockpit P1 开发计划**：
 1. **F206 Position Manager**
    - ✅ **F206-a Position 后端**（needs_review，待合并验收）
-   - 🔍 **F206-b1 PendingOrder 后端**（needs_review，本次完成）
-   - ⬜ **F206-b2** Risk Summary 聚合 + APScheduler EXPIRED（下一步）
-   - ⬜ **F206-c** 前端两 Widget + Form Dialog（待 b2 完成）
+   - ✅ **F206-b1 PendingOrder 后端**（needs_review，待合并验收）
+   - 📋 **F206-b2 Risk Summary + APScheduler EXPIRED**（contract_agreed，下一步开发）
+   - ⬜ **F206-c 前端两 Widget + Form Dialog**（待 b2 完成）
 2. F205 Pool Builder Widget（待 F206 整体完成后开工）
 3. F207 Daily Action List Widget（依赖 F206 + F202 ✅）
 
 ---
 
-## F206-b1 完成摘要
+## F206-b2 Sprint Contract 摘要
 
-**目标达成**：PendingOrder 完整后端 CRUD（4 endpoints + 实时计算字段 + 状态机）
+**契约文件**：`docs/开发/sprint-contracts/F206-b2-contract.md`
 
-**关键成果**：
+**实现范围**：
+1. `GET /api/cockpit/positions` 响应增 `summary` 字段（5 数值字段，按 API-CONTRACT.md line 1408-1413 口径）
+2. APScheduler 周一-周五 22:35 UTC tick：扫描 ACTIVE pending_orders，`expiration_date < today` → EXPIRED
 
-| 层 | 文件 | 状态 |
-|----|------|------|
-| Migration | `alembic/versions/014_f206b1_pending_orders.py` | ✅ |
-| ORM | `app/models/pending_order.py` | ✅ |
-| 共享重构 | `app/services/cockpit/last_close_loader.py` | ✅ |
-| Repository | `app/repositories/pending_order_repository.py` | ✅ |
-| Schema | `app/schemas/cockpit/pending_order.py` | ✅ |
-| Service | `app/services/cockpit/pending_order_service.py` | ✅ |
-| Router | `app/routers/cockpit/pending_orders.py` | ✅ |
-| 测试 | §A(12) + §B(5) + §C(12) + §D(12) = **41 用例** | ✅ |
-| 全量回归 | **698/698**（657→698） | ✅ |
-| Ruff lint | 无新增 warning | ✅ |
+**Summary 5 字段口径**（始终基于 OPEN/ACTIVE，与 query.status 解耦）：
+- `openRiskPct` = Σ (entry-stop) × shares / account_size × 100（OPEN positions）
+- `totalExposurePct` = Σ position_value / account_size × 100（OPEN positions）
+- `pendingRiskPct` = Σ (entry-stop) × shares / account_size × 100（ACTIVE pending_orders）
+- `positionsCount` = OPEN 行数
+- `pendingCount` = ACTIVE 行数（不含 TRIGGERED/CANCELLED/EXPIRED）
 
-**4 个 API Endpoints**（全部可用）：
-```
-GET    /api/cockpit/pending-orders?status=active|all|ACTIVE|TRIGGERED|CANCELLED|EXPIRED
-POST   /api/cockpit/pending-orders  → 201
-PATCH  /api/cockpit/pending-orders/{id}
-DELETE /api/cockpit/pending-orders/{id}
-```
+**5 个开放问题确认**：
+| Q | 决策 |
+|---|------|
+| Q1 | summary 与 ?status= **解耦** |
+| Q2 | EXPIRED cron 用**常量**（不加 env） |
+| Q3 | `list_positions` 返回 **tuple[summary, items]** |
+| Q4 | cron = `"35 22 * * 1-5"` UTC（weekdays 22:35） |
+| Q5 | account_size 默认值 = **100000.0**（已 grep 确认） |
 
-**实时计算字段**：
-- `lastClose` — LastCloseLoader（D041 daily_bars → FMP fallback）
-- `distanceToTriggerPct` = `(entry - lastClose) / lastClose × 100`，2 位小数，lastClose=null 时 null
-- `riskPct` = `(entry - stop) × shares / account_size × 100`，2 位小数，不依赖市价
+**待修改文件清单（7 个：5 业务 + 2 测试，符合 6 文件原则）**：
 
-**状态机**：
-- ACTIVE → {TRIGGERED, CANCELLED, EXPIRED}：允许
-- ACTIVE → ACTIVE：允许（同状态修订字段）
-- 终态 → 任何状态变更：422（包括互转）
-
-**last_close_loader 重构**（Q1 落地）：
-- 新建 `last_close_loader.py`，`PositionService` 和 `PendingOrderService` 共享
-- F206-a 的 35 测试用例全部仍绿（回归保险通过）
+| # | 文件 | 类型 |
+|---|------|------|
+| 1 | `backend/app/schemas/cockpit/position.py` | 修改（+25 行：PositionSummary + _PositionListData.summary） |
+| 2 | `backend/app/services/cockpit/position_service.py` | 修改（+70 行：_compute_summary + list_positions 返回 tuple） |
+| 3 | `backend/app/routers/cockpit/positions.py` | 修改（+3 行：适配 tuple） |
+| 4 | `backend/app/services/cockpit/pending_order_expirer.py` | 新建（~40 行） |
+| 5 | `backend/app/services/refresh_job.py` | 修改（+30 行：注册 _pending_orders_expirer_tick） |
+| 6 | `backend/tests/test_position_summary_f206b2.py` | 新建（§A 14 用例） |
+| 7 | `backend/tests/test_pending_order_expirer_f206b2.py` | 新建（§B 10 用例） |
 
 ---
 
-## F206-b2 Sprint 目标（下一步）
+## 开发顺序（Generator 模式严格按此执行）
 
-**范围**：Risk Summary 聚合顶条 + APScheduler EXPIRED 自动转换
+1. ✅ **grep account_size 默认值**（已完成 = 100000.0）
+2. **修改 schema** `position.py`：新增 `PositionSummary` + 改 `_PositionListData` 含 `summary` 字段
+   - **关键**：grep `_PositionListData(` 找到 F206-a/b1 显式构造点（router + 测试），补 `summary=...` 参数
+   - → wip commit `wip(F206-b2): schema PositionSummary`
+3. **新建 `pending_order_expirer.py`** + §B 前 8 用例（纯函数测试）
+   - → wip commit `wip(F206-b2): expirer + unit tests`
+4. **修改 `refresh_job.py`** 注册 expirer tick + §B 后 2 用例（scheduler 注册 + tick 异常捕获）
+   - → wip commit `wip(F206-b2): scheduler tick`
+5. **修改 `position_service.py`** 增 `_compute_summary` + 改 `list_positions` 返回 tuple
+   - 跑 F206-a §D 集成测试确保不破
+   - → wip commit `wip(F206-b2): summary aggregation`
+6. **修改 `routers/cockpit/positions.py`** 适配 tuple 签名 + §A 14 用例（含 GET 集成）
+   - → wip commit `wip(F206-b2): router + §A tests`
+7. **全量回归** `uv run pytest` → 确认 ≥722 pass + F206-a/b1 全绿
+8. Evaluator 自检（自检清单 + 代码质量 + 回归测试）
+9. 通过即最终 commit `feat(F206-b2): risk summary + pending order expirer`，phase → needs_review
 
-**核心内容**（来自原 F206-b 拆分方案）：
-1. `GET /api/cockpit/positions` 响应添加 `summary` 字段（聚合 positions + pending_orders 的统计摘要）
-2. APScheduler 定时任务：每日盘后检查 `expiration_date < today` 的 ACTIVE pending_orders → 自动转为 EXPIRED
-3. 预计影响文件 9 个（含 scheduler 注册、聚合 service、修改 positions router）
+---
 
-**验收节点**：F206-b2 完成后，与 F206-a + F206-b1 合并验收（完整 PendingOrder 链路 + summary 顶条）
+## 测试门禁
+
+- §A 14 + §B 10 = 24 新用例，100% pass
+- 全量回归：698（b1 末）+ 24 = ≥722 pass
+- F206-a 35 + F206-b1 41 = 76 既有用例必须仍全绿
+- mypy / ruff 无新增 warning
 
 ---
 
 ## 未决事项
 
-- F206-a 和 F206-b1 均处于 needs_review，**不单独验收**，等 F206-b2 完工后合并验收
-- F206-b2 Sprint Contract 需要新 session 协商（估计 9 文件，可在 6 文件原则限制内单 sprint 完成）
+- F206-a / b1 / b2 三者均处于 needs_review 路径，**不单独验收**
+- F206-b2 完工后由 acceptance skill 起草合并验收脚本（含 curl 创建 OPEN/ACTIVE/EXPIRED 三态 + 验证 summary + 手动调用 expirer）
+- 待提交：本 session 仅产生 contract 文档与 handoff 更新，无代码改动；Generator session 开始时一并 commit `chore: update SESSION-HANDOFF for F206-b2 contract_agreed` + 三个 contract 文件
 
 ---
 
 ## 下一 session 恢复指令
 
 ```
-读取 SESSION-HANDOFF.md，开始 F206-b2 Sprint Contract 协商。
-F206-b1 已完成（needs_review），目标是 Risk Summary 聚合顶条 + APScheduler EXPIRED 自动转换。
+继续开发 F206-b2，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-b2-contract.md，
+进入 Generator 模式，从开发步骤 2 开始（步骤 1 已完成：account_size 默认值 = 100000.0）。
 ```
+
+**建议用 Sonnet 开启新 session**（小切片任务，无新模型/迁移/外部 IO，0.5-1 session 可完工）。
