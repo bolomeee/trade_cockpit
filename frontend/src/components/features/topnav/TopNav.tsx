@@ -5,6 +5,7 @@ import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
 import { UserSettingsDialog } from '@/cockpit/components/UserSettingsDialog'
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
@@ -88,31 +89,45 @@ export function TopNav() {
         >
           {formatLastRefresh(lastRefreshedAt)}
         </span>
-        <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
-        {showResetLayout && <ResetLayoutButton />}
-        {showCockpitReset && <CockpitResetLayoutButton />}
+        <ButtonGroup className="has-[>[data-slot=button-group]]:gap-1">
+          <ButtonGroup>
+            <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
+          </ButtonGroup>
+          {showResetLayout && (
+            <ButtonGroup>
+              <ResetLayoutButton />
+            </ButtonGroup>
+          )}
+          {showCockpitReset && (
+            <ButtonGroup>
+              <CockpitResetLayoutButton />
+            </ButtonGroup>
+          )}
+          {showCockpitReset && (
+            <ButtonGroup>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  fontSize: 'var(--font-size-caption)',
+                  color: 'var(--color-text-secondary)',
+                  background: 'none',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                ⚙ Settings
+              </button>
+            </ButtonGroup>
+          )}
+        </ButtonGroup>
         {showCockpitReset && (
-          <>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                fontSize: 'var(--font-size-caption)',
-                color: 'var(--color-text-secondary)',
-                background: 'none',
-                border: '1px solid var(--color-border)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-              }}
-            >
-              ⚙ Settings
-            </button>
-            <UserSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-          </>
+          <UserSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         )}
       </div>
     </nav>
