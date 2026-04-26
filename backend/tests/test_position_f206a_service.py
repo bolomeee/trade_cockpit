@@ -113,6 +113,7 @@ def _make_service(db=None, fmp=None) -> PositionService:
     svc._repo = MagicMock()
     svc._settings_repo = MagicMock()
     svc._earnings_repo = MagicMock()
+    svc._loader = MagicMock()
     # default: no settings row
     svc._settings_repo.get_or_default.return_value = {
         "account_size": 100_000.0,
@@ -139,18 +140,13 @@ def test_enrich_last_close_none_gives_null_computed_fields():
 
 def test_enrich_fmp_failure_does_not_propagate(db_session):
     """FMP failure for a non-watchlist ticker returns None, does not raise."""
+    from app.services.cockpit.last_close_loader import LastCloseLoader
+
     fmp = MagicMock()
     fmp.get_daily_bars.side_effect = Exception("network error")
 
-    svc = PositionService.__new__(PositionService)
-    svc._db = db_session
-    svc._fmp = fmp
-    svc._repo = MagicMock()
-    svc._settings_repo = MagicMock()
-    svc._earnings_repo = MagicMock()
-
-    # Should not raise; returns None for the ticker
-    closes = svc._load_last_closes(["OTC_TICKER"])
+    loader = LastCloseLoader(db=db_session, fmp=fmp)
+    closes = loader.load(["OTC_TICKER"])
     assert closes["OTC_TICKER"] is None
 
 
@@ -172,8 +168,8 @@ def test_create_position_response_has_recommended_shares(db_session):
     svc._repo.create.return_value = created_row
     svc._earnings_repo.get_next_earnings.return_value = None
 
-    # Stub _load_last_closes to return None (no daily_bars for AAPL in test)
-    svc._load_last_closes = lambda tickers: {"AAPL": None}
+    # Stub _loader.load to return None (no daily_bars for AAPL in test)
+    svc._loader.load.return_value = {"AAPL": None}
 
     payload = PositionCreate(
         ticker="AAPL",
