@@ -13,9 +13,10 @@ from app.models.daily_bar import DailyBar
 from app.models.earnings_event import EarningsEvent
 from app.models.position import Position
 from app.models.stock import Stock
+from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.position_repository import PositionRepository
 from app.repositories.user_settings_repository import UserSettingsRepository
-from app.repositories.earnings_event_repository import EarningsEventRepository
+from app.services.watchlist_service import APIError
 from app.schemas.cockpit.position import (
     PositionCreate,
     PositionItem,
@@ -100,8 +101,7 @@ class PositionService:
 
         # Reject CLOSED → OPEN transition
         if patch_data.get("status") == "OPEN" and row.status == "CLOSED":
-            from fastapi import HTTPException
-            raise HTTPException(status_code=422, detail="Cannot reopen a CLOSED position")
+            raise APIError("VALIDATION_ERROR", "Cannot reopen a CLOSED position", 422)
 
         self._repo.update(position_id, patch_data)
         updated_row = self._repo.get_by_id(position_id)
