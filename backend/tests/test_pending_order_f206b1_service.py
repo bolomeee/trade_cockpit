@@ -217,6 +217,6 @@ def test_position_service_loader_regression(db_session):
     fmp.get_daily_bars.return_value = []
     svc = PositionService(db=db_session, fmp=fmp)
 
-    # No positions → should return empty list without error
-    result = svc.list_positions(status="open")
-    assert result == []
+    # No positions → should return empty items without error
+    summary, items = svc.list_positions(status="open")
+    assert items == []

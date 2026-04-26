@@ -2844,9 +2844,15 @@
           "subtask": "F206-b1",
           "phase": "needs_review",
           "summary": "PendingOrder 数据层 + 后端 CRUD（migration 014 / repo / service / router / 41 tests，全量回归 698/698，last_close_loader 共享重构，状态机 4 终态，riskPct/distanceToTriggerPct 计算）"
+        },
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-b2",
+          "phase": "needs_review",
+          "summary": "Risk Summary 聚合 + APScheduler EXPIRED 自动转换。GET /api/cockpit/positions 增 summary 字段（5 数值口径，与 ?status= 解耦）+ weekdays 22:35 UTC tick 自动过期 ACTIVE pending_orders。共 7 文件（5 业务 + 2 测试），§A 14 + §B 10 = 24 新用例 100% pass，全量回归 722/722。"
         }
       ],
-      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端（needs_review）/ F206-b1 PendingOrder 后端（contract_agreed）/ F206-b2 Risk Summary + APScheduler EXPIRED（待 b1 完成）/ F206-c 前端 widget（待 b2 完成）。"
+      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端（needs_review）/ F206-b1 PendingOrder 后端（needs_review）/ F206-b2 Risk Summary + APScheduler EXPIRED（contract_agreed）/ F206-c 前端 widget（待 b2 完成）。"
     },
     {
       "id": "F207",
