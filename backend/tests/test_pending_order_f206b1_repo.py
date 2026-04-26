@@ -2,9 +2,6 @@
 from __future__ import annotations
 
 import time
-from datetime import date, datetime, timezone
-
-import pytest
 
 from app.repositories.pending_order_repository import PendingOrderRepository
 
@@ -46,7 +43,7 @@ def test_create_and_get_by_id(db_session):
 
 def test_list_by_status_active_only(db_session):
     repo = PendingOrderRepository(db_session)
-    active_row = repo.create(_make_payload(ticker="NVDA"))
+    repo.create(_make_payload(ticker="NVDA"))
     triggered_row = repo.create(_make_payload(ticker="AAPL"))
     repo.update(triggered_row.id, {"status": "TRIGGERED"})
 
@@ -61,7 +58,7 @@ def test_list_by_status_active_only(db_session):
 
 def test_list_by_status_all_returns_all(db_session):
     repo = PendingOrderRepository(db_session)
-    r1 = repo.create(_make_payload(ticker="NVDA"))
+    repo.create(_make_payload(ticker="NVDA"))
     r2 = repo.create(_make_payload(ticker="AAPL"))
     repo.update(r2.id, {"status": "EXPIRED"})
     r3 = repo.create(_make_payload(ticker="MSFT"))

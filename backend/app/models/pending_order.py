@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import CheckConstraint, Column, Date, DateTime, Float, Index, Integer, String, Text
 

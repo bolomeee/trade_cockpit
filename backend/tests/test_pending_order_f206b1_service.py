@@ -1,7 +1,7 @@
 """F206-b1 §C: PendingOrderService unit tests."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest

@@ -1,10 +1,8 @@
 """F206-a §C: unit tests for position_action_rules, position_sizer, and service enrichment."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
-
-import pytest
 
 from app.models.position import Position
 from app.services.cockpit.position_action_rules import compute_next_action
