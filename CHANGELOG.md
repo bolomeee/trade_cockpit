@@ -4,6 +4,27 @@
 
 ---
 
+## [v1.8.0] - 2026-04-26
+
+### ✨ 新增
+- AI 基础设施：ai_memos 数据表 + LiteLLM 路由层 + AI Gateway 统一接入（/api/ai/{task_type}）(F208)
+- MarketRegimeWidget：Score Hero / Subscores / Indices / SectorHeatmap 四区块（F201-c）
+- AI Market Notes：MarketRegimeWidget 新增 AI 市场叙述区块，支持刷新与缓存（F209-b）
+- AI Setup Explainer：SetupMonitor 每行新增 `?` 弹出 AI 解读 Popover（F209-c）
+- DecisionPanel AI Trade Plan + Guardrail Banner：AI 生成交易计划 + 护栏校验（F210-c）
+
+### 🎨 优化
+- Cockpit TopNav action buttons 统一为 shadcn Button 组件
+- SetupMonitor tabs 紧凑化、标题行合并、字体统一
+- CockpitChart 轴标签样式精简
+
+### 🐛 修复
+- SetupMonitor sticky header 背景透明度异常
+- DecisionPanel trade_plan 接受 earningsRisk=null
+- News 缓存永远过期 bug
+
+---
+
 ## [v1.7.0] - 2026-04-23
 
 ### ✨ 新增
