@@ -13,6 +13,7 @@ import { EarningsRiskDot } from '../components/EarningsRiskDot'
 import { AiSetupExplainerPopover } from '../components/AiSetupExplainerPopover'
 import { getCockpitRegime } from '../lib/api/cockpitRegimeApi'
 import { AiCandidateRankerSection } from '../components/AiCandidateRankerSection'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 type FilterTab = 'all' | SetupFilterValue
 
@@ -74,62 +75,49 @@ export function SetupMonitorWidget() {
         fontSize: 'var(--font-size-caption)',
       }}
     >
-      {/* Header */}
-      <div
-        style={{
-          padding: '8px 12px 0',
-          fontWeight: 'var(--font-weight-medium)',
-          color: 'var(--color-text-primary)',
-          fontSize: 'var(--font-size-body)',
-          flexShrink: 0,
-        }}
-      >
-        Setup Monitor
-      </div>
-
-      {/* Filter Tabs */}
+      {/* Header — title + tabs + AI ranker on a single row */}
       <div
         style={{
           display: 'flex',
-          gap: '2px',
-          padding: '6px 12px',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '8px 12px',
           borderBottom: '1px solid var(--color-border)',
           flexShrink: 0,
           flexWrap: 'wrap',
         }}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: '2px 8px',
-              borderRadius: '4px',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 'var(--font-size-caption)',
-              background:
-                activeTab === tab.key
-                  ? 'var(--color-signal-breakout)'
-                  : 'var(--color-bg-secondary)',
-              color:
-                activeTab === tab.key
-                  ? 'var(--color-text-on-dark)'
-                  : 'var(--color-text-secondary)',
-              fontWeight:
-                activeTab === tab.key
-                  ? 'var(--font-weight-medium)'
-                  : 'var(--font-weight-normal)',
-            }}
-          >
-            {tab.label(data?.summary)}
-          </button>
-        ))}
-        <AiCandidateRankerSection
-          items={items}
-          regime={regimeData?.regime ?? null}
-          regimeScore={regimeData?.marketScore ?? null}
-        />
+        <span
+          style={{
+            fontWeight: 'var(--font-weight-medium)',
+            color: 'var(--color-text-primary)',
+            fontSize: 'var(--font-size-body)',
+          }}
+        >
+          Setup Monitor
+        </span>
+
+        <ToggleGroup
+          type="single"
+          size="sm"
+          value={activeTab}
+          onValueChange={(v) => v && setActiveTab(v as FilterTab)}
+          aria-label="Setup filter"
+        >
+          {TABS.map((tab) => (
+            <ToggleGroupItem key={tab.key} value={tab.key} aria-label={tab.key}>
+              {tab.label(data?.summary)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <AiCandidateRankerSection
+            items={items}
+            regime={regimeData?.regime ?? null}
+            regimeScore={regimeData?.marketScore ?? null}
+          />
+        </div>
       </div>
 
       {/* Table */}
