@@ -1687,3 +1687,25 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **放弃了什么**：v1.9 的 rationale 气泡交互（design-spec §1057 原始描述）。该功能归档至 F207 scope。
 
 **影响**：`frontend/src/cockpit/widgets/_positionListRow.tsx`（NextAction chip 实现），`docs/设计/design-spec.md §Widget 7`（偏离注释已写入）。
+
+---
+
+## D060-a：PendingOrder Triggered 后 v1.9 不自动创建 Position
+
+**日期**：2026-04-26（F206-c2 Sprint Contract §7 决策，用户已确认）
+**触发**：design-spec §Widget 8 §1172 / component-plan §450 留有"Triggered 后自动创建 Position"的待决策项，F206-c2 Generator 阶段落地。
+
+**决策**：v1.9 中，用户点击 `[Triggered]` 按钮后：
+1. 弹 AlertDialog 确认文案："已在券商手动下单？将把订单标记为 TRIGGERED（不会自动创建 Position）"
+2. 用户确认 → `PATCH /api/cockpit/pending-orders/{id}` body `{ status: 'TRIGGERED' }`
+3. 成功后 invalidate `['cockpit-pending-orders']`，**不** invalidate `['cockpit-positions']`
+4. 弹 toast 提示用户："已标记为 TRIGGERED，可在 Positions widget 手工录入实际持仓"
+
+**理由**：
+1. 自动创建 Position 需要后端在 `pending_order_service` 内开启事务：PATCH status + INSERT position + 回填 entryDate / entryPrice / shares。失败回滚逻辑复杂，且 PendingOrder 的 entryPrice 是"计划触发价"，不是实际成交价，自动复制会导致数据失真。
+2. 手动双录虽然多一步，但给用户机会填入实际成交价格，更符合复盘准确性要求。
+3. 前端只改 status，0 后端工作量，F206-c2 范围保持聚焦。
+
+**放弃了什么**：Triggered 后一键自动在 Positions widget 中创建 Position 记录（design-spec §1172 原始描述）。如后续用户反馈手工双录是痛点，可开 F206-d 或归入 F207 ActionList 的统一动作流。
+
+**影响**：`frontend/src/cockpit/widgets/_pendingOrderRow.tsx`（Triggered mutation 实现），`docs/设计/design-spec.md §Widget 8`（待决策 #3 标注已落地）。

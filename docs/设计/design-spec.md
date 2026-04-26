@@ -1169,5 +1169,5 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 
 1. **CockpitChart 的 setup annotation 文本气泡**：lightweight-charts 不直接支持文本框，需要用 `createSeriesMarkers` + `tooltip` 自定义；具体样式 v1.8 F203 实现时确定
 2. **PoolBuilder funnel 分段点击是否真的过滤前端 items**：v1.9 实现时用 fixture 验证（API 是否一次返回完整 items 还是只返回 action 层；当前 contract 写"items 是最终层"，意味着前端只能展示最终层，funnel 数字是参考）
-3. **PendingOrder Triggered 后是否自动创建 Position**：v1.9 feature-dev 阶段 Sprint Contract 决策（D060-a 留空）
+3. **PendingOrder Triggered 后是否自动创建 Position**：✅ 已决策（F206-c2 Sprint Contract §7 用户确认，见 DECISIONS.md D060-a）。v1.9 不自动创建，仅切 status=TRIGGERED + toast 引导手工在 PositionListWidget 录入实际持仓。
 4. **AI Daily Brief 的具体 prompt schema**：F209/F211 feature-dev 阶段在 `backend/app/ai/schemas/` 落地，本 design-spec 不约束
