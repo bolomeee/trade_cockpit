@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-26-F206-c2-done",
+  "last_updated": "2026-04-27-F207-a-needs-review",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F206 DONE",
-    "active_sprint_phase": "done"
+    "active_sprint": "F207-a",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -2759,8 +2759,9 @@
       "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
       "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-26",
       "dependencies": [
         "F203"
       ],
@@ -2863,17 +2864,34 @@
     {
       "id": "F207",
       "name": "Daily Action List Widget",
-      "description": "聚合 positions + pending_orders + setup monitor，生成今日动作清单，分三栏：Must Act（raise stop / cancel order / reduce before earnings）/ Monitor（接近触发 / 持仓稳态）/ No Action。每条动作附 rationale。后端服务 action_service.py 实现规则引擎（订单保留 / 取消 / 修改规则见 proposal §8.27）。GET /api/cockpit/actions/today。",
+      "description": "聚合 positions + pending_orders + setup monitor，生成今日动作清单，分三栏：Must Act（raise stop / cancel order / reduce before earnings）/ Monitor（接近触发 / 持仓稳态）/ No Action。每条动作附 rationale。后端服务 action_service.py 实现规则引擎（订单保留 / 取消 / 修改规则见 proposal §8.27）。GET /api/cockpit/actions/today。【拆分：F207-a 后端 rule engine + endpoint / F207-b 前端 ActionListWidget。每子 sprint ≤6 文件】",
       "user_story": "作为慢交易投资者，每天盘后我打开 Cockpit 最想知道的是'今天我要做什么'。我需要一个清单：必须做的动作（移动止损/取消订单/财报前减仓）、需要监控的、今天没事的，每条都有明确原因",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "active_sub_sprint": "F207-a",
+      "sub_sprints": {
+        "F207-a": "needs_review",
+        "F207-b": "planned"
+      },
       "dependencies": [
         "F206",
         "F202"
       ],
       "estimated_sessions": 3,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/app/services/cockpit/action_service.py (新建)",
+        "backend/app/routers/cockpit/actions.py (新建)",
+        "backend/app/routers/cockpit/__init__.py (修改注册)",
+        "backend/tests/test_action_service.py (新建)",
+        "backend/tests/test_actions_router.py (新建)",
+        "frontend/src/cockpit/lib/api/cockpitActionsApi.ts (新建, F207-b)",
+        "frontend/src/cockpit/widgets/ActionListWidget.tsx (新建, F207-b)",
+        "frontend/src/cockpit/widgets/_actionListSection.tsx (新建, F207-b)",
+        "frontend/src/cockpit/CockpitRegistry.ts (修改注册, F207-b)",
+        "frontend/src/cockpit/lib/api/__tests__/cockpitActionsApi.test.ts (新建, F207-b)",
+        "frontend/src/cockpit/widgets/__tests__/ActionListWidget.test.tsx (新建, F207-b)"
+      ],
       "scope": {
         "pages": [
           "Cockpit"
@@ -2885,18 +2903,20 @@
         "design_figma_link": null
       },
       "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F207-a-contract.md",
         "api_refs": [
-          "API-CONTRACT.md §GET /api/cockpit/user-settings",
-          "API-CONTRACT.md §PUT /api/cockpit/user-settings",
           "API-CONTRACT.md §GET /api/cockpit/actions/today"
         ],
         "data_model_refs": [
-          "DATA-MODEL.md §Entity: UserSettings",
           "DATA-MODEL.md §Entity: Position",
-          "DATA-MODEL.md §Entity: PendingOrder"
+          "DATA-MODEL.md §Entity: PendingOrder",
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: EarningsEvent",
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
         ],
         "decision_refs": [
-          "D066 user_settings 单行 + 仓位公式"
+          "D041 last_close on-demand FMP fallback (LastCloseLoader 复用)",
+          "D074 camelCase API"
         ],
         "acceptance_type": "functional"
       },

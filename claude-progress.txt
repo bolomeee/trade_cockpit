@@ -300,3 +300,104 @@ phase 更新：F206 → done（features.json 已同步）
 
 [下一个 Feature]
   F207 ActionListWidget（若规划中）或 F207 相关后端 endpoint
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] 验收：F206-c2 PendingOrdersWidget
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户亲眼确认）：
+  - Widget 渲染：标题/筛选按钮/+New Order/空态 ✅
+  - 新建订单 → 表头顺序 / Exp 空值显示 "—" ✅
+  - 表单校验：空提交 + 交叉校验（entry ≤ stop）错误 ✅
+  - Edit → 预填字段 → dirty-fields PATCH ✅
+  - Triggered → AlertDialog → toast 含引导文案 ✅
+  - Cancel 直接 PATCH（无弹窗）✅
+  - Delete → AlertDialog → 确认删除 ✅
+  - Active/All 切换过滤正确 ✅
+
+验收记录：docs/验收/v1.9-F206-c2-acceptance.md
+features.json：F206 phase → done，completed_at → 2026-04-26
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint：F207-a ActionList 后端 — Contract Agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F207 拆分为 a（后端）+ b（前端），每子 sprint ≤6 文件
+  - Sprint Contract 起草并由用户确认（§7 Q1–Q8 全部 OK）
+  - docs/开发/sprint-contracts/F207-a-contract.md 落盘
+  - 范围（5 文件）：
+    - backend/app/services/cockpit/action_service.py（新建，rule engine）
+    - backend/app/routers/cockpit/actions.py（新建，GET /actions/today）
+    - backend/app/routers/cockpit/__init__.py（注册）
+    - backend/tests/test_action_service.py（13 单元）
+    - backend/tests/test_actions_router.py（6 集成）
+  - 完成标准：S1–S20（13 单测 + 6 集成 + 1 静态 + 1 回归）
+  - 关键复用：LastCloseLoader / compute_next_action / SetupSnapshotRepository.get_latest_for_tickers
+              / EarningsEventRepository.get_next_earnings / MarketRegimeRepository.get_latest
+
+🔑 §7 决策（Generator 阶段写入 DECISIONS.md）：
+  Q1 raise_stop 复用 compute_next_action（R≥2.0），不引入 swing_low
+  Q2 tighten_stop：regime DEFENSIVE/RISK_OFF 时对所有 OPEN positions 全局发
+  Q3 cancel_order：ticker 当日最新 setup_snapshot.setup_type=BROKEN
+  Q4 monitor 不出现 stable_position（仅 approaching_trigger 走 monitor）
+  Q5 reduce_before_earnings：days_until_earnings ≤ 2
+  Q6 Widget 槽位 x:0 y:16 w:12 h:6（F207-b 实施）
+  Q7 stop breached + DEFENSIVE → 优先 raise_stop（个体 > 全局）
+  Q8 pending_order distance>3% 且 setup 非 BROKEN → 不展示
+
+⚠️ 待你决策：
+  - 无（§7 Q1-Q8 已确认）
+
+🔧 系统变更：
+  - features.json：F207 phase=design_ready → in_progress；新增 active_sub_sprint=F207-a + sub_sprints map
+  - features.json：active_sprint=F207-a / active_sprint_phase=contract_agreed
+  - features.json：last_updated → 2026-04-27-F207-a-contract-agreed
+  - features.json：F207.estimated_files_changed 11 文件清单（5 后端 + 6 前端）
+  - features.json：F207.contract.contract_file → F207-a-contract.md（F207-b 启动时再切）
+
+📊 功能状态：
+  F206 Position Manager：✅ done（a/b1/b2/c1/c2 全部验收通过）
+  F207 Daily Action List：
+    F207-a：📜 contract_agreed（本 sprint，待 Generator）
+    F207-b：⬜ planned（依赖 F207-a）
+
+[下一个 Session]
+  > 继续开发 F207-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F207-a-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（action_service skeleton）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint：F207-a ActionList 后端 rule engine + endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - action_service.py：ActionService class + build_today_actions + _classify_position（5 优先级）+ _classify_pending_order（3 优先级）+ 排序逻辑
+  - routers/cockpit/actions.py：GET /api/cockpit/actions/today + Pydantic schemas（ActionItem / ActionsTodayPayload / ActionsTodayResponse）
+  - routers/cockpit/__init__.py：注册 actions_router
+  - test_action_service.py：16 单元用例（含 3 额外 edge cases）全部通过
+  - test_actions_router.py：6 集成用例全部通过
+  - DECISIONS.md D075：F207-a §7 Q1-Q8 全部决策已记录
+  - 全量回归：744 passed（基线 722，+22 本 sprint），0 回归
+  - phase → needs_review
+
+⚠️ 注意事项（Evaluator 自检发现）：
+  - _classify_position（~72 行）和 build_today_actions（~70 行）超过 50 行上限。两函数逻辑内聚，建议保留现状，未来优先级增加再拆分。用户确认后进入最终 commit。
+  - ruff 未安装于项目 dev 依赖，已做手动代码质量检查：无死代码、无魔法值、无重复逻辑。
+
+🔧 系统变更：
+  - 新增：backend/app/services/cockpit/action_service.py（rule engine）
+  - 新增：backend/app/routers/cockpit/actions.py（endpoint + schemas）
+  - 修改：backend/app/routers/cockpit/__init__.py（+2 行注册）
+  - 新增：backend/tests/test_action_service.py（16 单元）
+  - 新增：backend/tests/test_actions_router.py（6 集成）
+  - 追加：docs/系统设计/DECISIONS.md D075
+
+📊 功能状态：
+  F207 Daily Action List Widget：🔍 needs_review（F207-a 待验收 → F207-b 前端待开发）
+
+[下一个 Session]
+  验收 F207-a，或直接开始 F207-b（前端 ActionListWidget）。
+  验收指令："/acceptance F207-a"
+  继续开发："/feature-dev F207-b"

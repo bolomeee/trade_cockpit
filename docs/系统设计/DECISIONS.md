@@ -1709,3 +1709,28 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **放弃了什么**：Triggered 后一键自动在 Positions widget 中创建 Position 记录（design-spec §1172 原始描述）。如后续用户反馈手工双录是痛点，可开 F206-d 或归入 F207 ActionList 的统一动作流。
 
 **影响**：`frontend/src/cockpit/widgets/_pendingOrderRow.tsx`（Triggered mutation 实现），`docs/设计/design-spec.md §Widget 8`（待决策 #3 标注已落地）。
+
+---
+
+## D075：F207-a ActionService 设计决策（Q1-Q8）
+
+**日期**：2026-04-27（F207-a Sprint Contract §7，用户已确认）
+**触发**：F207-a Generator 实施阶段，8 个技术决策点已在 Sprint Contract 协商阶段与用户逐一确认。
+
+**Q1 — raise_stop 触发条件**：复用 `compute_next_action`（R ≥ 2.0），不引入 swing_low 检测。swing_low 精度延至未来 sprint，届时只需改 `position_action_rules.py`，F207 不需要动。
+
+**Q2 — tighten_stop 触发口径**：regime ∈ {DEFENSIVE, RISK_OFF} 时对所有 OPEN positions 全局发送一条 tighten_stop 动作。一次 `MarketRegimeRepository.get_latest()` 查询，遍历每个 position 各发一条；rationale 引用 regime 值。
+
+**Q3 — cancel_order 触发口径**：ticker 当日最新 `setup_snapshot.setup_type == "BROKEN"`。`SetupSnapshotRepository.get_latest_for_tickers()` 已返回最新一行，直接读 setup_type。
+
+**Q4 — stable_position 归属栏**：`stable_position` → noAction；monitor 只出现 `approaching_trigger`。与 API-CONTRACT 兼容（noAction 行说明成立）。
+
+**Q5 — reduce_before_earnings 阈值**：`days_until_earnings ≤ 2` 个自然日（含 0），与 `position_action_rules.compute_next_action` 当前阈值一致。
+
+**Q6 — Widget 槽位**：ActionListWidget x:0 y:16 w:12 h:6（全宽，Positions+PendingOrders 下方），F207-b sprint 实施。
+
+**Q7 — stop breached + regime DEFENSIVE 同时满足**：优先 raise_stop（个体硬信号 > 全局软信号）。理由：stop breached 是 ticker 个体硬信号，"立即处置"语义更强；tighten_stop 是全局建议，可以等 raise_stop 执行完再统一评估。
+
+**Q8 — pending_order distance > 3% 且 setup 非 BROKEN**：不出现在任何栏（避免噪音）。pending order 距离很远时已在 PendingOrdersWidget 可见，ActionList 只关心"可能要动手的"。
+
+**影响**：`backend/app/services/cockpit/action_service.py`（rule engine 实现），`backend/app/routers/cockpit/actions.py`（endpoint + schema）。
