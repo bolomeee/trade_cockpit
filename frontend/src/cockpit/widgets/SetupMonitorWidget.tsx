@@ -185,7 +185,7 @@ export function SetupMonitorWidget() {
                   borderBottom: '1px solid var(--color-border)',
                   position: 'sticky',
                   top: 0,
-                  background: 'var(--color-bg-primary)',
+                  zIndex: 1,
                 }}
               >
                 <Th width="14%">Ticker</Th>
@@ -225,6 +225,7 @@ function Th({ children, width }: { children: React.ReactNode; width: string }) {
         fontSize: 'var(--font-size-badge)',
         fontWeight: 'var(--font-weight-normal)',
         width,
+        background: 'var(--color-card)',
       }}
     >
       {children}
