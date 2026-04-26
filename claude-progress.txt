@@ -1,1 +1,37 @@
 
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-a Position 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Migration 013：positions 表（14 字段 + 2 index + 2 CHECK constraint）
+  - ORM model Position + models/__init__.py 注册
+  - PositionRepository（CRUD + status 过滤）
+  - position_sizer.py（D066 公式纯函数）
+  - position_action_rules.py（4 分支规则引擎，F207 可直接 import）
+  - position_service.py（list/get/create/update/delete + D041 批量 last_close fallback + _compute_metrics + _enrich）
+  - Pydantic schemas（PositionCreate / PositionUpdate / PositionItem / ListResponse / DeleteResponse）
+  - Router 4 endpoints（GET/POST /positions，PATCH/DELETE /positions/{id}）
+  - 单元测试：§A 8 / §B 5 / §C 12 用例
+  - 集成测试：§D 10 用例
+  - 全量回归：657/657 ✅（原 627 + 新增 30）
+  - Evaluator 自检：全部通过（_enrich 拆分为 _compute_metrics + _enrich，均 < 50 行）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新建迁移：backend/alembic/versions/013_f206a_positions.py
+  - 新增模型：backend/app/models/position.py
+  - 新增 repo：backend/app/repositories/position_repository.py
+  - 新增 services：position_service.py / position_sizer.py / position_action_rules.py
+  - 新增 schema：backend/app/schemas/cockpit/position.py
+  - 新增 router：backend/app/routers/cockpit/positions.py
+  - 修改：test_schema.py（添加 positions），test_ai_memo_schema_f208a.py（调整降级目标）
+
+📊 功能状态：
+  F206（Position Manager）：🔍 F206-a needs_review → F206-b 待开始
+
+[下一个 Session]
+  开启新 session，粘贴：
+  > F206-a 已完成验收，准备开发 F206-b（PendingOrder 后端 + Risk Summary 聚合）
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-a-contract.md

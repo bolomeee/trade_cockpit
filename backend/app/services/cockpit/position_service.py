@@ -184,18 +184,16 @@ class PositionService:
             return None
         return float(close)
 
-    def _enrich(
+    def _compute_metrics(
         self,
         row: Position,
         last_close: float | None,
         earnings_event: EarningsEvent | None,
-        *,
         include_recommended: bool,
-    ) -> PositionItem:
-        """Compute all server-side fields and return a PositionItem."""
+    ) -> dict[str, Any]:
+        """Compute all server-side calculated fields; returns a flat dict."""
         today = date.today()
 
-        # R multiple & P/L (null when last_close unavailable)
         r_multiple: float | None = None
         unrealized_pl: float | None = None
         position_value: float | None = None
@@ -206,14 +204,12 @@ class PositionService:
             unrealized_pl = round((last_close - row.entry_price) * row.shares, 2)
             position_value = round(last_close * row.shares, 2)
 
-        # Earnings fields
         earnings_date_str: str | None = None
         days_until_earnings: int | None = None
         if earnings_event is not None:
             earnings_date_str = str(earnings_event.earnings_date)
             days_until_earnings = (earnings_event.earnings_date - today).days
 
-        # Next action
         next_action = compute_next_action(
             last_close=last_close,
             entry_price=row.entry_price,
@@ -221,7 +217,6 @@ class PositionService:
             days_until_earnings=days_until_earnings,
         )
 
-        # Recommended shares (POST only)
         recommended_shares: int | None = None
         if include_recommended:
             settings = self._settings_repo.get_or_default()
@@ -232,6 +227,26 @@ class PositionService:
                 stop=row.stop_price,
             )
 
+        return dict(
+            last_close=last_close,
+            r_multiple=r_multiple,
+            unrealized_pl=unrealized_pl,
+            position_value=position_value,
+            earnings_date=earnings_date_str,
+            days_until_earnings=days_until_earnings,
+            next_action=next_action,
+            recommended_shares=recommended_shares,
+        )
+
+    def _enrich(
+        self,
+        row: Position,
+        last_close: float | None,
+        earnings_event: EarningsEvent | None,
+        *,
+        include_recommended: bool,
+    ) -> PositionItem:
+        metrics = self._compute_metrics(row, last_close, earnings_event, include_recommended)
         return PositionItem(
             id=row.id,
             ticker=row.ticker,
@@ -248,12 +263,5 @@ class PositionService:
             close_price=row.close_price,
             created_at=row.created_at,
             updated_at=row.updated_at,
-            last_close=last_close,
-            r_multiple=r_multiple,
-            unrealized_pl=unrealized_pl,
-            position_value=position_value,
-            earnings_date=earnings_date_str,
-            days_until_earnings=days_until_earnings,
-            next_action=next_action,
-            recommended_shares=recommended_shares,
+            **metrics,
         )

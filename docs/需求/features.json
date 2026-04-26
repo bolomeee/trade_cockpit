@@ -2759,13 +2759,28 @@
       "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
       "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "needs_review",
       "dependencies": [
         "F203"
       ],
       "estimated_sessions": 4,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/alembic/versions/013_f206a_positions.py",
+        "backend/app/models/position.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/position_repository.py",
+        "backend/app/schemas/cockpit/position.py",
+        "backend/app/services/cockpit/position_service.py",
+        "backend/app/services/cockpit/position_action_rules.py",
+        "backend/app/services/cockpit/position_sizer.py",
+        "backend/app/routers/cockpit/positions.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/tests/test_position_f206a_schema.py",
+        "backend/tests/test_position_f206a_repo.py",
+        "backend/tests/test_position_f206a_service.py",
+        "backend/tests/test_position_f206a_integration.py"
+      ],
       "scope": {
         "pages": [
           "Cockpit"

@@ -99,7 +99,8 @@ def test_alembic_downgrade_removes_ai_memos() -> None:
     tmp, db_path, cfg = _run_alembic_with_temp_db()
     try:
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, "-1")
+        # Downgrade past 012 (ai_memos) to 011 (user_settings) to verify ai_memos is removed
+        command.downgrade(cfg, "011_f203b1_user_settings")
 
         conn = sqlite3.connect(db_path)
         tables_after = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
