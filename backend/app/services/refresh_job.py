@@ -29,6 +29,7 @@ from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.earnings_service import EarningsService
 from app.services.cockpit.market_regime_service import MarketRegimeService
+from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
 from app.services.cockpit.setup_service import SetupService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
@@ -47,6 +48,8 @@ UNIVERSE_JOB_ID = "ma150_universe_refresh"
 EARNINGS_JOB_ID = "cockpit_earnings_refresh"
 REGIME_JOB_ID = "cockpit_regime_refresh"
 SETUP_JOB_ID = "cockpit_setup_refresh"
+PENDING_ORDERS_EXPIRER_CRON = "35 22 * * 1-5"
+PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -257,6 +260,14 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F206-b2: pending_orders EXPIRED auto-transition, weekdays 22:35 UTC (after setup tick)
+        sched.add_job(
+            _pending_orders_expirer_tick,
+            trigger=CronTrigger.from_crontab(PENDING_ORDERS_EXPIRER_CRON, timezone="UTC"),
+            id=PENDING_ORDERS_EXPIRER_JOB_ID,
+            args=[session_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -345,6 +356,15 @@ def _setup_tick(
             SetupService(db).compute_and_store_all()
     except Exception:  # noqa: BLE001
         logger.error("setup tick failed\n%s", traceback.format_exc())
+
+
+def _pending_orders_expirer_tick(session_factory: SessionFactory) -> None:
+    """APScheduler tick for pending_orders auto-EXPIRED (F206-b2): weekdays 22:35 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            expire_due_pending_orders(db)
+    except Exception:  # noqa: BLE001
+        logger.error("pending_orders expirer tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

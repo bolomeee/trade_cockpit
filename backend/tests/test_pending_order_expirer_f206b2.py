@@ -7,8 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import app.services.refresh_job as refresh_job
 from app.repositories.pending_order_repository import PendingOrderRepository
 from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
+from app.services.refresh_job import RefreshJobManager, shutdown_scheduler
 
 
 # ---------------------------------------------------------------------------
@@ -18,6 +20,14 @@ from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
 TODAY = date(2026, 4, 26)
 YESTERDAY = TODAY - timedelta(days=1)
 TOMORROW = TODAY + timedelta(days=1)
+
+
+@pytest.fixture(autouse=True)
+def _reset_scheduler():
+    refresh_job.manager = RefreshJobManager()
+    shutdown_scheduler()
+    yield
+    shutdown_scheduler()
 
 
 def _make_order(db_session, **overrides) -> object:
@@ -151,26 +161,20 @@ def test_scheduler_registers_expirer_job():
         start_scheduler,
     )
 
-    session_factory_mock = MagicMock()
-    fmp_factory_mock = MagicMock()
-
     sched = start_scheduler(
-        session_factory=session_factory_mock,
-        fmp_factory=fmp_factory_mock,
+        session_factory=MagicMock(),
+        fmp_factory=MagicMock(),
         autostart=False,
     )
-    try:
-        job_ids = [j.id for j in sched.get_jobs()]
-        assert PENDING_ORDERS_EXPIRER_JOB_ID in job_ids
 
-        job = next(j for j in sched.get_jobs() if j.id == PENDING_ORDERS_EXPIRER_JOB_ID)
-        assert isinstance(job.trigger, CronTrigger)
-        # Verify weekday constraint (mon-fri = 1-5 in cron)
-        fields = {f.name: str(f) for f in job.trigger.fields}
-        assert fields["hour"] == "22"
-        assert fields["minute"] == "35"
-    finally:
-        sched.shutdown(wait=False)
+    job_ids = [j.id for j in sched.get_jobs()]
+    assert PENDING_ORDERS_EXPIRER_JOB_ID in job_ids
+
+    job = next(j for j in sched.get_jobs() if j.id == PENDING_ORDERS_EXPIRER_JOB_ID)
+    assert isinstance(job.trigger, CronTrigger)
+    fields = {f.name: str(f) for f in job.trigger.fields}
+    assert fields["hour"] == "22"
+    assert fields["minute"] == "35"
 
 
 # ---------------------------------------------------------------------------
