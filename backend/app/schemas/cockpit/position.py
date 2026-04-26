@@ -115,7 +115,16 @@ class PositionItem(_CamelModel):
     recommended_shares: int | None = None  # populated only in POST response
 
 
+class PositionSummary(_CamelModel):
+    open_risk_pct: float | None
+    total_exposure_pct: float | None
+    pending_risk_pct: float | None
+    positions_count: int
+    pending_count: int
+
+
 class _PositionListData(_CamelModel):
+    summary: PositionSummary
     items: list[PositionItem]
 
 
