@@ -272,3 +272,31 @@ phase 更新：F206 → done（features.json 已同步）
   > 继续开发 F206-c2，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
   > 进入 Generator 模式，从开发步骤 1 开始。
+
+---
+
+## Session: 2026-04-26 — F206-c2 Generator（完成）
+
+**完成内容**：
+- 安装 sonner 2.0.7 + 注册 <Toaster> 到 main.tsx
+- 新建 cockpitPendingOrdersApi.ts：4 endpoint + camelCase 类型（14 tests ✓）
+- 新建 _pendingOrderFormSchemas.ts：zod v4 schema + setupTypeOptions
+- 新建 PendingOrderFormDialog.tsx：new/edit 双模式 + dirty fields PATCH（11 tests ✓）
+- 新建 _pendingOrderRow.tsx：distanceClass 3 档 + ACTIVE-only 按钮（17 tests ✓）
+- 新建 PendingOrdersWidget.tsx：staleTime 30s + 4 状态 + Triggered toast D060-a（10 tests ✓）
+- 修改 CockpitRegistry.ts：注册 cockpit.pending-orders manifest
+- DECISIONS.md 追加 D060-a + design-spec §Widget 8 决策标注
+- 新增 JSDOM pointer capture mock 到 src/test/setup.ts
+
+**踩坑记录**（供后续 session 参考）：
+- Radix Dialog 内的 Radix Select 在 JSDOM 中无法通过 click 打开（body pointer-events:none 阻断 portal）
+  → 解法：vi.mock('@/components/ui/select') 替换为原生 <select>，仅限 dialog 相关测试文件
+- react-hook-form dirtyFields 懒订阅：必须在组件渲染阶段 `const { errors, dirtyFields } = form.formState`，不能只在回调里读
+- dirtyFields PATCH 逻辑应在 handleSubmit 闭包内读（不在 mutationFn 内），避免闭包时序问题
+
+**全量回归**：212/212 tests ✓，lint（c2 文件 0 warning），build ✓
+
+**F206 已完整封闭**（a, b1, b2, c1, c2 全部 done）
+
+[下一个 Feature]
+  F207 ActionListWidget（若规划中）或 F207 相关后端 endpoint
