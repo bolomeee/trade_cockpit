@@ -18,6 +18,20 @@ const thStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+const btnStyle: React.CSSProperties = { padding: '2px 8px', height: '24px', fontSize: 'var(--font-size-caption)' }
+
+function FilterBtn({
+  label, val, current, onSelect,
+}: {
+  label: string; val: PositionQueryStatus; current: PositionQueryStatus; onSelect: (v: PositionQueryStatus) => void
+}) {
+  return (
+    <Button size="sm" variant={current === val ? 'default' : 'outline'} onClick={() => onSelect(val)} style={btnStyle}>
+      {label}
+    </Button>
+  )
+}
+
 export function PositionListWidget() {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<PositionQueryStatus>('open')
@@ -31,6 +45,11 @@ export function PositionListWidget() {
     retry: false,
   })
 
+  function handleFilterSelect(val: PositionQueryStatus) {
+    setStatusFilter(val)
+    setExpandedId(null)
+  }
+
   const containerStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -42,26 +61,15 @@ export function PositionListWidget() {
     color: 'var(--color-text-primary)',
   }
 
-  const FilterBtn = ({ label, val }: { label: string; val: PositionQueryStatus }) => (
-    <Button
-      size="sm"
-      variant={statusFilter === val ? 'default' : 'outline'}
-      onClick={() => { setStatusFilter(val); setExpandedId(null) }}
-      style={{ padding: '2px 8px', height: '24px', fontSize: 'var(--font-size-caption)' }}
-    >
-      {label}
-    </Button>
-  )
-
   return (
     <div style={containerStyle}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontWeight: 'var(--font-weight-medium)' }}>Positions</span>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          <FilterBtn label="Open" val="open" />
-          <FilterBtn label="Closed" val="closed" />
-          <FilterBtn label="All" val="all" />
+          <FilterBtn label="Open" val="open" current={statusFilter} onSelect={handleFilterSelect} />
+          <FilterBtn label="Closed" val="closed" current={statusFilter} onSelect={handleFilterSelect} />
+          <FilterBtn label="All" val="all" current={statusFilter} onSelect={handleFilterSelect} />
           <Button
             size="sm"
             onClick={() => setDialogOpen(true)}

@@ -24,12 +24,12 @@ import { EarningsRiskDot } from '../components/EarningsRiskDot'
 
 // ── helpers & constants ───────────────────────────────────────────────────────
 
-export function fmt2(n: number | null): string {
+function fmt2(n: number | null): string {
   if (n == null) return '—'
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function fmtPl(n: number | null): string {
+function fmtPl(n: number | null): string {
   if (n == null) return '—'
   const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   return n >= 0 ? `+$${abs}` : `-$${abs}`
@@ -37,18 +37,18 @@ export function fmtPl(n: number | null): string {
 
 type EarningsRiskValue = 'SAFE' | 'CAUTION' | 'DANGER' | null
 
-export function deriveEarningsRisk(days: number | null): EarningsRiskValue {
+function deriveEarningsRisk(days: number | null): EarningsRiskValue {
   if (days == null || days <= 0) return null
   if (days <= 7) return 'DANGER'
   if (days <= 14) return 'CAUTION'
   return 'SAFE'
 }
 
-export const NEXT_ACTION_LABEL: Record<string, string> = {
+const NEXT_ACTION_LABEL: Record<string, string> = {
   hold: 'Watch', raise_stop: 'Add', reduce: 'Reduce', exit: 'Sell',
 }
 
-export const NEXT_ACTION_COLOR: Record<string, string> = {
+const NEXT_ACTION_COLOR: Record<string, string> = {
   hold: 'var(--color-action-watch)',
   raise_stop: 'var(--color-action-add)',
   reduce: 'var(--color-action-reduce)',

@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,39 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCockpitStore } from '@/store/cockpitStore'
-import { createPosition, updatePosition, type Position, type PositionInput } from '../lib/api/cockpitPositionsApi'
+import { createPosition, updatePosition, type Position, type PositionInput, type PositionStatus } from '../lib/api/cockpitPositionsApi'
 import type { CockpitDecisionData } from '../lib/api/cockpitDecisionApi'
-
-// ── schemas ───────────────────────────────────────────────────────────────────
-
-const newSchema = z
-  .object({
-    ticker: z.string().min(1, 'Ticker required'),
-    entryPrice: z.number({ invalid_type_error: 'Required' }).positive('Must be > 0'),
-    entryDate: z.string().min(1, 'Date required'),
-    shares: z.number({ invalid_type_error: 'Required' }).int().positive('Must be > 0'),
-    stopPrice: z.number({ invalid_type_error: 'Required' }).positive('Must be > 0'),
-    target2r: z.number().positive().optional(),
-    target3r: z.number().positive().optional(),
-    setupType: z.string().optional(),
-    notes: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.entryPrice > 0 && data.stopPrice > 0 && data.entryPrice <= data.stopPrice) {
-      ctx.addIssue({ code: 'custom', path: ['entryPrice'], message: 'Entry must be > stop' })
-    }
-  })
-
-const editSchema = z.object({
-  stopPrice: z.number({ invalid_type_error: 'Required' }).positive('Must be > 0'),
-  status: z.enum(['OPEN', 'CLOSED']),
-  closedAt: z.string().optional(),
-  closePrice: z.number().positive().optional(),
-  notes: z.string().optional(),
-})
-
-type NewFormValues = z.infer<typeof newSchema>
-type EditFormValues = z.infer<typeof editSchema>
+import { newSchema, editSchema, type NewFormValues, type EditFormValues } from './_positionFormSchemas'
 
 // ── component ─────────────────────────────────────────────────────────────────
 
@@ -251,6 +220,8 @@ function EditPositionForm({
 }) {
   const queryClient = useQueryClient()
 
+  const [watchStatus, setWatchStatus] = useState<PositionStatus>(position.status)
+
   const form = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -261,8 +232,6 @@ function EditPositionForm({
       notes: position.notes ?? '',
     },
   })
-
-  const watchStatus = form.watch('status')
 
   const mutation = useMutation({
     mutationFn: (data: EditFormValues) =>
@@ -305,7 +274,7 @@ function EditPositionForm({
             control={form.control}
             name="status"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
+              <Select value={field.value} onValueChange={(val) => { field.onChange(val); setWatchStatus(val as PositionStatus) }}>
                 <SelectTrigger id="pfd-edit-status">
                   <SelectValue />
                 </SelectTrigger>

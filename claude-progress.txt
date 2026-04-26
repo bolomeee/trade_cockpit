@@ -172,3 +172,68 @@
   - expire_due_pending_orders 幂等性确认 ✅
 
 phase 更新：F206 → done（features.json 已同步）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-c1 PositionListWidget — Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 草案完成并经用户确认
+    docs/开发/sprint-contracts/F206-c1-contract.md
+  - 6 文件原则触发：F206-c 全量 7 生产文件超上限，拆为 c1+c2
+    - c1：PositionListWidget（4 文件，本 sprint）
+    - c2：PendingOrdersWidget（4 文件，c1 完成后）
+  - 范围确认：
+    - cockpitPositionsApi.ts（4 endpoint client + 类型）
+    - PositionListWidget.tsx（Summary 顶条 5 字段 + 表 + 内联编辑 + 删除）
+    - PositionFormDialog.tsx（react-hook-form + zod + suggestedShares 提示）
+    - CockpitRegistry.ts 注册 cockpit.position-list
+  - 完成标准：S1–S20（5 单测 + 13 集成 + 1 静态 + 1 回归）
+  - 设计偏离已识别：nextAction 不弹 rationale 气泡（API 未返）→ 偏离回写到 design-spec + DECISIONS
+
+⚠️ 待你决策：
+  - 无（5 条待确认条款已在 Contract §7 全部确认）
+
+🔧 系统变更：
+  - features.json：F206 phase 由 done 回退为 in_progress（c1/c2 未完成）
+  - features.json：active_sprint=F206-c1 / active_sprint_phase=contract_agreed
+  - features.json：F206 iteration_history 追加 c1 entry
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：✅ done
+    F206-b1：✅ done
+    F206-b2：✅ done
+    F206-c1：📜 contract_agreed（本 sprint，待 Generator）
+    F206-c2：⬜ 待 c1 完成
+
+[下一个 Session]
+  > 继续开发 F206-c1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+---
+
+## 2026-04-26 F206-c1 PositionListWidget — DONE
+
+### 完成内容
+- cockpitPositionsApi.ts（4 endpoint client + TS types）
+- PositionListWidget.tsx + _positionListRow.tsx（拆分，RiskSummaryBar / InlineEditRow / PositionRow）
+- PositionFormDialog.tsx + _positionFormSchemas.ts（拆分，react-hook-form v7 + zod v4）
+- CockpitRegistry.ts 注册 cockpit.position-list（x:0 y:8 w:6 h:8）
+- S1–S18 全过，160/160 tests，build ✅
+
+### 技术决策
+- Zod v4: invalid_type_error → error（breaking change）
+- target2r/3r: setValueAs 避免 NaN 阻断 superRefine
+- FilterBtn / helper functions 必须在组件外（react-refresh 规则）
+- form.watch() → local useState（incompatible-library）
+- AiSetupExplainerPopover.tsx: as const on conditional → 显式联合类型（pre-existing TS1355 fix）
+
+### 设计偏离
+- D076: nextAction 仅彩色 chip，不弹 rationale 气泡（API 未返 rationale，F207 覆盖）
+
+[下一个 Session]
+  > 继续开发 F206-c2 PendingOrdersWidget。
+  > 读取 SESSION-HANDOFF.md + API-CONTRACT.md §pending-orders + design-spec.md §Widget 8，
+  > 起草 F206-c2 Sprint Contract，用户确认后进入 Generator 模式。

@@ -1,119 +1,98 @@
-# SESSION-HANDOFF.md
+# SESSION-HANDOFF — F206-c1 Done
 
-> 更新时间：2026-04-26
-> 阶段：F206-b2 needs_review → F206 整体等待合并验收
+> 生成：2026-04-26 | 阶段：done
+> 当前 active sprint：**F206-c2 PendingOrdersWidget**（下一个）
+
+---
+
+## 已完成内容（本 session）
+
+### F206-c1 PositionListWidget — 完成
+
+**新建文件（生产）：**
+- `frontend/src/cockpit/lib/api/cockpitPositionsApi.ts` — 4 endpoint client + TS types（Position / PositionSummary / GetPositionsResponse / PositionInput / PositionPatch）
+- `frontend/src/cockpit/widgets/PositionListWidget.tsx` — 主 widget（状态过滤 + summary 顶条 + 表格 + 对话框触发）
+- `frontend/src/cockpit/widgets/_positionListRow.tsx` — 拆分子组件（RiskSummaryBar / InlineEditRow / PositionRow，因 350 行限制）
+- `frontend/src/cockpit/dialogs/PositionFormDialog.tsx` — new/edit 双模式表单（react-hook-form v7 + zod v4）
+- `frontend/src/cockpit/dialogs/_positionFormSchemas.ts` — zod schemas 拆分（因 350 行限制）
+
+**新建文件（测试）：**
+- `frontend/src/cockpit/lib/api/__tests__/cockpitPositionsApi.test.ts` — S1–S4（12 tests）
+- `frontend/src/cockpit/widgets/__tests__/PositionListWidget.test.tsx` — S5–S13（15 tests）
+- `frontend/src/cockpit/dialogs/__tests__/PositionFormDialog.test.tsx` — S14–S17（10 tests）
+
+**修改文件：**
+- `frontend/src/cockpit/CockpitRegistry.ts` — 注册 `cockpit.position-list` manifest
+- `frontend/src/cockpit/__tests__/CockpitRegistry.test.ts` — S18 tests（3 tests）
+- `docs/设计/design-spec.md` §1057 — nextAction 设计偏离回写
+- `docs/系统设计/DECISIONS.md` — D076 设计偏离决策
+- `frontend/src/cockpit/components/AiSetupExplainerPopover.tsx` — 修复 TS1355（`as const` on conditional → 显式类型）
+- `docs/需求/features.json` — F206-c1 phase: done，active_sprint → F206-c2
+- `claude-progress.txt` — 进度追加
+
+**关键技术决策：**
+- Zod v4：`invalid_type_error` → `error`（breaking change，影响 number schema）
+- target2r/target3r 用 `setValueAs` 而非 `valueAsNumber`，避免 NaN 阻断 superRefine
+- FilterBtn 必须在 component 外定义（ESLint react-refresh/only-export-components）
+- 非组件 helpers（fmt2 等）从 _positionListRow.tsx 移除 export（同一规则）
+- `form.watch()` 用 local useState 替代（react-hooks/incompatible-library）
+
+**测试结果：**
+- S1–S18 全过，160/160 tests pass
+- lint: 新建/修改文件零 warning/error（存量 lint errors 均为 pre-existing）
+- build: `pnpm -C frontend run build` ✅
 
 ---
 
 ## 当前状态
 
-**Pipeline 位置**：F206-b2 Generator → Evaluator → needs_review ✅
-
-**分支**：`cockpit`
-**最新 commit**：`6c502ae` feat(F206-b2): risk summary + pending order expirer
-**未提交**：无（仅 `backend/uv.lock` M，无关）
-
-**v1.9 Cockpit P1 开发计划**：
-1. **F206 Position Manager**
-   - ✅ **F206-a Position 后端**（needs_review，待合并验收）
-   - ✅ **F206-b1 PendingOrder 后端**（needs_review，待合并验收）
-   - ✅ **F206-b2 Risk Summary + APScheduler EXPIRED**（needs_review，待合并验收）
-   - ⬜ **F206-c 前端两 Widget + Form Dialog**（下一步）
-2. F205 Pool Builder Widget（待 F206 整体完成后开工）
-3. F207 Daily Action List Widget（依赖 F206 + F202 ✅）
+| 项 | 值 |
+|---|---|
+| Feature | F206 Position Manager |
+| Sprint | F206-c1 ✅ done |
+| 下一 Sprint | F206-c2 PendingOrdersWidget（需起草 contract） |
+| 后端依赖 | `/api/cockpit/pending-orders` 4 endpoint 已上线（F206-b1 ✅） |
 
 ---
 
-## F206-b2 完成摘要
+## 下一步任务（F206-c2）
 
-**实现内容**：
-1. `GET /api/cockpit/positions` 响应增 `summary` 字段（5 数值字段）
-2. APScheduler 周一-周五 22:35 UTC tick：扫描 ACTIVE pending_orders，`expiration_date < today` → EXPIRED
+F206-c2 = PendingOrdersWidget 前端，镜像 c1 结构：
 
-**测试结果**：
-- §A 14 + §B 10 = 24 新用例，100% pass
-- 全量回归：722/722 pass（698 + 24）
-- F206-a 35 + F206-b1 41 = 76 既有用例全绿
-- mypy / ruff 无新增 warning
+**预计文件：**
+1. `cockpitPendingOrdersApi.ts` — 4 endpoint client（GET/POST/PATCH/DELETE /api/cockpit/pending-orders）
+2. `PendingOrdersWidget.tsx` + `_pendingOrdersRow.tsx`（若超 350 行则拆）
+3. `PendingOrderFormDialog.tsx` + `_pendingOrderFormSchemas.ts`（若需要）
+4. `CockpitRegistry.ts` 新增 `cockpit.pending-orders` manifest
 
-**修改文件（7 个）**：
+**关键字段（来自 API-CONTRACT §pending-orders）：**
+- PendingOrder: id / ticker / setupType / entryPrice / stopPrice / shares / riskPct / expiresAt / status / distanceToTriggerPct / createdAt / updatedAt
+- Status 枚举：ACTIVE / TRIGGERED / CANCELLED / EXPIRED
+- GET response 不含 summary（与 positions 不同）
 
-| 文件 | 类型 |
-|------|------|
-| `backend/app/schemas/cockpit/position.py` | 修改（+PositionSummary + _PositionListData.summary） |
-| `backend/app/services/cockpit/position_service.py` | 修改（+_compute_summary + tuple 返回）|
-| `backend/app/routers/cockpit/positions.py` | 修改（适配 tuple） |
-| `backend/app/services/cockpit/pending_order_expirer.py` | 新建 |
-| `backend/app/services/refresh_job.py` | 修改（+EXPIRED cron 常量 + tick） |
-| `backend/tests/test_position_summary_f206b2.py` | 新建（§A 14 用例） |
-| `backend/tests/test_pending_order_expirer_f206b2.py` | 新建（§B 10 用例） |
-
-**关键决策（已按 contract 执行）**：
-- Q1：summary 与 `?status=` 解耦（始终基于 OPEN/ACTIVE 快照）
-- Q2：EXPIRED cron 用常量（不加 env）
-- Q3：`list_positions` 返回 `tuple[PositionSummary, list[PositionItem]]`
-- Q4：cron = `"35 22 * * 1-5"` UTC
-- Q5：account_size 默认值 = 100000.0
+**注意：**
+- F206-c1 测试文件命名规范：`__tests__/XxxWidget.test.tsx`（RTL + msw）
+- EarningsRiskDot 不适用于 PendingOrders（无 earnings 字段）
+- distanceToTriggerPct 可能需要自定义格式化
 
 ---
 
-## 下一步：F206 整体合并验收
+## 未决事项
 
-F206-a / b1 / b2 三者均处于 needs_review，**不单独验收，统一合并验收**。
-
-### 合并验收脚本（手动 curl 验证思路）
-
-```bash
-# 1. 创建 1 OPEN position
-curl -X POST http://localhost:8000/api/cockpit/positions \
-  -H "Content-Type: application/json" \
-  -d '{"ticker":"NVDA","entryPrice":850,"entryDate":"2026-04-01","shares":33,"stopPrice":820}'
-
-# 2. 创建 1 ACTIVE pending_order
-curl -X POST http://localhost:8000/api/cockpit/pending-orders \
-  -H "Content-Type: application/json" \
-  -d '{"ticker":"AAPL","setupType":"BREAKOUT","entryPrice":180,"stopPrice":173,"shares":40}'
-
-# 3. GET positions → 验证 data.summary 5 字段
-curl http://localhost:8000/api/cockpit/positions | python3 -m json.tool
-
-# 4. 创建 1 ACTIVE pending_order，expiration_date=昨天 → 手动调用 expirer
-# 验证 PATCH /pending-orders/{id} 后 status=EXPIRED
-
-# 5. 验证 APScheduler 含 cockpit_pending_orders_expirer job：
-# GET http://localhost:8000/api/refresh/status 或查看 log
-```
-
-### 验收要点
-- `data.summary.openRiskPct` = `(850-820)*33/100000*100` = **0.99**
-- `data.summary.pendingRiskPct` = `(180-173)*40/100000*100` = **0.28**
-- `data.summary.positionsCount` = **1**，`pendingCount` = **1**
-- `GET ?status=all` → summary 不变（Q1 解耦验证）
-- expiration_date=昨天的 ACTIVE order → `expire_due_pending_orders(db)` 后 status=EXPIRED
+- 存量 ESLint errors（8 个 pre-existing，不在 F206-c1 范围）：
+  - `aiApi.test.ts`: beforeEach unused
+  - `MarketRegimeWidget.tsx`: Date.now() impure
+  - `AddStockCard.tsx` / `CsvImportDialog.tsx`: setState in effect（4 errors）
+  - `JournalEntryForm.tsx`: form.watch incompatible-library warning
+  - `button-group.tsx` / `button.tsx` / `toggle.tsx`: only-export-components（shadcn ui files）
+  - 建议：开专项 session 修复，不混入 feature session
 
 ---
 
-## 后续：F206-c 前端 Widget
+## 恢复指令
 
-F206-c 包含：
-- **Position Widget**：Open Positions 表（ticker/entry/last/stop/R/size/unrealized P&L/earnings/next action）+ Risk Summary 顶条（5 字段）
-- **PendingOrder Widget**：条件单列表（ticker/setup/entry/stop/risk/expiration/distance/status）+ Form Dialog（录入/编辑）
-
-F206-c 需新协商 Sprint Contract，不在本 session 范围。
-
----
-
-## 下一 session 恢复指令
-
-### 若要验收 F206（整体）：
 ```
-F206-a / b1 / b2 三个后端 sub-task 都已完成（needs_review）。
-触发 acceptance skill，起草 F206 后端合并验收文档。
-读取 SESSION-HANDOFF.md 获取验收脚本。
-```
-
-### 若要继续 F206-c 前端：
-```
-F206-b2 已完成（needs_review）。继续 F206-c 前端 Widget 开发。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/（如已有 F206-c contract）。
+继续开发 F206-c2 PendingOrdersWidget。
+读取 SESSION-HANDOFF.md + API-CONTRACT.md §pending-orders + design-spec.md §Widget 8，
+起草 F206-c2 Sprint Contract，用户确认后进入 Generator 模式。
 ```

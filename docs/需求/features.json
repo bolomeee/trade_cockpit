@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-26-F210-c-contract-agreed",
+  "last_updated": "2026-04-26-F206-c1-done",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.0",
-    "active_sprint": "F210-c",
-    "active_sprint_phase": "done"
+    "active_sprint": "F206-c2",
+    "active_sprint_phase": "planned"
   },
   "_iteration_log": [
     {
@@ -2759,9 +2759,8 @@
       "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
       "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
       "priority": "P1",
-      "status": "done",
-      "phase": "done",
-      "completed_at": "2026-04-26",
+      "status": "in_progress",
+      "phase": "in_progress",
       "dependencies": [
         "F203"
       ],
@@ -2851,9 +2850,15 @@
           "subtask": "F206-b2",
           "phase": "done",
           "summary": "Risk Summary 聚合 + APScheduler EXPIRED 自动转换。GET /api/cockpit/positions 增 summary 字段（5 数值口径，与 ?status= 解耦）+ weekdays 22:35 UTC tick 自动过期 ACTIVE pending_orders。共 7 文件（5 业务 + 2 测试），§A 14 + §B 10 = 24 新用例 100% pass，全量回归 722/722。"
+        },
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-c1",
+          "phase": "done",
+          "summary": "PositionListWidget 前端完成。cockpitPositionsApi（4 endpoint client + camelCase types）+ PositionListWidget（Risk Summary 5 字段顶条 + Open Positions 表 + 内联编辑 PATCH + 删除 AlertDialog DELETE）+ PositionFormDialog（react-hook-form v7 + zod v4 校验 + suggestedShares 提示）+ CockpitRegistry 注册 cockpit.position-list。5 生产文件（_positionListRow 拆分 + _positionFormSchemas 拆分）+ 3 测试文件，S1–S20 全过，160/160 tests，build 通过。设计偏离：nextAction 仅彩色 chip 无 rationale 气泡（D076）。"
         }
       ],
-      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端（needs_review）/ F206-b1 PendingOrder 后端（needs_review）/ F206-b2 Risk Summary + APScheduler EXPIRED（contract_agreed）/ F206-c 前端 widget（待 b2 完成）。"
+      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端 ✅ / F206-b1 PendingOrder 后端 ✅ / F206-b2 Risk Summary + APScheduler EXPIRED ✅ / F206-c1 PositionListWidget 前端 ✅ / F206-c2 PendingOrdersWidget 前端（待 c2 开发）。F206-c 因 7 文件超 6 上限拆为 c1+c2，每个 ≤6 文件。"
     },
     {
       "id": "F207",

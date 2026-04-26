@@ -39,11 +39,11 @@ type Props = {
 // ── Input builder ─────────────────────────────────────────────────────────────
 
 function buildSetupExplainerInput(p: Props): SetupExplainerInput {
-  const setup = (
+  const setup: 'breakout' | 'pullback' | 'reversal' = (
     p.setupType === 'BREAKOUT' ? 'breakout' :
     p.setupType === 'PULLBACK' ? 'pullback' :
     'reversal'
-  ) as const
+  )
   // trend_score is a 0-5 MA-alignment ladder (backend setup_service._compute_trend_score):
   //   4-5 → bullish stack (close>MA10>MA21>MA50…) → 'up'
   //   2-3 → partial alignment → 'sideways'
