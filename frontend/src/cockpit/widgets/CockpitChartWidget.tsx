@@ -80,7 +80,7 @@ export function CockpitChartWidget() {
     const chart: IChartApi = createChart(container, {
       width: container.clientWidth || 1,
       height: container.clientHeight || 1,
-      layout: { background: { color: bgColor }, textColor, fontSize: 6 },
+      layout: { background: { color: bgColor }, textColor, fontSize: 12 },
       grid: { vertLines: { color: borderColor }, horzLines: { color: borderColor } },
       rightPriceScale: { borderColor },
       timeScale: { borderColor, timeVisible: false },
