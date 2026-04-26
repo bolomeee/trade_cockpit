@@ -80,7 +80,7 @@ export function CockpitChartWidget() {
     const chart: IChartApi = createChart(container, {
       width: container.clientWidth || 1,
       height: container.clientHeight || 1,
-      layout: { background: { color: bgColor }, textColor },
+      layout: { background: { color: bgColor }, textColor, fontSize: 6 },
       grid: { vertLines: { color: borderColor }, horzLines: { color: borderColor } },
       rightPriceScale: { borderColor },
       timeScale: { borderColor, timeVisible: false },
@@ -190,7 +190,7 @@ export function CockpitChartWidget() {
         lineWidth: 1,
         lineStyle: LineStyle.Solid,
         axisLabelVisible: true,
-        title: `Entry ${d.entryPrice.toFixed(2)}`,
+        title: '',
       }),
       series.createPriceLine({
         price: d.stopPrice,
@@ -198,7 +198,7 @@ export function CockpitChartWidget() {
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
-        title: `Stop ${d.stopPrice.toFixed(2)}`,
+        title: '',
       }),
       series.createPriceLine({
         price: d.target2r,
@@ -206,7 +206,7 @@ export function CockpitChartWidget() {
         lineWidth: 1,
         lineStyle: LineStyle.Dotted,
         axisLabelVisible: true,
-        title: `2R ${d.target2r.toFixed(2)}`,
+        title: '',
       }),
       series.createPriceLine({
         price: d.target3r,
@@ -214,7 +214,7 @@ export function CockpitChartWidget() {
         lineWidth: 1,
         lineStyle: LineStyle.Dotted,
         axisLabelVisible: true,
-        title: `3R ${d.target3r.toFixed(2)}`,
+        title: '',
       }),
     ]
   }, [decisionQuery.data, chartQuery.data])

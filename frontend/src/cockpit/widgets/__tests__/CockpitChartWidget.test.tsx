@@ -176,7 +176,7 @@ describe('S4 – loading and chart creation', () => {
 })
 
 describe('S5 – decision price lines', () => {
-  it('createPriceLine called 4 times with price in title', async () => {
+  it('createPriceLine called 4 times with axis label only (no on-chart title)', async () => {
     vi.stubGlobal('fetch', makeFetch())
     useCockpitStore.setState({ selectedTicker: 'NVDA' })
     renderWidget()
@@ -194,11 +194,16 @@ describe('S5 – decision price lines', () => {
       expect(series.createPriceLine).toHaveBeenCalledTimes(4)
     })
 
-    const calls = series.createPriceLine.mock.calls as Array<[{ title: string; price: number }]>
-    expect(calls[0][0].title).toContain('850')
-    expect(calls[1][0].title).toContain('820')
-    expect(calls[2][0].title).toContain('910')
-    expect(calls[3][0].title).toContain('940')
+    const calls = series.createPriceLine.mock.calls as Array<[{ title: string; price: number; axisLabelVisible: boolean }]>
+    // Title is empty (on-chart text removed); price is shown only as axis label
+    expect(calls[0][0].price).toBe(850)
+    expect(calls[1][0].price).toBe(820)
+    expect(calls[2][0].price).toBe(910)
+    expect(calls[3][0].price).toBe(940)
+    for (const call of calls) {
+      expect(call[0].title).toBe('')
+      expect(call[0].axisLabelVisible).toBe(true)
+    }
   })
 })
 
