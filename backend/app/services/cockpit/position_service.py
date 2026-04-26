@@ -11,12 +11,14 @@ from app.external.fmp_client import FmpClient
 from app.models.earnings_event import EarningsEvent
 from app.models.position import Position
 from app.repositories.earnings_event_repository import EarningsEventRepository
+from app.repositories.pending_order_repository import PendingOrderRepository
 from app.repositories.position_repository import PositionRepository
 from app.repositories.user_settings_repository import UserSettingsRepository
 from app.services.watchlist_service import APIError
 from app.schemas.cockpit.position import (
     PositionCreate,
     PositionItem,
+    PositionSummary,
     PositionUpdate,
 )
 from app.services.cockpit.last_close_loader import LastCloseLoader
@@ -35,6 +37,7 @@ class PositionService:
         self._db = db
         self._fmp = fmp
         self._repo = PositionRepository(db)
+        self._pending_repo = PendingOrderRepository(db)
         self._settings_repo = UserSettingsRepository(db)
         self._earnings_repo = EarningsEventRepository(db)
         self._loader = LastCloseLoader(db, fmp)
@@ -43,16 +46,17 @@ class PositionService:
     # Public CRUD
     # ------------------------------------------------------------------
 
-    def list_positions(self, status: str = "open") -> list[PositionItem]:
+    def list_positions(self, status: str = "open") -> tuple[PositionSummary, list[PositionItem]]:
         rows = self._repo.list_by_status(status)  # type: ignore[arg-type]
-        if not rows:
-            return []
 
-        tickers = [r.ticker for r in rows]
-        last_closes = self._loader.load(tickers)
+        if rows:
+            tickers = [r.ticker for r in rows]
+            last_closes = self._loader.load(tickers)
+        else:
+            last_closes = {}
 
         today = date.today()
-        return [
+        items = [
             self._enrich(
                 row,
                 last_closes.get(row.ticker),
@@ -61,6 +65,21 @@ class PositionService:
             )
             for row in rows
         ]
+
+        # Summary is always based on OPEN positions + ACTIVE pending_orders,
+        # decoupled from the ?status= filter (Q1 decision).
+        if status == "open":
+            open_rows = rows
+            open_last_closes = last_closes
+        else:
+            open_rows = self._repo.list_by_status("open")  # type: ignore[arg-type]
+            if open_rows:
+                open_last_closes = self._loader.load([r.ticker for r in open_rows])
+            else:
+                open_last_closes = {}
+
+        summary = self._compute_summary(open_rows, open_last_closes)
+        return summary, items
 
     def get_position(self, position_id: int) -> PositionItem | None:
         row = self._repo.get_by_id(position_id)
@@ -201,4 +220,42 @@ class PositionService:
             created_at=row.created_at,
             updated_at=row.updated_at,
             **metrics,
+        )
+
+    def _compute_summary(
+        self,
+        open_rows: list[Position],
+        open_last_closes: dict[str, float | None],
+    ) -> PositionSummary:
+        """Compute the 5-field risk summary over OPEN positions + ACTIVE pending_orders."""
+        account_size = self._settings_repo.get_or_default()["account_size"]
+        pct_computable = account_size is not None and account_size > 0
+
+        open_risk_raw = sum(
+            (row.entry_price - row.stop_price) * row.shares for row in open_rows
+        )
+        total_exposure_raw = sum(
+            (open_last_closes.get(row.ticker) or 0.0) * row.shares for row in open_rows
+        )
+
+        active_pending = self._pending_repo.list_by_status("ACTIVE")
+        pending_risk_raw = sum(
+            (row.entry_price - row.stop_price) * row.shares for row in active_pending
+        )
+
+        if pct_computable:
+            open_risk_pct: float | None = round(open_risk_raw / account_size * 100, 2)
+            total_exposure_pct: float | None = round(total_exposure_raw / account_size * 100, 2)
+            pending_risk_pct: float | None = round(pending_risk_raw / account_size * 100, 2)
+        else:
+            open_risk_pct = None
+            total_exposure_pct = None
+            pending_risk_pct = None
+
+        return PositionSummary(
+            open_risk_pct=open_risk_pct,
+            total_exposure_pct=total_exposure_pct,
+            pending_risk_pct=pending_risk_pct,
+            positions_count=len(open_rows),
+            pending_count=len(active_pending),
         )

@@ -13,8 +13,8 @@ from app.schemas.cockpit.position import (
     PositionListResponse,
     PositionSingleResponse,
     PositionUpdate,
-    _PositionListData,
     _PositionDeleteData,
+    _PositionListData,
 )
 from app.services.cockpit.position_service import PositionService
 from app.services.watchlist_service import APIError
@@ -38,8 +38,8 @@ def list_positions(
     status: str = Query("open", pattern="^(open|closed|all)$"),
     svc: PositionService = Depends(_get_service),
 ) -> PositionListResponse:
-    items = svc.list_positions(status)
-    return PositionListResponse(data=_PositionListData(items=items))
+    summary, items = svc.list_positions(status)
+    return PositionListResponse(data=_PositionListData(summary=summary, items=items))
 
 
 # ---------------------------------------------------------------------------
