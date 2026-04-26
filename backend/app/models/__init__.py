@@ -21,6 +21,7 @@ from app.models.market_regime_snapshot import MarketRegimeSnapshot  # noqa: E402
 from app.models.setup_snapshot import SetupSnapshot  # noqa: E402
 from app.models.user_settings import UserSettings  # noqa: E402
 from app.models.ai_memo import AiMemo  # noqa: E402
+from app.models.position import Position  # noqa: E402
 
 __all__ = [
     "Base",
@@ -40,4 +41,5 @@ __all__ = [
     "SetupSnapshot",
     "UserSettings",
     "AiMemo",
+    "Position",
 ]
