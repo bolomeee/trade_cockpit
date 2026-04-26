@@ -100,12 +100,18 @@ export function SetupMonitorWidget() {
         <ToggleGroup
           type="single"
           size="sm"
+          spacing={1}
           value={activeTab}
           onValueChange={(v) => v && setActiveTab(v as FilterTab)}
           aria-label="Setup filter"
         >
           {TABS.map((tab) => (
-            <ToggleGroupItem key={tab.key} value={tab.key} aria-label={tab.key}>
+            <ToggleGroupItem
+              key={tab.key}
+              value={tab.key}
+              aria-label={tab.key}
+              className="text-xs font-normal"
+            >
               {tab.label(data?.summary)}
             </ToggleGroupItem>
           ))}
@@ -121,7 +127,7 @@ export function SetupMonitorWidget() {
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '0 6px' }}>
         {isLoading && (
           <div
             style={{
