@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { Settings } from 'lucide-react'
 
 import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
 import { UserSettingsDialog } from '@/cockpit/components/UserSettingsDialog'
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
+import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { RefreshButton } from './RefreshButton'
 
@@ -105,24 +107,10 @@ export function TopNav() {
           )}
           {showCockpitReset && (
             <ButtonGroup>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  fontSize: 'var(--font-size-caption)',
-                  color: 'var(--color-text-secondary)',
-                  background: 'none',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
-              >
-                ⚙ Settings
-              </button>
+              <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+                <Settings />
+                Settings
+              </Button>
             </ButtonGroup>
           )}
         </ButtonGroup>

@@ -56,26 +56,26 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('S12 – gear button visibility by route', () => {
-  it('renders ⚙ Settings button on /cockpit route', () => {
+  it('renders Settings button on /cockpit route', () => {
     renderAt('/cockpit')
-    expect(screen.getByText('⚙ Settings')).toBeInTheDocument()
+    expect(screen.getByText('Settings')).toBeInTheDocument()
   })
 
-  it('does NOT render ⚙ Settings on / route', () => {
+  it('does NOT render Settings on / route', () => {
     renderAt('/')
-    expect(screen.queryByText('⚙ Settings')).not.toBeInTheDocument()
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
   })
 
-  it('does NOT render ⚙ Settings on /journal route', () => {
+  it('does NOT render Settings on /journal route', () => {
     renderAt('/journal')
-    expect(screen.queryByText('⚙ Settings')).not.toBeInTheDocument()
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
   })
 })
 
 describe('S13 – settings dialog open/close via TopNav', () => {
-  it('clicking ⚙ Settings opens the dialog', async () => {
+  it('clicking Settings opens the dialog', async () => {
     renderAt('/cockpit')
-    fireEvent.click(screen.getByText('⚙ Settings'))
+    fireEvent.click(screen.getByText('Settings'))
     await waitFor(() => {
       expect(screen.getByText('User Settings')).toBeInTheDocument()
     })
@@ -83,7 +83,7 @@ describe('S13 – settings dialog open/close via TopNav', () => {
 
   it('clicking Cancel in dialog closes it', async () => {
     renderAt('/cockpit')
-    fireEvent.click(screen.getByText('⚙ Settings'))
+    fireEvent.click(screen.getByText('Settings'))
     await waitFor(() => screen.getByText('Cancel'))
     fireEvent.click(screen.getByText('Cancel'))
     await waitFor(() => {
