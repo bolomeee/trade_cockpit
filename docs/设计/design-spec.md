@@ -1055,6 +1055,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - 行展开：内联表单（stop / status / closedAt / closePrice / notes），保存调 `PATCH /api/cockpit/positions/{id}`
 - 行右上 [✕] 删除：AlertDialog 二次确认 → `DELETE`
 - nextAction 列：`hold` 灰、`raise_stop` 蓝、`reduce` 橙、`exit` 红，点击文字弹气泡说明 rationale
+  > **[设计偏离 v1.9 F206-c1]** rationale 气泡未实现。API `GET /api/cockpit/positions` 返回的 Position 对象不含 `rationale` 字段（仅有枚举值），无法在前端展示具体说明。v1.9 简化为彩色 chip（label: Watch/Add/Reduce/Sell），不弹气泡。F207 ActionList 完成后，`/api/cockpit/actions/today` 将提供完整 rationale，届时可在 F207 UI 中补全该交互。参见 DECISIONS.md D065。
 
 ---
 

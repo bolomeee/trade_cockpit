@@ -1664,3 +1664,26 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 
 **影响**：`frontend/src/cockpit/widgets/MarketRegimeWidget.tsx`（`normalizeSectorState` 私有函数）。测试覆盖在 `MarketRegimeWidget.test.tsx §S14.6`。
 
+
+
+---
+
+## D076：F206-c1 nextAction rationale 气泡在 v1.9 不实现
+
+**日期**：2026-04-26（F206-c1 Sprint Contract §2 设计偏离，用户已确认）
+**触发**：design-spec §Widget 7 §1057 描述"点击文字弹气泡说明 rationale"，但 `GET /api/cockpit/positions` 返回的 Position 对象不含 `rationale` 字段（仅有 nextAction 枚举：hold / raise_stop / reduce / exit）。
+
+**决策**：v1.9 简化为彩色 chip，不弹气泡：
+- hold → "Watch"（`--color-action-watch`，灰）
+- raise_stop → "Add"（`--color-action-add`，蓝）
+- reduce → "Reduce"（`--color-action-reduce`，橙）
+- exit → "Sell"（`--color-action-sell`，红）
+
+**理由**：
+1. API 未返回 rationale 字段，前端无数据来源，无法实现气泡内容。
+2. F207 `GET /api/cockpit/actions/today` 将聚合完整 rationale（规则引擎 + AI 解释），届时在 ActionListWidget 中提供该交互更自然。
+3. 保持 F206-c1 范围聚焦（4 生产文件），不额外拉 F207 依赖。
+
+**放弃了什么**：v1.9 的 rationale 气泡交互（design-spec §1057 原始描述）。该功能归档至 F207 scope。
+
+**影响**：`frontend/src/cockpit/widgets/_positionListRow.tsx`（NextAction chip 实现），`docs/设计/design-spec.md §Widget 7`（偏离注释已写入）。
