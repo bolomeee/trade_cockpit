@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { callAiTask } from '../lib/api/aiApi'
 import type { RegimeLabel } from '../lib/api/cockpitRegimeApi'
 import type { SetupItem, SetupType, EarningsRisk } from '../lib/api/setupMonitorApi'
@@ -125,28 +126,17 @@ export function AiCandidateRankerSection({ items, regime, regimeScore }: Props) 
 
   return (
     <>
-      {/* Trigger button — marginLeft:auto pushes it right in the flex-wrap tabs row */}
-      <button
+      <Button
         data-testid="ai-rank-trigger"
         aria-label="AI rank top setups"
+        aria-expanded={open}
+        variant="outline"
+        size="sm"
         onClick={() => setOpen((o) => !o)}
         disabled={isDisabled}
-        style={{
-          marginLeft: 'auto',
-          padding: '4px 10px',
-          borderRadius: '4px',
-          border: '1px solid var(--color-border)',
-          background: open ? 'var(--color-signal-breakout)' : 'var(--color-bg-secondary)',
-          color: open ? 'var(--color-text-on-dark)' : 'var(--color-text-primary)',
-          cursor: isDisabled ? 'default' : 'pointer',
-          fontSize: 'var(--font-size-caption)',
-          fontWeight: 'var(--font-weight-medium)',
-          opacity: isDisabled ? 0.5 : 1,
-          flexShrink: 0,
-        }}
       >
         AI 排序
-      </button>
+      </Button>
 
       {/* Result panel — flexBasis:100% breaks onto its own row inside the flex-wrap tabs container */}
       {open && (
