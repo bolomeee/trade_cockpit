@@ -35,3 +35,89 @@
   开启新 session，粘贴：
   > F206-a 已完成验收，准备开发 F206-b（PendingOrder 后端 + Risk Summary 聚合）
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-a-contract.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint Contract 协商：F206-b1 PendingOrder 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F206-b1-contract.md
+  - 拆分方案 A：F206-b 拆为 b1（PendingOrder CRUD，14 文件）+ b2（Summary + APScheduler EXPIRED，9 文件）
+  - 4 个开放问题用户全部同意默认值：
+      Q1：抽 last_close_loader.py 共享模块（避免 D041 fallback 双实现）
+      Q2：GET /pending-orders 保持 API-CONTRACT 现行 `data: [...]` 裸数组结构
+      Q3：_VALID_SETUP_TYPES Literal 就地复制（不抽共享，守 14 文件清单）
+      Q4：POST expirationDate < today → 422（拒绝过去日期）
+
+🔧 待开发文件清单（14 个）：
+  1. backend/alembic/versions/014_f206b1_pending_orders.py（新建）
+  2. backend/app/models/pending_order.py（新建）
+  3. backend/app/models/__init__.py（修改 +1 行）
+  4. backend/app/repositories/pending_order_repository.py（新建）
+  5. backend/app/schemas/cockpit/pending_order.py（新建）
+  6. backend/app/services/cockpit/last_close_loader.py（新建，共享）
+  7. backend/app/services/cockpit/pending_order_service.py（新建）
+  8. backend/app/services/cockpit/position_service.py（修改：改用 last_close_loader）
+  9. backend/app/routers/cockpit/pending_orders.py（新建）
+  10. backend/app/routers/cockpit/__init__.py（修改 +2 行）
+  11–14. tests/test_pending_order_f206b1_{schema,repo,service,integration}.py（新建，35 用例）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：🔍 needs_review（待用户验收）
+    F206-b1：🟡 contract_agreed（本次确认）
+    F206-b2：⬜ 待 b1 完成
+    F206-c：⬜ 待 b2 完成
+
+[下一个 Session — 必须新开]
+  推荐使用 Sonnet 开启新 session，粘贴：
+  > 继续开发 F206-b1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-b1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始（Migration 014 + ORM + models/__init__.py 注册）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-b1 PendingOrder 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Migration 014：pending_orders 表（13 字段 + 2 index + 2 CHECK constraint）
+  - ORM model PendingOrder + models/__init__.py 注册
+  - last_close_loader.py（共享模块 LastCloseLoader，抽自 position_service._load_last_closes + _fmp_latest_close）
+  - position_service.py 重构：改用 LastCloseLoader，删除两个私有方法
+  - PendingOrderRepository（CRUD + status 过滤，"all"→无过滤）
+  - PendingOrderService（list/get/create/update/delete + 状态机 + _enrich + _normalize_status）
+  - Pydantic schemas（Create / Update / Item / ListResponse / SingleResponse / DeleteResponse，D074 camelCase）
+  - Router 4 endpoints（GET/POST /pending-orders，PATCH/DELETE /pending-orders/{id}）
+  - 单元测试：§A 12（含 5 parametrize）/ §B 5 / §C 12 用例
+  - 集成测试：§D 12 用例
+  - 全量回归：698/698 ✅（657 → 698，新增 41）
+  - Ruff lint：无新增 warning
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+⚙️ 状态机落地：
+  - 终态（TRIGGERED / CANCELLED / EXPIRED）不可改回 ACTIVE，不可互转 → 422
+  - ACTIVE → ACTIVE 允许（同状态修订字段）
+  - 合并 entry/stop 校验：patch 只含其中一个时，与 DB 现值合并后再校验
+
+🔧 系统变更：
+  - 新建迁移：backend/alembic/versions/014_f206b1_pending_orders.py
+  - 新增模型：backend/app/models/pending_order.py
+  - 新增共享模块：backend/app/services/cockpit/last_close_loader.py
+  - 新增 repo：backend/app/repositories/pending_order_repository.py
+  - 新增 schema：backend/app/schemas/cockpit/pending_order.py
+  - 新增 service：backend/app/services/cockpit/pending_order_service.py
+  - 新增 router：backend/app/routers/cockpit/pending_orders.py
+  - 修改：position_service.py（改用 loader），routers/cockpit/__init__.py（+2行），models/__init__.py（+1行），test_schema.py（+pending_orders），test_position_f206a_service.py（mock 更新）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：🔍 needs_review（待用户验收）
+    F206-b1：🔍 needs_review（本次完成）
+    F206-b2：⬜ 待开始（Risk Summary 聚合 + APScheduler EXPIRED）
+    F206-c：⬜ 待 b2 完成
+
+[下一个 Session]
+  F206-b1 + F206-a 待合并验收（b2 完成后再一起验收）
+  下一步：开始 F206-b2 Sprint Contract 协商
+  > 读取 SESSION-HANDOFF.md，准备开发 F206-b2（Risk Summary 聚合 + APScheduler EXPIRED 转换）
