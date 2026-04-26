@@ -37,6 +37,40 @@
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-a-contract.md
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint Contract 协商：F206-b2 Risk Summary 聚合 + APScheduler EXPIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F206-b2-contract.md
+  - 5 个开放问题用户全部同意默认值：
+      Q1：summary 与 ?status= 解耦（始终基于 OPEN/ACTIVE）
+      Q2：EXPIRED cron 直接常量（不增 env 覆盖）
+      Q3：list_positions 返回 tuple[summary, items]（不引入新 dataclass）
+      Q4：cron = "35 22 * * 1-5" UTC（接 setup tick 之后 5 分钟）
+      Q5：account_size 默认值确认 = 100000.0（已 grep）
+
+🔧 待开发文件清单（7 个：5 业务 + 2 测试）：
+  1. backend/app/schemas/cockpit/position.py（修改：新增 PositionSummary + 改 _PositionListData）
+  2. backend/app/services/cockpit/position_service.py（修改：增 summary 计算，list_positions 返回 tuple）
+  3. backend/app/routers/cockpit/positions.py（修改：适配 tuple 签名）
+  4. backend/app/services/cockpit/pending_order_expirer.py（新建：expire_due_pending_orders 函数）
+  5. backend/app/services/refresh_job.py（修改：注册 _pending_orders_expirer_tick）
+  6. backend/tests/test_position_summary_f206b2.py（新建 §A 14 用例）
+  7. backend/tests/test_pending_order_expirer_f206b2.py（新建 §B 10 用例）
+
+📊 功能状态：
+  F206-a：🔍 needs_review
+  F206-b1：🔍 needs_review
+  F206-b2：📋 contract_agreed
+  F206-c：⬜ 待 b2 完成
+
+[下一个 Session]
+  开启新 session（建议 Sonnet），粘贴：
+  > 继续开发 F206-b2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-b2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始（grep account_size 默认值已完成 = 100000.0）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-26] Sprint Contract 协商：F206-b1 PendingOrder 数据层 + 后端 CRUD
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -112,12 +146,29 @@
 
 📊 功能状态：
   F206 Position Manager：
-    F206-a：🔍 needs_review（待用户验收）
-    F206-b1：🔍 needs_review（本次完成）
-    F206-b2：⬜ 待开始（Risk Summary 聚合 + APScheduler EXPIRED）
-    F206-c：⬜ 待 b2 完成
+    F206-a：✅ done（2026-04-26 验收通过）
+    F206-b1：✅ done（2026-04-26 验收通过）
+    F206-b2：✅ done（2026-04-26 验收通过）
+    F206-c：⬜ 待开始（前端 Widget）
 
 [下一个 Session]
-  F206-b1 + F206-a 待合并验收（b2 完成后再一起验收）
-  下一步：开始 F206-b2 Sprint Contract 协商
-  > 读取 SESSION-HANDOFF.md，准备开发 F206-b2（Risk Summary 聚合 + APScheduler EXPIRED 转换）
+  下一步：F206-c 前端 Widget（Position + PendingOrder + Risk Summary 顶条）
+  > 读取 SESSION-HANDOFF.md，准备开发 F206-c Sprint Contract
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] 验收：F206 Position Manager 后端（a + b1 + b2）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户确认）
+  验收文档：docs/验收/v1.9-F206-backend-acceptance.md
+
+测试总计：100/100（F206-a 35 + F206-b1 41 + F206-b2 24），全量 722/722
+功能确认：
+  - Position CRUD（4 端点）：create / list / patch / close / delete ✅
+  - PendingOrder CRUD（4 端点）：create / list / cancel / 终态保护 / status=all ✅
+  - Risk Summary：openRiskPct / totalExposurePct / pendingRiskPct / positionsCount / pendingCount ✅
+  - Summary 与 ?status= 解耦（Q1 验收通过）✅
+  - APScheduler cockpit_pending_orders_expirer（weekdays 22:35 UTC）注册确认 ✅
+  - expire_due_pending_orders 幂等性确认 ✅
+
+phase 更新：F206 → done（features.json 已同步）

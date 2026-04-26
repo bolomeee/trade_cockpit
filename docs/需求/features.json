@@ -2759,8 +2759,9 @@
       "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
       "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-26",
       "dependencies": [
         "F203"
       ],
@@ -2836,19 +2837,19 @@
         {
           "date": "2026-04-26",
           "subtask": "F206-a",
-          "phase": "needs_review",
+          "phase": "done",
           "summary": "Position 数据层 + 后端 CRUD（migration 013 / repo / service / router / 35 tests，全量回归 657/657）"
         },
         {
           "date": "2026-04-26",
           "subtask": "F206-b1",
-          "phase": "needs_review",
+          "phase": "done",
           "summary": "PendingOrder 数据层 + 后端 CRUD（migration 014 / repo / service / router / 41 tests，全量回归 698/698，last_close_loader 共享重构，状态机 4 终态，riskPct/distanceToTriggerPct 计算）"
         },
         {
           "date": "2026-04-26",
           "subtask": "F206-b2",
-          "phase": "needs_review",
+          "phase": "done",
           "summary": "Risk Summary 聚合 + APScheduler EXPIRED 自动转换。GET /api/cockpit/positions 增 summary 字段（5 数值口径，与 ?status= 解耦）+ weekdays 22:35 UTC tick 自动过期 ACTIVE pending_orders。共 7 文件（5 业务 + 2 测试），§A 14 + §B 10 = 24 新用例 100% pass，全量回归 722/722。"
         }
       ],
