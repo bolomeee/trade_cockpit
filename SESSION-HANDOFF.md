@@ -1,82 +1,118 @@
 # SESSION-HANDOFF.md
 
 > 更新时间：2026-04-26
-> 阶段：F210-c needs_review，等待 acceptance
+> 阶段：F206-a needs_review → 准备 F206-b
 
 ---
 
 ## 当前状态
 
-**Pipeline 位置**：v2.0 Cockpit P2（AI 层）开发完成，待验收
-- F210-a ✅ done（trade_plan + candidate_ranker schemas + D068 guardrail + REGISTRY；含 2853e3b regime 5 值 hotfix）
-- F210-b ✅ done（SetupMonitor "AI 排序" top 3 + AiCandidateRankerSection + 11 测试用例）
-- **F210-c 🔍 needs_review**（本 handoff 焦点）
-- F211 ⬜ planned（F210 收尾后启动 contradiction_detector + news_summarizer + journal_assistant）
+**Pipeline 位置**：F206-a 开发完成，等待用户验收（needs_review）
 
-**features.json 字段同步**：
-- `_pipeline_status.active_sprint` = `F210-c`
-- `_pipeline_status.active_sprint_phase` = `needs_review`
-- `F210.sub_phases.F210-c.phase` = `needs_review`
+**分支**：`cockpit`
+**最新 commit**：`7cdd33d` feat(F206-a): Position 数据层 + CRUD
+
+**v1.9 Cockpit P1 开发计划**（按优先序）：
+1. **F206 Position Manager**
+   - ✅ **F206-a Position 后端**（`needs_review`，等待验收）
+   - ⬜ F206-b PendingOrder 后端 + Summary 聚合（待 a 验收后开工）
+   - ⬜ F206-c 前端两 Widget + Form Dialog（待 b 完成）
+2. F205 Pool Builder Widget（待 F206 后开工）
+3. F207 Daily Action List Widget（依赖 F206 + F202 ✅）
 
 ---
 
-## F210-c 完成摘要
+## F206-a 完成内容摘要
 
-**目标**：DecisionPanel 集成 trade_plan AI（critical tier），收尾 F210。
+**目标**：Position 数据层 + 后端 CRUD（4 endpoints + 实时计算字段），不含 PendingOrder / Summary / 前端
 
-**实现结果**：
+**交付文件（14 个）**：
+| 文件 | 类型 |
+|------|------|
+| `backend/alembic/versions/013_f206a_positions.py` | 新建 |
+| `backend/app/models/position.py` | 新建 |
+| `backend/app/models/__init__.py` | 修改 |
+| `backend/app/repositories/position_repository.py` | 新建 |
+| `backend/app/schemas/cockpit/position.py` | 新建 |
+| `backend/app/services/cockpit/position_service.py` | 新建 |
+| `backend/app/services/cockpit/position_action_rules.py` | 新建 |
+| `backend/app/services/cockpit/position_sizer.py` | 新建 |
+| `backend/app/routers/cockpit/positions.py` | 新建 |
+| `backend/app/routers/cockpit/__init__.py` | 修改 |
+| `backend/tests/test_position_f206a_schema.py` | 新建（§A 8 用例）|
+| `backend/tests/test_position_f206a_repo.py` | 新建（§B 5 用例）|
+| `backend/tests/test_position_f206a_service.py` | 新建（§C 12 用例）|
+| `backend/tests/test_position_f206a_integration.py` | 新建（§D 10 用例）|
 
-| 文件 | 操作 | 行数 |
-|------|------|------|
-| `frontend/src/cockpit/components/AiTradePlanSection.tsx` | 新建 | +308 |
-| `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx` | 修改 | +13 |
-| `frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx` | 修改 | +409 |
+**测试结果**：
+- F206-a 专项：35/35 ✅
+- 全量回归：657/657 ✅（原 627 + 新增 30）
 
-**Evaluator 自检结果**：全部通过
-- 测试：119/119（§T T1-T12 + §S3-S8/S17 + F210-b §R + F209-c §S）
-- tsc：0 错误
-- Lint：F210-c 文件 0 新增 warning（存量 8 个 pre-existing errors 不在本 sprint 范围）
+**4 个 API Endpoints**：
+- `GET /api/cockpit/positions?status=open|closed|all`
+- `POST /api/cockpit/positions` → 201
+- `PATCH /api/cockpit/positions/{id}`
+- `DELETE /api/cockpit/positions/{id}`
 
-**关键实现点**：
-- 6 状态渲染：关闭 / 加载(2 Skeleton) / 409 红 banner / 一般错误 / 成功(memo+mgmt+guardrail badge+cache badge) / defensive null
-- 3 处字段重命名：`entryPrice→entry` / `stopPrice→stop` / `suggestedShares→size`（T4/T5 严格验证）
-- cache hit：同 (ticker, deterministicHash) 关闭再打开 fetch count=1（T11）
-- hash 变自动 refetch：Recompute 返回新 hash → AI queryKey 变 → 自动 refetch（T12）
-- 颜色全走 token：`--color-error`（409 红 banner）/ `--color-success`（guardrail passed）/ `--color-border`（divider）
+**关键实现约定**（F206-b 需继承）：
+- D041 last_close fallback：watchlist → `daily_bars` 批量 SQL；非 watchlist → 串行 FMP，失败降级 null
+- `position_action_rules.compute_next_action()` — F207 可直接 import 同一函数
+- `position_sizer.compute_shares()` — D066 公式
+- D074 camelCase：Pydantic `to_camel` alias_generator，snake_case 字段对应 DB 层
 
-**Commit 历史**：
+---
+
+## 用户验收指令（F206-a）
+
+按 `docs/系统设计/API-CONTRACT.md §Cockpit Positions` 验收：
+
+```bash
+# 启动后端
+cd backend && uv run uvicorn app.main:app --reload
+
+# POST 创建 watchlist position（如 NVDA 在 watchlist）
+curl -X POST http://localhost:8000/api/cockpit/positions \
+  -H "Content-Type: application/json" \
+  -d '{"ticker":"NVDA","entryPrice":850,"entryDate":"2026-04-01","shares":33,"stopPrice":820,"setupType":"BREAKOUT"}'
+# 预期：201，含 id / rMultiple / lastClose / recommendedShares
+
+# GET 列表
+curl "http://localhost:8000/api/cockpit/positions?status=open"
+
+# PATCH 移动 stop
+curl -X PATCH http://localhost:8000/api/cockpit/positions/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"stopPrice":830}'
+
+# PATCH status=CLOSED 缺 closedAt → 422
+curl -X PATCH http://localhost:8000/api/cockpit/positions/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"status":"CLOSED"}'
+
+# DELETE
+curl -X DELETE http://localhost:8000/api/cockpit/positions/{id}
 ```
-af9ec41 wip(F210-c): trade plan section component
-81e4f67 wip(F210-c): decision panel integration
-1d2e4c1 wip(F210-c): tests §T green
-7bac29c feat(F210-c): DecisionPanel AI trade plan + guardrail banner
-```
 
 ---
 
-## F210 整体验收条件
+## 下一步：F206-b（验收通过后）
 
-F210-c done 后，F210 整体进入 acceptance：
+**恢复指令**（新 session）：
+> F206-a 已完成验收，准备开发 F206-b（PendingOrder 后端 + Risk Summary 聚合）。
+> 读取 SESSION-HANDOFF.md，进入 feature-dev Sprint Contract 协商阶段。
 
-| AC | 内容 | 覆盖 |
-|----|------|------|
-| AC1 | schema 齐全（trade_plan + candidate_ranker） | F210-a ✅ |
-| AC2 | critical tier 路由 | F210-a ✅ |
-| AC3 | trade_plan entry/stop/size 等于 deterministic 输入（guardrail） | F210-a ✅ + F210-c T9 验证 |
-| AC4 | candidate_ranker ≤ 20 候选 | F210-a + F210-b ✅ |
-| AC5 | top 3 + reason | F210-b ✅ |
-| AC6 | DecisionPanel memo + management 列表 | **F210-c ✅** |
-
----
-
-## 已知 Pre-existing 问题（不阻塞验收）
-
-- `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx:364` 与 `UserSettingsDialog.tsx:106` 使用未定义的 `var(--color-signal-danger)`，浏览器降级为黑色。F210-c 新代码改用 `--color-error`（已定义）。pre-existing 调用点留后续独立 chore commit。
-- lint 存量 8 errors（`aiApi.test.ts`, `MarketRegimeWidget.tsx`, `AddStockCard.tsx`, `CsvImportDialog.tsx`, `button.tsx` 等），均 pre-existing，不在 F210-c 范围。
+**F206-b 预计内容**：
+- `pending_orders` 表（Alembic 014）
+- PendingOrder ORM / Repo / Schema / Service / Router（对称 F206-a 结构）
+- Risk Summary 聚合（`openRiskPct` / `totalExposurePct` / `pendingRiskPct` / counts）
+- APScheduler EXPIRED 自动转换
 
 ---
 
-## 下一 Session 恢复指令（建议 Sonnet 4.6）
+## 未决事项
 
-> 触发 /acceptance，验收 F210-c（DecisionPanel AI trade plan + guardrail banner）。
-> 读取 SESSION-HANDOFF.md 了解当前状态，然后开始 acceptance 流程。
+无。Q1–Q4 均已按默认方案落地：
+- Q1：不加 fmpErrors 到 response.meta（容错降级）
+- Q2：position_sizer.py 新建（已含 unit test）
+- Q3：setupType 限定 7 枚举
+- Q4：entryDate 不允许未来日期
