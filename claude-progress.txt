@@ -33,3 +33,87 @@
   > 继续开发 F205-a，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-a-contract.md，
   > 进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F205-a Generator — 开发完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint Contract：F205-a（universe 字段扩展）
+执行模式：Generator（新 session，续上次 contract_agreed 中断）
+
+完成内容：
+1. backend/alembic/versions/015_f205a_universe_extra_fields.py（新建）
+   - upgrade：market_scan_universe 加 sector/industry/last_price/last_volume（4 nullable 列）
+   - downgrade：drop 4 列
+2. backend/app/models/market_scan_universe.py（修改）
+   - 新增 sector(String 64)/industry(String 128)/last_price(Float)/last_volume(BigInteger)，全部 nullable
+3. backend/app/repositories/market_scan_universe_repository.py（修改）
+   - UniverseUpsertRow 加 4 个 Optional 字段（默认 None）
+   - upsert_many：INSERT + ON CONFLICT DO UPDATE 两侧写入 4 列
+4. backend/app/services/universe_refresh_service.py（修改）
+   - _parse_screener_row：解析 sector/industry/price/volume，缺字段/类型错降级为 None 不跳过
+   - _PARSE_EXCEPTION_COUNTER：模块级 mutable list，记录未预期解析异常
+   - refresh()：累加 4 个字段级 counter，写入 OK SystemLog 末尾；parse_exception > 0 时额外写 WARN log
+5. backend/tests/test_market_scan_repositories.py（修改）
+   - 更新 schema 列集合断言；新增 ORM 属性/parse/upsert 单元测试（+10 个）
+6. backend/tests/test_universe_refresh_service.py（修改）
+   - 新增集成测试：新字段写入、降级 counter log、no-WARN gate、parse_exception WARN（+4 个）
+7. backend/tests/test_schema.py（修改）
+   - market_scan_universe 列集合同步（发现并修复 Evaluator 阶段）
+8. docs/系统设计/DATA-MODEL.md — MarketScanUniverse 字段表加 4 行 + 业务规则段更新
+9. docs/系统设计/DECISIONS.md — 追加 D078
+
+测试结果：
+  - 目标测试：28/28 ✅
+  - 全量回归：758 passed, 0 failed ✅
+  - Alembic 迁移：通过（test_schema.py 使用完整 Alembic 链验证 upgrade 015）
+
+F205-a phase → needs_review
+
+[下一步]
+  F205-a 待 acceptance 验收。
+  下一个开发 sprint：F205-b（FMP 增量 client 方法 + RS percentile / 50ma / fundamental helper）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F205-a 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+F205-a phase → done
+验收记录：docs/验收/v1.9-F205-a-acceptance.md
+
+active_sprint → F205-b（planned）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint Contract 协商：F205-b
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Sprint Contract 已确认：
+  - 文档：docs/开发/sprint-contracts/F205-b-contract.md
+  - 范围：FMP 客户端增量（get_financial_growth）+ pool_helpers.py 5 个纯函数
+  - 关键定位：F205-b = building blocks（pure helpers），F205-c 才是 PoolService + endpoint
+  - setup_service.py 不动（保留双 RS 实现，dedup 列入 D079 技术债）
+  - 文件计数：4/6（远在硬上限内）
+
+预计修改文件：
+  1. backend/app/external/fmp_client.py（修改）
+  2. backend/app/services/cockpit/pool_helpers.py（新建）
+  3. backend/tests/test_pool_helpers_f205b.py（新建）
+  4. backend/tests/test_fmp_client.py（修改）
+
+附加：DECISIONS.md 加 D079（FMP financial-growth；RS 公式；fail-open；双实现技术债）
+
+⚠️ 待确认（Generator 阶段执行时）：
+  - FMP /stable/financial-growth 字段名最新版（用 context7 查证）
+  - get_financial_growth 错误处理风格与现有 ratios-ttm 对齐（Generator 阶段 grep 现有模式）
+
+F205 sub_sprints 状态：
+  F205-a: done
+  F205-b: contract_agreed ← 当前
+  F205-c: planned
+  F205-d: planned
+
+[下一个 Session]
+  Sonnet 新 session，粘贴：
+  > 继续开发 F205-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。

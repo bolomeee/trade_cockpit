@@ -1,132 +1,151 @@
-# SESSION HANDOFF — F205-a contract_agreed
+# SESSION HANDOFF — F205-b Sprint Contract 已确认
 
 > 生成时间：2026-04-27
-> 当前 Skill：feature-dev（Sprint Contract 协商完成，准备进 Generator）
-> 当前 Feature：F205 Pool Builder Widget — sub_sprint **F205-a**（Universe 字段扩展）
-> 上一阶段：F207-b ✅ needs_review（前端 ActionListWidget 完成，待 acceptance）
+> 当前 Skill：feature-dev（Sprint Contract 协商完成，等待 Generator 模式启动）
+> 当前 Feature：F205 Pool Builder Widget — sub_sprint **F205-b**（FMP 增量 + Pool 计算 helpers）
+> phase：`contract_agreed`
 
 ---
 
-## 1. 本 session 完成内容
+## 1. 本 session 完成
 
-**仅 Sprint Contract 协商，未编码。**
+仅完成 Sprint Contract 协商，**未写任何代码**。
 
-- 读完 F205 全部前置文档（API-CONTRACT §Pool / DATA-MODEL §MarketScanUniverse+§MarketBreakoutScan+§SetupSnapshot / design-spec Widget 3 / data-mapping §Cockpit-3 / component-plan §Cockpit-2~5）
-- 对比 FMP client 现有能力（`get_screener_universe` / `get_key_metrics_ttm` / `get_earnings_calendar` 等）+ 现有数据底座，识别 F205 数据源 4 个 gap
-- 与用户确认 4 个技术决策：
-  | # | 决策 | 选项 |
-  |---|---|---|
-  | D1 | trend funnel 层语义 | A：复用 `market_breakout_scans` 命中行 |
-  | D2 | sector 字段持久化位置 | A：在 `market_scan_universe` 加 4 列 |
-  | D3 | distanceTo50maPct 算法 | A：rs/fundamental 子集 EOD 调用副产品 |
-  | D4 | 拆分 | 同意 a/b/c/d 四个 sub_sprint |
-- 起草 [F205-a Sprint Contract](docs/开发/sprint-contracts/F205-a-contract.md)
-- **用户提醒补强**：解析降级必须留足 error log → 增加字段级降级聚合 counter（sector/industry/price/volume_missing）+ 未预期解析异常 WARN log
-- 更新 `features.json`：F205 加 `sub_sprints`，F205-a phase=`contract_agreed`
-- 更新 `_pipeline_status`：active_sprint=F205-a / current_iteration=v1.9
-- 更新 `claude-progress.txt`
+- ✅ 起草并确认 `docs/开发/sprint-contracts/F205-b-contract.md`
+- ✅ 更新 `docs/需求/features.json`：
+  - `last_updated` → `2026-04-27-F205-b-contract-agreed`
+  - `active_sprint_phase` → `contract_agreed`
+  - F205 sub_sprints.F205-b → `contract_agreed`
+  - F205 estimated_files_changed 追加 4 个 F205-b 文件
+- ✅ 追加 `claude-progress.txt`
 
 ---
 
-## 2. 中断位置
+## 2. Sprint Contract 摘要
 
-**Sprint Contract 已签字，未进入 Generator 模式。**
+### 范围（pure building blocks，**不**包含 PoolService / router）
 
-按 feature-dev skill 协议，不得在同一 session 中跨过 contract 协商进入开发。开新 Sonnet session 继续。
+1. **FMP 客户端增量**：`backend/app/external/fmp_client.py` 加 `get_financial_growth(symbol)` 方法
+   - 调 `/stable/financial-growth?period=annual&limit=1`
+   - 返回 `dict | None`（None = 空数组 / 网络异常 / HTTP 错误）
+   - 复用现有 token bucket + 6-concurrency semaphore + 429 retry
+2. **`backend/app/services/cockpit/pool_helpers.py` 新建**，5 个纯函数：
 
----
+| 函数 | 职责 |
+|------|------|
+| `compute_return_ratio_250d(closes, spy_closes)` | 250 日 stock_return / spy_return；序列不足 / spy_return≈0 → None |
+| `compute_rs_percentile_map(ratio_by_ticker)` | population-agnostic 百分位 rank（mid-rank ties），与 setup_service `_percentile_rank` 公式一致 |
+| `compute_distance_to_50ma_pct(close, ma50)` | (close - ma50) / ma50 × 100；ma50 None/0 → None |
+| `extract_revenue_growth_yoy_pct(payload)` | 从 FMP financial-growth 返回值读 revenueGrowth × 100 |
+| `passes_fundamental_sanity(growth_pct, threshold_pct)` | None → True（fail-open，决策见 D079） |
 
-## 3. Sprint Contract 执行状态
+3. **决策落档**：DECISIONS.md 追加 D079
+4. **测试覆盖**：18 条标准（详见 contract §3）
 
-**当前 Contract**：[docs/开发/sprint-contracts/F205-a-contract.md](docs/开发/sprint-contracts/F205-a-contract.md)
+### 显式排除
 
-| 开发步骤 | 状态 |
-|---------|------|
-| DATA-MODEL 确认 | ⬜（Generator step 1 开始时确认 + 同步追加 4 列定义） |
-| API-CONTRACT 确认 | ✅（不动；F205-a 不暴露 endpoint） |
-| 数据库迁移 015_f205a_universe_extra_fields | ⬜ |
-| Repository 层（UniverseUpsertRow + upsert_many） | ⬜ |
-| Service 层（universe_refresh_service._parse_screener_row + 降级 counter） | ⬜ |
-| API Route | 不需要 |
-| 单元测试（test_market_scan_repositories.py 扩） | ⬜ |
-| 集成测试（test_universe_refresh_service.py 扩） | ⬜ |
-| 前端实现 | 不需要 |
-| E2E 测试 | 不需要 |
-| Evaluator 评估 | ⬜ |
+- ❌ 不写 PoolService / router / schema（F205-c）
+- ❌ 不动 setup_service.py（保留双 RS 实现）
+- ❌ 不动 F106 scanner / 不新建数据库表
+- ❌ 不写 trend-subset materializer / 批量 FMP / 缓存（F205-c）
+- ❌ 不动前端
 
----
+### 文件计数：4/6（合约预算余 2，无需拆分）
 
-## 4. 预计修改文件（6/6 在硬上限内）
+| # | 文件 | 改动 |
+|---|------|------|
+| 1 | `backend/app/external/fmp_client.py` | 修改 |
+| 2 | `backend/app/services/cockpit/pool_helpers.py` | 新建 |
+| 3 | `backend/tests/test_pool_helpers_f205b.py` | 新建 |
+| 4 | `backend/tests/test_fmp_client.py` | 修改 |
 
-| # | 文件 | 类型 |
-|---|---|---|
-| 1 | `backend/alembic/versions/015_f205a_universe_extra_fields.py` | 新建 |
-| 2 | `backend/app/models/market_scan_universe.py` | 修改 |
-| 3 | `backend/app/repositories/market_scan_universe_repository.py` | 修改 |
-| 4 | `backend/app/services/universe_refresh_service.py` | 修改 |
-| 5 | `backend/tests/test_market_scan_repositories.py` | 修改 |
-| 6 | `backend/tests/test_universe_refresh_service.py` | 修改 |
-
----
-
-## 5. 关键设计要点（开发时必读，避免漏）
-
-1. **新增 4 列**：`sector` (String(64)) / `industry` (String(128)) / `last_price` (Float) / `last_volume` (BigInteger)，**全部 nullable**
-2. **`_parse_screener_row` 解析降级**：缺字段 / 类型异常 → 字段为 None，**不跳过 ticker**（避免新字段降低 universe 行数）
-3. **聚合日志（用户专门要求）**：service 累加 4 个 counter，写入现有 `"universe refreshed: ..."` SystemLog 消息末尾，格式：
-   ```
-   universe refreshed: upserted=1850 skipped=12 sector_missing=8 industry_missing=12 price_missing=0 volume_missing=3
-   ```
-4. **未预期解析异常**：`_parse_screener_row` 兜底 `except Exception` → 返回 None + `parse_exception` counter；`parse_exception > 0` 时额外写一条 WARN level SystemLog（含计数，不写每行 detail）
-5. **`last_volume` 范围声明**：本 sprint 仅持久化，**不**用作 advMin filter；20 日均美元成交量在 F205-b 走 trend 子集 EOD 计算
-6. **附加文档更新（不计入 6 文件）**：
-   - DATA-MODEL.md §MarketScanUniverse 字段表加 4 行 + 业务规则段补充
-   - DECISIONS.md 追加 D078（universe 持久化 screener 快照字段；ADV 不在此层）
+附加文档（不计入 6 文件）：`docs/系统设计/DECISIONS.md` 追加 D079。
 
 ---
 
-## 6. 测试用例摘要（合约 §"可测试的完成标准" 共 12 条）
+## 3. 开发顺序（Generator 模式按此执行，不得跳步）
 
-- ORM 4 个新字段访问 + None 兼容
-- `_parse_screener_row` 完整字段解析、缺字段降级、类型容错
-- Repository upsert/读取新字段、二次 upsert 覆盖
-- `UniverseRefreshService.refresh()` 端到端 mock FMP 写入
-- Alembic upgrade + downgrade 在已有数据库上跑通
-- 字段级降级 counter 写入 SystemLog 消息
-- 解析异常 counter > 0 时写 WARN SystemLog
-- 全量回归 `pytest backend/`
+1. **读 Contract**：`docs/开发/sprint-contracts/F205-b-contract.md` 全文
+2. **核对 DATA-MODEL / API-CONTRACT 无需改动**（本 sprint 不涉及表结构 / 公开 API），快速确认即可跳过
+3. **Step 1 — FMP 客户端增量**
+   1. 用 context7 查 FMP `/stable/financial-growth` 最新文档（`/websites/fmp_api`，若 ID 不存在则 fallback 到 web search）
+   2. 阅读 `fmp_client.py` 现有 `get_ratios_ttm` / `get_key_metrics_ttm` 模式（重点：错误处理、retry 调用风格、返回类型）
+   3. 实现 `get_financial_growth(symbol) -> dict | None`，**与现有方法风格严格一致**
+   4. 在 `test_fmp_client.py` 加用例（成功 / 空数组 / HTTPError / 429 retry）
+   5. `pytest backend/tests/test_fmp_client.py` 通过
+   6. **WIP commit**：`wip(F205-b): fmp_client get_financial_growth`（显式 add 2 个文件，禁用 -A）
+4. **Step 2 — pool_helpers.py 5 个纯函数**
+   1. 阅读 setup_service.py 中现有 `_compute_return` / `_percentile_rank`，记下公式和 ties 处理
+   2. 新建 `backend/app/services/cockpit/pool_helpers.py`，5 个函数 + 模块 docstring
+   3. **铁律**：模块顶部不 import 任何 `app.*` / `logging` / `Session` / `httpx`
+   4. 边界条件全部 graceful 降级（None / 空字典 / False），不抛异常
+   5. **WIP commit**：`wip(F205-b): pool_helpers pure module`（显式 add 1 个文件）
+5. **Step 3 — pool_helpers 测试**
+   1. 新建 `backend/tests/test_pool_helpers_f205b.py`，覆盖 contract §3 第 5–17 条
+   2. 测试 #8 #9 调用 setup_service 的 `_percentile_rank` 做 reference 对比，**确保两套实现行为一致**
+   3. 测试 #17 用 grep / AST 验证 pool_helpers.py 无 `app.*` import
+   4. `pytest backend/tests/test_pool_helpers_f205b.py` 通过
+   5. **WIP commit**：`wip(F205-b): pool_helpers tests`
+6. **Step 4 — DECISIONS.md 追加 D079**
+   - 内容：FMP `/financial-growth?period=annual&limit=1` 选择、RS 公式（与 setup_service 一致）、fail-open 决策、双实现作为已知技术债（dedup 推到后续）
+   - **WIP commit**：`docs(F205-b): D079`
+7. **Step 5 — Evaluator 模式自检**
+   1. 切换 QA 视角，逐条对照 contract §4 自检清单
+   2. 全量回归 `pytest backend/`：期望 758 + N（N = 新增用例数），无新失败
+   3. 静态验证 pool_helpers.py 纯净度（grep）
+   4. 输出 Evaluator 评估报告
+8. **Step 6 — 全部通过后**
+   - phase → `needs_review`
+   - 最终 commit：`feat(F205-b): FMP financial-growth + pool helpers`（可选 squash 之前 WIP，**默认保留**）
+   - 更新 features.json + claude-progress
+   - 通知用户进入 acceptance
 
 ---
 
-## 7. 遗留决策
+## 4. 关键约束（Generator 模式必读）
 
-无。Sprint Contract 已签字，所有问题都在合约内有定义。
+1. **6-file 已用 4 个**，剩 2 个余量。若开发中发现需要新增第 5 / 6 个文件（例如 conftest 加 fixture），先停下来报告
+2. **不得修改 setup_service.py**。这是规避 F202-a 回归的硬约束。如果发现必须改，停下来报告（视为 scope creep）
+3. **pool_helpers.py 必须是纯模块**：无 IO、无 logger、无 SQLAlchemy。Evaluator 会 grep 验证
+4. **RS 算法必须与 setup_service `_percentile_rank` 完全一致**（mid-rank ties），测试 reference 对比
+5. **WIP commit 显式列文件名，禁用 `git add -A`**（feature-dev 规则 7）
+6. **新依赖引入流程**：本 sprint 应该不需要新依赖；若发现需要，按规则 9 停下报告
 
 ---
 
-## 8. 下一个 Session 继续的指令
+## 5. 下一 Session 恢复指令
 
-**开新 Sonnet session**，粘贴：
+**Sonnet 新 session 粘贴**：
 
 ```
-继续开发 F205-a，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-a-contract.md，
-进入 Generator 模式，从开发步骤 1（数据库迁移）开始。
+继续开发 F205-b，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-b-contract.md，
+进入 Generator 模式，从开发步骤 1 开始。
 ```
 
 ---
 
-## 9. 整体 F205 路线图（仅备查，本 session 不动）
+## 6. 当前 git 状态
 
-| Sub-sprint | 范围 | 文件预估 | 当前状态 |
-|---|---|---|---|
-| **F205-a**（本 sprint） | universe 表加 sector/industry/last_price/last_volume，universe_refresh_service 写入 + 降级日志 | 6 | contract_agreed |
-| F205-b | FMP 增量 client 方法 + RS percentile / 50ma / fundamental on-demand helper（trend 子集） | 4-5 | planned |
-| F205-c | services/cockpit/pool_service.py + schemas + routers/cockpit/pool.py + API-CONTRACT 文字修订 + integration test | 5-6 | planned |
-| F205-d | 前端 PoolBuilderWidget + funnel/filter/row 子组件 + CockpitRegistry 接入 + widget test | 6 | planned |
+- 分支：`cockpit`
+- 已修改未提交：
+  - `SESSION-HANDOFF.md`（本文件，重写）
+  - `docs/需求/features.json`（F205-b → contract_agreed + estimated_files_changed 追加）
+  - `claude-progress.txt`（追加 contract 协商记录）
+  - `docs/开发/sprint-contracts/F205-b-contract.md`（**新建**，本 session 产物）
+- F205-a 残留未提交（来自上一 session 的 acceptance 阶段）：
+  - `backend/alembic/versions/015_f205a_universe_extra_fields.py`（新）
+  - `backend/app/models/market_scan_universe.py` / `repositories/...` / `services/universe_refresh_service.py`
+  - `backend/tests/test_market_scan_repositories.py` / `test_schema.py` / `test_universe_refresh_service.py`
+  - `backend/uv.lock`
+  - `docs/系统设计/DATA-MODEL.md` / `DECISIONS.md`
+  - `docs/验收/v1.9-F205-a-acceptance.md`（新）
+
+⚠️ Generator 模式开始前，先做一次 `git status` 清点：F205-a 的残留改动应作为独立 commit（feat(F205-a): ... 或先 chore(F205-a): wrap up），**不要混进 F205-b 的 commit**。这是 feature-dev 规则 7"sprint 之间杂项 commit"的明确要求。
 
 ---
 
-## 10. 备注：F207 仍 needs_review
+## 7. 遗留事项
 
-F207-a + F207-b 均 needs_review，未触发 acceptance。F205-a 与 F207 互不依赖，可并行推进。如要先验收 F207，触发 acceptance skill；如先开发 F205-a，按 §8 指令开新 session。
+- F205-a 工作树残留改动 11 个文件，需在 F205-b 开发开始前作为独立 commit 清理（见上文 §6）
+- F205-a `needs_review` 状态下未走 acceptance skill，但 claude-progress 显示已"验收通过"且生成了 `docs/验收/v1.9-F205-a-acceptance.md` — 状态稍有 drift，建议下个 session 开始前先把 F205-a 残留 commit 进去
