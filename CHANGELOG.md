@@ -4,6 +4,17 @@
 
 ---
 
+## [v1.9.0] - 2026-04-27
+
+### ✨ 新增
+- **Positions Widget**：持仓管理全栈（Position CRUD / Risk Summary / PositionListWidget + PositionFormDialog）（F206-a / F206-c1）
+- **Pending Orders Widget**：挂单管理全栈（PendingOrder CRUD / 到期自动清理 / PendingOrdersWidget + PendingOrderFormDialog）（F206-b1 / F206-b2 / F206-c2）
+- **Today's Actions Widget**：动作清单 widget，deterministic rule engine，按 Must Act / Monitor / No Action 三栏分类，含 6 种 actionType 规则（F207）
+- 后端：Migration 013–014，新增 `positions` / `pending_orders` 表；APScheduler nightly job（挂单到期清理 + regime 快照）
+- 后端：`GET /api/cockpit/actions/today` endpoint，返回 `mustAct / monitor / noAction` 三数组，每条含 ticker / actionType / rationale / refs
+
+---
+
 ## [v1.8.0] - 2026-04-26
 
 ### ✨ 新增

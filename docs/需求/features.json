@@ -2868,11 +2868,11 @@
       "user_story": "作为慢交易投资者，每天盘后我打开 Cockpit 最想知道的是'今天我要做什么'。我需要一个清单：必须做的动作（移动止损/取消订单/财报前减仓）、需要监控的、今天没事的，每条都有明确原因",
       "priority": "P1",
       "status": "in_progress",
-      "phase": "needs_review",
+      "phase": "done",
       "active_sub_sprint": "F207-b",
       "sub_sprints": {
         "F207-a": "done",
-        "F207-b": "needs_review"
+        "F207-b": "done"
       },
       "sub_sprints_completed_at": {
         "F207-a": "2026-04-27",
@@ -2938,7 +2938,8 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。"
+      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。",
+      "completed_at": "2026-04-27"
     },
     {
       "id": "F208-a",
