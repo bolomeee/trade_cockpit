@@ -6,6 +6,7 @@ import { CockpitChartWidget } from './widgets/CockpitChartWidget'
 import { DecisionPanelWidget } from './widgets/DecisionPanelWidget'
 import { PositionListWidget } from './widgets/PositionListWidget'
 import { PendingOrdersWidget } from './widgets/PendingOrdersWidget'
+import { ActionListWidget } from './widgets/ActionListWidget'
 
 export type CockpitWidgetCategory =
   | 'regime'
@@ -67,6 +68,13 @@ export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
     component: PendingOrdersWidget,
     defaultLayout: { x: 6, y: 8, w: 6, h: 8, minW: 4, minH: 6 },
     category: 'position',
+  },
+  'cockpit.action-list': {
+    id: 'cockpit.action-list',
+    title: "Today's Actions",
+    component: ActionListWidget,
+    defaultLayout: { x: 0, y: 16, w: 12, h: 6, minW: 6, minH: 4 },
+    category: 'action',
   },
 }
 
