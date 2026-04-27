@@ -1759,3 +1759,22 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **Q8 — empty-state 文案**："暂无今日动作"。与 PendingOrdersWidget "暂无 pending order" 风格一致（中文空态文案）。
 
 **影响**：`frontend/src/cockpit/lib/api/cockpitActionsApi.ts`（类型定义），`frontend/src/cockpit/widgets/_actionListSection.tsx`（行渲染 + label 映射），`frontend/src/cockpit/widgets/ActionListWidget.tsx`（容器 + 4 状态），`frontend/src/cockpit/CockpitRegistry.ts`（manifest 注册）。
+
+---
+
+## D078 — universe 表持久化 screener 快照字段；ADV 不在此层算
+
+**日期**：2026-04-27（F205-a Sprint Contract，用户已确认）
+
+**背景**：F205 Pool Builder 需要 sector / industry / price / volume 数据做 funnel 过滤和 widget 展示。在 API 端点每次实时调用 screener 会造成额外 FMP 请求且延迟高；pool_service 需要在月级 universe 数据基础上做多步 filter，最好在 SELECT 时就能读到这些字段。
+
+**决策**：在 `market_scan_universe` 表新增 4 列（`sector` / `industry` / `last_price` / `last_volume`），在现有月级 universe refresh 时一并从 FMP screener 响应中解析写入。
+
+**关键约束**：
+
+1. **`last_price` / `last_volume` 是快照，不是实时数据**：字段值只在月级 refresh 时更新，不支持实时展示；widget 不得将这两列直接作为"当前价格"展示。
+2. **ADV（20 日均美元成交量）不在此层计算**：`last_volume` 是 refresh 当天的单日成交量，不等同于 advMin filter 所需的 20 日均美元成交量。F205-b 的 `advMin` filter 走 trend 子集 EOD 计算，与 `last_volume` 无直接关系。
+3. **缺字段降级为 null，不跳过 ticker**：FMP ETF 行常缺 sector/industry，强制要求会导致 universe 行数下降。解析时字段缺失或类型异常 → 存 null，ticker 保留。
+4. **字段级降级计数写入 SystemLog**：`universe_refresh_service` 在每次 refresh 的 OK 日志末尾追加 `sector_missing=N` 等计数，供人工或后续监控发现 FMP schema 变化。
+
+**影响**：`backend/alembic/versions/015_f205a_universe_extra_fields.py`（新建），`backend/app/models/market_scan_universe.py`，`backend/app/repositories/market_scan_universe_repository.py`，`backend/app/services/universe_refresh_service.py`。

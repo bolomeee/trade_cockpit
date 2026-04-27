@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -19,6 +19,10 @@ class UniverseUpsertRow:
     company_name: str
     exchange: str
     market_cap: int
+    sector: Optional[str] = None
+    industry: Optional[str] = None
+    last_price: Optional[float] = None
+    last_volume: Optional[int] = None
 
 
 class MarketScanUniverseRepository:
@@ -42,6 +46,10 @@ class MarketScanUniverseRepository:
                 "company_name": r.company_name,
                 "exchange": r.exchange,
                 "market_cap": int(r.market_cap),
+                "sector": r.sector,
+                "industry": r.industry,
+                "last_price": r.last_price,
+                "last_volume": r.last_volume,
                 "last_seen_at": now,
                 "added_at": now,
             }
@@ -59,6 +67,10 @@ class MarketScanUniverseRepository:
                     "company_name": row["company_name"],
                     "exchange": row["exchange"],
                     "market_cap": row["market_cap"],
+                    "sector": row["sector"],
+                    "industry": row["industry"],
+                    "last_price": row["last_price"],
+                    "last_volume": row["last_volume"],
                     "last_seen_at": row["last_seen_at"],
                 },
             )

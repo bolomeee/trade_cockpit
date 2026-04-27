@@ -53,6 +53,7 @@ EXPECTED_COLUMNS: dict[str, set[str]] = {
     },
     "market_scan_universe": {
         "id", "ticker", "company_name", "exchange", "market_cap",
+        "sector", "industry", "last_price", "last_volume",
         "last_seen_at", "added_at",
     },
     "market_breakout_scans": {

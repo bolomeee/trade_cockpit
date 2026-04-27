@@ -259,15 +259,21 @@ AiMemo（独立实体；task_type + input_hash 双列索引供去重）
 | company_name | String(200) | ✅ | 公司名称（来自 FMP screener） |
 | exchange | String(20) | ✅ | 交易所：NYSE / NASDAQ / AMEX |
 | market_cap | BigInteger | ✅ | 最近一次 universe refresh 时的市值（美元） |
+| sector | String(64) | ❌ | 行业大类（来自 FMP screener；ETF 常缺失，存 null） |
+| industry | String(128) | ❌ | 细分行业（来自 FMP screener；同上） |
+| last_price | Float | ❌ | 最近一次 refresh 当天的快照收盘价；非实时（见 D078） |
+| last_volume | BigInteger | ❌ | 最近一次 refresh 当天的快照成交量；非 ADV（见 D078） |
 | last_seen_at | DateTime | ✅ | 最近一次在 refresh 结果中出现的 UTC 时间 |
 | added_at | DateTime | ✅ | 首次进入 universe 的 UTC 时间 |
 
 **业务规则**：
 - 每月 1 号自动刷新（`UNIVERSE_CRON_*` 配置）；3 次 screener 调用：分别按 `exchange=NYSE / NASDAQ / AMEX`，`marketCapMoreThan=50000000000`，合并去重
-- Upsert 策略：已存在 → 更新 `company_name / exchange / market_cap / last_seen_at`；不存在 → 插入
+- Upsert 策略：已存在 → 更新 `company_name / exchange / market_cap / sector / industry / last_price / last_volume / last_seen_at`；不存在 → 插入
 - **不删除**"掉出 universe"的记录，保留审计痕迹。每日扫描通过 `last_seen_at >= 最近一次 refresh 时间` 筛选有效行
 - 冷启动：服务启动时若表为空，自动触发一次 universe refresh 作为初始化
 - 不做 FK 到 `stocks` 表，两张表职责独立
+- `sector` / `industry` 字段缺失时存 null（ETF 等无此信息），**不跳过该 ticker**；`universe_refresh_service` 在 SystemLog 中记录各字段缺失行数供监控（F205-a）
+- `last_price` / `last_volume` 是月级 refresh 快照，**不**用于实时展示；ADV 计算在 F205-b 走 trend 子集 EOD（见 D078）
 
 ---
 
