@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v1.9",
     "active_sprint": "F205-d",
-    "active_sprint_phase": "planned"
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -2713,7 +2713,7 @@
         "F205-a": "done",
         "F205-b": "done",
         "F205-c": "done",
-        "F205-d": "contract_agreed"
+        "F205-d": "needs_review"
       },
       "dependencies": [
         "F201-b"

@@ -7,6 +7,7 @@ import { DecisionPanelWidget } from './widgets/DecisionPanelWidget'
 import { PositionListWidget } from './widgets/PositionListWidget'
 import { PendingOrdersWidget } from './widgets/PendingOrdersWidget'
 import { ActionListWidget } from './widgets/ActionListWidget'
+import { PoolBuilderWidget } from './widgets/PoolBuilderWidget'
 
 export type CockpitWidgetCategory =
   | 'regime'
@@ -75,6 +76,13 @@ export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
     component: ActionListWidget,
     defaultLayout: { x: 0, y: 16, w: 12, h: 6, minW: 6, minH: 4 },
     category: 'action',
+  },
+  'cockpit.pool-builder': {
+    id: 'cockpit.pool-builder',
+    title: 'Pool Builder',
+    component: PoolBuilderWidget,
+    defaultLayout: { x: 0, y: 22, w: 12, h: 10, minW: 6, minH: 6 },
+    category: 'pool',
   },
 }
 
