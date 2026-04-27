@@ -136,6 +136,28 @@ class PoolService:
 
         return trend
 
+    def _fetch_bars_concurrent(
+        self, tickers: list[str], from_date: date, to_date: date
+    ) -> dict[str, list[float]]:
+        """Fetch EOD closes for tickers concurrently; silently skip failures."""
+        def _one(ticker: str) -> tuple[str, list[float] | None]:
+            try:
+                bars = self._fmp.get_daily_bars(ticker, from_date, to_date)
+                if not bars:
+                    return ticker, None
+                return ticker, [b["close"] for b in sorted(bars, key=lambda b: b.get("date", ""))]
+            except Exception:
+                return ticker, None
+
+        result: dict[str, list[float]] = {}
+        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
+            futures = {executor.submit(_one, t): t for t in tickers}
+            for future in as_completed(futures):
+                ticker, closes = future.result()
+                if closes is not None:
+                    result[ticker] = closes
+        return result
+
     def _compute_rs_layer(
         self, trend: list[MarketScanUniverse], params: PoolParams
     ) -> dict[str, Any]:
@@ -149,30 +171,14 @@ class PoolService:
         today = date.today()
         from_date = today - timedelta(days=_BARS_LOOKBACK_DAYS)
 
-        # SPY closes — one serial call before thread pool (needed for all RS ratios)
         try:
             spy_bars = self._fmp.get_daily_bars("SPY", from_date, today)
         except Exception:
             spy_bars = []
         spy_closes = [b["close"] for b in sorted(spy_bars, key=lambda b: b.get("date", ""))]
 
-        def _fetch_closes(ticker: str) -> tuple[str, list[float] | None]:
-            try:
-                bars = self._fmp.get_daily_bars(ticker, from_date, today)
-                if not bars:
-                    return ticker, None
-                return ticker, [b["close"] for b in sorted(bars, key=lambda b: b.get("date", ""))]
-            except Exception:
-                return ticker, None
-
         tickers = [u.ticker for u in trend]
-        closes_by_ticker: dict[str, list[float]] = {}
-        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
-            futures = {executor.submit(_fetch_closes, t): t for t in tickers}
-            for future in as_completed(futures):
-                ticker, closes = future.result()
-                if closes is not None:
-                    closes_by_ticker[ticker] = closes
+        closes_by_ticker = self._fetch_bars_concurrent(tickers, from_date, today)
 
         ratio_by_ticker = {
             t: compute_return_ratio_250d(closes_by_ticker.get(t) or [], spy_closes)
@@ -218,6 +224,40 @@ class PoolService:
         ]
         return {"tickers": passing, "growth_by_ticker": growth_by_ticker}
 
+    def _make_item(
+        self,
+        ticker: str,
+        u: MarketScanUniverse,
+        snap: Any,
+        in_wl: bool,
+        percentile_map: dict[str, float],
+        closes_by_ticker: dict[str, list[float]],
+        growth_by_ticker: dict[str, float | None],
+        today: date,
+    ) -> dict[str, Any]:
+        """Build the item dict for a single ticker."""
+        closes = closes_by_ticker.get(ticker)
+        ma50 = sum(closes[-50:]) / 50 if closes and len(closes) >= 50 else None
+        close_val = (closes[-1] if closes else None) or u.last_price or 0.0
+        earnings = self._earnings_repo.get_next_earnings(ticker, today)
+        e_date = earnings.earnings_date if earnings else None
+        return {
+            "ticker": ticker,
+            "name": u.company_name,
+            "sector": u.sector,
+            "price": u.last_price,
+            "trend_score": snap.trend_score if snap else None,
+            "rs_percentile": percentile_map.get(ticker, 0.0),
+            "setup_type": snap.setup_type if snap else None,
+            "distance_to_pivot_pct": snap.distance_to_entry_pct if snap else None,
+            "distance_to_50ma_pct": compute_distance_to_50ma_pct(close_val, ma50),
+            "earnings_date": e_date,
+            "days_until_earnings": (e_date - today).days if e_date else None,
+            "revenue_growth_yoy": growth_by_ticker.get(ticker),
+            "suggested_action": (snap.suggested_action if snap else None) or "watch",
+            "in_watchlist": in_wl,
+        }
+
     def _build_items(
         self,
         fund_result: dict[str, Any],
@@ -238,7 +278,6 @@ class PoolService:
         watchlist_set = {s.ticker for s in self._stock_repo.list_active()}
         wl_in_pool = [t for t in tickers if t in watchlist_set]
         snapshots = {s.ticker: s for s in self._setup_repo.get_latest_for_tickers(wl_in_pool)}
-
         setup_types_filter = set(params.setup_types) if params.setup_types else None
 
         items: list[dict[str, Any]] = []
@@ -246,35 +285,12 @@ class PoolService:
             u = universe_by_ticker.get(ticker)
             if u is None:
                 continue
-
             in_wl = ticker in watchlist_set
             snap = snapshots.get(ticker)
-
             if setup_types_filter and in_wl and (snap is None or snap.setup_type not in setup_types_filter):
                 continue
-
-            closes = closes_by_ticker.get(ticker)
-            ma50 = sum(closes[-50:]) / 50 if closes and len(closes) >= 50 else None
-            close_val = (closes[-1] if closes else None) or u.last_price or 0.0
-
-            earnings = self._earnings_repo.get_next_earnings(ticker, today)
-            e_date = earnings.earnings_date if earnings else None
-
-            items.append({
-                "ticker": ticker,
-                "name": u.company_name,
-                "sector": u.sector,
-                "price": u.last_price,
-                "trend_score": snap.trend_score if snap else None,
-                "rs_percentile": percentile_map.get(ticker, 0.0),
-                "setup_type": snap.setup_type if snap else None,
-                "distance_to_pivot_pct": snap.distance_to_entry_pct if snap else None,
-                "distance_to_50ma_pct": compute_distance_to_50ma_pct(close_val, ma50),
-                "earnings_date": e_date,
-                "days_until_earnings": (e_date - today).days if e_date else None,
-                "revenue_growth_yoy": growth_by_ticker.get(ticker),
-                "suggested_action": (snap.suggested_action if snap else None) or "watch",
-                "in_watchlist": in_wl,
-            })
+            items.append(self._make_item(
+                ticker, u, snap, in_wl, percentile_map, closes_by_ticker, growth_by_ticker, today
+            ))
 
         return sorted(items, key=lambda x: x["rs_percentile"], reverse=True)

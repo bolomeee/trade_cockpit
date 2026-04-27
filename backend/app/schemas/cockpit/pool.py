@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
@@ -32,7 +32,8 @@ class PoolItem(_CamelModel):
     rs_percentile: float
     setup_type: str | None
     distance_to_pivot_pct: float | None
-    distance_to_50ma_pct: float | None
+    # Explicit alias: to_camel("distance_to_50ma_pct") → "distanceTo50MaPct" (wrong case)
+    distance_to_50ma_pct: float | None = Field(None, alias="distanceTo50maPct")
     earnings_date: date | None
     days_until_earnings: int | None
     revenue_growth_yoy: float | None

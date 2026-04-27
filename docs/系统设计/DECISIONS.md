@@ -1815,3 +1815,47 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 - 纯净度由 AST 静态检查（`test_pool_helpers_f205b.py` test #17）在 CI 中持续验证
 
 **影响**：`backend/app/external/fmp_client.py`（新增 `get_financial_growth`），`backend/app/services/cockpit/pool_helpers.py`（新建），`backend/tests/test_pool_helpers_f205b.py`（新建），`backend/tests/test_fmp_client.py`（追加用例）。
+
+---
+
+## D080 — PoolService：ADV 单日代理、忽略 trendScoreMin、POOL_TREND_CAP、非 watchlist null setup 字段
+
+**日期**：2026-04-27
+**Feature**：F205-c PoolService + GET /api/cockpit/pool
+
+**决策 1：ADV = 单日 dollar volume 代理（技术债）**
+
+- 实现：`tradable` 层过滤条件 = `last_price × last_volume ≥ advMin`（单日代理）
+- 真 20d ADV 需要 universe 内每个 ticker 拉 20 天 bars（≥1500 ticker × 20 calls = 大量 FMP 请求），冷启动不可接受
+- `last_volume` 已在 F205-a 写入 universe 表；单日量作为粗筛已够用，偏严不偏松
+- **技术债**：建议 F205-x 在 `market_scan_universe` 表加 `avg_dollar_volume_20d` 字段，由 `universe_refresh_service` 每日计算
+
+**决策 2：trendScoreMin 参数接受但忽略（技术债）**
+
+- `trend` 层 = tradable ∩ 最新 `market_breakout_scans` 出现；`trendScoreMin` 参数校验范围（0–5）但 service 内部不使用
+- 理由：`trend_score(0–5)` 只在 `setup_snapshots` 表针对 watchlist 计算（F202-a 范围）；对 pool 全集实时计算 trend_score 需要给每个 ticker 拉 200d bars + 5 阶 MA ladder，相当于把 setup_service 改造为 population-agnostic，超出本 sprint 范围
+- F106 扫描器已过 ma150/slope/volume 阈值筛选，被扫到的 ticker = "趋势良好"；用"在最新 breakout_scans 中出现"作为二元 proxy 工程性价比最高
+- **技术债**：真正的 pool-wide trend_score 推到 F205-x 或独立 sprint，需扩 setup_service 或新 service
+
+**决策 3：POOL_TREND_CAP = 200（market_cap 降序截断）**
+
+- trend 子集 > 200 ticker → 按 `universe.market_cap` 降序保留前 200 进入 RS 层
+- 理由：FMP token bucket 稳态 5 calls/s；200 ticker × 2 FMP 调用 = 400 calls；6 并发下预估 30–40s（vs 串行 ~80s），勉强在前端 timeout 60s 内。800+ ticker 不截断则单次请求 ~5min，不可接受
+- market_cap 降序截断：大盘股优先，符合 P1 用户场景
+- `POOL_TREND_CAP` 和 `_FMP_MAX_WORKERS = 6` 作为 `pool_service.py` 顶层常量
+
+**决策 4：非 watchlist ticker 的 setup 字段返回 null（技术债）**
+
+- `setupType / trendScore / distanceToPivotPct` 仅对 watchlist ticker（`stocks.is_active=true`）从 `setup_snapshots` 读取；非 watchlist 全部返回 `null`
+- `suggestedAction` 默认 `"watch"`（非 watchlist）
+- `inWatchlist = ticker ∈ active_stocks`，前端据此控制"+ Add to Watchlist"按钮状态
+- **技术债**：扩展到 pool 全集需要 setup_service 改造，推到 F205-d 之后的独立 sprint
+
+**FMP 并发模型（补充说明）**
+
+- RS 层和 fundamental 层均使用 `ThreadPoolExecutor(max_workers=6)` 并发调用 FMP
+- 限流由 `fmp_client._FmpRateLimiter` 进程级 singleton（token bucket 300 rpm + Semaphore(6)）统一兜底；service 层不重复实现
+- `max_workers=6` 接受"pool 请求期间挤占其他 FMP 消费者"的取舍（pool 是用户主动触发的高优先级查询）
+- SPY closes 在 RS 层串行获取（主线程单次调用），之后所有 trend ticker bars 并发拉取
+
+**影响**：`backend/app/services/cockpit/pool_service.py`（新建），`backend/app/routers/cockpit/pool.py`（新建），`backend/app/routers/cockpit/__init__.py`（注册），`backend/app/schemas/cockpit/pool.py`（新建），`backend/tests/test_pool_service.py`（新建），`backend/tests/test_cockpit_pool_router.py`（新建）。
