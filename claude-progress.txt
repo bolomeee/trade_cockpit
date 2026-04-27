@@ -192,3 +192,57 @@ F205 sub_sprints 状态：
 
 下一步：协商 F205-c Sprint Contract
   F205-c 内容：PoolService（编排 + 缓存）+ GET /api/cockpit/pool router
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F205-c Sprint Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Contract 文件：docs/开发/sprint-contracts/F205-c-contract.md（已确认）
+
+实现范围：
+  - PoolService（5 层漏斗：tradable → trend → rs → fundamental → action）
+  - GET /api/cockpit/pool router + Pydantic schemas
+  - 编排 F205-b helpers + FmpClient.get_financial_growth + FmpClient.get_daily_bars
+  - Service 单元测试 + Router 集成测试
+
+预计修改文件（6/6）：
+  1. backend/app/services/cockpit/pool_service.py（新建）
+  2. backend/app/routers/cockpit/pool.py（新建）
+  3. backend/app/routers/cockpit/__init__.py（修改 — 注册 pool_router）
+  4. backend/app/schemas/cockpit/pool.py（新建）
+  5. backend/tests/test_pool_service.py（新建）
+  6. backend/tests/test_cockpit_pool_router.py（新建）
+
+5 项关键决策（用户已全部确认）：
+  D080-1 ADV 实现 = 单日代理 last_price * last_volume（技术债，F205-x 重构为 20d 真值）
+  D080-2 trendScoreMin 参数接受但忽略；trend 层 = "在最新 breakout_scans 出现"二元代理
+  D080-3 POOL_TREND_CAP=200，按 market_cap 降序截断
+  D080-4 FMP 调用走 ThreadPoolExecutor(max_workers=6)，与全局 _FmpRateLimiter
+         singleton（300 rpm token bucket + 6-槽 semaphore）协作；接受"pool 请求
+         期间挤占其他 FMP 消费者"取舍
+  D080-5 仅请求级 in-memory 缓存，不落 DB（DailyPayloadCache 模式归 F205-x）
+
+非 watchlist ticker 字段映射：
+  setupType / trendScore / distanceToPivotPct → null
+  suggestedAction → "watch" 默认
+  （setup_snapshots 仅覆盖 watchlist；扩到 pool 全集需要单独 sprint）
+
+完成标准：22 条（详见 contract §3）
+  含新增 #10b（并发耗时 < 串行 50%）+ #10c（单 ticker FMP 失败不炸全请求）
+
+性能预期（受 token bucket 5 calls/s 稳态约束）：
+  trend=50:  ~5–10s
+  trend=100: ~15–25s
+  trend=200(cap): ~30–40s（vs 串行 80s，约 2× 提升）
+
+F205 sub_sprints 状态：
+  F205-a: done
+  F205-b: done
+  F205-c: contract_agreed ← 当前
+  F205-d: planned
+
+[下一个 Session]
+  开新 session（建议 Sonnet），粘贴：
+  > 继续开发 F205-c，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-c-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
