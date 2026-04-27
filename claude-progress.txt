@@ -267,3 +267,44 @@ phase: F205-c → needs_review；active_sprint → F205-d（前端 widget，plan
 [下一个 Sprint]
   F205-d: PoolBuilderWidget 前端，消费 GET /api/cockpit/pool。
   开新 session 继续 F205-d Sprint Contract 阶段。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27 PM] Sprint：F205-d PoolBuilderWidget 前端 — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 草案撰写完成，用户已确认
+  - docs/开发/sprint-contracts/F205-d-contract.md 落档
+  - features.json：F205-d phase → contract_agreed
+  - 6 文件预计修改清单已落档（前端独立，不碰后端）
+
+📋 Contract 摘要：
+  - 范围：cockpitPoolApi + PoolBuilderWidget + _poolFilterBar + Registry 注册 + 2 套测试
+  - 排除：Funnel 段切层（需后端补层 items，属 F205-e）/ AI 增强 / sectors 多选 dropdown
+  - 完成标准：15 条（详见 contract §3）
+  - 最近邻参考：SetupMonitorWidget
+
+✅ 三个开放问题已确认：
+  1. Funnel 段点击 → 仅高亮，不切换表格
+  2. defaultLayout → { x: 0, y: 22, w: 12, h: 10, minW: 6, minH: 6 }
+  3. Filter Bar → 默认展开（inline 一行）
+
+📂 预计文件（共 6，命中 6 文件原则上限）：
+  1. frontend/src/cockpit/lib/api/cockpitPoolApi.ts (新建)
+  2. frontend/src/cockpit/widgets/PoolBuilderWidget.tsx (新建)
+  3. frontend/src/cockpit/widgets/_poolFilterBar.tsx (新建)
+  4. frontend/src/cockpit/CockpitRegistry.ts (修改)
+  5. frontend/src/cockpit/widgets/__tests__/PoolBuilderWidget.test.tsx (新建)
+  6. frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts (新建)
+
+📊 F205 sub_sprints 状态：
+  F205-a: done
+  F205-b: done
+  F205-c: done (needs_review)
+  F205-d: contract_agreed ← 当前
+
+[下一个 Session]
+  开新 session（建议 Sonnet），粘贴：
+  > 继续开发 F205-d，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-d-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（cockpitPoolApi.ts）开始。
