@@ -1778,3 +1778,40 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 4. **字段级降级计数写入 SystemLog**：`universe_refresh_service` 在每次 refresh 的 OK 日志末尾追加 `sector_missing=N` 等计数，供人工或后续监控发现 FMP schema 变化。
 
 **影响**：`backend/alembic/versions/015_f205a_universe_extra_fields.py`（新建），`backend/app/models/market_scan_universe.py`，`backend/app/repositories/market_scan_universe_repository.py`，`backend/app/services/universe_refresh_service.py`。
+
+---
+
+## D079 — pool_helpers：FMP financial-growth 来源、RS mid-rank 算法、fail-open 策略、双实现技术债
+
+**日期**：2026-04-27（F205-b Sprint Contract，用户已确认）
+
+**背景**：F205 Pool Builder 漏斗需要 revenue YoY 增长率（基本面筛选）和 RS percentile（相对强度排序）。setup_service.py 已有内联版 RS 计算，pool 漏斗的 RS 范围是 trend 子集（数百 ticker），需要 population-agnostic 的纯函数版本。
+
+**决策 1：FMP revenue growth 来源**
+
+- 使用 FMP `/stable/financial-growth?period=annual&limit=1` 作为 revenue YoY 来源
+- `period=annual` 而非 `quarterly`：pool funnel 做年维度基本面筛选，季报数据波动大；年报稳定性更好
+- `limit=1`：只需最近一年数据，减少传输量
+- `get_financial_growth` 返回 raw FMP dict（`revenueGrowth` 字段为 decimal，如 0.0202 = 2.02%）；`extract_revenue_growth_yoy_pct` 负责 ×100 转换，两步解耦便于测试
+
+**决策 2：RS 百分位算法 — mid-rank**
+
+- `compute_rs_percentile_map` 使用 mid-rank 公式：`(below + 0.5 × ties) / n × 100`
+- `setup_service._percentile_rank` 使用 strictly-below 公式：`below / n × 100`（历史遗留，int 截断）
+- 两套公式已知不同。mid-rank 是统计上更正确的选择（ties 获得其占据 rank 的平均值，避免系统性低估）
+- F205-b Sprint Contract 的测试用例（#8/9 期望 16.67、50.0、83.33）明确指定 mid-rank 为规范行为
+- **dedup 是已知技术债**：不在本 sprint 范围内修改 setup_service.py（避免 F202-a 回归风险）；建议在 F205-c 完成且 pool 漏斗稳定后，开独立技术债 sprint 统一为 mid-rank
+
+**决策 3：fail-open（passes_fundamental_sanity）**
+
+- `growth_yoy_pct=None`（FMP 数据缺失）→ `passes_fundamental_sanity` 返回 `True`
+- 理由：FMP ETF / 小市值股的 financial-growth 数据偶有缺失；因 vendor 数据缺失直接淘汰整个 ticker 会产生静默的假阴性，与 pool funnel 的目标（找出有潜力的 ticker）矛盾
+- 监控对策：F205-c PoolService 应在漏斗日志中统计 `growth_data_missing=N`，供后续发现 FMP schema 变化
+
+**决策 4：pool_helpers 是纯函数模块**
+
+- 无 IO、无 logger、无 SQLAlchemy、无 httpx；不 import 任何 `app.*` 模块
+- 由 F205-c PoolService 负责编排：调 FmpClient、查 DB、组装 population、调用这些纯函数
+- 纯净度由 AST 静态检查（`test_pool_helpers_f205b.py` test #17）在 CI 中持续验证
+
+**影响**：`backend/app/external/fmp_client.py`（新增 `get_financial_growth`），`backend/app/services/cockpit/pool_helpers.py`（新建），`backend/tests/test_pool_helpers_f205b.py`（新建），`backend/tests/test_fmp_client.py`（追加用例）。
