@@ -1734,3 +1734,28 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **Q8 — pending_order distance > 3% 且 setup 非 BROKEN**：不出现在任何栏（避免噪音）。pending order 距离很远时已在 PendingOrdersWidget 可见，ActionList 只关心"可能要动手的"。
 
 **影响**：`backend/app/services/cockpit/action_service.py`（rule engine 实现），`backend/app/routers/cockpit/actions.py`（endpoint + schema）。
+
+---
+
+## D077：F207-b ActionListWidget 前端设计决策（Q1-Q8）
+
+**日期**：2026-04-27（F207-b Sprint Contract §7，用户已确认）
+**触发**：F207-b Generator 实施阶段，8 个前端技术决策点已在 Sprint Contract 协商阶段与用户逐一确认。
+
+**Q1 — 单栏空时是否渲染空标题**：整段不渲染（紧凑）。`_actionListSection.tsx` 头部 `if (items.length === 0) return null`。三栏全空时 widget 容器改用 `data-testid="empty-state"` 显示"暂无今日动作"。
+
+**Q2 — refs 字段前端类型**：弱类型 `Record<string, unknown>`，与后端弱契约一致。hover tooltip 拼 `JSON.stringify(refs)` 供调试用。不做 per-actionType discriminated union，避免后端扩 actionType 时前端编译失败。
+
+**Q3 — AI Daily Brief 区域**：完全不渲染 DOM，仅留代码注释挂载点 `{/* AI Daily Brief 挂载点 — F209/F211 v2.0 */}`。F209/F211 时直接在注释位置插入，无回退成本。
+
+**Q4 — actionType label 中英文**：全英文（"Raise Stop" / "Cancel Order" / "Reduce (Earnings)" / "Tighten Stop" / "Approaching Trigger" / "Stable"）。与现有 widget header（"Pending Orders" / "Setup Monitor"）保持一致；空态文案保持中文。
+
+**Q5 — 行点击触发区**：整行（`onClick` 绑到行 div），与 `SetupMonitorWidget` 一致。光标 `cursor: pointer`。不限定只点 ticker 列。
+
+**Q6 — hover tooltip 实现**：native `title` 属性，与 `SetupMonitorWidget` 一致。不引入 shadcn Tooltip（避免增加文件数；`title` 内容含 rationale + refs JSON 换行拼接）。
+
+**Q7 — 同 ticker 多条 action 前端去重**：不去重，按后端原样 1 行 1 条。与 F207-a §6 "position 和 pending_order 是两个生命周期实体"一致。
+
+**Q8 — empty-state 文案**："暂无今日动作"。与 PendingOrdersWidget "暂无 pending order" 风格一致（中文空态文案）。
+
+**影响**：`frontend/src/cockpit/lib/api/cockpitActionsApi.ts`（类型定义），`frontend/src/cockpit/widgets/_actionListSection.tsx`（行渲染 + label 映射），`frontend/src/cockpit/widgets/ActionListWidget.tsx`（容器 + 4 状态），`frontend/src/cockpit/CockpitRegistry.ts`（manifest 注册）。

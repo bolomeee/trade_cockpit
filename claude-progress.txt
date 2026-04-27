@@ -1,6 +1,40 @@
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint Contract 协商：F207-b ActionListWidget（前端三栏动作清单）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F207-b-contract.md
+  - §7 Q1-Q8 全部按建议默认值采纳：
+      Q1 单栏空整段不渲染
+      Q2 refs 弱类型 Record<string, unknown>（与后端一致）
+      Q3 AI Daily Brief 仅留注释占位
+      Q4 actionType label 全英文（与现有 widget 风格一致）
+      Q5 行任意位置点击触发 setSelectedTicker
+      Q6 hover 用 native title 属性，不引入 shadcn Tooltip
+      Q7 同 ticker 多条 action 不去重
+      Q8 空态文案 "暂无今日动作"
+  - 预计修改文件 6/6 个（恰好踩线，无第 7 个文件空间）：
+      1. cockpitActionsApi.ts（新建）
+      2. _actionListSection.tsx（新建）
+      3. ActionListWidget.tsx（新建）
+      4. CockpitRegistry.ts（修改注册）
+      5. __tests__/cockpitActionsApi.test.ts（新建）
+      6. __tests__/ActionListWidget.test.tsx（新建）
+  - features.json：F207.sub_sprints.F207-b → contract_agreed
+  - _pipeline_status.active_sprint=F207-b, active_sprint_phase=contract_agreed
+
+📊 功能状态：
+  F207 Daily Action List Widget：F207-a ✅ done / F207-b 🟡 contract_agreed
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+  > 继续开发 F207-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F207-b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-26] Sprint：F206-a Position 数据层 + 后端 CRUD
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -401,3 +435,50 @@ features.json：F206 phase → done，completed_at → 2026-04-26
   验收 F207-a，或直接开始 F207-b（前端 ActionListWidget）。
   验收指令："/acceptance F207-a"
   继续开发："/feature-dev F207-b"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] 验收：F207-a → done（路径 A）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收结论：通过
+  - 路径 A（信任测试门禁，纯后端 sprint，无 UI 视觉确认）
+  - 22/22 测试通过（16 单元 + 6 集成）
+  - 全量回归 744 通过，0 回归
+  - API 契约 camelCase 严格匹配 API-CONTRACT line 1592-1631
+  - 验收记录：docs/验收/v1.9-F207-a-acceptance.md
+
+📊 状态变更：
+  - features.json：F207.sub_sprints.F207-a → done（completed_at 2026-04-27）
+  - active_sub_sprint → F207-b
+  - _pipeline_status.active_sprint → F207-b（phase=planned）
+  - F207 父 feature 仍 needs_review，待 F207-b 前端完成
+
+[下一个 Session]
+  开始 F207-b（前端 ActionListWidget），需先 design-bridge / Sprint Contract 协商。
+  指令示例："开始开发 F207-b" 或 "/feature-dev F207-b"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F207-b Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint: F207-b（前端 ActionListWidget）
+所有开发步骤完成（步骤 1-11），进入 needs_review
+
+新增/修改文件（6/6）：
+  - cockpitActionsApi.ts（新建）
+  - _actionListSection.tsx（新建）
+  - ActionListWidget.tsx（新建）
+  - CockpitRegistry.ts（修改，注册 cockpit.action-list）
+  - cockpitActionsApi.test.ts（新建，10 cases）
+  - ActionListWidget.test.tsx（新建，16 cases）
+
+测试：238/238 通过 | tsc 0 错误 | lint 新文件 0 warning
+浏览器实跑：3 种数据态（空 / 单栏 / 三栏齐全）DOM 验证通过
+
+DECISIONS.md：追加 D077（F207-b §7 Q1-Q8）
+features.json：F207-b = "needs_review"
+
+[当前状态]
+  F207-a：needs_review（后端）
+  F207-b：needs_review（前端）
+  建议一并触发 acceptance skill 验收 F207-a + F207-b
