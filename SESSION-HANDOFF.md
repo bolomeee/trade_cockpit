@@ -1,22 +1,37 @@
 # SESSION-HANDOFF
 
-> 更新：2026-04-27 PM | 阶段：F205-d Sprint Contract ✅ 已确认 → Generator 待启动
+> 更新：2026-04-27 PM | 阶段：F205-d ✅ needs_review → 下一阶段待定
 > 项目：MA150 Tracker → Cockpit
-> 当前 active_sprint：**F205-d**（PoolBuilderWidget 前端） / phase=`contract_agreed`
+> 当前 active_sprint：**F205-d**（PoolBuilderWidget 前端） / phase=`needs_review`
 
 ---
 
 ## 已完成内容（截至本 session）
 
 ### F205-a / F205-b / F205-c ✅ done
-（详见 `claude-progress.txt` 与 features.json）
 - 后端 `GET /api/cockpit/pool` 已上线，820 全量回归通过
 
-### F205-d Sprint Contract ✅ 协商完成（本 session）
-- 文档：`docs/开发/sprint-contracts/F205-d-contract.md`
-- features.json `F205-d.phase` = `contract_agreed`
-- 6 个预计修改文件全部前端，命中 6 文件原则上限
-- 三个开放问题已确认（funnel 仅高亮 / layout y=22 整行 / filter 默认展开）
+### F205-d ✅ 全部实现，needs_review
+commit: `68ddbed` `feat(F205-d): PoolBuilderWidget 前端实现`
+
+| 文件 | 状态 |
+|------|------|
+| `frontend/src/cockpit/lib/api/cockpitPoolApi.ts` | 新建 ✅ |
+| `frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts` | 新建 ✅ (5 用例) |
+| `frontend/src/cockpit/widgets/_poolFilterBar.tsx` | 新建 ✅ |
+| `frontend/src/cockpit/widgets/PoolBuilderWidget.tsx` | 新建 ✅ |
+| `frontend/src/cockpit/widgets/__tests__/PoolBuilderWidget.test.tsx` | 新建 ✅ (11 用例) |
+| `frontend/src/cockpit/CockpitRegistry.ts` | 修改 ✅ |
+
+**Evaluator 自检结论**（全部通过）：
+- TypeScript `pnpm tsc --noEmit`：无错
+- 前端全量回归：21 测试文件，254/254 通过
+- API client 字段名与 API-CONTRACT.md 严格对应
+- 颜色/字体/间距全部走 token，无硬编码 hex
+- 非 watchlist null 字段显示 `—`（D080 合规）
+- react-query staleTime 60_000ms，filter debounce 300ms
+- `[+ Add]` 成功后同时 invalidate `['cockpit-pool']` + `['watchlist']`
+- `cockpit.pool-builder` 注册 defaultLayout `{ x:0, y:22, w:12, h:10 }`
 
 ---
 
@@ -25,72 +40,60 @@
 | 项 | 值 |
 |---|---|
 | active_sprint | F205-d |
-| active_sprint_phase | contract_agreed |
+| active_sprint_phase | needs_review |
 | F205-c phase | needs_review |
 | 后端全量回归 | 820 passed |
-| 前端测试 | 待 F205-d 完成后回归 |
+| 前端全量回归 | 254 passed |
 
 ---
 
-## F205-d Sprint Contract 摘要
+## 功能说明（F205-d 实现细节）
 
-### 实现范围
-- **API client**：`cockpitPoolApi.ts`（getCockpitPool + 60s timeout + 类型定义）
-- **Widget**：`PoolBuilderWidget.tsx`（Funnel 5 段 + Filter Bar + 候选表 + `[+ Add]`）
-- **Filter 子组件**：`_poolFilterBar.tsx`（受控 + debounce 300ms）
-- **Registry 注册**：CockpitRegistry.ts 新增 `cockpit.pool-builder`
-- **测试**：API client 4 用例 + Widget 9–12 用例
+### cockpitPoolApi.ts
+- 类型：`PoolFilters` / `PoolFunnel` / `PoolItem` / `PoolData`
+- `getCockpitPool(filters)` → 拼接 query string，60s `AbortController` timeout
+- 导出常量：`POOL_TIMEOUT_MS = 60_000`
 
-### 6 个预计修改文件
+### _poolFilterBar.tsx
+- 受控 props：`value: PoolFilters`，`onChange`
+- 内部维护 `local` state（即时 UI 更新），`FILTER_DEBOUNCE_MS = 300ms` 后调 `onChange`
+- 9 个输入字段：marketCapMin / priceMin / advMin / trendScoreMin / rsPercentileMin / revenueGrowthYoyMin / sectors / setupTypes / limit
+- 清理：`useEffect` 在 unmount 时 clearTimeout
+
+### PoolBuilderWidget.tsx
+- Funnel 5 段：各段 `aria-pressed`，点击高亮（不切换表格内容，F205-e）
+- Filter Bar：默认展开（inline 一行）
+- 候选表：13 列，包含所有 data-mapping.md §Cockpit-3 字段
+- Add 按钮：`disabled` 当 `inWatchlist=true` 或正在提交
+- `POOL_STALE_TIME_MS = 60_000`
+
+### CockpitRegistry.ts
+新增：
+```ts
+'cockpit.pool-builder': {
+  id: 'cockpit.pool-builder',
+  title: 'Pool Builder',
+  component: PoolBuilderWidget,
+  defaultLayout: { x: 0, y: 22, w: 12, h: 10, minW: 6, minH: 6 },
+  category: 'pool',
+}
 ```
-frontend/src/cockpit/lib/api/cockpitPoolApi.ts            (新建)
-frontend/src/cockpit/widgets/PoolBuilderWidget.tsx        (新建)
-frontend/src/cockpit/widgets/_poolFilterBar.tsx           (新建)
-frontend/src/cockpit/CockpitRegistry.ts                   (修改)
-frontend/src/cockpit/widgets/__tests__/PoolBuilderWidget.test.tsx (新建)
-frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts     (新建)
-```
-
-### 关键约束
-- 字段命名以 `API-CONTRACT.md §GET /api/cockpit/pool` 为权威
-- 非 watchlist 字段为 null 时显示 `—`（D080）
-- react-query staleTime 60_000ms，filter debounce 300ms
-- `[+ Add]` 调既有 `addStock(ticker)`，invalidate `['cockpit-pool']` + `['watchlist']`
-- 颜色/字体/间距全部走 token，无硬编码 hex
 
 ---
 
-## 开发顺序（Generator 阶段，新 session 执行）
+## 下一步建议
 
-1. 新建 `cockpitPoolApi.ts`（类型 + 函数 + 60s timeout） → wip commit
-2. 新建 `cockpitPoolApi.test.ts` 4 用例 → 通过 → wip commit
-3. 新建 `_poolFilterBar.tsx`（受控 + debounce） → wip commit
-4. 新建 `PoolBuilderWidget.tsx`（Funnel + 表 + Add 按钮） → wip commit
-5. 修改 `CockpitRegistry.ts` 注册 → wip commit
-6. 新建 `PoolBuilderWidget.test.tsx` 9–12 用例 → 通过 → wip commit
-7. `pnpm tsc --noEmit` + `pnpm test` 全量回归 → Evaluator 自检 → 最终 `feat(F205-d): ...` commit
-
----
-
-## 关键文件参考
-
-| 用途 | 路径 |
-|------|------|
-| Sprint Contract | `docs/开发/sprint-contracts/F205-d-contract.md` |
-| API 接口 | `docs/系统设计/API-CONTRACT.md` §GET /api/cockpit/pool（行 1322–1388） |
-| Widget 视觉规格 | `docs/设计/design-spec.md` 行 872–902 |
-| 字段绑定 | `docs/设计/data-mapping.md` §Cockpit-3（行 439–488） |
-| 组件边界 | `docs/设计/component-plan.md` 行 416–419 + Cockpit-4 表 |
-| 最近邻参考 widget | `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` |
-| Registry | `frontend/src/cockpit/CockpitRegistry.ts` |
-| watchlist API（既有） | `frontend/src/lib/api/watchlist.ts::addStock` |
+F205 系列已完成（a/b/c/d），可以：
+1. **验收 F205-d**：在 Cockpit 页面实际查看 PoolBuilderWidget 渲染效果
+2. **开始 F206**（Earnings Calendar Widget，v1.9 P1 下一个）
+3. **启动 F205-e**（Funnel 各层数据分层展示，需后端返回各层 items）
 
 ---
 
 ## 下一 Session 恢复指令
 
-**开新 session（建议 Sonnet），粘贴**：
+如继续 F205 验收：
+> 验收 F205-d PoolBuilderWidget，打开 Cockpit 页面检查渲染效果和交互。
 
-> 继续开发 F205-d，Sprint Contract 已确认。
-> 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-d-contract.md，
-> 进入 Generator 模式，从开发步骤 1（cockpitPoolApi.ts）开始。
+如开始 F206：
+> 继续开发 F206。读取 SESSION-HANDOFF.md + docs/需求/features.json 确认下一个 sprint。
