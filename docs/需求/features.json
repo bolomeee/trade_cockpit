@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-27-F207-b-needs_review",
+  "last_updated": "2026-04-27-F205-a-contract_agreed",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -11,9 +11,9 @@
     "ui_design": "done",
     "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v2.0",
-    "active_sprint": "F207-b",
-    "active_sprint_phase": "needs_review"
+    "current_iteration": "v1.9",
+    "active_sprint": "F205-a",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -2703,16 +2703,30 @@
     {
       "id": "F205",
       "name": "Pool Builder Widget",
-      "description": "Cockpit P1 第一个 widget。多维筛选漏斗：全美 tradable universe → Trend Qualified → RS Leaders → Fundamental Qualified → Action Candidates。复用现有 F105 scanner_universe + F106 multi-signal scanner 的服务层，扩展加入 RS percentile（基于 250 天 stock/SPY return ratio）+ ADV filter（avg_dollar_volume_20d > 20M）+ fundamental sanity filter（revenue_growth_yoy > 10% 等）。GET /api/cockpit/pool 返回 funnel 数量 + 结果表。",
+      "description": "Cockpit P1 第一个 widget。多维筛选漏斗：全美 tradable universe → Trend Qualified → RS Leaders → Fundamental Qualified → Action Candidates。复用现有 F105 scanner_universe + F106 multi-signal scanner 的服务层，扩展加入 RS percentile（基于 250 天 stock/SPY return ratio）+ ADV filter（avg_dollar_volume_20d > 20M）+ fundamental sanity filter（revenue_growth_yoy > 10% 等）。GET /api/cockpit/pool 返回 funnel 数量 + 结果表。【拆分（2026-04-27）：F205-a universe 字段扩展 / F205-b FMP helper + 子集计算 / F205-c pool service + endpoint / F205-d 前端 widget。每子 sprint ≤6 文件】",
       "user_story": "作为慢交易投资者，我不只看 watchlist 内股票，还要从全市场发现新候选。我需要一个漏斗 UI：看到 tradable/trend/RS/fundamental 各层淘汰后的数量和最终候选列表，并能一键加入 watchlist",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_ready",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "active_sub_sprint": "F205-a",
+      "sub_sprints": {
+        "F205-a": "contract_agreed",
+        "F205-b": "planned",
+        "F205-c": "planned",
+        "F205-d": "planned"
+      },
       "dependencies": [
         "F201-b"
       ],
       "estimated_sessions": 4,
-      "estimated_files_changed": [],
+      "estimated_files_changed": [
+        "backend/alembic/versions/015_f205a_universe_extra_fields.py (新建, F205-a)",
+        "backend/app/models/market_scan_universe.py (修改, F205-a)",
+        "backend/app/repositories/market_scan_universe_repository.py (修改, F205-a)",
+        "backend/app/services/universe_refresh_service.py (修改, F205-a)",
+        "backend/tests/test_market_scan_repositories.py (修改, F205-a)",
+        "backend/tests/test_universe_refresh_service.py (修改, F205-a)"
+      ],
       "scope": {
         "pages": [
           "Cockpit"

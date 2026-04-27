@@ -1,1 +1,35 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint：F205-a Universe 字段扩展（Contract 协商）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+✅ 完成内容（本 session 仅协商，未编码）：
+  - 读完 F205 全部前置文档（API-CONTRACT §Pool / DATA-MODEL §MarketScanUniverse+§MarketBreakoutScan+§SetupSnapshot / design-spec Widget3 / data-mapping §Cockpit-3 / component-plan §Cockpit-2~5）
+  - 对比 FMP client 现有能力 + 现有数据底座，识别 F205 数据源 4 个 gap：sector / price / ADV / revenue_growth
+  - 与用户确认 4 个技术决策：
+      D1（trend 层语义）= A：复用 market_breakout_scans 命中
+      D2（sector 字段持久化位置）= A：market_scan_universe 加 4 列
+      D3（distanceTo50maPct 算法）= A：rs/fundamental 子集 EOD 调用副产品
+      D4（拆分）= 同意 a/b/c/d 四个 sub_sprint
+  - 起草 F205-a Sprint Contract（universe 字段扩展），新增字段级降级聚合日志要求（用户提醒补强）
+  - features.json：F205 加 sub_sprints 结构，F205-a phase=contract_agreed，active_sub_sprint=F205-a
+  - _pipeline_status：active_sprint 由 F207-b → F205-a，current_iteration v2.0 → v1.9（v1.9.0 优先于 v2.0）
+  - last_updated：2026-04-27-F205-a-contract_agreed
+
+⚠️ 待你决策：
+  - 无（Sprint Contract 已确认）
+
+🔧 系统变更：
+  - 新建 docs/开发/sprint-contracts/F205-a-contract.md
+  - 修改 docs/需求/features.json（F205 sub_sprints + _pipeline_status）
+
+📊 功能状态：
+  F207 整体：phase=done（两个 sub_sprint 等 acceptance）
+  F205 整体：phase=in_progress，active_sub_sprint=F205-a (contract_agreed)
+  F205-a：contract_agreed
+  F205-b/c/d：planned
+
+[下一个 Session]
+  开新 Sonnet session，粘贴：
+  > 继续开发 F205-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-a-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
