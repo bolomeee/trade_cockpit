@@ -38,6 +38,7 @@ FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
 FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
 FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
 FMP_EP_EARNINGS_CALENDAR = "/earnings-calendar"  # F204-a earnings events
+FMP_EP_FINANCIAL_GROWTH = "/financial-growth"  # F205-b D079 revenue growth YoY
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -468,6 +469,27 @@ class FmpClient:
         params = {"from": from_date, "to": to_date}
         body = self._request(FMP_EP_EARNINGS_CALENDAR, params)
         return list(body or [])
+
+
+    def get_financial_growth(self, symbol: str) -> dict[str, Any] | None:
+        """FMP /stable/financial-growth annual revenue growth for a single symbol.
+
+        D079: period=annual&limit=1 gives the most recent fiscal year's data.
+        Returns None on empty response, HTTP error, or network error so pool
+        funnel callers can fail-open rather than dropping a ticker due to missing
+        vendor data.
+        """
+        try:
+            body = self._request(
+                FMP_EP_FINANCIAL_GROWTH,
+                {"symbol": symbol, "period": "annual", "limit": 1},
+            )
+            results = list(body or [])
+            if not results:
+                return None
+            return results[0]
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return None
 
 
 def _fmt_date(d: str | date) -> str:
