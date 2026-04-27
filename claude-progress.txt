@@ -117,3 +117,62 @@ F205 sub_sprints 状态：
   > 继续开发 F205-b，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-b-contract.md，
   > 进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F205-b Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint：F205-b FMP 增量 + Pool 计算 helpers
+状态：needs_review（Evaluator 全部通过）
+
+完成内容：
+1. backend/app/external/fmp_client.py
+   - 新增常量 FMP_EP_FINANCIAL_GROWTH = "/financial-growth"
+   - 新增方法 get_financial_growth(symbol) -> dict | None
+     * period=annual&limit=1，复用 token bucket + 6-concurrency semaphore
+     * HTTPStatusError / RequestError → None（fail-open，D079）
+     * 429 retry 由 _request 内部处理
+
+2. backend/app/services/cockpit/pool_helpers.py（新建）
+   - 纯函数模块，无 IO / DB / logger / httpx 依赖
+   - 5 个函数：
+     * compute_return_ratio_250d：250 日 stock/SPY return ratio；序列不足/spy≈0 → None
+     * compute_rs_percentile_map：mid-rank percentile（与 setup_service 公式不同，见 D079）
+     * compute_distance_to_50ma_pct：(close-ma50)/ma50×100；ma50 None/0 → None
+     * extract_revenue_growth_yoy_pct：读 FMP revenueGrowth 字段 ×100
+     * passes_fundamental_sanity：None growth → True（fail-open，D079）
+
+3. backend/tests/test_pool_helpers_f205b.py（新建）
+   - 31 个单元测试，覆盖 contract §3 第 5-17 条
+   - 含 AST 静态验证（test #17）：确认无 app.*/logging/SQLAlchemy/httpx import
+
+4. backend/tests/test_fmp_client.py（修改）
+   - 新增 5 个 test_get_financial_growth_* 用例
+
+5. docs/系统设计/DECISIONS.md（追加 D079）
+
+测试结果：
+  test_fmp_client.py: 54/54 ✅
+  test_pool_helpers_f205b.py: 31/31 ✅
+  全量回归: 794 passed（758 → 758+36）✅
+  setup/scanner 回归: 52/52 ✅
+  setup_service.py diff: 空（未修改）✅
+
+重要决策：
+  - RS percentile 使用 mid-rank（与 setup_service strictly-below 不同）
+    * 原因：Contract test #8/9 明确指定 mid-rank 期望值 (16.67, 50.0, 83.33)
+    * 已在 D079 文档化为技术债，dedup 推到后续 sprint
+  - get_financial_growth 错误处理：catch HTTPStatusError/RequestError → None
+    * 与 get_ratios_ttm 不同（后者传播错误），符合 fail-open 策略
+
+git commits：
+  d1d476d wip(F205-b): fmp_client get_financial_growth + pool_helpers pure module
+  4528c3c wip(F205-b): pool_helpers tests + fmp_client get_financial_growth tests
+  4d982d2 docs(F205-b): D079 financial-growth 来源、RS mid-rank、fail-open、技术债
+  [最终 feat commit 见下次 git log]
+
+F205 sub_sprints 状态：
+  F205-a: done
+  F205-b: needs_review ← 当前
+  F205-c: planned（PoolService + GET /api/cockpit/pool）
+  F205-d: planned（前端 PoolBuilderWidget）
