@@ -176,3 +176,19 @@ F205 sub_sprints 状态：
   F205-b: needs_review ← 当前
   F205-c: planned（PoolService + GET /api/cockpit/pool）
   F205-d: planned（前端 PoolBuilderWidget）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F205-b 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+验收结论：✅ 全部通过
+验收记录：docs/验收/v1.9-F205-b-acceptance.md
+
+F205 sub_sprints 状态：
+  F205-a: done
+  F205-b: done ← 本次
+  F205-c: planned（下一目标）
+  F205-d: planned
+
+下一步：协商 F205-c Sprint Contract
+  F205-c 内容：PoolService（编排 + 缓存）+ GET /api/cockpit/pool router
