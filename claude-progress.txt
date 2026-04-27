@@ -246,3 +246,24 @@ F205 sub_sprints 状态：
   > 继续开发 F205-c，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F205-c-contract.md，
   > 进入 Generator 模式，从开发步骤 1 开始。
+
+---
+
+[2026-04-27] F205-c PoolService + GET /api/cockpit/pool — DONE
+
+Generator 阶段完成：
+- backend/app/schemas/cockpit/pool.py — PoolFunnel / PoolItem / PoolData / PoolResponse
+- backend/app/services/cockpit/pool_service.py — PoolService 5 层漏斗（tradable→trend→rs→fundamental→action）
+- backend/app/routers/cockpit/pool.py — GET /api/cockpit/pool（参数校验 + PoolService 调用）
+- backend/app/routers/cockpit/__init__.py — 注册 pool_router
+- backend/tests/test_pool_service.py — 10 单元测试（#8/#9/#10/#10b/#10c/#16/#17/#18）
+- backend/tests/test_cockpit_pool_router.py — 16 集成测试（#1-#7/#11-#15/#19-#21）
+- docs/系统设计/DECISIONS.md — 追加 D080（ADV 代理/忽略 trendScoreMin/POOL_TREND_CAP/null setup）
+
+全量回归：820 passed（794 → 820，+26），0 失败。
+Evaluator 自检清单全部通过（功能/纯净度/命名/决策/代码质量/回归）。
+phase: F205-c → needs_review；active_sprint → F205-d（前端 widget，planned）。
+
+[下一个 Sprint]
+  F205-d: PoolBuilderWidget 前端，消费 GET /api/cockpit/pool。
+  开新 session 继续 F205-d Sprint Contract 阶段。
