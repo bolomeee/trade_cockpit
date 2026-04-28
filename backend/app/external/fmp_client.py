@@ -327,6 +327,7 @@ class FmpClient:
         is_fund: bool | None = None,
         is_actively_trading: bool = True,
         limit: int = 500,
+        page: int = 0,
     ) -> list[Any]:
         """Single-exchange FMP company screener call (F105 universe, D038).
 
@@ -340,6 +341,7 @@ class FmpClient:
             "exchange": exchange,
             "isActivelyTrading": "true" if is_actively_trading else "false",
             "limit": limit,
+            "page": page,
         }
         if is_etf is not None:
             params["isEtf"] = "true" if is_etf else "false"
@@ -352,31 +354,38 @@ class FmpClient:
         self,
         market_cap_gte: int = 50_000_000_000,
         exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
-        limit_per_exchange: int = 500,
+        page_size: int = 500,
     ) -> list[dict[str, Any]]:
         """Merged, de-duplicated screener universe across US exchanges (F105, D038).
 
         Includes common stocks, ADRs, and ETFs (what the user trades);
         excludes mutual funds via `isFund=false`. De-duplicates by `symbol`,
-        first-seen wins. Any per-exchange error propagates.
+        first-seen wins. Paginates until FMP returns fewer rows than page_size.
+        Any per-exchange error propagates.
         """
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
         for exchange in exchanges:
-            rows = self.get_company_screener_page(
-                market_cap_gte=market_cap_gte,
-                exchange=exchange,
-                is_fund=False,
-                limit=limit_per_exchange,
-            )
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                symbol = row.get("symbol")
-                if not symbol or symbol in seen:
-                    continue
-                seen.add(symbol)
-                merged.append(row)
+            page = 0
+            while True:
+                rows = self.get_company_screener_page(
+                    market_cap_gte=market_cap_gte,
+                    exchange=exchange,
+                    is_fund=False,
+                    limit=page_size,
+                    page=page,
+                )
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    symbol = row.get("symbol")
+                    if not symbol or symbol in seen:
+                        continue
+                    seen.add(symbol)
+                    merged.append(row)
+                if len(rows) < page_size:
+                    break
+                page += 1
         return merged
 
     def get_sma_series(

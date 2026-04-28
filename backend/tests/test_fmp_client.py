@@ -421,6 +421,7 @@ def test_get_company_screener_page_endpoint_and_params(clock):
     assert params["marketCapMoreThan"] == "50000000000"
     assert params["exchange"] == "NYSE"
     assert params["limit"] == "500"
+    assert params["page"] == "0"
     assert params["apikey"] == "test-key"
 
 
@@ -547,6 +548,35 @@ def test_get_screener_universe_skips_non_dict_rows(clock):
     client, _ = make_client(handler, clock)
     result = client.get_screener_universe()
     assert [r["symbol"] for r in result] == ["AAPL"]
+
+
+def test_get_screener_universe_paginates_until_last_page(clock):
+    # NYSE: page 0 → full page (2 items, page_size=2), page 1 → 1 item (< page_size, stop)
+    # NASDAQ: page 0 → empty, stop. AMEX: page 0 → empty, stop.
+    pages = {
+        "NYSE": [
+            [{"symbol": "AAPL"}, {"symbol": "MSFT"}],  # page 0 — full
+            [{"symbol": "GOOG"}],                       # page 1 — last
+        ],
+        "NASDAQ": [[]],
+        "AMEX": [[]],
+    }
+    page_counters: dict[str, int] = {"NYSE": 0, "NASDAQ": 0, "AMEX": 0}
+
+    def handler(req):
+        exchange = req.url.params["exchange"]
+        idx = page_counters[exchange]
+        page_counters[exchange] += 1
+        return ok(pages[exchange][idx])
+
+    client, calls = make_client(handler, clock)
+    result = client.get_screener_universe(page_size=2)
+
+    assert [r["symbol"] for r in result] == ["AAPL", "MSFT", "GOOG"]
+    # NYSE needs 2 requests (page 0 + page 1); NASDAQ + AMEX need 1 each → 4 total
+    assert len(calls) == 4
+    nyse_pages = [int(c.url.params["page"]) for c in calls if c.url.params["exchange"] == "NYSE"]
+    assert nyse_pages == [0, 1]
 
 
 # --- F105: sma -----------------------------------------------------------

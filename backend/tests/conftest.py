@@ -109,7 +109,7 @@ class FakeFMP:
         self,
         market_cap_gte: int = 50_000_000_000,
         exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
-        limit_per_exchange: int = 500,
+        page_size: int = 500,
     ) -> list[dict[str, Any]]:
         self.screener_universe_calls += 1
         if self.screener_universe_exc is not None:

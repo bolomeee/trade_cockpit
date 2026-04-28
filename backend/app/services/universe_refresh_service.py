@@ -43,7 +43,7 @@ class _FmpClientLike(Protocol):
         self,
         market_cap_gte: int = ...,
         exchanges: tuple[str, ...] = ...,
-        limit_per_exchange: int = ...,
+        page_size: int = ...,
     ) -> list[dict[str, Any]]: ...
 
 
