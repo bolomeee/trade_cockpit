@@ -163,3 +163,51 @@
   > 继续开发 F211-a2，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-a2-contract.md，
   > 进入 Generator 模式，从开发步骤 1（context7 查 LiteLLM 形参与 register_model 行为）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] Sprint：F211-b DecisionPanel Contradictions 区前端 — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F211-b Sprint Contract 已确认（用户全意 Q1-Q10 默认方案）
+  - features.json：sub_sprints["F211-b"] design_needed → contract_agreed
+  - iteration_history 追加 F211-b contract_agreed 记录
+  - Contract 文件：docs/开发/sprint-contracts/F211-b-contract.md
+
+📦 预计修改文件（5 个，≤6 上限）：
+  1. frontend/src/cockpit/components/AiContradictionsSection.tsx     (新建 ~250 行)
+  2. frontend/src/cockpit/widgets/DecisionPanelWidget.tsx            (修改 ~10 行 diff)
+  3. frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx  (+7 case)
+  4. frontend/src/cockpit/lib/utils/dates.ts                         (新建，calcDaysUntil 抽取)
+  5. docs/需求/features.json                                          (本次已更新)
+
+🔑 关键约束（开发期不得偏离）：
+  - 0 行后端改动（schema/endpoint/guardrail 已就绪）
+  - lazy 触发（默认 collapsed）— 避免每次 selectedTicker 切换都打 LLM
+  - input 13 字段：8 个来自 CockpitDecisionData / 5 个（trendScore / rsPercentile / readySignal / regime / regimeScore）从 ['setup-monitor'] + ['cockpit-regime'] react-query cache 复用
+  - setupMonitor 缺当前 ticker → trigger disabled + tooltip
+  - severity tag 颜色 token：HIGH=--color-error / MEDIUM=--color-signal-warning / LOW=--color-text-muted（Generator 步骤 1 须 grep tokens.css 实测）
+  - queryKey: ['ai', 'contradiction_detector', ticker, deterministicHash]，24h cache 与 trade_plan 一致
+  - 6 态状态机沿用 AiTradePlanSection（closed / loading / success-with / success-empty / error 502 / error 409）
+  - 即使 contradiction_detector 后端无 hash guardrail，前端保留 409 分支模板
+
+⚠️ 待 Generator 阶段验证（步骤 1 预检）：
+  - tokens.css 是否实存 --color-signal-warning（不存在则切换到 --color-warning / --color-amber）
+  - SetupMonitorWidget 当前 queryKey 精确写法（['setup-monitor'] vs ['setup-monitor', undefined]）
+
+📊 功能状态：
+  F210（critical AI）：✅ done
+  F211（mixed AI）：🟡 in_progress
+    F211-a1：✅ done（3 schemas + REGISTRY + guardrail）
+    F211-a2：✅ done（per-task model override 基建 + D075）
+    F211-b：🟡 contract_agreed（DecisionPanel Contradictions 区前端 ← 本次）
+    F211-c：⬜ design_needed（News 页 AI 摘要 bar 前端）
+    F211-d：⬜ design_needed（平仓 hook + ai_review 迁移 + 月度 cron）
+  F206-c2：🟡 contract_agreed（PendingOrdersWidget 前端，独立可推进）
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+
+  > 继续开发 F211-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（预检：grep tokens + 确认 setup-monitor / cockpit-regime queryKey + 读 backend contradiction_detector schema）开始。
