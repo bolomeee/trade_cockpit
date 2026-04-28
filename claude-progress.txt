@@ -123,3 +123,43 @@
   > 继续开发 F211-a1，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-a1-contract.md，
   > 进入 Generator 模式，从开发步骤 7a 开始（contradiction_detector schema + tests）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] Sprint：F211-a2 — Per-task Model Override 基建（Architect 模式 / Contract 协商）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Architect 模式起草 F211-a2 Sprint Contract（docs/开发/sprint-contracts/F211-a2-contract.md）
+    范围：D064 三 tier 兜底之上叠加可选 per-task override，env-driven 单 JSON 字段
+    5 文件：config.py（+1 字段）/ routing.py（新 ResolvedRoute + 升 resolve()）/ gateway.py（透传 api_base + lazy register_model）/ test_ai_routing_overrides.py（新建 13 用例）/ DECISIONS.md（追加 D075）
+    测试扩展（不计入 5 文件）：test_ai_core_modules_f208b 1 处适配；test_ai_gateway_e2e_f208c 追加 C13c override e2e
+    关键设计：register_model 在 gateway lazy hook（不放 main.py lifespan）；api_key fallback 到 settings.openai_api_key；cost 单位 per-1M（register 前 / 1_000_000）；fail-soft（JSON 坏 / register 失败 → log warning + fallback，不阻塞 startup）
+    向后兼容：resolve_tier / resolve_model 旧 API 保留；未配 override 时 877 测试零回归
+  - 用户确认 Contract，7 个开放问题（Q1-Q7）全采默认方案
+    Q1/Q2 强 context7 查询点（Generator 步骤 1）：litellm.completion 形参 api_base vs base_url；register_model 后 completion_cost 是否用注入价
+  - 更新 features.json：F211-a2 升 contract_agreed + iteration_history 追加一条
+  - phase → contract_agreed
+
+⚠️ 待你决策：
+  - 无（Contract 全意确认；Q1-Q7 默认方案）
+
+🔧 系统变更：
+  - 新增 docs/开发/sprint-contracts/F211-a2-contract.md
+  - features.json#F211：sub_sprints["F211-a2"] design_needed → contract_agreed
+
+📊 功能状态：
+  F210：✅ done（a/b/c）
+  F211：🟡 in_progress
+    F211-a1：✅ done
+    F211-a2：🟡 contract_agreed（待 Generator）
+    F211-b：⬜ design_needed（DecisionPanel Contradictions 区前端）
+    F211-c：⬜ design_needed（News 页 AI 摘要 bar 前端，含 tokens/cost 展示）
+    F211-d：⬜ design_needed（平仓 hook + ai_review 迁移 + 月度 cron）
+  F206-c2：🟡 contract_agreed（PendingOrdersWidget 前端，独立可推进）
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+
+  > 继续开发 F211-a2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-a2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（context7 查 LiteLLM 形参与 register_model 行为）开始。
