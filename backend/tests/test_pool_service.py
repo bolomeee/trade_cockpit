@@ -386,6 +386,30 @@ def test_pool_cache_rebuild_growth_null_fail_open(db: Session, fmp: FmpClient):
     assert row.revenue_growth_yoy is None
 
 
+def test_pool_cache_rebuild_deduplicates_tickers(db: Session, fmp: FmpClient):
+    """rebuild_dedup: same ticker appears twice in snapshot (two signal_types) → 1 cache row."""
+    scan_date = date(2026, 4, 27)
+    now = datetime.now(timezone.utc)
+    for signal_type in ("BREAKOUT", "PULLBACK"):
+        db.add(MarketBreakoutScan(
+            scan_date=scan_date, ticker="DUP", company_name="DUP Corp",
+            signal_type=signal_type, close_price=50.0, ma150_value=45.0,
+            pct_above_ma150=11.0, slope_value=0.5, market_cap=1_000_000_000,
+            scanned_at=now,
+        ))
+    db.commit()
+
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    stock_bars = _make_bars(260, base=100.0, final=120.0)
+
+    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
+         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.2}):
+        result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    assert result.upserted == 1  # only 1 row despite 2 breakout entries
+
+
 def test_pool_cache_rebuild_no_trend_returns_zero(db: Session, fmp: FmpClient):
     """rebuild_no_trend: no breakout snapshot → 0 upserted, no exception."""
     # no breakout rows

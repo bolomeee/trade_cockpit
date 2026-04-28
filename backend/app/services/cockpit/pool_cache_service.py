@@ -131,7 +131,8 @@ class PoolCacheService:
         snapshot = self._breakout_repo.get_latest_snapshot()
         if snapshot is None:
             return []
-        return [item.ticker for item in snapshot.items]
+        # snapshot may have multiple rows per ticker (different signal_types); deduplicate
+        return list(dict.fromkeys(item.ticker for item in snapshot.items))
 
     def _fetch_bars_concurrent(
         self, tickers: list[str], from_date: date, to_date: date
