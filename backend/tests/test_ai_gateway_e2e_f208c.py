@@ -546,3 +546,70 @@ def test_C_echo_live_smoke(db_session):
     assert row is not None
     assert row.model_used != "cache"
     assert row.cost_usd > Decimal("0")
+
+
+# ---------------------------------------------------------------------------
+# §F211-a1 — C13 gateway integration (contradiction_detector routing + guardrail)
+# ---------------------------------------------------------------------------
+
+_CD_INPUT = {
+    "ticker": "AAPL",
+    "setupType": "BREAKOUT",
+    "setupQuality": "A",
+    "trendScore": 4,
+    "rsPercentile": 82.5,
+    "entry": 180.00,
+    "stop": 175.00,
+    "target2r": 190.00,
+    "rewardRisk": 2.0,
+    "accountRiskPct": 1.0,
+    "earningsRisk": "SAFE",
+    "daysToEarnings": 45,
+    "regime": "CONSTRUCTIVE",
+    "regimeScore": 70,
+    "readySignal": True,
+}
+
+_CD_OUTPUT_CLEAN = {
+    "contradictions": [],
+    "recommendation": "No major contradictions.",
+}
+
+_CD_OUTPUT_BANNED = {
+    "contradictions": [],
+    "recommendation": "You should buy now at entry.",
+}
+
+
+class TestF211a1GatewayIntegration:
+    def test_C13a_contradiction_detector_success_memo_written(self, db_session, monkeypatch):
+        """contradiction_detector: mock LLM clean output → memo written, guardrail passes."""
+        def mock_litellm(model, input_dict, output_schema, api_key):
+            return _CD_OUTPUT_CLEAN, 20, 10, Decimal("0.001")
+
+        monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
+        count_before = db_session.query(AiMemo).count()
+
+        result = AiGateway(db_session).run(
+            task_type="contradiction_detector", input_dict=_CD_INPUT
+        )
+
+        assert db_session.query(AiMemo).count() == count_before + 1
+        assert result.output == _CD_OUTPUT_CLEAN
+        assert result.meta.cache_hit is False
+        assert result.task_type == "contradiction_detector"
+
+    def test_C13b_banned_phrase_in_recommendation_violation_no_memo(self, db_session, monkeypatch):
+        """contradiction_detector: recommendation contains 'buy now' → AiGuardrailViolation, no new memo."""
+        def mock_litellm(model, input_dict, output_schema, api_key):
+            return _CD_OUTPUT_BANNED, 20, 10, Decimal("0.001")
+
+        monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
+        count_before = db_session.query(AiMemo).count()
+
+        with pytest.raises(AiGuardrailViolation, match="banned phrase"):
+            AiGateway(db_session).run(
+                task_type="contradiction_detector", input_dict=_CD_INPUT
+            )
+
+        assert db_session.query(AiMemo).count() == count_before
