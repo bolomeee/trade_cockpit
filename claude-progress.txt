@@ -49,3 +49,77 @@
   > 继续开发 F206-c2，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
   > 进入 Generator 模式，从开发步骤 1 开始。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] Sprint：F211-a1 — Generator 完成（Sonnet 4.6）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 backend/app/ai/schemas/contradiction_detector.py（+87 行）
+  - 新建 backend/app/ai/schemas/news_summarizer.py（+74 行）
+  - 新建 backend/app/ai/schemas/journal_assistant.py（+188 行，含 model_validator 双模式）
+  - 修改 backend/app/ai/schemas/__init__.py：REGISTRY 补 3 entry + guardrail.register 3 行（替换占位注释）
+  - 新建 backend/tests/test_ai_schemas_f211a1.py：45 单元测试（CI/CO/CG/NI/NO/NG/JI/JO/JG/R1-R7）全绿
+  - 追加 backend/tests/test_ai_gateway_e2e_f208c.py：C13a+C13b 两条集成测试全绿
+  - 全量回归：877 passed，0 failed
+  - mypy backend/app/ai/schemas/：no issues found in 8 source files
+  - smoke：3 F211 task_types 在 REGISTRY，启动无 import 错误
+  - features.json：F211-a1 升 done，iteration_history 补条目
+  - 3 wip commit（5de6459 / b642bf8 / 6e83744）
+
+📊 功能状态：
+  F211-a1：✅ done
+  F211-a2：⬜ design_needed（per-task model override 基建）
+  F211-b/c/d：⬜ design_needed（前端 + 月度 cron）
+  F206-c2：🟡 contract_agreed（PendingOrdersWidget，独立 sprint，无冲突）
+
+🔧 wip commits：
+  5de6459  wip(F211-a1): 3 schema files + 45 unit tests
+  b642bf8  wip(F211-a1): registry wiring
+  6e83744  wip(F211-a1): e2e C13 gateway integration
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28 Sprint Contract] Sprint：F211-a1 AI Contradiction Detector + News Summarizer + Journal Assistant 后端 schemas
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（本 session）：
+  - 读完前置文档（CLAUDE.md / API-CONTRACT §AI / DATA-MODEL §AiMemo + JournalEntry / design-spec §6.d + §9 / data-mapping §6.d）+ 先例 F210-a/b/c contract
+  - 扫码盘点 F211 整体范围（15+ 文件，必须拆分）
+  - 与用户协商拆分方案：5 段（a1 后端 schemas / a2 per-task model override 基建 / b DecisionPanel Contradictions / c News 页 AI 摘要 bar / d 平仓 hook + ai_review 迁移 + 月度 cron）
+  - 用户确认 5 段拆分 + Q1-Q4 默认方案（含 news 摘要范围 / journal hook 语义 / 月度产出形态）
+  - 用户加码：F211-a2 必须支持 per-task 自定义模型 + base_url + token 单价；摘要 UI 必须显示 tokens + cost
+  - 解释 D070 line 1527：AI 模型走 .env 不进 cockpit_params.py，明确 a2 落 config.py 而非 cockpit_params.py
+  - 更新 features.json：F211 sub_sprints 新增 5 entry（a1/a2/b/c/d）
+  - 调用 consistency-check skill (mode=interactive)：C5/C6/C8 全清，无阻塞
+  - 起草 F211-a1 Sprint Contract（docs/开发/sprint-contracts/F211-a1-contract.md）
+    范围：3 schema 文件 + REGISTRY 修改 + 测试 1 文件 = 5 文件；~38 单元测试 + 1 集成
+    关键设计：journal_assistant 用 mode 字段 + model_validator 实现双模式（trade/monthly），单一 task_type 单一 REGISTRY entry
+    BANNED_PHRASES guardrail 沿用 F209-a 6 个标准 phrase；3 task 均无 deterministic 锚点
+    earningsRisk 接受 None（参 F210-c 教训）
+  - 用户确认 Contract，6 个开放问题（Q1-Q6）全采默认方案
+  - 更新 features.json：F211-a1 升 contract_agreed + iteration_history 补一条
+  - phase → contract_agreed
+
+⚠️ 待你决策：
+  - 无（Contract 全意确认；Q1-Q6 默认方案）
+
+🔧 系统变更：
+  - features.json：F211 新增 sub_sprints + sub_sprint_notes + iteration_history（F211-a1 entry）
+  - 新增 docs/开发/sprint-contracts/F211-a1-contract.md
+
+📊 功能状态：
+  F210：✅ done（a/b/c）
+  F211：🟡 contract_agreed（a1 contract_agreed；a2/b/c/d design_needed）
+    F211-a1：🟡 contract_agreed（待 Generator）
+    F211-a2：⬜ design_needed（per-task model override 基建，依赖 a1 后可起草）
+    F211-b：⬜ design_needed（DecisionPanel Contradictions 区前端）
+    F211-c：⬜ design_needed（News 页 AI 摘要 bar 前端，含 tokens/cost 展示）
+    F211-d：⬜ design_needed（平仓 hook + ai_review 迁移 + 月度 cron）
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+
+  > 继续开发 F211-a1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-a1-contract.md，
+  > 进入 Generator 模式，从开发步骤 7a 开始（contradiction_detector schema + tests）。

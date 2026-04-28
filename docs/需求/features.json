@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-28-F206-c2-contract-agreed",
+  "last_updated": "2026-04-28",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -3469,6 +3469,14 @@
       "priority": "P2",
       "status": "planned",
       "phase": "design_ready",
+      "sub_sprint_notes": "拆 5 段（2026-04-28 用户确认）：a1 后端 3 schemas + REGISTRY；a2 per-task model override 基建（D064 兄弟决策，env-driven，默认 opt-in，不动 cockpit_params.py 因 D070 line 1527 明文规定 AI 模型走 .env）；b DecisionPanel Contradictions 区前端；c News 页 AI 摘要 bar 前端（含 tokens/cost 展示）；d 平仓 hook + journal_entries.ai_review 迁移 + 月度复盘 cron。依赖链：a1 → {a2 并行 / b / c / d}。",
+      "sub_sprints": {
+        "F211-a1": "done",
+        "F211-a2": "design_needed",
+        "F211-b": "design_needed",
+        "F211-c": "design_needed",
+        "F211-d": "design_needed"
+      },
       "dependencies": [
         "F208-c",
         "F203",
@@ -3515,8 +3523,22 @@
         "integration": [],
         "e2e": []
       },
-      "iteration_history": [],
-      "notes": "News 页是 F112 遗留独立页，本 feature 在 cockpit 外也会触碰一个文件（News 顶部 AI bar），需在 Sprint Contract 阶段明确。"
+      "iteration_history": [
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-a1",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：3 个 task 的 Pydantic schema（contradiction_detector / news_summarizer / journal_assistant 双模式 trade+monthly）+ BANNED_PHRASES guardrail（仅文本扫描，无 deterministic 锚点）+ REGISTRY 注册 + ~38 单元测试 + 1 集成测试。5 个文件（3 schema + __init__ + 测试）。开放问题 Q1-Q6 全采默认方案。下一 session Generator 模式从开发步骤 7a 开始（contradiction_detector schema + tests）。",
+          "contract": "docs/开发/sprint-contracts/F211-a1-contract.md",
+          "contract_agreed_at": "2026-04-28"
+        },
+        {
+          "date": "2026-04-28",
+          "session": "F211-a1 Generator",
+          "changes": "F211-a1 complete: 3 schema files (contradiction_detector / news_summarizer / journal_assistant) + schemas/__init__.py registry wiring + 45 unit tests + 2 e2e gateway integration tests (C13). All 877 tests pass, mypy clean, smoke OK."
+        }
+      ],
+      "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 5 段拆分 (a1 schemas / a2 model override 基建 / b DecisionPanel Contradictions / c News AI bar / d 平仓 hook + ai_review 迁移 + 月度 cron) 已经过 consistency-check C5 验证。a1/a2/b/c/d 依赖链：a1 → {a2 并行 / b / c / d}。"
     }
   ]
 }
