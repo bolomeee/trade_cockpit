@@ -2,13 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { ApiError } from '@/lib/api/client'
+import { AiNewsSummaryBar } from '../AiNewsSummaryBar'
 import {
-  AiNewsSummaryBar,
   stripHtml,
-  sortByPublishedDesc,
   articlesHash,
   buildSummarizerArticles,
-} from '../AiNewsSummaryBar'
+} from '../newsSummaryUtils'
 import type { NewsArticle } from '@/types/news'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────

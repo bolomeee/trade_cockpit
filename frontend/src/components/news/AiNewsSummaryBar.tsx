@@ -5,18 +5,15 @@ import { callAiTask } from '@/cockpit/lib/api/aiApi'
 import { ApiError } from '@/lib/api/client'
 import { useNewsArticles } from '@/hooks/useNewsArticles'
 import { useAppStore } from '@/store/useAppStore'
-import type { NewsArticle } from '@/types/news'
+import {
+  articlesHash,
+  buildSummarizerArticles,
+  type NewsArticleItem,
+} from './newsSummaryUtils'
 
 // ── Internal types (mirrors backend news_summarizer.py 1:1) ───────────────────
 
 type Sentiment = 'positive' | 'neutral' | 'negative'
-
-type NewsArticleItem = {
-  title: string
-  contentText: string
-  tickers: string[]
-  publishedAt: string
-}
 
 type NewsSummarizerInput = {
   articles: NewsArticleItem[]
@@ -28,42 +25,6 @@ type NewsSummarizerOutput = {
   sentiment: Sentiment
   relevantTickers: string[]
   risks: string[]
-}
-
-// ── Pure helper functions ─────────────────────────────────────────────────────
-
-export function stripHtml(html: string): string {
-  if (!html) return ''
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  return (doc.body.textContent ?? '').trim().slice(0, 2000)
-}
-
-export function sortByPublishedDesc(articles: NewsArticle[]): NewsArticle[] {
-  return [...articles].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-}
-
-export async function articlesHash(items: NewsArticleItem[]): Promise<string> {
-  const sorted = [...items]
-    .map((a) => ({ t: a.title, p: a.publishedAt }))
-    .sort((a, b) => a.p.localeCompare(b.p) || a.t.localeCompare(b.t))
-  const json = JSON.stringify(sorted)
-  const encoded = new TextEncoder().encode(json)
-  const buffer = await crypto.subtle.digest('SHA-256', encoded)
-  const hex = Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-  return hex.slice(0, 16)
-}
-
-export function buildSummarizerArticles(articles: NewsArticle[]): NewsArticleItem[] {
-  return sortByPublishedDesc(articles)
-    .slice(0, 30)
-    .map((a) => ({
-      title: a.title || 'Untitled',
-      contentText: stripHtml(a.contentHtml ?? ''),
-      tickers: a.symbols.slice(0, 20),
-      publishedAt: a.publishedAt,
-    }))
 }
 
 // ── Sentiment badge styles ─────────────────────────────────────────────────────
@@ -334,7 +295,7 @@ export function AiNewsSummaryBar(): JSX.Element {
                   padding: '1px 6px',
                   borderRadius: '2px',
                   border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface-muted, rgba(127,127,127,0.12))',
+                  background: 'var(--color-input-background)',
                   color: 'var(--color-text-primary)',
                   cursor: 'pointer',
                   fontSize: 'var(--font-size-badge)',

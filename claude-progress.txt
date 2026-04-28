@@ -1,4 +1,76 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] Sprint：F211-c News 页 AI 摘要 bar 前端 — needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - newsSummaryUtils.ts 新建（4 pure helpers: stripHtml / sortByPublishedDesc / articlesHash / buildSummarizerArticles）
+  - AiNewsSummaryBar.tsx 新建（~330 行，6 态状态机，镜像 AiContradictionsSection）
+  - AiNewsSummaryBar.test.tsx 新建（14 tests：C1-C8 component + 6 helper unit tests，14/14 pass）
+  - News.tsx 集成（+4 行：import + bar 容器，置于 grid 上方）
+  - features.json 更新（sub_sprints F211-c → needs_review，iteration_history 追加）
+  - SESSION-HANDOFF.md 更新
+  - tsc 0 error；ESLint 0 新增 warning；全量 vitest 273/276（3 个预存 TopNav 失败不变）
+
+📋 预检发现（步骤 1）：
+  - --color-surface-muted 不在 tokens.css → chip 背景改用 --color-input-background（存在）
+  - queryKey=['news','articles'] ✅ 确认
+  - crypto.subtle ✅ Node 24 内置；jsdom DOMParser ✅ vitest environment=jsdom
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] Sprint：F211-c News 页 AI 摘要 bar 前端 — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F211-c Sprint Contract 已确认（用户全采 Q1-Q8 默认方案）
+  - features.json：sub_sprints["F211-c"] design_needed → contract_agreed；active_sprint → F211-c
+  - iteration_history 追加 F211-c contract_agreed 记录
+  - Contract 文件：docs/开发/sprint-contracts/F211-c-contract.md
+
+📦 预计修改文件（4 个，远低于 6 上限）：
+  1. frontend/src/components/news/AiNewsSummaryBar.tsx              (新建 ~280 行)
+  2. frontend/src/components/news/__tests__/AiNewsSummaryBar.test.tsx (新建 ~11 case)
+  3. frontend/src/pages/News.tsx                                    (+6 行：import + bar 容器)
+  4. docs/需求/features.json                                          (本次已更新)
+
+🔑 关键约束（开发期不得偏离）：
+  - 0 行后端改动（schema/endpoint/guardrail 已就绪，F211-a1 已落地）
+  - lazy 触发（默认 collapsed）— 避免每次进 News 页都打 LLM
+  - input：articles 来自 useNewsArticles cache，按 publishedAt desc slice 30；windowDays=5（写死）
+  - contentText 预处理：DOMParser stripHtml → trim → slice(0, 2000)
+  - queryKey: ['ai', 'news_summarizer', deterministicHash]，hash 由 articles {title,publishedAt} 排序后 sha256 前 16 位派生；24h cache 与 trade_plan/contradictions 一致
+  - 6 态状态机沿用 AiContradictionsSection（closed/loading/error-502/error-409/success-with/success-with-risks0）
+  - success-empty 分支不存在（schema catalystSummary min_length=1）
+  - sentiment 颜色 token：positive=--color-success / neutral=--color-text-secondary / negative=--color-error（步骤 1 已预扫，均存在 tokens.css line 28-30）
+  - relevantTickers chip 点击调 useAppStore.setSelectedSymbol（与 NewsWidget 一致）
+  - 409 guardrail 分支保留（news_summarizer 真有 BANNED_PHRASES，不是模板）
+  - articles 为空 → trigger disabled + title="暂无 news"
+  - 不持久化 open/closed 状态（每次刷新重置 closed）
+  - import 边界：callAiTask 从 @/cockpit/lib/api/aiApi import（pages → cockpit/lib 合法，ESLint 仅约束 cockpit↔workbench 互斥）
+  - 不重构 aiApi.ts 上提到 frontend/src/lib/api/（避免触发 4 处 cockpit 内部 import 改动超 6 文件预算）
+
+⚠️ 待 Generator 阶段验证（步骤 1 预检）：
+  - jsdom 是否原生支持 DOMParser（throwaway test 验证；不支持需 polyfill 或 mock）
+  - crypto.subtle 在 vitest 环境可用性（不可用则 vi.stubGlobal 注入）
+  - useNewsArticles queryKey 实际拼写（已预扫 ['news', 'articles']，开发时复核）
+
+📊 功能状态：
+  F210（critical AI）：✅ done
+  F211（mixed AI）：🟡 in_progress
+    F211-a1：✅ done（3 schemas + REGISTRY + guardrail）
+    F211-a2：✅ done（per-task model override 基建 + D075）
+    F211-b：✅ done（DecisionPanel Contradictions 区前端，验收通过）
+    F211-c：🟡 contract_agreed（News 页 AI 摘要 bar ← 本次）
+    F211-d：⬜ design_needed（平仓 hook + ai_review 迁移 + 月度 cron）
+  F206-c2：✅ done
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+
+  > 继续开发 F211-c，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-c-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（预检：grep tokens + 复核 useNewsArticles queryKey + 验证 jsdom DOMParser/crypto.subtle）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-28] Sprint：F206-c2 PendingOrdersWidget — Contract 协商完成
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -270,3 +342,16 @@
   F206-b2：✅ done
   F206-c1：✅ done
   F206-c2：✅ done（F206 收尾完成）
+
+---
+2026-04-28 | F211-b 验收通过
+
+AiContradictionsSection（DecisionPanel Contradictions 区）验收通过。
+- 6 态状态机：closed / loading / error-502 / error-409 / success-with / success-empty
+- 29/29 vitest，tsc 0 error，0 新增 lint error
+- calcDaysUntil 已提取到 cockpit/lib/utils/dates.ts（F211-c/d 可复用）
+- MEDIUM severity 使用 --color-log-warn（--color-signal-warning 缺失）
+- features.json：F211-b → done；F207.status → done（C1 顺带修复）
+- 验收记录：docs/验收/v1.9-F211-b-acceptance.md
+
+F211 进度：a1 ✅ a2 ✅ b ✅ c ⬜ d ⬜

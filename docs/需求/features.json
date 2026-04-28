@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F211-b",
+    "active_sprint": "F211-c",
     "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
@@ -2914,7 +2914,7 @@
       "description": "聚合 positions + pending_orders + setup monitor，生成今日动作清单，分三栏：Must Act（raise stop / cancel order / reduce before earnings）/ Monitor（接近触发 / 持仓稳态）/ No Action。每条动作附 rationale。后端服务 action_service.py 实现规则引擎（订单保留 / 取消 / 修改规则见 proposal §8.27）。GET /api/cockpit/actions/today。【拆分：F207-a 后端 rule engine + endpoint / F207-b 前端 ActionListWidget。每子 sprint ≤6 文件】",
       "user_story": "作为慢交易投资者，每天盘后我打开 Cockpit 最想知道的是'今天我要做什么'。我需要一个清单：必须做的动作（移动止损/取消订单/财报前减仓）、需要监控的、今天没事的，每条都有明确原因",
       "priority": "P1",
-      "status": "in_progress",
+      "status": "done",
       "phase": "done",
       "active_sub_sprint": "F207-b",
       "sub_sprints": {
@@ -3474,8 +3474,8 @@
       "sub_sprints": {
         "F211-a1": "done",
         "F211-a2": "done",
-        "F211-b": "needs_review",
-        "F211-c": "design_needed",
+        "F211-b": "done",
+        "F211-c": "needs_review",
         "F211-d": "design_needed"
       },
       "dependencies": [
@@ -3567,6 +3567,28 @@
           "phase": "needs_review",
           "session": "F211-b Generator",
           "changes": "F211-b complete: AiContradictionsSection.tsx (new, ~285 lines, 6-state machine mirroring AiTradePlanSection); cockpit/lib/utils/dates.ts (new, calcDaysUntil extracted from DecisionPanelWidget); DecisionPanelWidget.tsx updated (import switch + contradictions divider/section); DecisionPanelWidget.test.tsx +8 cases (C1-C8, 29/29 pass). Pre-check adjustments: MEDIUM severity → --color-log-warn (--color-signal-warning absent); queryKey → [cockpit-setup-monitor, all] (actual key vs assumed [setup-monitor, undefined]). tsc 0 error, ESLint 0 new warnings, 3 pre-existing TopNav failures not caused by this sprint."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-b",
+          "phase": "done",
+          "session": "F211-b Acceptance",
+          "changes": "F211-b accepted: AiContradictionsSection.tsx (6-state machine, contradiction list + severity badges + recommendation); cockpit/lib/utils/dates.ts (calcDaysUntil shared helper); DecisionPanelWidget.tsx integration (divider + section); DecisionPanelWidget.test.tsx +8 cases (29/29 pass). MEDIUM severity uses --color-log-warn (--color-signal-warning absent). tsc 0 error, 0 new lint errors."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-c",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：News 页顶部新增 AiNewsSummaryBar，结构镜像 F211-b AiContradictionsSection（lazy trigger / 6 态状态机 / cache badge / 关闭按钮）。0 行后端改动，复用 F211-a1 news_summarizer schema 和 F208-c /api/ai/{task_type} 通用 endpoint。4 个文件：AiNewsSummaryBar.tsx 新建（~280 行）+ AiNewsSummaryBar.test.tsx 新建（~11 case）+ pages/News.tsx 修改（+6 行 import + bar 容器）+ features.json 更新。input articles 来自 useNewsArticles cache，按 publishedAt desc slice 30；contentText 经 DOMParser stripHtml 截断 2000 字符。queryKey ['ai','news_summarizer',hash]，hash 由 articles {title,publishedAt} 排序后 sha256 派生；24h staleTime 与 trade_plan/contradictions 一致。sentiment 颜色 positive=--color-success / neutral=--color-text-secondary / negative=--color-error（步骤 1 实测均存在 tokens.css line 28-30）。articles 为空 → trigger disabled + tooltip。relevantTickers chip 点击触发 useAppStore.setSelectedSymbol（与 NewsWidget TickerChip 行为一致）。risks/relevantTickers length 0 时整段隐藏。aiApi.ts 不上提（保留在 cockpit；ESLint 仅约束 cockpit↔workbench 互斥，pages→cockpit/lib import 合法）。开放问题 Q1-Q8 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + 复核 useNewsArticles queryKey + 验证 jsdom DOMParser/crypto.subtle）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-c-contract.md",
+          "contract_agreed_at": "2026-04-28"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-c",
+          "phase": "needs_review",
+          "session": "F211-c Generator",
+          "changes": "F211-c complete: newsSummaryUtils.ts (new, 4 pure helpers: stripHtml/sortByPublishedDesc/articlesHash/buildSummarizerArticles); AiNewsSummaryBar.tsx (new, ~330 lines, 6-state machine mirroring AiContradictionsSection: closed/loading/error-502/error-409/success-with-risks/success-no-risks); AiNewsSummaryBar.test.tsx (new, 14 tests — C1-C8 component + 6 helper unit tests); News.tsx (+4 lines import + bar container). Pre-check findings: --color-surface-muted absent → chip uses --color-input-background instead; queryKey=['news','articles'] confirmed; crypto.subtle available (Node 24); jsdom DOMParser available. tsc 0 error, ESLint 0 warnings, 273/276 tests pass (3 pre-existing TopNav failures)."
         }
       ],
       "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 5 段拆分 (a1 schemas / a2 model override 基建 / b DecisionPanel Contradictions / c News AI bar / d 平仓 hook + ai_review 迁移 + 月度 cron) 已经过 consistency-check C5 验证。a1/a2/b/c/d 依赖链：a1 → {a2 并行 / b / c / d}。"
