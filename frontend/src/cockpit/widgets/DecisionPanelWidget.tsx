@@ -9,6 +9,7 @@ import { useCockpitStore } from '@/store/cockpitStore'
 import { getCockpitDecision, type CockpitDecisionData, type GetCockpitDecisionOverrides } from '../lib/api/cockpitDecisionApi'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
 import { AiTradePlanSection } from '../components/AiTradePlanSection'
+import { AiContradictionsSection } from '../components/AiContradictionsSection'
 import { calcDaysUntil } from '../lib/utils/dates'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -390,6 +391,12 @@ export function DecisionPanelWidget() {
             style={{ borderTop: '1px solid var(--color-border)', paddingTop: '8px', marginTop: '4px' }}
           >
             <AiTradePlanSection decision={data} />
+          </div>
+          <div
+            data-testid="ai-contradictions-divider"
+            style={{ borderTop: '1px solid var(--color-border)', paddingTop: '8px', marginTop: '4px' }}
+          >
+            <AiContradictionsSection decision={data} />
           </div>
         </>
       ) : null}

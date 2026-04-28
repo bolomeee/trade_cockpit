@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DecisionPanelWidget } from '../DecisionPanelWidget'
 import { useCockpitStore } from '@/store/cockpitStore'
+import type { SetupItem, SetupMonitorData } from '../../lib/api/setupMonitorApi'
+import type { CockpitRegimeData } from '../../lib/api/cockpitRegimeApi'
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -673,5 +675,297 @@ describe('T13 – earningsRisk null → AI request still 200 (no client validati
       expect(screen.getByTestId('ai-plan-memo')).toBeInTheDocument()
       expect(screen.getByTestId('ai-plan-guardrail-passed')).toBeInTheDocument()
     })
+  })
+})
+
+// ── §C — AI Contradictions ────────────────────────────────────────────────────
+
+const mockSetupItem: SetupItem = {
+  ticker: 'NVDA',
+  stockName: 'NVIDIA Corp',
+  setupType: 'BREAKOUT',
+  setupQuality: 'A',
+  entryPrice: 850,
+  stopPrice: 820,
+  target2r: 910,
+  target3r: 940,
+  distanceToEntryPct: 0.5,
+  rewardRisk: 2.0,
+  rsPercentile: 85.2,
+  volumeStatus: null,
+  trendScore: 4,
+  earningsRisk: 'SAFE',
+  readySignal: true,
+  suggestedAction: 'enter',
+  scanDate: '2026-04-28',
+}
+
+const mockSetupMonitorData: SetupMonitorData = {
+  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+  items: [mockSetupItem],
+}
+
+const mockRegimeData: CockpitRegimeData = {
+  date: '2026-04-28',
+  regime: 'CONSTRUCTIVE',
+  marketScore: 72,
+  subscores: {
+    spyTrend: 70,
+    qqqTrend: 75,
+    iwmBreadth: 65,
+    sectorParticipation: 68,
+    riskAppetite: 72,
+    volatilityStress: 80,
+  },
+  allowedExposurePct: 80,
+  singleTradeRiskPct: 1.0,
+  preferredSetups: ['BREAKOUT', 'PULLBACK'],
+  avoidSetups: ['EXTENDED'],
+  indices: [],
+  sectors: [],
+  computedAt: '2026-04-28T09:00:00Z',
+}
+
+const mockContradictionsSuccess = {
+  memoId: 2,
+  taskType: 'contradiction_detector',
+  schemaVersion: 'v1',
+  output: {
+    contradictions: [
+      { type: 'earnings_risk', severity: 'HIGH', text: 'Earnings in 14 days — major risk' },
+      { type: 'reward_risk', severity: 'MEDIUM', text: 'R:R at 2.0 — borderline threshold' },
+      { type: 'trend_quality', severity: 'LOW', text: 'Trend score is 4, minimum acceptable' },
+    ],
+    recommendation: 'Reduce size to 50% given earnings proximity',
+  },
+  meta: {
+    modelUsed: 'gpt-4o-mini',
+    tier: 'default',
+    tokensIn: 100,
+    tokensOut: 150,
+    costUsd: 0.001,
+    latencyMs: 500,
+    cacheHit: false,
+  },
+}
+
+function renderWithContradictionCache(
+  fetchImpl: (url: string, init?: RequestInit) => Promise<unknown>,
+  opts: { noSetupForTicker?: boolean } = {},
+) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+  const setupData: SetupMonitorData = opts.noSetupForTicker
+    ? { summary: { total: 0, ready: 0, near: 0, extended: 0, broken: 0, none: 0 }, items: [] }
+    : mockSetupMonitorData
+  qc.setQueryData(['cockpit-setup-monitor', 'all'], setupData)
+  qc.setQueryData(['cockpit-regime'], mockRegimeData)
+
+  vi.stubGlobal('fetch', fetchImpl as typeof fetch)
+  useCockpitStore.setState({ selectedTicker: 'NVDA' })
+
+  return render(
+    <QueryClientProvider client={qc}>
+      <DecisionPanelWidget />
+    </QueryClientProvider>,
+  )
+}
+
+function makeContradictionFetch(opts: {
+  aiStatus?: 200 | 409 | 502
+  aiPending?: boolean
+  aiMeta?: { cacheHit?: boolean; modelUsed?: string }
+  aiOutput?: { contradictions: unknown[]; recommendation: string }
+} = {}) {
+  const { aiStatus = 200, aiPending = false, aiMeta, aiOutput } = opts
+  return (url: string) => {
+    const urlStr = url as string
+    if (urlStr.includes('/cockpit/decision/')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: mockDecision }) })
+    }
+    if (urlStr.includes('/ai/contradiction_detector')) {
+      if (aiPending) return new Promise(() => {})
+      if (aiStatus === 409) {
+        return Promise.resolve({
+          ok: false, status: 409,
+          json: () => Promise.resolve({ error: { code: 'AI_GUARDRAIL_VIOLATION', message: 'guardrail' } }),
+        })
+      }
+      if (aiStatus === 502) {
+        return Promise.resolve({
+          ok: false, status: 502,
+          json: () => Promise.resolve({ error: { code: 'AI_PROVIDER_ERROR', message: 'provider error' } }),
+        })
+      }
+      const meta = aiMeta
+        ? { ...mockContradictionsSuccess.meta, ...aiMeta }
+        : mockContradictionsSuccess.meta
+      const output = aiOutput ?? mockContradictionsSuccess.output
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: { ...mockContradictionsSuccess, output, meta } }),
+      })
+    }
+    return Promise.reject(new Error(`Unexpected URL: ${urlStr}`))
+  }
+}
+
+describe('C1 – closed: trigger renders enabled, no AI fetch', () => {
+  it('shows "Generate AI Contradictions" button; /ai/contradiction_detector not called', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch())
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument()
+    })
+
+    const trigger = screen.getByTestId('ai-contradictions-trigger')
+    expect(trigger).not.toBeDisabled()
+    expect(trigger.textContent).toContain('Generate AI Contradictions')
+
+    const aiCalls = (fetchMock.mock.calls as Array<[string]>).filter(
+      ([url]) => url.includes('/ai/contradiction_detector'),
+    )
+    expect(aiCalls.length).toBe(0)
+  })
+})
+
+describe('C2 – click trigger → loading → skeletons visible', () => {
+  it('shows skeletons while AI fetch is pending', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch({ aiPending: true }))
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-contradictions-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-loading')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('ai-contradictions-skeleton-list')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-contradictions-skeleton-rec')).toBeInTheDocument()
+  })
+})
+
+describe('C3 – success with 3 contradictions: HIGH / MEDIUM / LOW', () => {
+  it('renders list items with severity tags and recommendation', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch())
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-contradictions-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-result')).toBeInTheDocument()
+    })
+
+    // 3 list items
+    expect(screen.getByTestId('ai-contradictions-item-0')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-contradictions-item-1')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-contradictions-item-2')).toBeInTheDocument()
+
+    // Severity tags
+    expect(screen.getByTestId('ai-contradictions-severity-0').textContent).toBe('HIGH')
+    expect(screen.getByTestId('ai-contradictions-severity-1').textContent).toBe('MEDIUM')
+    expect(screen.getByTestId('ai-contradictions-severity-2').textContent).toBe('LOW')
+
+    // Recommendation line
+    expect(screen.getByTestId('ai-contradictions-recommendation').textContent).toContain(
+      'Recommendation: Reduce size to 50% given earnings proximity',
+    )
+
+    // Cache badge shows Generated
+    expect(screen.getByTestId('ai-contradictions-cache-badge').textContent).toContain('Generated')
+  })
+})
+
+describe('C4 – success empty: contradictions=[] → only recommendation line', () => {
+  it('no list items; shows recommendation only', async () => {
+    const fetchMock = vi.fn(
+      makeContradictionFetch({
+        aiOutput: { contradictions: [], recommendation: 'No major contradictions' },
+      }),
+    )
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-contradictions-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-result')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId('ai-contradictions-item-0')).not.toBeInTheDocument()
+    expect(screen.getByTestId('ai-contradictions-recommendation').textContent).toContain(
+      'No major contradictions',
+    )
+  })
+})
+
+describe('C5 – error 502 → "AI 暂不可用" + close back to trigger', () => {
+  it('shows error message; close button returns to closed state', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch({ aiStatus: 502 }))
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-contradictions-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-error')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('ai-contradictions-error').textContent).toContain('AI 暂不可用')
+
+    // Close → back to trigger
+    fireEvent.click(screen.getByTestId('ai-contradictions-error-close'))
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument()
+    })
+  })
+})
+
+describe('C6 – error 409 → red guardrail banner', () => {
+  it('shows red "AI 输出被拦截" banner', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch({ aiStatus: 409 }))
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('ai-contradictions-trigger'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-guardrail-error')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('ai-contradictions-guardrail-error').textContent).toContain(
+      'AI 输出被拦截',
+    )
+  })
+})
+
+describe('C7 – setupMonitor 无当前 ticker → trigger disabled', () => {
+  it('trigger button is disabled with title text when ticker not in setup list', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch())
+    renderWithContradictionCache(fetchMock, { noSetupForTicker: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument()
+    })
+
+    const trigger = screen.getByTestId('ai-contradictions-trigger')
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveAttribute('title', '需 Setup Monitor 数据')
+  })
+})
+
+describe('C8 – integration: trade_plan + contradictions dividers both rendered', () => {
+  it('data loaded → ai-plan-divider and ai-contradictions-divider both in DOM', async () => {
+    const fetchMock = vi.fn(makeContradictionFetch())
+    renderWithContradictionCache(fetchMock)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-plan-divider')).toBeInTheDocument()
+      expect(screen.getByTestId('ai-contradictions-divider')).toBeInTheDocument()
+    })
+
+    // Both trigger buttons visible (both sections closed by default)
+    expect(screen.getByTestId('ai-plan-trigger')).toBeInTheDocument()
+    expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument()
   })
 })
