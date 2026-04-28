@@ -13,7 +13,7 @@ from app.ai import guardrail
 from app.ai.budget import assert_within_budget
 from app.ai.errors import AiProviderError, AiSchemaError
 from app.ai.memo_repo import AiMemoRepository, compute_input_hash
-from app.ai.routing import resolve
+from app.ai.routing import ResolvedRoute, resolve
 from app.ai.schemas import get_schemas
 from app.config import settings
 
@@ -39,24 +39,36 @@ class GatewayResult:
 
 
 def _call_litellm(
-    model: str,
+    route: ResolvedRoute,
     input_dict: dict[str, Any],
     output_schema: type,
-    api_key: str,
 ) -> tuple[dict[str, Any], int, int, Decimal]:
     """Lazy-import litellm and call completion.
 
     Returns (raw_output_dict, tokens_in, tokens_out, cost_usd).
     Wraps any provider error into AiProviderError.
+
+    Custom cost (D075): if route.custom_input_cost / custom_output_cost are set,
+    pass input_cost_per_token / output_cost_per_token directly to litellm.completion()
+    so that completion_cost(completion_response=response) uses those values instead
+    of built-in pricing. Unit conversion: per-1M-token → per-token (÷ 1_000_000).
     """
     import litellm  # noqa: PLC0415 — intentional lazy import (Contract §3 #13)
 
+    kwargs: dict[str, Any] = {}
+    if route.custom_input_cost is not None:
+        kwargs["input_cost_per_token"] = route.custom_input_cost / 1_000_000.0
+    if route.custom_output_cost is not None:
+        kwargs["output_cost_per_token"] = route.custom_output_cost / 1_000_000.0
+
     try:
         response = litellm.completion(
-            model=model,
+            model=route.model,
             messages=[{"role": "user", "content": json.dumps(input_dict)}],
             response_format=output_schema,
-            api_key=api_key or None,
+            api_key=route.api_key or None,
+            api_base=route.base_url,  # None → litellm uses provider default
+            **kwargs,
         )
     except Exception as e:
         raise AiProviderError(str(e)) from e
@@ -73,7 +85,7 @@ def _call_litellm(
     tokens_in: int = int(getattr(response.usage, "prompt_tokens", 0) or 0)
     tokens_out: int = int(getattr(response.usage, "completion_tokens", 0) or 0)
     try:
-        cost_usd = Decimal(str(litellm.completion_cost(response, model=model) or 0))
+        cost_usd = Decimal(str(litellm.completion_cost(response, model=route.model) or 0))
     except Exception:
         cost_usd = Decimal("0")
 
@@ -135,15 +147,14 @@ class AiGateway:
         # Step 5: budget check — raises AiBudgetExceeded if over cap
         assert_within_budget(self._db)
 
-        # Step 6: resolve tier + model_id
-        tier, model_id = resolve(task_type)
+        # Step 6: resolve route (tier + model + override fields, D064 + D075)
+        route = resolve(task_type)
 
         # Step 7: call LiteLLM via lazy-import wrapper
         raw_output, tokens_in, tokens_out, cost_usd = _call_litellm(
-            model=model_id,
+            route=route,
             input_dict=validated_dict,
             output_schema=pair.output_schema,
-            api_key=settings.openai_api_key,
         )
         latency_ms = int((time.monotonic() - t0) * 1000)
 
@@ -163,8 +174,8 @@ class AiGateway:
             input_dict=validated_dict,
             output_dict=output_dict,
             schema_version=schema_version,
-            model_used=model_id,
-            tier=tier,
+            model_used=route.model,
+            tier=route.tier,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_usd=cost_usd,
@@ -179,8 +190,8 @@ class AiGateway:
             schema_version=schema_version,
             output=output_dict,
             meta=GatewayMeta(
-                model_used=model_id,
-                tier=tier,
+                model_used=route.model,
+                tier=route.tier,
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 cost_usd=cost_usd,
