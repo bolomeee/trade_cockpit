@@ -65,7 +65,6 @@ export function PositionListWidget() {
     <div style={containerStyle}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontWeight: 'var(--font-weight-medium)' }}>Positions</span>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <FilterBtn label="Open" val="open" current={statusFilter} onSelect={handleFilterSelect} />
           <FilterBtn label="Closed" val="closed" current={statusFilter} onSelect={handleFilterSelect} />

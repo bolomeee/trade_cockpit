@@ -29,7 +29,6 @@ export function ActionListWidget() {
     <div style={containerStyle}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 'var(--font-weight-medium)' }}>Today&apos;s Actions</span>
         {query.data?.asOfDate && (
           <span
             data-testid="action-as-of-date"

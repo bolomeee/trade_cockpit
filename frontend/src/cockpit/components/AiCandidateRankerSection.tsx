@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { RotateCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
 import { callAiTask } from '../lib/api/aiApi'
 import type { RegimeLabel } from '../lib/api/cockpitRegimeApi'
 import type { SetupItem, SetupType, EarningsRisk } from '../lib/api/setupMonitorApi'
@@ -99,6 +101,18 @@ function ActionBadge({ value }: { value: 'enter' | 'watch' | 'wait' }) {
 
 export function AiCandidateRankerSection({ items, regime, regimeScore }: Props) {
   const [open, setOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const queryClient = useQueryClient()
+
+  async function handleRefreshSetup() {
+    setIsRefreshing(true)
+    try {
+      await fetch('/api/admin/refresh-setup', { method: 'POST' })
+      await queryClient.invalidateQueries({ queryKey: ['cockpit-setup-monitor'] })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   // inputKey: regime + front-20 tickers; filter tab change naturally shifts inputKey → new request
   const inputKey = useMemo(() => {
@@ -126,17 +140,33 @@ export function AiCandidateRankerSection({ items, regime, regimeScore }: Props) 
 
   return (
     <>
-      <Button
-        data-testid="ai-rank-trigger"
-        aria-label="AI rank top setups"
-        aria-expanded={open}
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen((o) => !o)}
-        disabled={isDisabled}
-      >
-        AI 排序
-      </Button>
+      <ButtonGroup>
+        <Button
+          data-testid="ai-rank-trigger"
+          aria-label="AI rank top setups"
+          aria-expanded={open}
+          variant="outline"
+          size="sm"
+          className="text-xs font-normal"
+          onClick={() => setOpen((o) => !o)}
+          disabled={isDisabled}
+        >
+          AI 排序
+        </Button>
+        <Button
+          aria-label="Refresh setup scan"
+          variant="outline"
+          size="sm"
+          className="text-xs font-normal"
+          onClick={handleRefreshSetup}
+          disabled={isRefreshing}
+        >
+          <RotateCw
+            size={11}
+            style={isRefreshing ? { animation: 'spin 1s linear infinite' } : undefined}
+          />
+        </Button>
+      </ButtonGroup>
 
       {/* Result panel — flexBasis:100% breaks onto its own row inside the flex-wrap tabs container */}
       {open && (

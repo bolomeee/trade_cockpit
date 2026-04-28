@@ -8,9 +8,10 @@ const FILTER_DEBOUNCE_MS = 300
 type Props = {
   value: PoolFilters
   onChange: (next: PoolFilters) => void
+  availableSectors?: string[]
 }
 
-export function PoolFilterBar({ value, onChange }: Props) {
+export function PoolFilterBar({ value, onChange, availableSectors = [] }: Props) {
   const [local, setLocal] = useState<PoolFilters>(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -39,16 +40,25 @@ export function PoolFilterBar({ value, onChange }: Props) {
       }}
     >
       <Field label="MktCap≥" id="pool-mcap">
-        <Input
-          id="pool-mcap"
-          type="number"
-          value={local.marketCapMin ?? ''}
-          onChange={(e) =>
-            update({ marketCapMin: e.target.value ? Number(e.target.value) : undefined })
-          }
-          style={inputStyle(90)}
-          placeholder="50000000000"
-        />
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <Input
+            id="pool-mcap"
+            type="number"
+            value={local.marketCapMin != null ? local.marketCapMin / 1_000_000_000 : ''}
+            onChange={(e) =>
+              update({ marketCapMin: e.target.value ? Number(e.target.value) * 1_000_000_000 : undefined })
+            }
+            style={{ ...inputStyle(60), paddingRight: '14px' }}
+            placeholder="50"
+          />
+          <span style={{
+            position: 'absolute',
+            right: '5px',
+            fontSize: 'var(--font-size-badge)',
+            color: 'var(--color-text-muted)',
+            pointerEvents: 'none',
+          }}>B</span>
+        </div>
       </Field>
       <Field label="Price≥" id="pool-price">
         <Input
@@ -63,16 +73,25 @@ export function PoolFilterBar({ value, onChange }: Props) {
         />
       </Field>
       <Field label="ADV≥" id="pool-adv">
-        <Input
-          id="pool-adv"
-          type="number"
-          value={local.advMin ?? ''}
-          onChange={(e) =>
-            update({ advMin: e.target.value ? Number(e.target.value) : undefined })
-          }
-          style={inputStyle(80)}
-          placeholder="20000000"
-        />
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <Input
+            id="pool-adv"
+            type="number"
+            value={local.advMin != null ? local.advMin / 1_000_000 : ''}
+            onChange={(e) =>
+              update({ advMin: e.target.value ? Number(e.target.value) * 1_000_000 : undefined })
+            }
+            style={{ ...inputStyle(60), paddingRight: '14px' }}
+            placeholder="20"
+          />
+          <span style={{
+            position: 'absolute',
+            right: '5px',
+            fontSize: 'var(--font-size-badge)',
+            color: 'var(--color-text-muted)',
+            pointerEvents: 'none',
+          }}>M</span>
+        </div>
       </Field>
       <Field label="Trend≥" id="pool-trend">
         <Input
@@ -110,15 +129,26 @@ export function PoolFilterBar({ value, onChange }: Props) {
           placeholder="10"
         />
       </Field>
-      <Field label="Sectors" id="pool-sectors">
-        <Input
+      <Field label="Sector" id="pool-sectors">
+        <select
           id="pool-sectors"
-          type="text"
           value={local.sectors ?? ''}
           onChange={(e) => update({ sectors: e.target.value || undefined })}
-          style={inputStyle(80)}
-          placeholder="XLK,XLV"
-        />
+          style={{
+            ...inputStyle(110),
+            textAlign: 'left',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            color: local.sectors ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+          }}
+        >
+          <option value="">All</option>
+          {availableSectors.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
       </Field>
       <Field label="Setup" id="pool-setups">
         <Input
@@ -147,7 +177,7 @@ export function PoolFilterBar({ value, onChange }: Props) {
 }
 
 function inputStyle(width: number): React.CSSProperties {
-  return { width: `${width}px`, fontSize: 'var(--font-size-caption)' }
+  return { width: `${width}px`, fontSize: 'var(--font-size-badge)', padding: '2px 5px', height: '22px', textAlign: 'center' }
 }
 
 function Field({

@@ -91,27 +91,14 @@ export function TopNav() {
         >
           {formatLastRefresh(lastRefreshedAt)}
         </span>
-        <ButtonGroup className="has-[>[data-slot=button-group]]:gap-1">
-          <ButtonGroup>
-            <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
-          </ButtonGroup>
-          {showResetLayout && (
-            <ButtonGroup>
-              <ResetLayoutButton />
-            </ButtonGroup>
-          )}
+        <ButtonGroup>
+          <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
+          {showResetLayout && <ResetLayoutButton />}
+          {showCockpitReset && <CockpitResetLayoutButton />}
           {showCockpitReset && (
-            <ButtonGroup>
-              <CockpitResetLayoutButton />
-            </ButtonGroup>
-          )}
-          {showCockpitReset && (
-            <ButtonGroup>
-              <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-                <Settings />
-                Settings
-              </Button>
-            </ButtonGroup>
+            <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+              <Settings />
+            </Button>
           )}
         </ButtonGroup>
         {showCockpitReset && (

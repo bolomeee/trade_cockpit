@@ -2706,14 +2706,15 @@
       "description": "Cockpit P1 第一个 widget。多维筛选漏斗：全美 tradable universe → Trend Qualified → RS Leaders → Fundamental Qualified → Action Candidates。复用现有 F105 scanner_universe + F106 multi-signal scanner 的服务层，扩展加入 RS percentile（基于 250 天 stock/SPY return ratio）+ ADV filter（avg_dollar_volume_20d > 20M）+ fundamental sanity filter（revenue_growth_yoy > 10% 等）。GET /api/cockpit/pool 返回 funnel 数量 + 结果表。【拆分（2026-04-27）：F205-a universe 字段扩展 / F205-b FMP helper + 子集计算 / F205-c pool service + endpoint / F205-d 前端 widget。每子 sprint ≤6 文件】",
       "user_story": "作为慢交易投资者，我不只看 watchlist 内股票，还要从全市场发现新候选。我需要一个漏斗 UI：看到 tradable/trend/RS/fundamental 各层淘汰后的数量和最终候选列表，并能一键加入 watchlist",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
-      "active_sub_sprint": "F205-d",
+      "status": "done",
+      "phase": "done",
+      "active_sub_sprint": null,
       "sub_sprints": {
         "F205-a": "done",
         "F205-b": "done",
         "F205-c": "done",
-        "F205-d": "needs_review"
+        "F205-d": "done",
+        "F205-e": "done"
       },
       "dependencies": [
         "F201-b"
@@ -2781,7 +2782,8 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。"
+      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。",
+      "completed_at": "2026-04-28"
     },
     {
       "id": "F206",

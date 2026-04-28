@@ -183,7 +183,8 @@ describe('T6 – Table renders data; null fields show —', () => {
     )
     renderWidget()
     await screen.findByText('NVDA')
-    expect(screen.getByText('XLK')).toBeInTheDocument()
+    // sector appears in both table cell and filter bar dropdown option
+    expect(screen.getAllByText('XLK').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('$850.00')).toBeInTheDocument()
     // null fields
     const dashes = screen.getAllByText('—')

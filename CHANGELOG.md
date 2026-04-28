@@ -4,6 +4,23 @@
 
 ---
 
+## [v1.10.0] - 2026-04-28
+
+### ✨ 新增
+- **F205 Pool Builder Widget**：5 个子 sprint 全部交付（universe 字段扩展 / FMP financial-growth / pool service + API / 前端 widget / 周级 cache）
+- F205-e Pool Cache：RS percentile 与 fundamental revenue growth 改为周级预算（每周一 06:30 UTC cron），写入 `cockpit_pool_cache`，filter 重请求 < 500ms 不再打 FMP
+- F204-b / F202-c：Admin 手动触发端点 `POST /api/admin/refresh-earnings` 与 `POST /api/admin/refresh-setup`
+- AiCandidateRanker 区域增加 setup scan 刷新按钮
+- PoolFilterBar：MktCap/ADV 输入改为 B/M 单位显示，Sector 改为下拉选择
+
+### 🐛 修复
+- F204-a：earnings batch 按 (ticker, earnings_date) 去重
+- F105：FMP screener 分页直至最后一页
+- F205-e：`_load_trend_tickers` 去重
+- 多个 Cockpit widget 移除冗余 header 标题，统一视觉
+
+---
+
 ## [v1.9.0] - 2026-04-27
 
 ### ✨ 新增

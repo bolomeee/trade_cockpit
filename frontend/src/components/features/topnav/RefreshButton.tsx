@@ -11,7 +11,6 @@ export function RefreshButton({ isRefreshing, onClick }: RefreshButtonProps) {
   return (
     <Button variant="outline" size="sm" onClick={onClick} disabled={isRefreshing}>
       <RefreshCw className={isRefreshing ? 'animate-spin' : undefined} />
-      Refresh Data
     </Button>
   )
 }

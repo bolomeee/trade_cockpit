@@ -11,7 +11,6 @@ export function CockpitResetLayoutButton() {
   return (
     <Button variant="outline" size="sm" onClick={() => reset(getCockpitDefaultLayout())}>
       <RotateCcw />
-      Reset
     </Button>
   )
 }

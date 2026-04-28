@@ -577,9 +577,6 @@ export function MarketRegimeWidget() {
 
   return (
     <div style={{ padding: '8px 12px', overflowY: 'auto', height: '100%' }}>
-      <div style={{ fontSize: 'var(--font-size-label)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
-        Market Regime
-      </div>
       <ScoreHero data={data} />
       <SubscoresGrid subscores={data.subscores} />
       <IndicesCard indices={data.indices} />

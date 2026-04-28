@@ -87,16 +87,6 @@ export function SetupMonitorWidget() {
           flexWrap: 'wrap',
         }}
       >
-        <span
-          style={{
-            fontWeight: 'var(--font-weight-medium)',
-            color: 'var(--color-text-primary)',
-            fontSize: 'var(--font-size-body)',
-          }}
-        >
-          Setup Monitor
-        </span>
-
         <ToggleGroup
           type="single"
           size="sm"

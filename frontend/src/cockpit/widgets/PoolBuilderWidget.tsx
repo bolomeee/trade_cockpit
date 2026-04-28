@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { CirclePlus } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getCockpitPool, type PoolFilters, type PoolItem } from '../lib/api/cockpitPoolApi'
 import { addStock } from '@/lib/api/watchlist'
@@ -29,6 +30,7 @@ export function PoolBuilderWidget() {
   const [filters, setFilters] = useState<PoolFilters>({})
   const [activeFunnelStep, setActiveFunnelStep] = useState<FunnelStep | null>(null)
   const [addingTickers, setAddingTickers] = useState<Set<string>>(new Set())
+  const [knownSectors, setKnownSectors] = useState<string[]>([])
   const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
@@ -37,12 +39,21 @@ export function PoolBuilderWidget() {
     staleTime: POOL_STALE_TIME_MS,
   })
 
+  useEffect(() => {
+    if (!data?.items) return
+    setKnownSectors((prev) => {
+      const merged = new Set([...prev, ...data.items.map((i) => i.sector).filter(Boolean)])
+      return [...merged].sort()
+    })
+  }, [data?.items])
+
   async function handleAddStock(ticker: string) {
     setAddingTickers((prev) => new Set(prev).add(ticker))
     try {
       await addStock(ticker)
       await queryClient.invalidateQueries({ queryKey: ['cockpit-pool'] })
       await queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      await queryClient.invalidateQueries({ queryKey: ['cockpit-setup-monitor'] })
     } finally {
       setAddingTickers((prev) => {
         const next = new Set(prev)
@@ -69,30 +80,12 @@ export function PoolBuilderWidget() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          padding: '8px 12px',
-          borderBottom: '1px solid var(--color-border)',
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontWeight: 'var(--font-weight-medium)',
-            color: 'var(--color-text-primary)',
-            fontSize: 'var(--font-size-body)',
-          }}
-        >
-          Pool Builder
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          padding: '6px 12px',
-          gap: '2px',
+          justifyContent: 'center',
+          padding: '5px 12px',
+          gap: '12px',
           flexShrink: 0,
           borderBottom: '1px solid var(--color-border)',
+          flexWrap: 'wrap',
         }}
       >
         {FUNNEL_STEPS.map(({ key, label }) => (
@@ -107,7 +100,7 @@ export function PoolBuilderWidget() {
       </div>
 
       <div style={{ flexShrink: 0, borderBottom: '1px solid var(--color-border)' }}>
-        <PoolFilterBar value={filters} onChange={setFilters} />
+        <PoolFilterBar value={filters} onChange={setFilters} availableSectors={knownSectors} />
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '0 6px' }}>
@@ -148,9 +141,9 @@ export function PoolBuilderWidget() {
                   zIndex: 1,
                 }}
               >
-                <Th width="8%">Ticker</Th>
-                <Th width="11%">Name</Th>
-                <Th width="6%">Sector</Th>
+                <Th width="6%">Ticker</Th>
+                <Th width="13%" style={{ paddingLeft: 0 }}>Name</Th>
+                <Th width="calc(6% + 20px)">Sector</Th>
                 <Th width="7%">Price</Th>
                 <Th width="5%">Trend</Th>
                 <Th width="5%">RS</Th>
@@ -196,10 +189,11 @@ function FunnelSegment({
       onClick={onToggle}
       aria-pressed={active}
       style={{
-        flex: 1,
-        padding: '4px 6px',
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '4px',
+        padding: '2px 5px',
         cursor: 'pointer',
-        textAlign: 'center',
         border: 'none',
         borderRadius: 'var(--radius-sm)',
         background: active ? 'var(--color-muted)' : 'transparent',
@@ -207,7 +201,8 @@ function FunnelSegment({
         fontSize: 'var(--font-size-badge)',
       }}
     >
-      <div
+      <span>{label}</span>
+      <span
         style={{
           fontFamily: 'var(--font-family-numeric)',
           fontWeight: 'var(--font-weight-medium)',
@@ -216,8 +211,7 @@ function FunnelSegment({
         }}
       >
         {count.toLocaleString('en-US')}
-      </div>
-      <div>{label}</div>
+      </span>
     </button>
   )
 }
@@ -269,6 +263,7 @@ function PoolRow({
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          paddingLeft: 0,
         }}
         title={item.name}
       >
@@ -316,14 +311,14 @@ function PoolRow({
             padding: '2px 4px',
           }}
         >
-          {item.inWatchlist ? '✓' : isAdding ? '…' : '+ Add'}
+          {item.inWatchlist ? '✓' : isAdding ? '…' : <CirclePlus size={13} />}
         </button>
       </td>
     </tr>
   )
 }
 
-function Th({ children, width }: { children: React.ReactNode; width: string }) {
+function Th({ children, width, style }: { children: React.ReactNode; width: string; style?: React.CSSProperties }) {
   return (
     <th
       style={{
@@ -333,6 +328,7 @@ function Th({ children, width }: { children: React.ReactNode; width: string }) {
         fontWeight: 'var(--font-weight-normal)',
         width,
         background: 'var(--color-card)',
+        ...style,
       }}
     >
       {children}

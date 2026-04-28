@@ -65,7 +65,6 @@ export function PendingOrdersWidget() {
     <div style={containerStyle}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-        <span style={{ fontWeight: 'var(--font-weight-medium)' }}>Pending Orders</span>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <FilterBtn label="Active" val="active" current={statusFilter} onSelect={setStatusFilter} />
           <FilterBtn label="All" val="all" current={statusFilter} onSelect={setStatusFilter} />
