@@ -211,3 +211,37 @@
   > 继续开发 F211-b，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-b-contract.md，
   > 进入 Generator 模式，从开发步骤 1（预检：grep tokens + 确认 setup-monitor / cockpit-regime queryKey + 读 backend contradiction_detector schema）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28 16:15] Sprint：F211-b DecisionPanel Contradictions 区前端
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - AiContradictionsSection.tsx 新建（~285 行，6 态状态机镜像 AiTradePlanSection）
+  - cockpit/lib/utils/dates.ts 新建（calcDaysUntil 从 DecisionPanelWidget 抽取，DRY）
+  - DecisionPanelWidget.tsx 修改（import 切换 + 追加 contradictions divider/section，~15 行 diff）
+  - DecisionPanelWidget.test.tsx 新增 8 case（C1-C8），29/29 通过
+  - 全量回归：259/262（3 预先存在失败 TopNav，非本 sprint 引入）
+  - tsc --noEmit 0 error；ESLint 我变更文件 0 新增 warning
+  - phase → needs_review
+
+⚠️ 预检调整（合约内置 fallback，Q4/Q5）：
+  - MEDIUM severity token：--color-signal-warning 不存在 → 改用 --color-log-warn (#f59e0b)
+  - setup-monitor queryKey：['setup-monitor', undefined] → ['cockpit-setup-monitor', 'all']
+
+🔧 系统变更：
+  - 新建 frontend/src/cockpit/components/AiContradictionsSection.tsx
+  - 新建 frontend/src/cockpit/lib/utils/dates.ts
+  - 修改 frontend/src/cockpit/widgets/DecisionPanelWidget.tsx
+  - 修改 frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx
+  - 修改 docs/需求/features.json（F211-b → needs_review）
+
+📊 F211 进度：
+  F211-a1：✅ done
+  F211-a2：✅ done
+  F211-b：🔍 needs_review
+  F211-c：⬜ design_needed
+  F211-d：⬜ design_needed
+
+[下一步]
+  运行 acceptance skill 验收 F211-b；或继续 F211-c（News 页 AI 摘要 bar）。
