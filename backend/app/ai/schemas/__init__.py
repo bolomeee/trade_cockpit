@@ -4,7 +4,10 @@ from typing import NamedTuple
 from pydantic import BaseModel
 
 from app.ai.schemas import candidate_ranker as _cr
+from app.ai.schemas import contradiction_detector as _cd
+from app.ai.schemas import journal_assistant as _ja
 from app.ai.schemas import market_narrator as _mn
+from app.ai.schemas import news_summarizer as _ns
 from app.ai.schemas import setup_explainer as _se
 from app.ai.schemas import trade_plan as _tp
 from app.ai import guardrail as _gr
@@ -31,17 +34,19 @@ REGISTRY: dict[str, SchemaPair] = {
     "market_narrator": SchemaPair(_mn.MarketNarratorInput, _mn.MarketNarratorOutput),
     "setup_explainer":   SchemaPair(_se.SetupExplainerInput, _se.SetupExplainerOutput),
     "candidate_ranker":  SchemaPair(_cr.CandidateRankerInput, _cr.CandidateRankerOutput),
-    "trade_plan":        SchemaPair(_tp.TradePlanInput, _tp.TradePlanOutput),
-    # F211 register remaining 3 production task schemas here:
-    # "contradiction_detector": SchemaPair(...),
-    # "news_summarizer":        SchemaPair(...),
-    # "journal_assistant":      SchemaPair(...),
+    "trade_plan":          SchemaPair(_tp.TradePlanInput, _tp.TradePlanOutput),
+    "contradiction_detector": SchemaPair(_cd.ContradictionDetectorInput, _cd.ContradictionDetectorOutput),
+    "news_summarizer":        SchemaPair(_ns.NewsSummarizerInput, _ns.NewsSummarizerOutput),
+    "journal_assistant":      SchemaPair(_ja.JournalAssistantInput, _ja.JournalAssistantOutput),
 }
 
 # Guardrail hooks — registered as module load side effect (D068)
 _gr.register("market_narrator", _mn.guardrail)
 _gr.register("setup_explainer", _se.guardrail)
 _gr.register("trade_plan", _tp.guardrail)
+_gr.register("contradiction_detector", _cd.guardrail)
+_gr.register("news_summarizer", _ns.guardrail)
+_gr.register("journal_assistant", _ja.guardrail)
 # candidate_ranker: no deterministic anchor — no guardrail
 
 
