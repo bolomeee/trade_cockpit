@@ -9,6 +9,7 @@ import { useCockpitStore } from '@/store/cockpitStore'
 import { getCockpitDecision, type CockpitDecisionData, type GetCockpitDecisionOverrides } from '../lib/api/cockpitDecisionApi'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
 import { AiTradePlanSection } from '../components/AiTradePlanSection'
+import { calcDaysUntil } from '../lib/utils/dates'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,12 +19,6 @@ function fmt2(n: number): string {
 
 function fmtPct(n: number): string {
   return `${n.toFixed(2)}%`
-}
-
-function calcDaysUntil(earningsDate: string | null): number | null {
-  if (!earningsDate) return null
-  const ms = new Date(earningsDate + 'T00:00:00Z').getTime() - Date.now()
-  return Math.round(ms / 86400000)
 }
 
 // ── sub-components ────────────────────────────────────────────────────────────
