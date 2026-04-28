@@ -1,6 +1,6 @@
 # Sprint Contract：F206-c2 — PendingOrdersWidget（条件单计划列表 + 表单弹窗）
 
-> 状态：drafted | 起草：2026-04-26
+> 状态：confirmed | 起草：2026-04-26 | 确认：2026-04-28（用户全意 §7 6 项）
 > 父 Feature：F206 Position Manager
 > 兄弟：F206-a ✅ / F206-b1 ✅ / F206-b2 ✅ / F206-c1 ✅ / F206-c2（本 = F206 收尾）
 > 引用文档：

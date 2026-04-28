@@ -1,77 +1,80 @@
-# SESSION-HANDOFF — F205-e Pool Cache
+# SESSION-HANDOFF — F206-c2 PendingOrdersWidget
 
-> 生成时间：2026-04-28 | Branch: cockpit | Commit: bb64a70
+> 生成时间：2026-04-28 | Branch: cockpit | 阶段：Contract 协商完成 → 待 Generator
 
 ---
 
-## 已完成
+## 已完成（本 Session）
 
-**F205-e：Pool Cache 周级预算（RS + Fundamental 层）**
+**F206-c2 Sprint Contract 协商 + drift 修复**
 
-用户确认：Q1=A（trend-only cache）/ Q2=A（Mon 06:30 UTC）/ Q3=A（cache miss 返空 funnel）/ Q4=A（缓存 ma50 + last_close）/ Q5=**B**（加 admin endpoint）
+1. 用户确认合约 §7 6 项（D060-a + 5 项实现细节）
+2. 合约 [`docs/开发/sprint-contracts/F206-c2-contract.md`](docs/开发/sprint-contracts/F206-c2-contract.md) frontmatter: drafted → confirmed
+3. 修正 features.json 的 F206 status drift：之前错标 done/2026-04-26，实际 c2 未做即跳 F207
+   - F206 status → `in_progress`，phase → `contract_agreed`
+   - active_sub_sprint = `F206-c2`
+   - sub_sprints 字段化（a/b1/b2/c1=done，c2=contract_agreed）
+   - 追加 `_status_drift_note` 留痕
+   - iteration_history 追加 c2 contract_agreed 记录
+4. 顶层 `_pipeline_status.active_sprint` → `F206-c2` / phase → `contract_agreed`
+5. claude-progress.txt 追加本次记录
 
-### 交付文件（7 个）
+---
 
-| 文件 | 类型 | 说明 |
-|------|------|------|
-| `backend/alembic/versions/016_f205e_pool_cache.py` | 新建 | `cockpit_pool_cache` 表迁移，含 index |
-| `backend/app/models/cockpit_pool_cache.py` | 新建 | SQLAlchemy 模型 |
-| `backend/app/services/cockpit/pool_cache_service.py` | 新建 | `PoolCacheService.rebuild()`：从 trend snapshot 拉 FMP，事务内 DELETE+INSERT |
-| `backend/app/services/cockpit/pool_service.py` | 修改 | 删除 ThreadPoolExecutor / FMP 调用，改读 `cockpit_pool_cache` |
-| `backend/app/services/refresh_job.py` | 修改 | 注册 `POOL_CACHE_JOB_ID` Mon 06:30 UTC cron（D081） |
-| `backend/app/routers/admin.py` | 新建 | `POST /api/admin/refresh-pool-cache`（Q5=B） |
-| `backend/tests/test_pool_service.py` | 修改 | 全量重写 fixture（seed cache 取代 FMP mock）+ 7 个新 PoolCacheService 测试 + cron 注册测试 |
+## 已确认决策（Generator 阶段需落地到 DECISIONS.md）
 
-文档同步：`DATA-MODEL.md §CockpitPoolCache`、`DECISIONS.md D081`、`F205-e-contract.md → needs_review`
-
-### 测试结果
-
-```
-829 passed, 0 failed（含 18 个 test_pool_service 新测试）
-```
+| ID | 决策 |
+|----|------|
+| **D060-a** | v1.9 PendingOrder `[Triggered]` 后**不**自动创建 Position，仅切 status + toast 提示用户去 Positions widget 手工录入。理由：避免 backend 联动事务复杂度，v1.9 选择手工二次录入。后续如反馈痛点可开 F206-d 或并入 F207 ActionList |
+| — | distance 颜色按**绝对值**阈值：`|x|>5%` 灰（`--color-text-muted`）/ `1≤|x|≤5` 默认 / `|x|<1` 加粗（`font-bold`） |
+| — | Edit dialog **不**暴露 status 字段；status 转换只走行按钮 `[Triggered]/[Cancel]`，避免双入口 |
+| — | `[Cancel]` 直接 PATCH 无确认（reversible）；`[Triggered]` 弹 AlertDialog + toast 引导 |
+| — | defaultLayout `{ x: 6, y: 8, w: 6, h: 8, minW: 4, minH: 6 }`（与 c1 PositionList 同行右侧） |
+| — | category 复用 `'position'`，不新增 `'order'`（避免改 `CockpitWidgetCategory` union） |
 
 ---
 
 ## 当前状态
 
-- Branch: `cockpit`，最新 commit: `bb64a70 feat(F205-e)`
-- DB 迁移已 apply（`dev.db`）
-- **cockpit_pool_cache 表为空**：首次使用前必须手动触发 rebuild（见下方）
+- Branch: `cockpit`，工作区 clean
+- 系统设计文档：ARCHITECTURE / DATA-MODEL / API-CONTRACT / design-spec / component-plan 均 confirmed
+- features.json `active_sprint` = `F206-c2`，phase = `contract_agreed`
+- F207 在 drift 期间已完成（done），F206-c2 是 v1.9 真正的收尾
 
 ---
 
-## 下一步任务
+## 下一步任务（下一 Session）
 
-### 立即（首次部署 / 本地验收）
+### 立即执行：Generator 模式
 
-```bash
-# 1. 手动触发 cache rebuild（开启后端后）
-curl -X POST http://localhost:8000/api/admin/refresh-pool-cache
-# 或者 Python CLI（不需要后端运行）：
-cd backend && uv run python -c "
-from app.database import SessionLocal
-from app.external.fmp_client import FmpClient, default_rate_limiter
-from app.services.cockpit.pool_cache_service import PoolCacheService
-db = SessionLocal()
-fmp = FmpClient(rate_limiter=default_rate_limiter())
-result = PoolCacheService(db, fmp).rebuild()
-print(result)
-"
-
-# 2. 验证 pool 响应时间 < 500ms
-curl -s -w "\n%{time_total}s\n" http://localhost:8000/api/cockpit/pool
-
-# 3. 改 filter 验证也 < 500ms
-curl -s -w "\n%{time_total}s\n" "http://localhost:8000/api/cockpit/pool?rsPercentileMin=50"
-
-# 4. 检查 system_logs
-curl http://localhost:8000/api/logs | python3 -m json.tool | grep pool_cache
+```
+继续开发 F206-c2，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
+进入 Generator 模式，从开发步骤 1 开始。
 ```
 
-### F205-f（如需）
+### Generator 开发顺序（合约 §5）
 
-- 合约提到若 test 改动超复杂可拆 F205-f，本次顺利完成无需拆分
-- 可选：给 admin endpoint 加 API key 鉴权（当前无鉴权）
+| Step | 内容 | WIP commit message |
+|------|------|---------------------|
+| 1 | `cockpitPendingOrdersApi.ts` + 单测 → vitest 通过 | `wip(F206-c2): cockpitPendingOrdersApi` |
+| 2 | `_pendingOrderFormSchemas.ts` + `PendingOrderFormDialog.tsx` + 测试 | `wip(F206-c2): PendingOrderFormDialog` |
+| 3 | `_pendingOrderRow.tsx` + 单测（distance 颜色 3 档 + 按钮可见性） | `wip(F206-c2): _pendingOrderRow` |
+| 4 | `PendingOrdersWidget.tsx` + 测试 | `wip(F206-c2): PendingOrdersWidget` |
+| 5 | `CockpitRegistry.ts` 注册 manifest + DECISIONS.md 追加 D060-a + design-spec.md §Widget 8 链接回写 | `wip(F206-c2): registry + 决策回写` |
+| 6 | lint + test + build → Evaluator S1–S20 | 最终 `feat(F206-c2): PendingOrdersWidget + PendingOrderFormDialog`（封 F206 收尾） |
+
+### Evaluator 验收（合约 §3 / §4）
+
+- S1–S20 全部通过
+- 文件 ≤ 6 生产文件 + 3 测试文件
+- 字段命名严格对照 API-CONTRACT.md §Pending Orders（camelCase）
+- distance 颜色 3 档按绝对值
+- 仅 ACTIVE 行渲染 `[Triggered][Cancel]`
+- queryKey `['cockpit-pending-orders', status]`，staleTime 30s
+- 不 invalidate `['cockpit-positions']`
+- DECISIONS.md D060-a 已落地
+- 全量回归 `pnpm -C frontend test` + lint + build 全通过
 
 ---
 
@@ -79,25 +82,20 @@ curl http://localhost:8000/api/logs | python3 -m json.tool | grep pool_cache
 
 | # | 事项 | 影响 |
 |---|------|------|
-| 1 | cache 表首次为空 | 部署后需手动调用 rebuild 一次；下次周一 cron 前数据不自动刷新 |
-| 2 | Q5=B admin endpoint 无鉴权 | 任何能访问后端的请求都可触发 rebuild（仅内部服务，暂可接受） |
-| 3 | universe_refresh 和 pool_cache 时序 | 每月 1 日 universe 刷新后，新增 ticker 需等到下个周一才进 cache |
-
-> 2026-04-28 update：原第 4 项（FMP 分页 / earnings dedup / admin endpoint 4 文件 unstaged 改动）已绑定归属并 commit：FMP 分页 → F105 fix，earnings dedup → F204-a fix，`/refresh-earnings` `/refresh-setup` → F204-b + F202-c 扩展。
+| 1 | F207 在 F206-c2 之前完成（drift 期间） | F207 ActionList 在缺少 PendingOrdersWidget 的情况下做出来了；需在 F206-c2 完成后回归测试 ActionList 显示 pending_orders 是否仍正常 |
+| 2 | D060-a 落地后续观察 | 用户使用一段时间后，若手工双录痛点明显，再开 F206-d 或并入 F207 |
 
 ---
 
-## Evaluator 自检结果（F205-e 合约 §5）
+## 恢复 Checklist（下次 Session 必读）
 
-- [x] 单元测试全部通过（829 passed）
-- [x] 后端全量回归通过（829 > 820）
-- [x] PoolService 不再 import ThreadPoolExecutor / 不调用 FmpClient bars
-- [x] cron 注册后 jobs 列表包含 `cockpit_pool_cache_rebuild`（test 验证）
-- [x] cache 表迁移可 upgrade（已测）；downgrade 已实现
-- [x] 新表 schema 与 contract §2.1 一致（含 index）
-- [x] PoolCacheService 写日志：成功 OK / 失败 ERROR
-- [x] cache miss 路径有 WARN 日志
-- [x] DATA-MODEL.md 追加 §CockpitPoolCache
-- [x] DECISIONS.md 追加 D081
-- [x] PoolService 修改后行数 < 修改前（删除 FMP 逻辑）
-- [ ] Lint：未运行 ruff，建议下次 session 前检查
+- [ ] 读 [`docs/开发/sprint-contracts/F206-c2-contract.md`](docs/开发/sprint-contracts/F206-c2-contract.md) 全文
+- [ ] 读 [`docs/系统设计/API-CONTRACT.md`](docs/系统设计/API-CONTRACT.md) §Pending Orders（GET/POST/PATCH/DELETE）
+- [ ] 读 [`docs/系统设计/DATA-MODEL.md`](docs/系统设计/DATA-MODEL.md) §Entity: PendingOrder
+- [ ] 读 [`docs/设计/design-spec.md`](docs/设计/design-spec.md) §Widget 8 PendingOrdersWidget
+- [ ] 读 [`docs/设计/component-plan.md`](docs/设计/component-plan.md) §PendingOrdersWidget / §PendingOrderFormDialog / §Cockpit-4 react-query / §Cockpit-5 目录
+- [ ] 参考代码：[`frontend/src/cockpit/widgets/PositionListWidget.tsx`](frontend/src/cockpit/widgets/PositionListWidget.tsx)（c1 实现，c2 风格基线）
+- [ ] 参考代码：[`frontend/src/cockpit/lib/api/cockpitPositionsApi.ts`](frontend/src/cockpit/lib/api/cockpitPositionsApi.ts)（c1 api client 模式）
+- [ ] 检查后端口径：`backend/app/services/cockpit/pending_order_service.py::_enrich`（distance/risk）
+- [ ] 确认 `SetupTypeBadge` 共享组件位置（c2 行渲染要复用）
+- [ ] 进入 Generator 模式，从 Step 1 开始

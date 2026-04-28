@@ -1,0 +1,51 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] Sprint：F206-c2 PendingOrdersWidget — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F206-c2 Sprint Contract 已确认（用户全意 §7 6 项）
+  - 修正 features.json drift：F206 之前被错标 status:done/completed_at:2026-04-26，实际 c2 未做即跳到 F207
+  - 重置 F206 status: in_progress / phase: contract_agreed / active_sub_sprint: F206-c2
+  - 顶层 _pipeline_status: active_sprint=F206-c2, phase=contract_agreed
+  - 合约 frontmatter: drafted → confirmed
+  - SESSION-HANDOFF.md 已生成
+
+📋 已确认决策（待 Generator 阶段落地到 DECISIONS.md）：
+  - D060-a：v1.9 PendingOrder [Triggered] 后不自动创建 Position，仅切 status + toast 提示用户去 Positions widget 手工录入
+  - distance 颜色按绝对值阈值上色：|x|>5% 灰 / 1≤|x|≤5 默认 / |x|<1 加粗
+  - Edit dialog 不暴露 status；status 转换只走行按钮 [Triggered]/[Cancel]
+  - [Cancel] 直接 PATCH 无确认；[Triggered] 弹确认 dialog + toast
+  - defaultLayout (x:6, y:8, w:6, h:8) 与 c1 PositionList 同行右侧
+  - category 复用 'position'，不新增 'order'
+
+📦 预计修改文件（6 生产 + 3 测试，正好压在 6 文件上限）：
+  生产：
+    1. frontend/src/cockpit/lib/api/cockpitPendingOrdersApi.ts (新建)
+    2. frontend/src/cockpit/widgets/PendingOrdersWidget.tsx (新建)
+    3. frontend/src/cockpit/widgets/_pendingOrderRow.tsx (新建)
+    4. frontend/src/cockpit/dialogs/PendingOrderFormDialog.tsx (新建)
+    5. frontend/src/cockpit/dialogs/_pendingOrderFormSchemas.ts (新建)
+    6. frontend/src/cockpit/CockpitRegistry.ts (修改)
+  测试：
+    T1. frontend/src/cockpit/lib/api/__tests__/cockpitPendingOrdersApi.test.ts
+    T2. frontend/src/cockpit/widgets/__tests__/PendingOrdersWidget.test.tsx
+    T3. frontend/src/cockpit/dialogs/__tests__/PendingOrderFormDialog.test.tsx
+
+⚠️ 待你决策：
+  - 无（合约已全意确认）
+
+🔧 系统变更：
+  - features.json：F206 status drift 修正 + F206-c2 contract_agreed 落地
+  - F206-c2-contract.md frontmatter：drafted → confirmed
+
+📊 功能状态：
+  F205：✅ done（a/b/c/d/e）
+  F206：🟡 in_progress（a/b1/b2/c1 done，c2 contract_agreed）
+  F207：✅ done（a/b）— 注：在 F206-c2 之前完成（drift 期间）
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+
+  > 继续开发 F206-c2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
