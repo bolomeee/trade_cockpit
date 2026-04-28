@@ -1859,3 +1859,30 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 - SPY closes 在 RS 层串行获取（主线程单次调用），之后所有 trend ticker bars 并发拉取
 
 **影响**：`backend/app/services/cockpit/pool_service.py`（新建），`backend/app/routers/cockpit/pool.py`（新建），`backend/app/routers/cockpit/__init__.py`（注册），`backend/app/schemas/cockpit/pool.py`（新建），`backend/tests/test_pool_service.py`（新建），`backend/tests/test_cockpit_pool_router.py`（新建）。
+
+---
+
+## D081：Pool 漏斗 RS + Fundamental 层改为周级缓存（F205-e）
+
+**背景**：F205-d 验收发现每次 filter 改动触发全量 FMP 调用（~30s），体验不可接受。
+
+**决策**：RS percentile（FMP get_daily_bars）和 fundamental revenue growth（FMP get_financial_growth）两层改为预计算，结果存入 `cockpit_pool_cache` 表，每周一 06:30 UTC 重建（APScheduler cron）。PoolService 不再调用 FMP，直接读 DB。
+
+**关键参数确认（F205-e 用户确认）**：
+
+| # | 问题 | 选择 |
+|---|------|------|
+| Q1 | Cache 范围 | A：仅 trend-passing tickers（~50 个）|
+| Q2 | Cron 时机 | A：每周一 06:30 UTC |
+| Q3 | Cache miss 行为 | A：返回空 funnel + WARN 日志 |
+| Q4 | 缓存 ma50/last_close | A：是 |
+| Q5 | 手动触发 | B：`POST /api/admin/refresh-pool-cache` |
+
+**权衡**：
+- Q1=A（trend-only）vs Q1=B（全 universe）：trend tickers 仅 ~50 个，FMP 调用量从 1200 calls/周 → ~100 calls/周。代价是 cache 里的 percentile 相对 trend 总体计算，非全 universe 排名。
+- Cache miss（Q3=A）：首次部署或 rebuild 失败后 pool 返回空结果，需手动触发 rebuild。
+- Cron Mon 06:30 UTC：避开 setup_cron (22:30)、earnings_cron (05:30)、universe_cron（月初 05:00）。
+
+**预期效果**：GET /api/cockpit/pool filter 改动响应时间 30s → < 500ms。
+
+**影响文件**：`alembic/versions/016_f205e_pool_cache.py`（新建），`app/models/cockpit_pool_cache.py`（新建），`app/services/cockpit/pool_cache_service.py`（新建），`app/services/cockpit/pool_service.py`（修改，删除 FMP 调用），`app/services/refresh_job.py`（新增 cron），`app/routers/admin.py`（新建，Q5=B），`tests/test_pool_service.py`（重写 fixture + 新增 PoolCacheService 测试组）。

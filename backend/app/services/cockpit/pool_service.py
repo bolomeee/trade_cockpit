@@ -1,26 +1,28 @@
-"""F205-c: PoolService — 5-layer funnel orchestration for GET /api/cockpit/pool.
+"""F205-e: PoolService — 5-layer funnel, RS + fundamental read from weekly cache.
 
 Funnel layers:
   tradable  → market_scan_universe (market_cap / price / ADV / sector)
   trend     → ∩ latest market_breakout_scans (binary F106 proxy; trendScoreMin ignored, D080)
-  rs        → FMP get_daily_bars 6-concurrent + SPY closes → compute_return_ratio_250d + percentile
-  fundamental → FMP get_financial_growth 6-concurrent → passes_fundamental_sanity (fail-open, D079)
+  rs        → cockpit_pool_cache.rs_percentile (weekly rebuild, D081)
+  fundamental → cockpit_pool_cache.revenue_growth_yoy (weekly rebuild, D081)
   action    → sort RS desc, limit-cap
 
+Cache miss (empty cockpit_pool_cache): rs=0, fundamental=0, action=0 + WARN log (Q3=A).
 ADV = last_price × last_volume (single-day proxy, tech-debt D080).
 Trend cap: POOL_TREND_CAP tickers by market_cap desc before RS layer (D080).
 """
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
+from app.models.cockpit_pool_cache import CockpitPoolCache
 from app.models.market_scan_universe import MarketScanUniverse
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.market_breakout_repository import MarketBreakoutRepository
@@ -30,17 +32,12 @@ from app.repositories.stock_repository import StockRepository
 from app.repositories.system_log_repository import SystemLogRepository
 from app.services.cockpit.pool_helpers import (
     compute_distance_to_50ma_pct,
-    compute_return_ratio_250d,
-    compute_rs_percentile_map,
-    extract_revenue_growth_yoy_pct,
     passes_fundamental_sanity,
 )
 
 logger = logging.getLogger(__name__)
 
 POOL_TREND_CAP: int = 200
-_FMP_MAX_WORKERS: int = 6
-_BARS_LOOKBACK_DAYS: int = 400  # ~280 trading days → guarantees ≥250 for RS computation
 
 
 @dataclass
@@ -61,7 +58,6 @@ class PoolParams:
 class PoolService:
     def __init__(self, db: Session, fmp: FmpClient) -> None:
         self._db = db
-        self._fmp = fmp
         self._universe_repo = MarketScanUniverseRepository(db)
         self._breakout_repo = MarketBreakoutRepository(db)
         self._setup_repo = SetupSnapshotRepository(db)
@@ -94,7 +90,6 @@ class PoolService:
     # ── private layer methods ────────────────────────────────────────────────
 
     def _get_universe(self) -> list[MarketScanUniverse]:
-        """Load all tickers from the most recent universe refresh."""
         latest = self._universe_repo.latest_refresh_time()
         if latest is None:
             return []
@@ -136,68 +131,47 @@ class PoolService:
 
         return trend
 
-    def _fetch_bars_concurrent(
-        self, tickers: list[str], from_date: date, to_date: date
-    ) -> dict[str, list[float]]:
-        """Fetch EOD closes for tickers concurrently; silently skip failures."""
-        def _one(ticker: str) -> tuple[str, list[float] | None]:
-            try:
-                bars = self._fmp.get_daily_bars(ticker, from_date, to_date)
-                if not bars:
-                    return ticker, None
-                return ticker, [b["close"] for b in sorted(bars, key=lambda b: b.get("date", ""))]
-            except Exception:
-                return ticker, None
-
-        result: dict[str, list[float]] = {}
-        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
-            futures = {executor.submit(_one, t): t for t in tickers}
-            for future in as_completed(futures):
-                ticker, closes = future.result()
-                if closes is not None:
-                    result[ticker] = closes
-        return result
-
     def _compute_rs_layer(
         self, trend: list[MarketScanUniverse], params: PoolParams
     ) -> dict[str, Any]:
-        """Fetch 250-day bars for trend tickers + SPY; return RS data dict.
+        """Read RS data from cockpit_pool_cache; no FMP calls.
 
-        Returns: {rs_tickers, percentile_map, closes_by_ticker}
+        Cache miss (empty table): return empty rs_tickers + write WARN log (Q3=A).
         """
         if not trend:
-            return {"rs_tickers": [], "percentile_map": {}, "closes_by_ticker": {}}
+            return {"rs_tickers": [], "percentile_map": {}, "cache_by_ticker": {}}
 
-        today = date.today()
-        from_date = today - timedelta(days=_BARS_LOOKBACK_DAYS)
+        ticker_set = {u.ticker for u in trend}
+        cache_rows = self._db.execute(
+            select(CockpitPoolCache).where(CockpitPoolCache.ticker.in_(ticker_set))
+        ).scalars().all()
 
-        try:
-            spy_bars = self._fmp.get_daily_bars("SPY", from_date, today)
-        except Exception:
-            spy_bars = []
-        spy_closes = [b["close"] for b in sorted(spy_bars, key=lambda b: b.get("date", ""))]
+        if not cache_rows:
+            logger.warning("pool cache miss: cockpit_pool_cache is empty, returning empty funnel")
+            self._log_repo.create(
+                "WARN", "pool_service",
+                "pool cache miss: run PoolCacheService.rebuild() to populate",
+            )
+            return {"rs_tickers": [], "percentile_map": {}, "cache_by_ticker": {}}
 
-        tickers = [u.ticker for u in trend]
-        closes_by_ticker = self._fetch_bars_concurrent(tickers, from_date, today)
-
-        ratio_by_ticker = {
-            t: compute_return_ratio_250d(closes_by_ticker.get(t) or [], spy_closes)
-            for t in tickers
-        }
-        percentile_map = compute_rs_percentile_map(ratio_by_ticker)
+        cache_by_ticker = {row.ticker: row for row in cache_rows}
+        percentile_map = {ticker: row.rs_percentile for ticker, row in cache_by_ticker.items()}
 
         rs_min = params.rs_percentile_min
-        rs_tickers = [t for t in tickers if percentile_map.get(t, 0.0) >= rs_min]
+        rs_tickers = [
+            t for t in ticker_set
+            if t in percentile_map and percentile_map[t] >= rs_min
+        ]
         return {
             "rs_tickers": rs_tickers,
             "percentile_map": percentile_map,
-            "closes_by_ticker": closes_by_ticker,
+            "cache_by_ticker": cache_by_ticker,
         }
 
     def _filter_fundamental(
         self, rs_data: dict[str, Any], params: PoolParams
     ) -> dict[str, Any]:
-        """Fetch revenue growth for RS tickers; fail-open on missing data (D079).
+        """Read revenue_growth_yoy from cache; fail-open on null (D079).
 
         Returns: {tickers, growth_by_ticker}
         """
@@ -205,17 +179,11 @@ class PoolService:
         if not rs_tickers:
             return {"tickers": [], "growth_by_ticker": {}}
 
-        growth_by_ticker: dict[str, float | None] = {}
-
-        def _fetch_growth(ticker: str) -> tuple[str, float | None]:
-            payload = self._fmp.get_financial_growth(ticker)
-            return ticker, extract_revenue_growth_yoy_pct(payload)
-
-        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
-            futures = {executor.submit(_fetch_growth, t): t for t in rs_tickers}
-            for future in as_completed(futures):
-                ticker, growth = future.result()
-                growth_by_ticker[ticker] = growth
+        cache_by_ticker: dict[str, CockpitPoolCache] = rs_data["cache_by_ticker"]
+        growth_by_ticker: dict[str, float | None] = {
+            t: cache_by_ticker[t].revenue_growth_yoy if t in cache_by_ticker else None
+            for t in rs_tickers
+        }
 
         threshold = params.revenue_growth_yoy_min
         passing = [
@@ -231,14 +199,13 @@ class PoolService:
         snap: Any,
         in_wl: bool,
         percentile_map: dict[str, float],
-        closes_by_ticker: dict[str, list[float]],
+        cache_by_ticker: dict[str, CockpitPoolCache],
         growth_by_ticker: dict[str, float | None],
         today: date,
     ) -> dict[str, Any]:
-        """Build the item dict for a single ticker."""
-        closes = closes_by_ticker.get(ticker)
-        ma50 = sum(closes[-50:]) / 50 if closes and len(closes) >= 50 else None
-        close_val = (closes[-1] if closes else None) or u.last_price or 0.0
+        cache = cache_by_ticker.get(ticker)
+        ma50 = cache.ma50 if cache else None
+        close_val = (cache.last_close if cache and cache.last_close else None) or u.last_price or 0.0
         earnings = self._earnings_repo.get_next_earnings(ticker, today)
         e_date = earnings.earnings_date if earnings else None
         return {
@@ -265,14 +232,13 @@ class PoolService:
         universe_by_ticker: dict[str, MarketScanUniverse],
         params: PoolParams,
     ) -> list[dict[str, Any]]:
-        """Enrich fundamental tickers; apply setupTypes filter; sort RS desc."""
         tickers = fund_result["tickers"]
         if not tickers:
             return []
 
         today = date.today()
         percentile_map = rs_data["percentile_map"]
-        closes_by_ticker = rs_data["closes_by_ticker"]
+        cache_by_ticker = rs_data["cache_by_ticker"]
         growth_by_ticker = fund_result["growth_by_ticker"]
 
         watchlist_set = {s.ticker for s in self._stock_repo.list_active()}
@@ -290,7 +256,7 @@ class PoolService:
             if setup_types_filter and in_wl and (snap is None or snap.setup_type not in setup_types_filter):
                 continue
             items.append(self._make_item(
-                ticker, u, snap, in_wl, percentile_map, closes_by_ticker, growth_by_ticker, today
+                ticker, u, snap, in_wl, percentile_map, cache_by_ticker, growth_by_ticker, today
             ))
 
         return sorted(items, key=lambda x: x["rs_percentile"], reverse=True)

@@ -29,6 +29,7 @@ EXPECTED_TABLES = {
     "ai_memos",                 # F208-a
     "positions",                # F206-a
     "pending_orders",           # F206-b1
+    "cockpit_pool_cache",       # F205-e
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {

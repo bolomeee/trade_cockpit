@@ -976,3 +976,26 @@ class AiMemo(Base):
     latency_ms = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 ```
+
+
+## CockpitPoolCache（F205-e）
+
+```python
+class CockpitPoolCache(Base):
+    __tablename__ = "cockpit_pool_cache"
+
+    ticker        = Column(Text,     primary_key=True)
+    rs_percentile = Column(Float,    nullable=False)
+    ma50          = Column(Float,    nullable=True)   # 250d 序列后 50 日均值
+    last_close    = Column(Float,    nullable=True)   # 250d 序列最后一日 close
+    revenue_growth_yoy = Column(Float, nullable=True) # null = FMP 未返回（fail-open）
+    computed_at   = Column(DateTime, nullable=False)
+
+    __table_args__ = (Index("ix_cockpit_pool_cache_computed_at", "computed_at"),)
+```
+
+**更新策略**：整表替换（每周一次 `DELETE + INSERT`，在事务内原子执行）。
+
+**范围（Q1=A）**：仅缓存最新 breakout_scans 中的 trend tickers（~50 个）。RS percentile 相对于当次 rebuild 时的 trend 总体计算。
+
+**Cache miss**：表为空时 PoolService 返回空 funnel（rs=0, fundamental=0, action=0）+ WARN 日志，不 fallback 实时 FMP（Q3=A）。

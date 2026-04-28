@@ -30,6 +30,7 @@ from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.earnings_service import EarningsService
 from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
+from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
@@ -50,6 +51,11 @@ REGIME_JOB_ID = "cockpit_regime_refresh"
 SETUP_JOB_ID = "cockpit_setup_refresh"
 PENDING_ORDERS_EXPIRER_CRON = "35 22 * * 1-5"
 PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
+# F205-e: pool cache weekly rebuild — Mon 06:30 UTC
+# Avoids: universe_cron (1st of month 05:00), earnings_cron (weekdays 05:30),
+#         setup_cron (weekdays 22:30). Gives 8h buffer after the prior day's setup tick.
+POOL_CACHE_CRON = "30 6 * * 1"
+POOL_CACHE_JOB_ID = "cockpit_pool_cache_rebuild"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -268,6 +274,14 @@ def start_scheduler(
             args=[session_factory],
             replace_existing=True,
         )
+        # F205-e: pool cache weekly rebuild, Mon 06:30 UTC (D081)
+        sched.add_job(
+            _pool_cache_tick,
+            trigger=CronTrigger.from_crontab(POOL_CACHE_CRON, timezone="UTC"),
+            id=POOL_CACHE_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -365,6 +379,18 @@ def _pending_orders_expirer_tick(session_factory: SessionFactory) -> None:
             expire_due_pending_orders(db)
     except Exception:  # noqa: BLE001
         logger.error("pending_orders expirer tick failed\n%s", traceback.format_exc())
+
+
+def _pool_cache_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for pool cache weekly rebuild (F205-e): Mon 06:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            PoolCacheService(db, fmp=fmp_factory()).rebuild()
+    except Exception:  # noqa: BLE001
+        logger.error("pool cache tick failed\n%s", traceback.format_exc())
 
 
 # ----- helpers ---------------------------------------------------------------

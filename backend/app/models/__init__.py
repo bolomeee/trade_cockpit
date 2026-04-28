@@ -23,6 +23,7 @@ from app.models.user_settings import UserSettings  # noqa: E402
 from app.models.ai_memo import AiMemo  # noqa: E402
 from app.models.position import Position  # noqa: E402
 from app.models.pending_order import PendingOrder  # noqa: E402
+from app.models.cockpit_pool_cache import CockpitPoolCache  # noqa: E402
 
 __all__ = [
     "Base",
@@ -44,4 +45,5 @@ __all__ = [
     "AiMemo",
     "Position",
     "PendingOrder",
+    "CockpitPoolCache",
 ]

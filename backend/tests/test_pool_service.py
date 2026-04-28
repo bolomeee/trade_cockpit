@@ -1,36 +1,43 @@
-"""Unit tests for PoolService (F205-c).
+"""Unit tests for PoolService (F205-e) and PoolCacheService (F205-e).
 
-Covers sprint contract acceptance criteria:
+PoolService tests (adapted from F205-c):
+  Cache-based fixtures replace FMP mocks — cockpit_pool_cache rows are seeded directly.
   #8  rsPercentileMin filter
   #9  revenueGrowthYoyMin + fail-open on None
   #10  trend cap → POOL_TREND_CAP, market_cap desc
-  #10b concurrent FMP: 30 tickers with 200ms latency → total < 50% of serial
-  #10c per-ticker FMP failure → that ticker drops at RS layer, rest succeed
-  #16  distanceTo50maPct = compute_distance_to_50ma_pct(close, ma50)
-  #17  FMP get_daily_bars exception → ticker skips RS layer (ratio=None → percentile=bottom)
-  #18  FMP get_financial_growth returns None → fail-open (ticker passes fundamental)
+  #10c ticker not in cache → excluded from RS layer
+  #16  distanceTo50maPct = compute_distance_to_50ma_pct(last_close, ma50)
+  #17  ticker with no cache row → excluded at RS layer
+  #18  revenue_growth_yoy=None in cache → fail-open (passes fundamental)
+  cache_miss  empty cockpit_pool_cache → empty funnel + WARN log
 
-Strategy: monkeypatch FmpClient methods directly (no parallel mock class);
-         repos replaced with in-memory SQLite via SQLAlchemy.
+PoolCacheService tests (new in F205-e):
+  rebuild_normal        writes correct number of rows
+  rebuild_replace       DELETE old rows → INSERT new (transactional replace)
+  rebuild_bars_failure  single-ticker bars failure → ticker excluded, rest succeed
+  rebuild_growth_null   financial-growth missing → revenue_growth_yoy=null (fail-open)
+  rebuild_no_trend      no trend snapshot → 0 upserted, no crash
+  rebuild_rs_correct    rs_percentile values ordered correctly
 """
 from __future__ import annotations
 
-import time
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
 from app.models import Base
+from app.models.cockpit_pool_cache import CockpitPoolCache
 from app.models.market_breakout_scan import MarketBreakoutScan
 from app.models.market_scan_universe import MarketScanUniverse
+from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.pool_service import POOL_TREND_CAP, PoolParams, PoolService
 
 
-# ── fixtures ─────────────────────────────────────────────────────────────────
+# ── fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture()
 def db():
@@ -42,7 +49,6 @@ def db():
 
 @pytest.fixture()
 def fmp():
-    """Real FmpClient instance; individual methods patched per test."""
     return FmpClient.__new__(FmpClient)
 
 
@@ -50,18 +56,7 @@ def _make_service(db: Session, fmp: FmpClient) -> PoolService:
     return PoolService(db=db, fmp=fmp)
 
 
-_BAR_START = date(2023, 1, 1)
-
-
-def _make_bars(n: int = 260, base: float = 100.0, final: float | None = None) -> list[dict]:
-    """Generate n daily bar dicts with proper ISO dates (ascending, sorts correctly)."""
-    bars = []
-    for i in range(n):
-        d = (_BAR_START + timedelta(days=i)).isoformat()
-        close = base if final is None or i < n - 1 else final
-        bars.append({"date": d, "close": close})
-    return bars
-
+# ── seed helpers ──────────────────────────────────────────────────────────────
 
 def _insert_universe(db: Session, tickers_caps: list[tuple[str, int]]) -> None:
     now = datetime.now(timezone.utc)
@@ -98,54 +93,70 @@ def _insert_breakout(db: Session, tickers: list[str]) -> None:
     db.commit()
 
 
-# ── Test #8: rsPercentileMin ──────────────────────────────────────────────────
+def _insert_cache(
+    db: Session,
+    rows: list[dict],
+) -> None:
+    """Seed cockpit_pool_cache rows; any omitted field defaults to a safe value."""
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        db.add(CockpitPoolCache(
+            ticker=row["ticker"],
+            rs_percentile=row.get("rs_percentile", 50.0),
+            ma50=row.get("ma50", 100.0),
+            last_close=row.get("last_close", 100.0),
+            revenue_growth_yoy=row.get("revenue_growth_yoy", 20.0),
+            computed_at=row.get("computed_at", now),
+        ))
+    db.commit()
+
+
+_BAR_START = date(2023, 1, 1)
+
+
+def _make_bars(n: int = 260, base: float = 100.0, final: float | None = None) -> list[dict]:
+    bars = []
+    for i in range(n):
+        d = (_BAR_START + timedelta(days=i)).isoformat()
+        close = base if final is None or i < n - 1 else final
+        bars.append({"date": d, "close": close})
+    return bars
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PoolService tests (cache-based)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 def test_rs_percentile_min_filters_low_rank(db: Session, fmp: FmpClient):
     """#8: rsPercentileMin=80 → only tickers with rs_percentile ≥ 80 pass."""
-    # 3 tickers: A outperforms SPY (high RS), B matches SPY (mid RS), C lags (low RS)
     _insert_universe(db, [("AAA", 100_000_000_000), ("BBB", 100_000_000_000), ("CCC", 100_000_000_000)])
     _insert_breakout(db, ["AAA", "BBB", "CCC"])
+    _insert_cache(db, [
+        {"ticker": "AAA", "rs_percentile": 90.0, "revenue_growth_yoy": 20.0},
+        {"ticker": "BBB", "rs_percentile": 50.0, "revenue_growth_yoy": 20.0},
+        {"ticker": "CCC", "rs_percentile": 20.0, "revenue_growth_yoy": 20.0},
+    ])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    aaa_bars = _make_bars(260, base=100.0, final=130.0)  # +30% vs SPY +10% → ratio 3.0 (top)
-    bbb_bars = _make_bars(260, base=100.0, final=110.0)  # same as SPY → ratio 1.0 (mid)
-    ccc_bars = _make_bars(260, base=100.0, final=100.0)  # flat → ratio 0 / SPY +10% (bottom)
-
-    bars_by_ticker = {"SPY": spy_bars, "AAA": aaa_bars, "BBB": bbb_bars, "CCC": ccc_bars}
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: bars_by_ticker.get(s, [])), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=80.0, revenue_growth_yoy_min=0.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=80.0, revenue_growth_yoy_min=0.0))
 
     item_tickers = {i["ticker"] for i in result["items"]}
-    # Only AAA should be in top 80th percentile (3 tickers: AAA=top, BBB=mid, CCC=bottom)
     assert "AAA" in item_tickers
     assert "CCC" not in item_tickers
     assert result["funnel"]["rs"] <= result["funnel"]["trend"]
 
 
-# ── Test #9: revenueGrowthYoyMin + fail-open ─────────────────────────────────
-
 def test_revenue_growth_min_filters_low_growth(db: Session, fmp: FmpClient):
     """#9a: revenueGrowthYoyMin=15.0 → ticker with 10% growth is excluded."""
     _insert_universe(db, [("HIGH", 100_000_000_000), ("LOW", 100_000_000_000)])
     _insert_breakout(db, ["HIGH", "LOW"])
+    _insert_cache(db, [
+        {"ticker": "HIGH", "rs_percentile": 90.0, "revenue_growth_yoy": 20.0},
+        {"ticker": "LOW",  "rs_percentile": 90.0, "revenue_growth_yoy": 10.0},
+    ])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    stock_bars = _make_bars(260, base=100.0, final=130.0)  # both pass RS easily
-
-    growth_by_ticker = {
-        "HIGH": {"revenueGrowth": 0.20},  # 20% → passes 15% threshold
-        "LOW":  {"revenueGrowth": 0.10},  # 10% → fails 15% threshold
-    }
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", side_effect=lambda t: growth_by_ticker.get(t)):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=15.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=15.0))
 
     item_tickers = {i["ticker"] for i in result["items"]}
     assert "HIGH" in item_tickers
@@ -153,129 +164,65 @@ def test_revenue_growth_min_filters_low_growth(db: Session, fmp: FmpClient):
 
 
 def test_revenue_growth_none_fail_open(db: Session, fmp: FmpClient):
-    """#9b: get_financial_growth returns None → ticker passes fundamental (fail-open D079)."""
+    """#9b: revenue_growth_yoy=null in cache → ticker passes fundamental (fail-open D079)."""
     _insert_universe(db, [("NODATA", 100_000_000_000)])
     _insert_breakout(db, ["NODATA"])
+    _insert_cache(db, [{"ticker": "NODATA", "rs_percentile": 90.0, "revenue_growth_yoy": None}])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    stock_bars = _make_bars(260, base=100.0, final=130.0)
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", return_value=None):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=50.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=50.0))
 
     item_tickers = {i["ticker"] for i in result["items"]}
     assert "NODATA" in item_tickers
     assert result["items"][0]["revenue_growth_yoy"] is None
 
 
-# ── Test #10: trend cap ────────────────────────────────────────────────────────
-
 def test_trend_cap_truncates_to_200_by_market_cap(db: Session, fmp: FmpClient):
     """#10: trend subset > POOL_TREND_CAP → cap to 200 by market_cap desc."""
-    n_tickers = POOL_TREND_CAP + 20  # 220 tickers
-    # All tickers have market_cap ≥ 100B so they all pass the default market_cap_min=50B.
-    # T000 has the highest cap, T219 the lowest (so T200..T219 are dropped by the cap).
+    n_tickers = POOL_TREND_CAP + 20  # 220
     tickers_caps = [(f"T{i:03d}", (1000 - i) * 1_000_000_000) for i in range(n_tickers)]
     _insert_universe(db, tickers_caps)
     _insert_breakout(db, [t for t, _ in tickers_caps])
+    _insert_cache(db, [
+        {"ticker": t, "rs_percentile": 90.0, "revenue_growth_yoy": 20.0}
+        for t, _ in tickers_caps
+    ])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    stock_bars = _make_bars(260, base=100.0, final=120.0)
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0, limit=200)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0, limit=200))
 
     assert result["funnel"]["trend"] == POOL_TREND_CAP
-    # Top 200 by market_cap are T000–T199; T200–T219 are dropped.
     item_tickers = {i["ticker"] for i in result["items"]}
     assert "T000" in item_tickers
     assert "T200" not in item_tickers
 
 
-# ── Test #10b: concurrency timing ─────────────────────────────────────────────
+def test_ticker_not_in_cache_excluded_from_rs(db: Session, fmp: FmpClient):
+    """#10c: trend ticker with no cache entry is excluded from rs layer."""
+    _insert_universe(db, [("GOOD", 100_000_000_000), ("NOCACHE", 100_000_000_000)])
+    _insert_breakout(db, ["GOOD", "NOCACHE"])
+    _insert_cache(db, [{"ticker": "GOOD", "rs_percentile": 90.0, "revenue_growth_yoy": 20.0}])
+    # NOCACHE has no cache row
 
-def test_concurrent_fmp_calls_faster_than_serial(db: Session, fmp: FmpClient):
-    """#10b: 30 tickers with 200ms latency each → concurrent < 50% of serial (6s)."""
-    n = 30
-    tickers_caps = [(f"C{i:02d}", 1_000_000_000) for i in range(n)]
-    _insert_universe(db, tickers_caps)
-    _insert_breakout(db, [t for t, _ in tickers_caps])
-
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-
-    def _slow_bars(symbol: str, *args):
-        time.sleep(0.2)
-        return spy_bars  # same data for all — all will have ratio ~1.0 and low RS percentile
-
-    with patch.object(fmp, "get_daily_bars", side_effect=_slow_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0, limit=30)
-        start = time.monotonic()
-        svc.get_pool(params)
-        elapsed = time.monotonic() - start
-
-    serial_time = 0.2 * (n + 1)  # +1 for SPY call (serial)
-    assert elapsed < serial_time * 0.50, (
-        f"concurrent elapsed {elapsed:.2f}s ≥ 50% of serial {serial_time:.2f}s"
-    )
-
-
-# ── Test #10c: per-ticker FMP failure ─────────────────────────────────────────
-
-def test_per_ticker_fmp_failure_does_not_crash_pool(db: Session, fmp: FmpClient):
-    """#10c: one ticker's get_daily_bars raises → that ticker skips RS, rest succeed."""
-    _insert_universe(db, [("GOOD", 100_000_000_000), ("FAIL", 100_000_000_000)])
-    _insert_breakout(db, ["GOOD", "FAIL"])
-
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    good_bars = _make_bars(260, base=100.0, final=130.0)
-
-    def _selective_bars(symbol: str, *args):
-        if symbol == "SPY":
-            return spy_bars
-        if symbol == "FAIL":
-            raise RuntimeError("simulated FMP error")
-        return good_bars
-
-    with patch.object(fmp, "get_daily_bars", side_effect=_selective_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0)
-        # Must not raise
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0))
 
     item_tickers = {i["ticker"] for i in result["items"]}
-    # GOOD should still appear; FAIL is at bottom percentile (ratio=None) but with
-    # rs_percentile_min=0.0 it may also appear — key: no exception raised
-    assert result["funnel"]["tradable"] == 2
-    assert result["funnel"]["trend"] == 2
+    assert "GOOD" in item_tickers
+    assert "NOCACHE" not in item_tickers
 
-
-# ── Test #16: distanceTo50maPct ───────────────────────────────────────────────
 
 def test_distance_to_50ma_pct_computed_correctly(db: Session, fmp: FmpClient):
-    """#16: distanceTo50maPct = compute_distance_to_50ma_pct(close, closes[-50:] mean)."""
+    """#16: distanceTo50maPct = compute_distance_to_50ma_pct(last_close, ma50) from cache."""
     _insert_universe(db, [("MA50", 100_000_000_000)])
     _insert_breakout(db, ["MA50"])
+    # last_close == ma50 → distance = 0%
+    _insert_cache(db, [{"ticker": "MA50", "rs_percentile": 90.0, "last_close": 50.0, "ma50": 50.0}])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    # All 260 bars at close=50.0 → ma50 = 50.0, close = 50.0 → distance = 0%
-    stock_bars = _make_bars(260, base=50.0)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0))
 
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0)
-        result = svc.get_pool(params)
-
-    assert result["items"], "expected at least one item"
+    assert result["items"]
     item = next(i for i in result["items"] if i["ticker"] == "MA50")
     assert item["distance_to_50ma_pct"] == pytest.approx(0.0, abs=1e-4)
 
@@ -284,71 +231,209 @@ def test_distance_to_50ma_pct_above_ma(db: Session, fmp: FmpClient):
     """#16b: close 10% above ma50 → distanceTo50maPct ≈ 10.0."""
     _insert_universe(db, [("ABOVE", 100_000_000_000)])
     _insert_breakout(db, ["ABOVE"])
+    _insert_cache(db, [{"ticker": "ABOVE", "rs_percentile": 90.0, "last_close": 110.0, "ma50": 100.0}])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    # First 210 bars at 100, last 50 bars at 110 → ma50 = 110, close = 110 → 0%
-    # Better: 260 bars at 100 except final = 110 → ma50 = (210*100 + 50*100)/50 = 100, close=110 → 10%
-    # Actually last bar is close=110, previous 259 bars close=100
-    bars_210 = [{"date": f"2025-{i + 1:04d}", "close": 100.0} for i in range(210)]
-    bars_50 = [{"date": f"2026-{i + 1:04d}", "close": 100.0} for i in range(49)]
-    bars_50.append({"date": "2026-0050", "close": 110.0})  # final bar
-    stock_bars = bars_210 + bars_50  # last 50 bars: 49×100 + 1×110 → ma50 = 100.2
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0))
 
     item = next((i for i in result["items"] if i["ticker"] == "ABOVE"), None)
     assert item is not None
-    # close=110, ma50 = (49*100 + 110)/50 = 100.2 → (110 - 100.2) / 100.2 * 100 ≈ 9.78%
-    assert item["distance_to_50ma_pct"] is not None
-    assert item["distance_to_50ma_pct"] > 0
+    assert item["distance_to_50ma_pct"] == pytest.approx(10.0, abs=0.01)
 
-
-# ── Test #17: FMP bars exception → skip RS ────────────────────────────────────
 
 def test_fmp_bars_exception_skips_ticker_at_rs_layer(db: Session, fmp: FmpClient):
-    """#17: get_daily_bars raises for ticker X → X gets None ratio → bottom percentile."""
+    """#17: ticker not in cache (bars would have failed) → excluded; others succeed."""
     _insert_universe(db, [("ERRX", 100_000_000_000), ("GOOD", 100_000_000_000)])
     _insert_breakout(db, ["ERRX", "GOOD"])
+    _insert_cache(db, [{"ticker": "GOOD", "rs_percentile": 80.0, "revenue_growth_yoy": 20.0}])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    # GOOD: stock return = +80%, SPY return = +10% → ratio = 8.0 (very high)
-    good_bars = _make_bars(260, base=100.0, final=180.0)
-
-    def _bars(symbol, *args):
-        if symbol == "ERRX":
-            raise ConnectionError("timeout")
-        return spy_bars if symbol == "SPY" else good_bars
-
-    with patch.object(fmp, "get_daily_bars", side_effect=_bars), \
-         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.5}):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=60.0, revenue_growth_yoy_min=0.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=60.0, revenue_growth_yoy_min=0.0))
 
     item_tickers = {i["ticker"] for i in result["items"]}
     assert "GOOD" in item_tickers
-    assert "ERRX" not in item_tickers  # failed bars → bottom percentile, filtered by rs_percentile_min=60
+    assert "ERRX" not in item_tickers
 
-
-# ── Test #18: financial_growth None → fail-open ──────────────────────────────
 
 def test_financial_growth_none_passes_fundamental(db: Session, fmp: FmpClient):
-    """#18: get_financial_growth returns None → ticker passes fundamental layer (fail-open)."""
+    """#18: revenue_growth_yoy=null → fail-open (ticker passes fundamental layer)."""
     _insert_universe(db, [("NOFUND", 100_000_000_000)])
     _insert_breakout(db, ["NOFUND"])
+    _insert_cache(db, [{"ticker": "NOFUND", "rs_percentile": 90.0, "revenue_growth_yoy": None}])
 
-    spy_bars = _make_bars(260, base=100.0, final=110.0)
-    stock_bars = _make_bars(260, base=100.0, final=130.0)
-
-    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
-         patch.object(fmp, "get_financial_growth", return_value=None):
-        svc = _make_service(db, fmp)
-        params = PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=99.0)
-        result = svc.get_pool(params)
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=99.0))
 
     assert result["funnel"]["fundamental"] == 1
     assert any(i["ticker"] == "NOFUND" for i in result["items"])
+
+
+def test_cache_miss_returns_empty_funnel_with_warn_log(db: Session, fmp: FmpClient):
+    """cache_miss: cockpit_pool_cache empty → rs=0, fundamental=0, action=0 + WARN log (Q3=A)."""
+    _insert_universe(db, [("AAA", 100_000_000_000)])
+    _insert_breakout(db, ["AAA"])
+    # no cache rows inserted
+
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0))
+
+    assert result["funnel"]["rs"] == 0
+    assert result["funnel"]["fundamental"] == 0
+    assert result["funnel"]["action"] == 0
+    assert result["items"] == []
+    assert result["funnel"]["tradable"] >= 1
+    assert result["funnel"]["trend"] >= 1
+
+
+def test_pool_service_does_not_call_fmp(db: Session, fmp: FmpClient):
+    """PoolService must not call FmpClient.get_daily_bars or get_financial_growth."""
+    _insert_universe(db, [("AAA", 100_000_000_000)])
+    _insert_breakout(db, ["AAA"])
+    _insert_cache(db, [{"ticker": "AAA", "rs_percentile": 90.0, "revenue_growth_yoy": 20.0}])
+
+    fmp.get_daily_bars = MagicMock(side_effect=AssertionError("must not call FMP bars"))
+    fmp.get_financial_growth = MagicMock(side_effect=AssertionError("must not call FMP growth"))
+
+    svc = _make_service(db, fmp)
+    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0))
+
+    fmp.get_daily_bars.assert_not_called()
+    fmp.get_financial_growth.assert_not_called()
+    assert result["funnel"]["rs"] >= 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PoolCacheService tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_pool_cache_rebuild_writes_correct_row_count(db: Session, fmp: FmpClient):
+    """rebuild_normal: N trend tickers → N rows in cockpit_pool_cache."""
+    _insert_breakout(db, ["AAA", "BBB", "CCC"])
+
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    stock_bars = _make_bars(260, base=100.0, final=120.0)
+
+    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
+         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.2}):
+        result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    assert result.upserted == 3
+    rows = db.execute(select(CockpitPoolCache)).scalars().all()
+    assert len(rows) == 3
+    assert {r.ticker for r in rows} == {"AAA", "BBB", "CCC"}
+
+
+def test_pool_cache_rebuild_replaces_old_rows(db: Session, fmp: FmpClient):
+    """rebuild_replace: old cache rows are deleted before new rows are inserted."""
+    # Seed stale rows for STALE ticker
+    now = datetime.now(timezone.utc)
+    db.add(CockpitPoolCache(
+        ticker="STALE", rs_percentile=99.0, ma50=50.0,
+        last_close=50.0, revenue_growth_yoy=5.0, computed_at=now,
+    ))
+    db.commit()
+
+    _insert_breakout(db, ["NEW1", "NEW2"])
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    stock_bars = _make_bars(260, base=100.0, final=120.0)
+
+    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
+         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.2}):
+        result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    rows = db.execute(select(CockpitPoolCache)).scalars().all()
+    tickers = {r.ticker for r in rows}
+    assert "STALE" not in tickers
+    assert {"NEW1", "NEW2"} == tickers
+
+
+def test_pool_cache_rebuild_bars_failure_excludes_ticker(db: Session, fmp: FmpClient):
+    """rebuild_bars_failure: one ticker's bars fail → excluded, others succeed."""
+    _insert_breakout(db, ["GOOD", "FAIL"])
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    good_bars = _make_bars(260, base=100.0, final=120.0)
+
+    def _bars(symbol, *args):
+        if symbol == "FAIL":
+            raise RuntimeError("simulated error")
+        return spy_bars if symbol == "SPY" else good_bars
+
+    with patch.object(fmp, "get_daily_bars", side_effect=_bars), \
+         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.2}):
+        result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    assert result.upserted == 1
+    rows = db.execute(select(CockpitPoolCache)).scalars().all()
+    assert {r.ticker for r in rows} == {"GOOD"}
+
+
+def test_pool_cache_rebuild_growth_null_fail_open(db: Session, fmp: FmpClient):
+    """rebuild_growth_null: financial-growth missing → revenue_growth_yoy=null (D079 fail-open)."""
+    _insert_breakout(db, ["AAA"])
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    stock_bars = _make_bars(260, base=100.0, final=120.0)
+
+    with patch.object(fmp, "get_daily_bars", side_effect=lambda s, *a: spy_bars if s == "SPY" else stock_bars), \
+         patch.object(fmp, "get_financial_growth", return_value=None):
+        result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    row = db.execute(select(CockpitPoolCache)).scalars().first()
+    assert row is not None
+    assert row.revenue_growth_yoy is None
+
+
+def test_pool_cache_rebuild_no_trend_returns_zero(db: Session, fmp: FmpClient):
+    """rebuild_no_trend: no breakout snapshot → 0 upserted, no exception."""
+    # no breakout rows
+    result = PoolCacheService(db, fmp).rebuild()
+
+    assert result.status == "ok"
+    assert result.upserted == 0
+    rows = db.execute(select(CockpitPoolCache)).scalars().all()
+    assert rows == []
+
+
+def test_pool_cache_rebuild_rs_percentile_ordered(db: Session, fmp: FmpClient):
+    """rebuild_rs_correct: highest-return ticker gets highest rs_percentile."""
+    _insert_breakout(db, ["HIGH", "LOW"])
+    spy_bars = _make_bars(260, base=100.0, final=110.0)
+    high_bars = _make_bars(260, base=100.0, final=200.0)  # +100% vs SPY +10%
+    low_bars = _make_bars(260, base=100.0, final=105.0)   # +5% < SPY +10%
+
+    def _bars(symbol, *args):
+        if symbol == "SPY":
+            return spy_bars
+        if symbol == "HIGH":
+            return high_bars
+        return low_bars
+
+    with patch.object(fmp, "get_daily_bars", side_effect=_bars), \
+         patch.object(fmp, "get_financial_growth", return_value={"revenueGrowth": 0.2}):
+        PoolCacheService(db, fmp).rebuild()
+
+    rows = {r.ticker: r for r in db.execute(select(CockpitPoolCache)).scalars().all()}
+    assert rows["HIGH"].rs_percentile > rows["LOW"].rs_percentile
+
+
+# ── cron registration test ────────────────────────────────────────────────────
+
+def test_pool_cache_job_registered_in_scheduler():
+    """Cron test: scheduler registers POOL_CACHE_JOB_ID after start_scheduler (autostart=False)."""
+    from app.services.refresh_job import POOL_CACHE_JOB_ID, shutdown_scheduler, start_scheduler
+
+    # reset module-level singleton
+    shutdown_scheduler()
+
+    session_factory = MagicMock()
+    fmp_factory = MagicMock()
+
+    sched = start_scheduler(session_factory, fmp_factory, autostart=False)
+    try:
+        job_ids = {job.id for job in sched.get_jobs()}
+        assert POOL_CACHE_JOB_ID in job_ids
+    finally:
+        shutdown_scheduler()

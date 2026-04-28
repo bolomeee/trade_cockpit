@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_fmp_client
 from app.main import app
+from app.models.cockpit_pool_cache import CockpitPoolCache
 from app.models.earnings_event import EarningsEvent
 from app.models.market_breakout_scan import MarketBreakoutScan
 from app.models.market_scan_universe import MarketScanUniverse
@@ -134,6 +135,27 @@ def _add_earnings(db: Session, ticker: str, earnings_date: date) -> None:
         ticker=ticker,
         earnings_date=earnings_date,
         fetched_at=datetime.now(timezone.utc),
+    ))
+    db.flush()
+
+
+def _add_cache(
+    db: Session,
+    ticker: str,
+    *,
+    rs_percentile: float = 90.0,
+    ma50: float = 100.0,
+    last_close: float = 100.0,
+    revenue_growth_yoy: float | None = 20.0,
+) -> None:
+    """Seed a cockpit_pool_cache row so the ticker passes RS + fundamental layers."""
+    db.add(CockpitPoolCache(
+        ticker=ticker,
+        rs_percentile=rs_percentile,
+        ma50=ma50,
+        last_close=last_close,
+        revenue_growth_yoy=revenue_growth_yoy,
+        computed_at=datetime.now(timezone.utc),
     ))
     db.flush()
 
@@ -302,13 +324,13 @@ def test_items_sorted_by_rs_percentile_desc(
     def _bars_fn(symbol, *args):
         return bars_map.get(symbol, spy_b)
 
-    fake_fmp.get_daily_bars = _bars_fn
-    fake_fmp.get_financial_growth = lambda t: {"revenueGrowth": 0.3}
-
     _add_universe(db_session, "HIGH")
     _add_universe(db_session, "LOW")
     _add_breakout(db_session, "HIGH")
     _add_breakout(db_session, "LOW")
+    # Cache: HIGH has higher rs_percentile than LOW
+    _add_cache(db_session, "HIGH", rs_percentile=90.0)
+    _add_cache(db_session, "LOW", rs_percentile=30.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0})
@@ -330,6 +352,7 @@ def test_limit_truncates_items_but_action_unchanged(
     for i in range(5):
         _add_universe(db_session, f"L{i:02d}")
         _add_breakout(db_session, f"L{i:02d}")
+        _add_cache(db_session, f"L{i:02d}", rs_percentile=90.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0, "limit": 2})
@@ -350,6 +373,7 @@ def test_watchlist_ticker_has_setup_fields(
     _add_breakout(db_session, "WL1")
     _add_stock(db_session, "WL1")
     _add_setup_snapshot(db_session, "WL1", setup_type="BREAKOUT", trend_score=5, suggested_action="enter")
+    _add_cache(db_session, "WL1", rs_percentile=90.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0})
@@ -372,6 +396,7 @@ def test_non_watchlist_ticker_has_null_setup_fields(
     _configure_fmp_passthrough(fake_fmp)
     _add_universe(db_session, "NWL")
     _add_breakout(db_session, "NWL")
+    _add_cache(db_session, "NWL", rs_percentile=90.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0})
@@ -394,8 +419,9 @@ def test_earnings_date_populated_when_event_exists(
     _configure_fmp_passthrough(fake_fmp)
     _add_universe(db_session, "ERN")
     _add_breakout(db_session, "ERN")
-    future_date = _TODAY + timedelta(days=15)
+    future_date = date.today() + timedelta(days=15)
     _add_earnings(db_session, "ERN", future_date)
+    _add_cache(db_session, "ERN", rs_percentile=90.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0})
@@ -414,6 +440,7 @@ def test_no_earnings_event_gives_null_fields(
     _configure_fmp_passthrough(fake_fmp)
     _add_universe(db_session, "NOERN")
     _add_breakout(db_session, "NOERN")
+    _add_cache(db_session, "NOERN", rs_percentile=90.0)
     db_session.commit()
 
     resp = client.get("/api/cockpit/pool", params={"rsPercentileMin": 0})
