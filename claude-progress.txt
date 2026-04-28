@@ -245,3 +245,28 @@
 
 [下一步]
   运行 acceptance skill 验收 F211-b；或继续 F211-c（News 页 AI 摘要 bar）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-28] F206-c2 状态漂移修正
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 发现：F206-c2 已在之前 session 完整实现并提交（commits 4082834→6958fde），
+但 a8d3445 误将 features.json 重置为 contract_agreed。本次 Evaluator 自检确认：
+
+✅ 文件：9 文件全部存在（6 生产 + 3 测试），行数全部 ≤ 350
+✅ 测试：S1–S20 全过，F206-c2 专项 41/41
+✅ 全量回归：259/262（3 预先存在 TopNav 失败）
+✅ 无硬编码 hex（S19 静态检查）
+✅ CockpitRegistry 已注册 cockpit.pending-orders
+✅ DECISIONS.md D060-a 已存在
+✅ design-spec §Widget 8 待决策项已标注 D060-a
+
+🔧 本次变更：
+  - 修正 docs/需求/features.json（F206-c2 → done，F206 status → done）
+
+📊 F206 状态：
+  F206-a：✅ done
+  F206-b1：✅ done
+  F206-b2：✅ done
+  F206-c1：✅ done
+  F206-c2：✅ done（F206 收尾完成）

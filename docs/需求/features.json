@@ -2791,17 +2791,18 @@
       "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
       "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "contract_agreed",
-      "active_sub_sprint": "F206-c2",
+      "status": "done",
+      "phase": "done",
+      "active_sub_sprint": null,
+      "completed_at": "2026-04-28",
       "sub_sprints": {
         "F206-a": "done",
         "F206-b1": "done",
         "F206-b2": "done",
         "F206-c1": "done",
-        "F206-c2": "contract_agreed"
+        "F206-c2": "done"
       },
-      "_status_drift_note": "2026-04-28 修正：F206 之前被错标 status:done/completed_at:2026-04-26，实际仅 a/b1/b2/c1 完成，c2（PendingOrdersWidget 前端）未做即被跳过去做 F207。本次推进补做 c2 收尾。",
+      "_status_drift_note": "2026-04-28 二次修正：a8d3445 误将 F206-c2 从 done 重置为 contract_agreed；实际 F206-c2 已在同一 session 内完整实现并提交（commits 4082834→6958fde→e4f8403），9 文件（6 生产 + 3 测试），41/41 tests 全过，S1-S20 满足，Evaluator 自检全过。",
       "dependencies": [
         "F203"
       ],
@@ -2901,11 +2902,11 @@
         {
           "date": "2026-04-28",
           "subtask": "F206-c2",
-          "phase": "contract_agreed",
-          "summary": "Sprint Contract 已确认（用户全意 §7 6 项）。D060-a：v1.9 [Triggered] 不联动自动创建 Position，仅切 status + toast 提示。distance 颜色按绝对值阈值 3 档。Edit dialog 不暴露 status。defaultLayout (6,8,6,8) 与 c1 同行右侧。category 复用 'position'。6 生产文件 + 3 测试文件，下一 session Generator 模式从开发步骤 1 开始。"
+          "phase": "done",
+          "summary": "PendingOrdersWidget 前端完成。cockpitPendingOrdersApi（4 endpoint client + camelCase types）+ PendingOrdersWidget（Active/All 切换 + [+New Order] + 表头 Ticker/Setup/Entry/Stop/Last/Dist/Risk%/Exp + 4 状态）+ _pendingOrderRow（行渲染 + distance 3 档颜色 + [Triggered]/[Cancel]/[Edit]/[✕] 行按钮）+ PendingOrderFormDialog（react-hook-form + zod，new/edit 模式，dirty fields PATCH）+ _pendingOrderFormSchemas + CockpitRegistry 注册 cockpit.pending-orders。决策回写：DECISIONS.md D060-a + design-spec §Widget 8 标注。6 生产文件 + 3 测试文件，S1–S20 全过，41/41 tests，全量回归 259/262（3 预先存在 TopNav 失败，非本 sprint 引入）。"
         }
       ],
-      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端 ✅ / F206-b1 PendingOrder 后端 ✅ / F206-b2 Risk Summary + APScheduler EXPIRED ✅ / F206-c1 PositionListWidget 前端 ✅ / F206-c2 PendingOrdersWidget 前端 🟡 contract_agreed（待 Generator）。F206-c 因 7 文件超 6 上限拆为 c1+c2，每个 ≤6 文件。"
+      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端 ✅ / F206-b1 PendingOrder 后端 ✅ / F206-b2 Risk Summary + APScheduler EXPIRED ✅ / F206-c1 PositionListWidget 前端 ✅ / F206-c2 PendingOrdersWidget 前端 ✅。F206-c 因 7 文件超 6 上限拆为 c1+c2，每个 ≤6 文件。F206 全部子 sprint 完成。"
     },
     {
       "id": "F207",
