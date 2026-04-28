@@ -1,99 +1,103 @@
-# SESSION-HANDOFF
+# SESSION-HANDOFF — F205-e Pool Cache
 
-> 更新：2026-04-27 PM | 阶段：F205-d ✅ needs_review → 下一阶段待定
-> 项目：MA150 Tracker → Cockpit
-> 当前 active_sprint：**F205-d**（PoolBuilderWidget 前端） / phase=`needs_review`
+> 生成时间：2026-04-28 | Branch: cockpit | Commit: bb64a70
 
 ---
 
-## 已完成内容（截至本 session）
+## 已完成
 
-### F205-a / F205-b / F205-c ✅ done
-- 后端 `GET /api/cockpit/pool` 已上线，820 全量回归通过
+**F205-e：Pool Cache 周级预算（RS + Fundamental 层）**
 
-### F205-d ✅ 全部实现，needs_review
-commit: `68ddbed` `feat(F205-d): PoolBuilderWidget 前端实现`
+用户确认：Q1=A（trend-only cache）/ Q2=A（Mon 06:30 UTC）/ Q3=A（cache miss 返空 funnel）/ Q4=A（缓存 ma50 + last_close）/ Q5=**B**（加 admin endpoint）
 
-| 文件 | 状态 |
-|------|------|
-| `frontend/src/cockpit/lib/api/cockpitPoolApi.ts` | 新建 ✅ |
-| `frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts` | 新建 ✅ (5 用例) |
-| `frontend/src/cockpit/widgets/_poolFilterBar.tsx` | 新建 ✅ |
-| `frontend/src/cockpit/widgets/PoolBuilderWidget.tsx` | 新建 ✅ |
-| `frontend/src/cockpit/widgets/__tests__/PoolBuilderWidget.test.tsx` | 新建 ✅ (11 用例) |
-| `frontend/src/cockpit/CockpitRegistry.ts` | 修改 ✅ |
+### 交付文件（7 个）
 
-**Evaluator 自检结论**（全部通过）：
-- TypeScript `pnpm tsc --noEmit`：无错
-- 前端全量回归：21 测试文件，254/254 通过
-- API client 字段名与 API-CONTRACT.md 严格对应
-- 颜色/字体/间距全部走 token，无硬编码 hex
-- 非 watchlist null 字段显示 `—`（D080 合规）
-- react-query staleTime 60_000ms，filter debounce 300ms
-- `[+ Add]` 成功后同时 invalidate `['cockpit-pool']` + `['watchlist']`
-- `cockpit.pool-builder` 注册 defaultLayout `{ x:0, y:22, w:12, h:10 }`
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `backend/alembic/versions/016_f205e_pool_cache.py` | 新建 | `cockpit_pool_cache` 表迁移，含 index |
+| `backend/app/models/cockpit_pool_cache.py` | 新建 | SQLAlchemy 模型 |
+| `backend/app/services/cockpit/pool_cache_service.py` | 新建 | `PoolCacheService.rebuild()`：从 trend snapshot 拉 FMP，事务内 DELETE+INSERT |
+| `backend/app/services/cockpit/pool_service.py` | 修改 | 删除 ThreadPoolExecutor / FMP 调用，改读 `cockpit_pool_cache` |
+| `backend/app/services/refresh_job.py` | 修改 | 注册 `POOL_CACHE_JOB_ID` Mon 06:30 UTC cron（D081） |
+| `backend/app/routers/admin.py` | 新建 | `POST /api/admin/refresh-pool-cache`（Q5=B） |
+| `backend/tests/test_pool_service.py` | 修改 | 全量重写 fixture（seed cache 取代 FMP mock）+ 7 个新 PoolCacheService 测试 + cron 注册测试 |
+
+文档同步：`DATA-MODEL.md §CockpitPoolCache`、`DECISIONS.md D081`、`F205-e-contract.md → needs_review`
+
+### 测试结果
+
+```
+829 passed, 0 failed（含 18 个 test_pool_service 新测试）
+```
 
 ---
 
 ## 当前状态
 
-| 项 | 值 |
-|---|---|
-| active_sprint | F205-d |
-| active_sprint_phase | needs_review |
-| F205-c phase | needs_review |
-| 后端全量回归 | 820 passed |
-| 前端全量回归 | 254 passed |
+- Branch: `cockpit`，最新 commit: `bb64a70 feat(F205-e)`
+- DB 迁移已 apply（`dev.db`）
+- **cockpit_pool_cache 表为空**：首次使用前必须手动触发 rebuild（见下方）
 
 ---
 
-## 功能说明（F205-d 实现细节）
+## 下一步任务
 
-### cockpitPoolApi.ts
-- 类型：`PoolFilters` / `PoolFunnel` / `PoolItem` / `PoolData`
-- `getCockpitPool(filters)` → 拼接 query string，60s `AbortController` timeout
-- 导出常量：`POOL_TIMEOUT_MS = 60_000`
+### 立即（首次部署 / 本地验收）
 
-### _poolFilterBar.tsx
-- 受控 props：`value: PoolFilters`，`onChange`
-- 内部维护 `local` state（即时 UI 更新），`FILTER_DEBOUNCE_MS = 300ms` 后调 `onChange`
-- 9 个输入字段：marketCapMin / priceMin / advMin / trendScoreMin / rsPercentileMin / revenueGrowthYoyMin / sectors / setupTypes / limit
-- 清理：`useEffect` 在 unmount 时 clearTimeout
+```bash
+# 1. 手动触发 cache rebuild（开启后端后）
+curl -X POST http://localhost:8000/api/admin/refresh-pool-cache
+# 或者 Python CLI（不需要后端运行）：
+cd backend && uv run python -c "
+from app.database import SessionLocal
+from app.external.fmp_client import FmpClient, default_rate_limiter
+from app.services.cockpit.pool_cache_service import PoolCacheService
+db = SessionLocal()
+fmp = FmpClient(rate_limiter=default_rate_limiter())
+result = PoolCacheService(db, fmp).rebuild()
+print(result)
+"
 
-### PoolBuilderWidget.tsx
-- Funnel 5 段：各段 `aria-pressed`，点击高亮（不切换表格内容，F205-e）
-- Filter Bar：默认展开（inline 一行）
-- 候选表：13 列，包含所有 data-mapping.md §Cockpit-3 字段
-- Add 按钮：`disabled` 当 `inWatchlist=true` 或正在提交
-- `POOL_STALE_TIME_MS = 60_000`
+# 2. 验证 pool 响应时间 < 500ms
+curl -s -w "\n%{time_total}s\n" http://localhost:8000/api/cockpit/pool
 
-### CockpitRegistry.ts
-新增：
-```ts
-'cockpit.pool-builder': {
-  id: 'cockpit.pool-builder',
-  title: 'Pool Builder',
-  component: PoolBuilderWidget,
-  defaultLayout: { x: 0, y: 22, w: 12, h: 10, minW: 6, minH: 6 },
-  category: 'pool',
-}
+# 3. 改 filter 验证也 < 500ms
+curl -s -w "\n%{time_total}s\n" "http://localhost:8000/api/cockpit/pool?rsPercentileMin=50"
+
+# 4. 检查 system_logs
+curl http://localhost:8000/api/logs | python3 -m json.tool | grep pool_cache
 ```
 
----
+### F205-f（如需）
 
-## 下一步建议
-
-F205 系列已完成（a/b/c/d），可以：
-1. **验收 F205-d**：在 Cockpit 页面实际查看 PoolBuilderWidget 渲染效果
-2. **开始 F206**（Earnings Calendar Widget，v1.9 P1 下一个）
-3. **启动 F205-e**（Funnel 各层数据分层展示，需后端返回各层 items）
+- 合约提到若 test 改动超复杂可拆 F205-f，本次顺利完成无需拆分
+- 可选：给 admin endpoint 加 API key 鉴权（当前无鉴权）
 
 ---
 
-## 下一 Session 恢复指令
+## 未决事项
 
-如继续 F205 验收：
-> 验收 F205-d PoolBuilderWidget，打开 Cockpit 页面检查渲染效果和交互。
+| # | 事项 | 影响 |
+|---|------|------|
+| 1 | cache 表首次为空 | 部署后需手动调用 rebuild 一次；下次周一 cron 前数据不自动刷新 |
+| 2 | Q5=B admin endpoint 无鉴权 | 任何能访问后端的请求都可触发 rebuild（仅内部服务，暂可接受） |
+| 3 | universe_refresh 和 pool_cache 时序 | 每月 1 日 universe 刷新后，新增 ticker 需等到下个周一才进 cache |
 
-如开始 F206：
-> 继续开发 F206。读取 SESSION-HANDOFF.md + docs/需求/features.json 确认下一个 sprint。
+> 2026-04-28 update：原第 4 项（FMP 分页 / earnings dedup / admin endpoint 4 文件 unstaged 改动）已绑定归属并 commit：FMP 分页 → F105 fix，earnings dedup → F204-a fix，`/refresh-earnings` `/refresh-setup` → F204-b + F202-c 扩展。
+
+---
+
+## Evaluator 自检结果（F205-e 合约 §5）
+
+- [x] 单元测试全部通过（829 passed）
+- [x] 后端全量回归通过（829 > 820）
+- [x] PoolService 不再 import ThreadPoolExecutor / 不调用 FmpClient bars
+- [x] cron 注册后 jobs 列表包含 `cockpit_pool_cache_rebuild`（test 验证）
+- [x] cache 表迁移可 upgrade（已测）；downgrade 已实现
+- [x] 新表 schema 与 contract §2.1 一致（含 index）
+- [x] PoolCacheService 写日志：成功 OK / 失败 ERROR
+- [x] cache miss 路径有 WARN 日志
+- [x] DATA-MODEL.md 追加 §CockpitPoolCache
+- [x] DECISIONS.md 追加 D081
+- [x] PoolService 修改后行数 < 修改前（删除 FMP 逻辑）
+- [ ] Lint：未运行 ruff，建议下次 session 前检查
