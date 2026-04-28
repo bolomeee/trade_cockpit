@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     ai_monthly_budget_usd: float = 20.0         # 月度熔断阈值 (D069)
     ai_memo_cache_ttl_hours: int = 24           # memo dedup 命中窗口 (D069)
     ai_schema_version: str = "v1"              # schema 失效旗标 (D069)
+    # F211-a2 per-task model override (D075)
+    ai_task_overrides_json: str = ""  # JSON dict: task_type → {model, base_url, api_key, input_cost_per_1m, output_cost_per_1m}
 
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
 
