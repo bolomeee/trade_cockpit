@@ -6,7 +6,6 @@ Covers contract completion criteria C1–C14.
 from __future__ import annotations
 
 import json
-import logging
 
 import pytest
 
@@ -144,13 +143,15 @@ def test_resolve_override_empty_model_falls_back_to_tier(monkeypatch: pytest.Mon
 
 def test_resolve_override_invalid_json_logs_warning_and_falls_back(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    import app.ai.routing as routing_mod
+
+    received: list[str] = []
+    monkeypatch.setattr(routing_mod.log, "warning", lambda msg, *a: received.append(msg % a if a else msg))
     monkeypatch.setattr(settings, "ai_task_overrides_json", "{not valid json")
-    with caplog.at_level(logging.WARNING, logger="app.ai.routing"):
-        route = resolve("market_narrator")
+    route = resolve("market_narrator")
     assert route.model == settings.ai_model_default
-    assert any("parse failed" in r.message for r in caplog.records)
+    assert any("parse failed" in w for w in received)
 
 
 # ---------------------------------------------------------------------------
@@ -159,13 +160,15 @@ def test_resolve_override_invalid_json_logs_warning_and_falls_back(
 
 def test_resolve_override_non_dict_json_falls_back(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    import app.ai.routing as routing_mod
+
+    received: list[str] = []
+    monkeypatch.setattr(routing_mod.log, "warning", lambda msg, *a: received.append(msg % a if a else msg))
     monkeypatch.setattr(settings, "ai_task_overrides_json", '["news_summarizer"]')
-    with caplog.at_level(logging.WARNING, logger="app.ai.routing"):
-        route = resolve("market_narrator")
+    route = resolve("market_narrator")
     assert route.model == settings.ai_model_default
-    assert any("not a JSON object" in r.message for r in caplog.records)
+    assert any("not a JSON object" in w for w in received)
 
 
 # ---------------------------------------------------------------------------

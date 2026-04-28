@@ -1886,3 +1886,33 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **预期效果**：GET /api/cockpit/pool filter 改动响应时间 30s → < 500ms。
 
 **影响文件**：`alembic/versions/016_f205e_pool_cache.py`（新建），`app/models/cockpit_pool_cache.py`（新建），`app/services/cockpit/pool_cache_service.py`（新建），`app/services/cockpit/pool_service.py`（修改，删除 FMP 调用），`app/services/refresh_job.py`（新增 cron），`app/routers/admin.py`（新建，Q5=B），`tests/test_pool_service.py`（重写 fixture + 新增 PoolCacheService 测试组）。
+
+---
+
+## D075：F211-a2 per-task model override（D064 增量）
+
+**日期**：2026-04-28
+**触发**：F211 三 task 实际调用中，`news_summarizer`（长上下文）/ `journal_assistant` monthly（推理密集）/ `candidate_ranker`（高频）希望脱离三 tier 单端点，按 task 切到不同 provider/cost。
+
+**决策**：
+1. 新 .env 字段 `AI_TASK_OVERRIDES_JSON`，单 JSON dict，key = task_type，value = `{model, base_url?, api_key?, input_cost_per_1m?, output_cost_per_1m?}`。
+2. `routing.resolve()` 签名升级为返回 `ResolvedRoute` frozen dataclass（tier/model/base_url/api_key/custom_input_cost/custom_output_cost）；override 命中（model 非空）→ 全字段透传；否则走 D064 三 tier 兜底。`resolve_tier()` / `resolve_model()` 旧 API 保留，零回归。
+3. `gateway._call_litellm` 新签名 `(route: ResolvedRoute, input_dict, output_schema)`：透传 `api_base=route.base_url` 给 litellm；若 override 含自定义 cost，直接传 `input_cost_per_token` / `output_cost_per_token` 给 `litellm.completion()`，`completion_cost(completion_response=response)` 自动使用这些值（官方 SDK Custom Pricing 路径，context7 验证）。**不使用 `register_model` 全局 dict**（避免线程锁 + 全局状态）。
+4. JSON 解析失败、非 dict、register 失败：**log warning，整体 fallback 到 tier 默认**，不抛异常 — fail-soft 优先于 fail-fast，保证现有 .env 用户零感知。
+
+**放弃**：
+- 方案 B：每 task 独立 6 个 .env 变量（`AI_NEWS_MODEL` / `AI_NEWS_BASE_URL` …）。放弃：7 task × 5 字段 = 35 变量，污染 .env，增 task 要改 Settings 类。
+- 方案 C：admin endpoint + UI 切 model。放弃：个人投资工具定位，重启改 .env 已足够；增 endpoint 引入鉴权/审计成本。
+- 方案 D：override 写进 `cockpit_params.py`。放弃：违反 D070 line 1527（AI 模型走 .env 不进 cockpit_params.py）。
+- 方案 E：`register_model` 全局注入 cost 后 `completion_cost(response)` 读取。放弃（context7 验证时发现更优路径）：直接传 `input/output_cost_per_token` 给 `completion()` 是官方文档的 SDK Custom Pricing 推荐路径，response 内携带 cost 参数，无需全局状态/锁，且语义更清晰。
+
+**影响**：
+- `backend/app/config.py`：增 `ai_task_overrides_json: str = ""`
+- `backend/app/ai/routing.py`：新 `ResolvedRoute` dataclass + `_parse_overrides` + `resolve()` 新签名
+- `backend/app/ai/gateway.py`：`_call_litellm` 新签名透传 `api_base`；直接 cost params 传 litellm
+- `.env.example`：追加 AI Gateway 完整注释段 + `AI_TASK_OVERRIDES_JSON` 示例
+- D064 段落不需要重写，本 D075 作为增量决策
+
+**未来扩展点**：
+- 若需要 LiteLLM Router 多模型 fallback，扩展 `ResolvedRoute` 加 `fallbacks: list[str]`，gateway 改用 `litellm.Router.completion`。本 sprint 不做。
+- 若需要 `extra_headers` / `timeout` / `max_retries`，a3 sprint 扩展 `ResolvedRoute` 字段。

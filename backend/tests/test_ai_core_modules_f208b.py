@@ -15,7 +15,7 @@ from app.ai.errors import (
     AiSchemaError,
 )
 from app.ai.memo_repo import AiMemoRepository, compute_input_hash
-from app.ai.routing import known_task_types, resolve, resolve_model, resolve_tier
+from app.ai.routing import ResolvedRoute, known_task_types, resolve, resolve_model, resolve_tier
 from app.config import settings
 from app.models.ai_memo import AiMemo
 
@@ -95,9 +95,13 @@ def test_routing_seven_task_types_mapped():
         "journal_assistant": "complex",
     }
     for task, expected_tier in expected_tiers.items():
-        tier, model = resolve(task)
-        assert tier == expected_tier, f"{task}: expected tier {expected_tier!r}, got {tier!r}"
-        assert isinstance(model, str) and model
+        route = resolve(task)
+        assert isinstance(route, ResolvedRoute)
+        assert route.tier == expected_tier, f"{task}: expected tier {expected_tier!r}, got {route.tier!r}"
+        assert isinstance(route.model, str) and route.model
+        assert route.base_url is None
+        assert route.api_key == settings.openai_api_key
+        assert route.custom_input_cost is None
 
 
 def test_routing_unknown_task_type_raises():
@@ -107,9 +111,9 @@ def test_routing_unknown_task_type_raises():
 
 def test_routing_uses_settings_models(monkeypatch):
     monkeypatch.setattr(settings, "ai_model_critical", "claude-sonnet-4-6")
-    tier, model = resolve("trade_plan")
-    assert tier == "critical"
-    assert model == "claude-sonnet-4-6"
+    route = resolve("trade_plan")
+    assert route.tier == "critical"
+    assert route.model == "claude-sonnet-4-6"
 
 
 # ---------------------------------------------------------------------------

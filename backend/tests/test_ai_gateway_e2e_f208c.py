@@ -33,7 +33,7 @@ def _make_litellm_mock(output: dict | None = None, raise_exc: Exception | None =
     """Return a _call_litellm replacement that either returns fixed data or raises."""
     result = output or _ECHO_OUTPUT
 
-    def mock(model, input_dict, output_schema, api_key):
+    def mock(route, input_dict, output_schema):
         if raise_exc is not None:
             raise raise_exc
         return result, 10, 5, Decimal("0.001")
@@ -69,7 +69,7 @@ class TestGatewayPaths:
         """Second identical call → cache_hit=True, LiteLLM called once, no new memo row."""
         call_count = [0]
 
-        def mock(model, input_dict, output_schema, api_key):
+        def mock(route, input_dict, output_schema):
             call_count[0] += 1
             return _ECHO_OUTPUT, 10, 5, Decimal("0.001")
 
@@ -93,7 +93,7 @@ class TestGatewayPaths:
         """no_cache=True on second call → fresh LiteLLM call, second memo row inserted."""
         call_count = [0]
 
-        def mock(model, input_dict, output_schema, api_key):
+        def mock(route, input_dict, output_schema):
             call_count[0] += 1
             return _ECHO_OUTPUT, 10, 5, Decimal("0.001")
 
@@ -137,7 +137,7 @@ class TestGatewayPaths:
         litellm_called = []
         monkeypatch.setattr(
             "app.ai.gateway._call_litellm",
-            lambda model, input_dict, output_schema, api_key: litellm_called.append(1)
+            lambda route, input_dict, output_schema: litellm_called.append(1)
             or (_ECHO_OUTPUT, 0, 0, Decimal("0")),
         )
         from app.config import settings
@@ -294,7 +294,7 @@ class TestEndpointEnvelope:
         """Success path → strict camelCase envelope matches API-CONTRACT."""
         import app.ai.gateway as gw
 
-        def fake_litellm(model, input_dict, output_schema, api_key):
+        def fake_litellm(route, input_dict, output_schema):
             return {"summary": "bullish"}, 10, 5, Decimal("0.001")
 
         monkeypatch.setattr(gw, "_call_litellm", fake_litellm)
@@ -348,7 +348,7 @@ class TestEndpointEnvelope:
         """AiProviderError → 502 AI_PROVIDER_ERROR."""
         import app.ai.gateway as gw
 
-        def fail(model, input_dict, output_schema, api_key):
+        def fail(route, input_dict, output_schema):
             raise AiProviderError("timeout")
 
         monkeypatch.setattr(gw, "_call_litellm", fail)
@@ -360,7 +360,7 @@ class TestEndpointEnvelope:
         """Output fails secondary schema validation → 502 AI_SCHEMA_ERROR."""
         import app.ai.gateway as gw
 
-        def bad_output(model, input_dict, output_schema, api_key):
+        def bad_output(route, input_dict, output_schema):
             return {"wrong_field": "bad"}, 10, 5, Decimal("0.001")
 
         monkeypatch.setattr(gw, "_call_litellm", bad_output)
@@ -385,7 +385,7 @@ class TestEndpointEnvelope:
         import app.ai.gateway as gw
         from app.ai import guardrail as gr
 
-        def ok_litellm(model, input_dict, output_schema, api_key):
+        def ok_litellm(route, input_dict, output_schema):
             return {"summary": "ok"}, 10, 5, Decimal("0.001")
 
         def bad_guardrail(task_type, input_dict, output_dict):
@@ -492,7 +492,7 @@ class TestF210aGuardrailIntegration:
         """trade_plan: LLM returns modified size → AiGuardrailViolation, memo not written."""
         tampered_output = {**_TP_OUTPUT_VALID, "size": 99}  # size mismatch
 
-        def mock_litellm(model, input_dict, output_schema, api_key):
+        def mock_litellm(route, input_dict, output_schema):
             return tampered_output, 15, 10, Decimal("0.002")
 
         monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
@@ -505,7 +505,7 @@ class TestF210aGuardrailIntegration:
 
     def test_C10_candidate_ranker_no_guardrail_memo_written(self, db_session, monkeypatch):
         """candidate_ranker: valid LLM output → memo written, no guardrail called."""
-        def mock_litellm(model, input_dict, output_schema, api_key):
+        def mock_litellm(route, input_dict, output_schema):
             return _CR_OUTPUT_VALID, 20, 15, Decimal("0.003")
 
         monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
@@ -584,7 +584,7 @@ _CD_OUTPUT_BANNED = {
 class TestF211a1GatewayIntegration:
     def test_C13a_contradiction_detector_success_memo_written(self, db_session, monkeypatch):
         """contradiction_detector: mock LLM clean output → memo written, guardrail passes."""
-        def mock_litellm(model, input_dict, output_schema, api_key):
+        def mock_litellm(route, input_dict, output_schema):
             return _CD_OUTPUT_CLEAN, 20, 10, Decimal("0.001")
 
         monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
@@ -601,7 +601,7 @@ class TestF211a1GatewayIntegration:
 
     def test_C13b_banned_phrase_in_recommendation_violation_no_memo(self, db_session, monkeypatch):
         """contradiction_detector: recommendation contains 'buy now' → AiGuardrailViolation, no new memo."""
-        def mock_litellm(model, input_dict, output_schema, api_key):
+        def mock_litellm(route, input_dict, output_schema):
             return _CD_OUTPUT_BANNED, 20, 10, Decimal("0.001")
 
         monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
@@ -613,3 +613,71 @@ class TestF211a1GatewayIntegration:
             )
 
         assert db_session.query(AiMemo).count() == count_before
+
+    def test_C13c_override_path_passes_api_base_and_cost(
+        self, db_session, monkeypatch
+    ):
+        """F211-a2 C15: news_summarizer override → _call_litellm receives ResolvedRoute with override fields.
+
+        Asserts:
+        - route.model / base_url / custom costs == override values
+        - memo written with model_used = override model
+        """
+        import json
+        from decimal import Decimal as D
+
+        from app.ai.routing import ResolvedRoute
+        from app.config import settings as cfg
+
+        override_payload = {
+            "news_summarizer": {
+                "model": "anthropic/claude-sonnet-4-6",
+                "base_url": "https://api.anthropic.com",
+                "api_key": "sk-ant-test",
+                "input_cost_per_1m": 3.0,
+                "output_cost_per_1m": 15.0,
+            }
+        }
+        monkeypatch.setattr(cfg, "ai_task_overrides_json", json.dumps(override_payload))
+
+        captured_route: list[ResolvedRoute] = []
+
+        _NS_INPUT = {
+            "articles": [
+                {
+                    "title": "Market rallies",
+                    "contentText": "Stocks rose sharply.",
+                    "tickers": ["AAPL"],
+                    "publishedAt": "2026-04-28T09:00:00Z",
+                }
+            ],
+            "windowDays": 5,
+        }
+        _NS_OUTPUT = {
+            "catalystSummary": "Market rallied on tech earnings.",
+            "sentiment": "positive",
+            "relevantTickers": ["AAPL"],
+            "risks": [],
+        }
+
+        def mock_litellm(route, input_dict, output_schema):
+            captured_route.append(route)
+            return _NS_OUTPUT, 100, 50, D("0.002")
+
+        monkeypatch.setattr("app.ai.gateway._call_litellm", mock_litellm)
+
+        result = AiGateway(db_session).run(
+            task_type="news_summarizer", input_dict=_NS_INPUT
+        )
+
+        assert len(captured_route) == 1
+        r = captured_route[0]
+        assert r.model == "anthropic/claude-sonnet-4-6"
+        assert r.base_url == "https://api.anthropic.com"
+        assert r.custom_input_cost == 3.0
+        assert r.custom_output_cost == 15.0
+
+        assert result.meta.model_used == "anthropic/claude-sonnet-4-6"
+        memo = db_session.query(AiMemo).filter_by(task_type="news_summarizer").first()
+        assert memo is not None
+        assert memo.model_used == "anthropic/claude-sonnet-4-6"
