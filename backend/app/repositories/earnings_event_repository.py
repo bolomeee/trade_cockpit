@@ -38,6 +38,12 @@ class EarningsEventRepository:
         if not records:
             return 0
 
+        # Deduplicate within the batch by (ticker, earnings_date); last record wins
+        deduped: dict[tuple, dict] = {}
+        for r in records:
+            deduped[(r["ticker"], r["earnings_date"])] = r
+        records = list(deduped.values())
+
         for record in records:
             ticker = record["ticker"]
             earnings_date = record["earnings_date"]
