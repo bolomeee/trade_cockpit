@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AiNewsSummaryBar } from '@/components/news/AiNewsSummaryBar'
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -39,6 +40,9 @@ export default function News() {
 
   return (
     <div className="p-4">
+      <div className="mb-3">
+        <AiNewsSummaryBar />
+      </div>
       <div ref={containerRef}>
         {mounted && layout.length > 0 && (
           <ReactGridLayout
