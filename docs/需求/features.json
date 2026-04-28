@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F206-c2",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint": "F211-b",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3473,7 +3473,7 @@
       "sub_sprints": {
         "F211-a1": "done",
         "F211-a2": "done",
-        "F211-b": "contract_agreed",
+        "F211-b": "needs_review",
         "F211-c": "design_needed",
         "F211-d": "design_needed"
       },
@@ -3559,6 +3559,13 @@
           "summary": "Sprint Contract 已确认。范围：DecisionPanelWidget 内新增 'AI Contradictions' 区，结构镜像 F210-b 的 AiTradePlanSection（lazy trigger / 6 态状态机 / cache badge / divider）。0 行后端改动，复用 F211-a1 的 contradiction_detector schema 和 F208-c /api/ai/{task_type} 通用 endpoint。5 个文件：AiContradictionsSection.tsx 新建（~250 行）+ DecisionPanelWidget.tsx 修改（~10 行 diff，引入 + 渲染 divider）+ DecisionPanelWidget.test.tsx +7 case + cockpit/lib/utils/dates.ts 新建（calcDaysUntil 抽取共享）+ features.json 更新。input 13 字段中 5 个（trendScore / rsPercentile / readySignal / regime / regimeScore）通过复用 ['setup-monitor'] / ['cockpit-regime'] react-query cache 读取，不新增 endpoint。setupMonitor 缺当前 ticker → trigger disabled。severity tag 颜色 HIGH=--color-error / MEDIUM=--color-signal-warning / LOW=--color-text-muted（步骤 1 须实测 token 存在）。queryKey 含 deterministicHash，24h cache 与 trade_plan 一致。即使后端无 hash guardrail，前端保留 409 分支模板。开放问题 Q1-Q10 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + queryKey + 读 backend schema）开始。",
           "contract": "docs/开发/sprint-contracts/F211-b-contract.md",
           "contract_agreed_at": "2026-04-28"
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-b",
+          "phase": "needs_review",
+          "session": "F211-b Generator",
+          "changes": "F211-b complete: AiContradictionsSection.tsx (new, ~285 lines, 6-state machine mirroring AiTradePlanSection); cockpit/lib/utils/dates.ts (new, calcDaysUntil extracted from DecisionPanelWidget); DecisionPanelWidget.tsx updated (import switch + contradictions divider/section); DecisionPanelWidget.test.tsx +8 cases (C1-C8, 29/29 pass). Pre-check adjustments: MEDIUM severity → --color-log-warn (--color-signal-warning absent); queryKey → [cockpit-setup-monitor, all] (actual key vs assumed [setup-monitor, undefined]). tsc 0 error, ESLint 0 new warnings, 3 pre-existing TopNav failures not caused by this sprint."
         }
       ],
       "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 5 段拆分 (a1 schemas / a2 model override 基建 / b DecisionPanel Contradictions / c News AI bar / d 平仓 hook + ai_review 迁移 + 月度 cron) 已经过 consistency-check C5 验证。a1/a2/b/c/d 依赖链：a1 → {a2 并行 / b / c / d}。"
