@@ -28,7 +28,7 @@ const rowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '8px',
-  fontSize: 'var(--font-size-body)',
+  fontSize: 'var(--font-size-caption)',
   padding: '2px 0',
 }
 
