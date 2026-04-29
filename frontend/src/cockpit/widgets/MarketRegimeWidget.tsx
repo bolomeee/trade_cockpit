@@ -149,7 +149,6 @@ function SubscoresGrid({ subscores }: { subscores: RegimeSubscores }) {
   const keys = Object.keys(SUBSCORE_MAX) as Array<keyof typeof SUBSCORE_MAX>
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Subscores</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
         {keys.map((key) => (
           <SubscoreCard
