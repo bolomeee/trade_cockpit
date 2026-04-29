@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     setup_cron_hour: int = 22
     setup_cron_minute: int = 30
 
+    # F211-d2 journal monthly review cron (1st of month 06:00 UTC, after universe at 05:00)
+    journal_monthly_cron_day: int = 1
+    journal_monthly_cron_hour: int = 6
+    journal_monthly_cron_minute: int = 0
+
     # v2.0 F208 AI Gateway (D064 / D069)
     ai_model_default: str = "gpt-5.4-nano"      # default tier (F209 / F211 contradiction/news)
     ai_model_critical: str = "gpt-5.4-mini"     # critical tier (F210)
