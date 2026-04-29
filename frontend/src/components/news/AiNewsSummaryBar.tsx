@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { callAiTask } from '@/cockpit/lib/api/aiApi'
 import { ApiError } from '@/lib/api/client'
 import { useNewsArticles } from '@/hooks/useNewsArticles'
 import { useAppStore } from '@/store/useAppStore'
+import { RefreshCw, Loader2 } from 'lucide-react'
 import {
   articlesHash,
   buildSummarizerArticles,
@@ -73,10 +74,14 @@ function SectionHeader({
   cacheBadge,
   onClose,
   closeTestId,
+  onRefresh,
+  isRefreshing,
 }: {
   cacheBadge?: string
   onClose: () => void
   closeTestId: string
+  onRefresh?: () => void
+  isRefreshing?: boolean
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
@@ -101,6 +106,28 @@ function SectionHeader({
           {cacheBadge}
         </span>
       )}
+      {onRefresh && (
+        <button
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          title="重新生成"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: isRefreshing ? 'default' : 'pointer',
+            color: 'var(--color-text-muted)',
+            padding: '0 2px',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            opacity: isRefreshing ? 0.5 : 1,
+          }}
+        >
+          {isRefreshing
+            ? <Loader2 size={12} className="animate-spin" />
+            : <RefreshCw size={12} />}
+        </button>
+      )}
       <CloseButton onClose={onClose} testId={closeTestId} />
     </div>
   )
@@ -113,6 +140,7 @@ export function AiNewsSummaryBar(): JSX.Element | null {
   const setOpen = useAppStore((s) => s.setAiNewsSummaryOpen)
   const [hash, setHash] = useState<string | null>(null)
   const setSelectedSymbol = useAppStore((s) => s.setSelectedSymbol)
+  const forceNoCache = useRef(false)
 
   const { data: articles = [] } = useNewsArticles()
   const isDisabled = articles.length === 0
@@ -129,20 +157,28 @@ export function AiNewsSummaryBar(): JSX.Element | null {
 
   const hashReady = hash !== null
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['ai', 'news_summarizer', hash ?? '__pending__'],
-    queryFn: () =>
-      callAiTask<NewsSummarizerInput, NewsSummarizerOutput>('news_summarizer', {
+    queryFn: () => {
+      const nc = forceNoCache.current
+      return callAiTask<NewsSummarizerInput, NewsSummarizerOutput>('news_summarizer', {
         articles: summarizerArticles,
         windowDays: 5,
-      }),
+      }, { noCache: nc })
+    },
     enabled: open && !isDisabled && hashReady,
     staleTime: 24 * 60 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     retry: false,
   })
 
+  const handleRefresh = () => {
+    forceNoCache.current = true
+    refetch().finally(() => { forceNoCache.current = false })
+  }
+
   const isSpinning = isLoading || (isFetching && !data)
+  const isRefreshing = isFetching && !!data
   const is409 = error instanceof ApiError && error.status === 409
 
   // ── State 1: closed ──────────────────────────────────────────────────────
@@ -220,6 +256,8 @@ export function AiNewsSummaryBar(): JSX.Element | null {
           cacheBadge={cacheBadge}
           onClose={() => setOpen(false)}
           closeTestId="ai-news-summary-close"
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
         />
 
         <p
