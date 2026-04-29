@@ -80,8 +80,8 @@ def test_resolved_route_has_six_fields() -> None:
 
 def test_resolve_no_override_falls_back_to_tier_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     route = resolve("market_narrator")
-    assert route.tier == "default"
-    assert route.model == settings.ai_model_default
+    assert route.tier == "critical"
+    assert route.model == settings.ai_model_critical
     assert route.base_url is None
     assert route.api_key == settings.openai_api_key
     assert route.custom_input_cost is None
@@ -109,7 +109,7 @@ def test_resolve_override_full_entry_returns_all_fields(monkeypatch: pytest.Monk
     assert route.custom_input_cost == 3.0
     assert route.custom_output_cost == 15.0
     # tier preserved from _TASK_TIER
-    assert route.tier == "default"
+    assert route.tier == "critical"
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +133,7 @@ def test_resolve_override_partial_entry_only_model(monkeypatch: pytest.MonkeyPat
 def test_resolve_override_empty_model_falls_back_to_tier(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_override(monkeypatch, {"market_narrator": {"model": "", "base_url": "http://ignored"}})
     route = resolve("market_narrator")
-    assert route.model == settings.ai_model_default
+    assert route.model == settings.ai_model_critical
     assert route.base_url is None
 
 
@@ -150,7 +150,7 @@ def test_resolve_override_invalid_json_logs_warning_and_falls_back(
     monkeypatch.setattr(routing_mod.log, "warning", lambda msg, *a: received.append(msg % a if a else msg))
     monkeypatch.setattr(settings, "ai_task_overrides_json", "{not valid json")
     route = resolve("market_narrator")
-    assert route.model == settings.ai_model_default
+    assert route.model == settings.ai_model_critical
     assert any("parse failed" in w for w in received)
 
 
@@ -167,7 +167,7 @@ def test_resolve_override_non_dict_json_falls_back(
     monkeypatch.setattr(routing_mod.log, "warning", lambda msg, *a: received.append(msg % a if a else msg))
     monkeypatch.setattr(settings, "ai_task_overrides_json", '["news_summarizer"]')
     route = resolve("market_narrator")
-    assert route.model == settings.ai_model_default
+    assert route.model == settings.ai_model_critical
     assert any("not a JSON object" in w for w in received)
 
 

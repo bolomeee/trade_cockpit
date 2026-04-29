@@ -13,12 +13,12 @@ log = logging.getLogger(__name__)
 # task_type → tier 映射（DATA-MODEL §AiMemo task_type 枚举 + D064 tier 分配）
 # 7 种 task_type；F209/F210/F211 各自对应若干
 _TASK_TIER: dict[str, Literal["default", "critical", "complex"]] = {
-    "market_narrator": "default",        # F209
+    "market_narrator": "critical",       # F209 — upgraded to mini
     "setup_explainer": "default",        # F209
     "candidate_ranker": "critical",      # F210
     "trade_plan": "critical",            # F210
-    "contradiction_detector": "default", # F211
-    "news_summarizer": "default",        # F211
+    "contradiction_detector": "critical", # F211 — upgraded to mini
+    "news_summarizer": "critical",       # F211 — upgraded to mini
     "journal_assistant": "complex",      # F211
     "echo": "default",                   # test-only, not in API-CONTRACT §POST /api/ai/{task_type} 7 enums
 }
