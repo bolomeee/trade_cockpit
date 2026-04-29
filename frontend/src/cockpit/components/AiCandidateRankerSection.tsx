@@ -4,6 +4,12 @@ import { RotateCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { callAiTask } from '../lib/api/aiApi'
 import type { RegimeLabel } from '../lib/api/cockpitRegimeApi'
 import type { SetupItem, SetupType, EarningsRisk } from '../lib/api/setupMonitorApi'
@@ -168,16 +174,22 @@ export function AiCandidateRankerSection({ items, regime, regimeScore }: Props) 
         </Button>
       </ButtonGroup>
 
-      {/* Result panel — flexBasis:100% breaks onto its own row inside the flex-wrap tabs container */}
-      {open && (
-        <div
-          data-testid="ai-rank-panel"
-          style={{
-            flexBasis: '100%',
-            order: 999,
-            paddingTop: '6px',
-          }}
-        >
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent data-testid="ai-rank-panel" className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium">
+              AI 排序 · Top 3
+              {wasTruncated && (
+                <span
+                  data-testid="ai-rank-truncated"
+                  className="ml-2 text-xs font-normal text-muted-foreground"
+                >
+                  (Top 20 / {items.length})
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
           {isSpinning && (
             <div
               data-testid="ai-rank-skeletons"
@@ -194,152 +206,84 @@ export function AiCandidateRankerSection({ items, regime, regimeScore }: Props) 
           )}
 
           {!isSpinning && error && (
-            <div
+            <p
               data-testid="ai-rank-error"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
                 fontSize: 'var(--font-size-caption)',
                 color: 'var(--color-text-secondary)',
               }}
             >
-              <span>AI 排序暂不可用</span>
-              <button
-                data-testid="ai-rank-error-close"
-                onClick={() => setOpen(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-muted)',
-                  fontSize: 'var(--font-size-caption)',
-                  padding: '0 2px',
-                  lineHeight: 1,
-                }}
-              >
-                ✕
-              </button>
-            </div>
+              AI 排序暂不可用
+            </p>
           )}
 
           {!isSpinning && !error && data && (
-            <div>
-              {/* Top bar */}
-              <div
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {data.output.topCandidates.map((c) => (
+                <div
+                  key={c.ticker}
+                  data-testid={`ai-rank-card-${c.rank}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    background: 'var(--color-bg-secondary)',
+                    borderRadius: '6px',
+                    fontSize: 'var(--font-size-caption)',
+                  }}
+                >
+                  <span
+                    data-testid={`ai-rank-num-${c.rank}`}
+                    style={{
+                      color: 'var(--color-text-muted)',
+                      fontFamily: 'var(--font-family-numeric)',
+                      minWidth: '18px',
+                      paddingTop: '1px',
+                    }}
+                  >
+                    #{c.rank}
+                  </span>
+                  <span
+                    data-testid={`ai-rank-ticker-${c.rank}`}
+                    style={{
+                      fontWeight: 'var(--font-weight-medium)',
+                      color: 'var(--color-text-primary)',
+                      minWidth: '48px',
+                    }}
+                  >
+                    {c.ticker}
+                  </span>
+                  <ActionBadge value={c.action} />
+                  <span
+                    data-testid={`ai-rank-reason-${c.rank}`}
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                      flex: 1,
+                      lineHeight: 1.4,
+                      whiteSpace: 'normal',
+                    }}
+                  >
+                    {c.reason}
+                  </span>
+                </div>
+              ))}
+
+              <p
+                data-testid="ai-rank-cache-badge"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginBottom: '4px',
+                  fontSize: 'var(--font-size-badge)',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'right',
+                  marginTop: '2px',
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 'var(--font-size-caption)',
-                    fontWeight: 'var(--font-weight-medium)',
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
-                  AI 排序 · top 3
-                </span>
-
-                {wasTruncated && (
-                  <span
-                    data-testid="ai-rank-truncated"
-                    style={{
-                      fontSize: 'var(--font-size-badge)',
-                      color: 'var(--color-text-muted)',
-                    }}
-                  >
-                    Top 20 / {items.length}
-                  </span>
-                )}
-
-                <span
-                  data-testid="ai-rank-cache-badge"
-                  style={{
-                    fontSize: 'var(--font-size-badge)',
-                    color: 'var(--color-text-muted)',
-                    marginLeft: 'auto',
-                  }}
-                >
-                  {data.meta.cacheHit ? 'Cached' : `Generated · ${data.meta.modelUsed}`}
-                </span>
-
-                <button
-                  data-testid="ai-rank-close"
-                  onClick={() => setOpen(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--color-text-muted)',
-                    fontSize: 'var(--font-size-caption)',
-                    padding: '0 2px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Ranked cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                {data.output.topCandidates.map((c) => (
-                  <div
-                    key={c.ticker}
-                    data-testid={`ai-rank-card-${c.rank}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 6px',
-                      background: 'var(--color-bg-secondary)',
-                      borderRadius: '4px',
-                      fontSize: 'var(--font-size-caption)',
-                    }}
-                  >
-                    <span
-                      data-testid={`ai-rank-num-${c.rank}`}
-                      style={{
-                        color: 'var(--color-text-muted)',
-                        fontFamily: 'var(--font-family-numeric)',
-                        minWidth: '16px',
-                      }}
-                    >
-                      #{c.rank}
-                    </span>
-                    <span
-                      data-testid={`ai-rank-ticker-${c.rank}`}
-                      style={{
-                        fontWeight: 'var(--font-weight-medium)',
-                        color: 'var(--color-text-primary)',
-                        minWidth: '44px',
-                      }}
-                    >
-                      {c.ticker}
-                    </span>
-                    <ActionBadge value={c.action} />
-                    <span
-                      data-testid={`ai-rank-reason-${c.rank}`}
-                      style={{
-                        color: 'var(--color-text-secondary)',
-                        flex: 1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {c.reason}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                {data.meta.cacheHit ? 'Cached' : `Generated · ${data.meta.modelUsed}`}
+              </p>
             </div>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
