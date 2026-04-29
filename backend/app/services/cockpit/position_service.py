@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from typing import Any
+from typing import Any, Callable
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
@@ -26,6 +27,19 @@ from app.services.cockpit.position_action_rules import compute_next_action
 from app.services.cockpit.position_sizer import compute_shares
 
 logger = logging.getLogger(__name__)
+
+SessionFactory = Callable[[], Session]
+
+
+def _trade_review_background(session_factory: SessionFactory, position_id: int) -> None:
+    """Run in FastAPI BackgroundTask after response. Opens a fresh DB session."""
+    from app.services.cockpit.journal_review_service import JournalReviewService  # noqa: PLC0415
+
+    db = session_factory()
+    try:
+        JournalReviewService(db).trade_review_for_position(position_id)
+    finally:
+        db.close()
 
 
 class PositionService:
@@ -108,11 +122,18 @@ class PositionService:
         )
         return item
 
-    def update_position(self, position_id: int, patch: PositionUpdate) -> PositionItem | None:
+    def update_position(
+        self,
+        position_id: int,
+        patch: PositionUpdate,
+        background_tasks: BackgroundTasks | None = None,
+        session_factory: SessionFactory | None = None,
+    ) -> PositionItem | None:
         row = self._repo.get_by_id(position_id)
         if row is None:
             return None
 
+        pre_status = row.status
         patch_data = patch.model_dump(exclude_unset=True, by_alias=False)
 
         # Reject CLOSED → OPEN transition
@@ -123,6 +144,19 @@ class PositionService:
         updated_row = self._repo.get_by_id(position_id)
         if updated_row is None:
             return None
+
+        # F211-d1: trigger AI review on OPEN→CLOSED transition (async, fail-soft)
+        if (
+            pre_status == "OPEN"
+            and updated_row.status == "CLOSED"
+            and background_tasks is not None
+            and session_factory is not None
+        ):
+            background_tasks.add_task(
+                _trade_review_background,
+                session_factory,
+                updated_row.id,
+            )
 
         closes = self._loader.load([updated_row.ticker])
         today = date.today()

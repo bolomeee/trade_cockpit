@@ -1,11 +1,13 @@
 """F206-a: /api/cockpit/positions — Position CRUD (4 endpoints)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from typing import Callable
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_fmp_client
+from app.dependencies import get_fmp_client, get_session_factory
 from app.external.fmp_client import FmpClient
 from app.schemas.cockpit.position import (
     PositionCreate,
@@ -63,9 +65,11 @@ def create_position(
 def update_position(
     position_id: int,
     patch: PositionUpdate,
+    background_tasks: BackgroundTasks,
     svc: PositionService = Depends(_get_service),
+    session_factory: Callable = Depends(get_session_factory),
 ) -> PositionSingleResponse:
-    item = svc.update_position(position_id, patch)
+    item = svc.update_position(position_id, patch, background_tasks, session_factory)
     if item is None:
         raise APIError("NOT_FOUND", f"position {position_id} not found", 404)
     return PositionSingleResponse(data=item)
