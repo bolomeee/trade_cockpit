@@ -22,6 +22,7 @@ Rules:
 - risks: 0-5 specific risk or warning items from the news
 
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
+All text fields (catalystSummary, risks) must be written in Chinese.
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
 

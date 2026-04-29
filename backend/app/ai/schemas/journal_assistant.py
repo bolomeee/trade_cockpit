@@ -36,6 +36,7 @@ General rules:
 - Use second person ("You over-traded...") in lesson/keyLessons
 
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
+All text fields (lesson, mistakes, overallExpectancy, keyLessons, setupPerformance[].note) must be written in Chinese.
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
 

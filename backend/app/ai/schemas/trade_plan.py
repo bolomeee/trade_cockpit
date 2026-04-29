@@ -26,6 +26,7 @@ Rules:
 - entry / stop / size: copy input values exactly, do not round, do not adjust
 - earningsRisk null means no earnings data available; treat as SAFE for risk planning
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
+All text fields (memo, management) must be written in Chinese.
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
 

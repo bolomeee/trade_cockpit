@@ -25,6 +25,7 @@ Rules:
 - earningsRisk null means no earnings data; treat as not a risk factor
 
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
+All text fields (contradictions[].text, recommendation) must be written in Chinese.
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
 
