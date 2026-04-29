@@ -23,17 +23,17 @@ import {
 // ── constants ────────────────────────────────────────────────────────────────
 
 const SECTOR_LABELS: Record<string, string> = {
-  XLK: 'Tech',
-  XLY: 'Cons. Disc.',
-  XLF: 'Financials',
-  XLI: 'Industrials',
-  XLE: 'Energy',
-  XLV: 'Health Care',
-  XLC: 'Comm. Svcs',
-  XLP: 'Cons. Stpl.',
-  XLU: 'Utilities',
-  XLB: 'Materials',
-  XLRE: 'Real Estate',
+  XLK: '科技',
+  XLY: '非必需消费',
+  XLF: '金融',
+  XLI: '工业',
+  XLE: '能源',
+  XLV: '医疗健康',
+  XLC: '通信服务',
+  XLP: '必需消费',
+  XLU: '公用事业',
+  XLB: '原材料',
+  XLRE: '房地产',
 }
 
 const SUBSCORE_MAX = {
