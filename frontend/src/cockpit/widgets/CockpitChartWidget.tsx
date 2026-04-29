@@ -146,7 +146,17 @@ export function CockpitChartWidget() {
       avwapSeries.setData(cd.avwap.series.map((p) => ({ time: toTs(p.date), value: p.value })))
     }
 
-    chart.timeScale().fitContent()
+    if (cd.bars.length > 0) {
+      const lastDate = cd.bars[cd.bars.length - 1].date
+      const from = new Date(`${lastDate}T00:00:00Z`)
+      from.setMonth(from.getMonth() - 6)
+      chart.timeScale().setVisibleRange({
+        from: (from.getTime() / 1000) as UTCTimestamp,
+        to: toTs(lastDate),
+      })
+    } else {
+      chart.timeScale().fitContent()
+    }
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {

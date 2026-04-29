@@ -334,7 +334,7 @@ function Th({ children, width, style }: { children: React.ReactNode; width: stri
       style={{
         padding: '4px 6px',
         textAlign: 'left',
-        fontSize: 'var(--font-size-badge)',
+        fontSize: 'var(--font-size-caption)',
         fontWeight: 'var(--font-weight-normal)',
         width,
         background: 'var(--color-card)',
