@@ -29,7 +29,7 @@ def save_layout(
     LAYOUTS_DIR.mkdir(exist_ok=True)
     layout_file = LAYOUTS_DIR / f"{page}.json"
     layout_file.write_text(
-        json.dumps(layout, ensure_ascii=False, indent=2),
+        json.dumps(layout, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     return JSONResponse({"data": None, "message": "success"})
