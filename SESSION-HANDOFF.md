@@ -1,104 +1,90 @@
-# SESSION-HANDOFF — F211-c needs_review
+# SESSION-HANDOFF — F211-d1 done
 
-> 生成时间：2026-04-29 | Branch: cockpit | 状态：F211-c Generator 完成，等待验收
+> 生成时间：2026-04-29 | Branch: cockpit | 状态：F211-d1 ✅ done，908 tests passed
 > 本 session 模型：Sonnet 4.6（Generator 模式）
-> 建议下一 session：acceptance skill
+> 建议下一 session：F211-d2 Sprint Contract 协商，或其它 P0 Feature
 
 ---
 
-## 1. 本次 Session 工作摘要
+## 1. 本 Session 工作摘要
 
-完成 **F211-c（News 页 AI 摘要 bar 前端）** 完整开发（步骤 1-5）：
+### 1.1 完成内容
 
-**步骤 1：预检**
-- tokens 全确认（`--color-surface-muted` 缺失 → chip 改用 `--color-input-background`）
-- `useNewsArticles` queryKey `['news', 'articles']` 确认
-- `news_summarizer.py` 字段拼写确认
-- jsdom DOMParser ✅ / crypto.subtle ✅（Node 24）
-- `AiContradictionsSection.tsx` 完整阅读作为模板
+F211-d1（平仓 hook + journal_entries.ai_review 迁移）全部 7 开发步骤完成，15 tests 全过，908 回归 passed。
 
-**步骤 2：核心组件**
-- 新建 `frontend/src/components/news/newsSummaryUtils.ts`（pure helpers）
-- 新建 `frontend/src/components/news/AiNewsSummaryBar.tsx`（6 态状态机）
+### 1.2 实现文件
 
-**步骤 3：集成**
-- `frontend/src/pages/News.tsx` +4 行（import + bar 容器）
-- 浏览器截图确认：trigger 按钮在 grid 上方，disabled 状态正确（无 articles）
+| # | 文件 | 操作 | wip commit |
+|---|------|------|------------|
+| 1 | `backend/alembic/versions/017_f211d1_journal_entries_ai_review.py` | 新建 | b131cda |
+| 2 | `backend/app/models/journal_entry.py` + `app/services/journal_service.py` | 修改 | c2f7cf5 |
+| 3 | `backend/app/services/cockpit/journal_review_service.py` | 新建 | ee48989 |
+| 4 | `backend/app/services/cockpit/position_service.py` + `app/routers/cockpit/positions.py` | 修改 | ec82765 |
+| 5 | `backend/tests/test_journal_review_service_f211d1.py` | 新建 | ee48989 |
 
-**步骤 4：测试**
-- 新建 `frontend/src/components/news/__tests__/AiNewsSummaryBar.test.tsx`
-- 14 case：C1-C8 component tests + 3×2 helper unit tests，14/14 pass
+辅助：`test_schema.py` journal_entries 白名单 + `DECISIONS.md` D082 + `features.json` + `claude-progress.txt`
 
-**步骤 5：Evaluator 自检**
-- 全量 vitest：273/276 pass（3 个预存 TopNav 失败不变）
-- tsc 0 error；ESLint 0 新增 warning（react-refresh 问题通过拆 utils 文件解决）
-- 自检清单全通过（无硬编码颜色、无 console、enabled gating 正确、News.tsx diff ≤ 12 行）
+### 1.3 测试结果
 
----
+- 全量 pytest：908 passed（基线 893+ → +15 新增 F211-d1 tests）
+- ruff：0 新增违例（9 个 pre-existing 不在本 sprint 文件内）
+- mypy：173 errors（←174 baseline，净减 1；`int(updated_row.id)` cast 修掉 BackgroundTasks 注入的新增错误）
 
-## 2. 新建 / 修改文件清单（共 5 个）
+### 1.4 关键设计决定（D082）
 
-| # | 文件 | 操作 |
-|---|------|------|
-| 1 | `frontend/src/components/news/newsSummaryUtils.ts` | 新建（helpers：stripHtml / sortByPublishedDesc / articlesHash / buildSummarizerArticles） |
-| 2 | `frontend/src/components/news/AiNewsSummaryBar.tsx` | 新建（~330 行，6 态状态机） |
-| 3 | `frontend/src/components/news/__tests__/AiNewsSummaryBar.test.tsx` | 新建（14 tests） |
-| 4 | `frontend/src/pages/News.tsx` | 修改（+4 行：import + bar 容器） |
-| 5 | `docs/需求/features.json` | 更新（F211-c → needs_review，iteration_history +1） |
+- PATCH OPEN→CLOSED 用 FastAPI `BackgroundTasks`（不阻塞响应）
+- BackgroundTask 内开新 SQLAlchemy session（不复用请求 session）
+- `journal_entries.ai_review` = Text + JSON 字符串，无 DB FK
+- 同 ticker+date+SELL 已有 entry → 复用；ai_review 已填 → 跳过 gateway
+- 任何 AI 错误 → ai_review 留 null，positions 已 CLOSED 不回滚
 
 ---
 
-## 3. 全局 F211 状态
+## 2. 工作区状态
 
-| Sub-sprint | Phase | 备注 |
+`git status`（最终 commit 后）：应 clean（除 Makefile / F211-c-contract / F211-d1-contract / v1.9-F211-b-acceptance 等 pre-existing 未跟踪文件）
+
+---
+
+## 3. F211 进度全貌
+
+| Sub_sprint | Phase | 备注 |
 |---|---|---|
-| F211-a1 | ✅ done | 3 schemas + REGISTRY + guardrail |
-| F211-a2 | ✅ done | per-task model override 基建 + D075 |
-| F211-b | ✅ done | DecisionPanel Contradictions 区前端，验收通过 |
-| F211-c | 🟡 needs_review | News 页 AI 摘要 bar ← **本次** |
-| F211-d | ⬜ design_needed | 平仓 hook + ai_review 迁移 + 月度 cron |
+| F211-a1 | ✅ done | 3 schemas + REGISTRY |
+| F211-a2 | ✅ done | per-task model override 基建（D075） |
+| F211-b | ✅ done | DecisionPanel Contradictions 区前端 |
+| F211-c | ✅ done | News 页 AiNewsSummaryBar 前端 |
+| **F211-d1** | ✅ **done** | **本 session 完成** |
+| F211-d2 | ⬜ design_needed | 月度复盘 cron，依赖 d1 落地 |
+
+父 F211 status：`planned` / phase：`design_ready`（d2 未 done，C1 invariant 不允许升 done）
 
 ---
 
-## 4. 待验收检查点（acceptance skill）
+## 4. 待办（未决事项）
 
-按 F211-c Sprint Contract §3 完成标准 C1-C12：
-
-| # | 标准 | 状态 |
-|---|------|------|
-| C1 | closed → 点 trigger → loading skeleton | ✅ vitest C1/C2 |
-| C2 | success-with 4 区块全渲染 | ✅ vitest C3 |
-| C3 | risks length 0 隐藏 risks 区 | ✅ vitest C4 |
-| C4 | relevantTickers length 0 隐藏 tickers 行 | ✅ vitest C5 |
-| C5 | error 502 → "AI 暂不可用" + 关闭回 closed | ✅ vitest C6 |
-| C6 | error 409 → "AI 输出被拦截" | ✅ vitest C7 |
-| C7 | articles 空 → trigger disabled + title="暂无 news" | ✅ vitest C8 |
-| C8 | 关闭再开命中 cache（cacheBadge="Cached"） | ✅ vitest C3（meta.cacheHit） |
-| C9 | News.tsx bar 在 grid 之上（DOM 顺序） | ✅ 浏览器截图确认 |
-| C10 | helper pure function 单测 | ✅ 14 tests |
-| C11 | tsc 0 error；ESLint 0 新增 warning | ✅ |
-| C12 | 全量回归 ≥ 基线（273/276，3 TopNav 不变） | ✅ |
+- F211-d2：月度复盘 cron（`refresh_job` 注册 cron + `journal_review_service.monthly_review_for_month` + config settings + 测试）。依赖 F211-d1 的 `JournalReviewService` 基础设施（已就绪）。
+- D082 notes：Sprint Contract 原规划 D076，因 D076 已被占用改为 D082。
+- 前端展示 ai_review：未实现（明确排除在 d1 范围外），留待 F211-e 或 v1.10。
 
 ---
 
-## 5. 关键设计决策（Generator 阶段调整）
+## 5. 下 Session 启动建议
 
-1. **utils 拆分**：helpers 移至 `newsSummaryUtils.ts`（sibling file），解决 `react-refresh/only-export-components` ESLint error，符合"不抽公共"约束（不进 `src/lib/`），4→5 文件仍在 6 上限内。
-
-2. **chip 背景 token**：`--color-surface-muted` 不存在 → 使用 `--color-input-background`（#f3f3f5），符合"0 硬编码"自检，视觉效果相近。
-
-3. **14 tests**：合约要求"11 case"，实际 stripHtml 拆 3 子用例（null/empty/truncate）+ articlesHash 拆 2 子用例（same/different），共 14，全通过。
-
----
-
-## 6. 下一 Session 恢复指令
-
-建议用 acceptance skill 开新 session 做 F211-c 验收：
-
+**选项 A（推荐）**：协商 F211-d2 Sprint Contract（月度复盘 cron）
 ```
-/acceptance F211-c
+继续 F211，准备 F211-d2 Sprint Contract。
+读取 SESSION-HANDOFF.md + docs/需求/features.json。
+F211-d1 已 done，d2 是 design_needed，请开始系统设计/协商。
 ```
 
-验收通过后：
-- features.json F211-c → done
-- 考虑启动 F211-d（平仓 hook + ai_review 迁移 + 月度 cron）设计
+**选项 B**：转去其它 P0 Feature（查 features.json `_pipeline_status`）
+
+---
+
+## 6. 重要文件路径
+
+- Sprint Contract：`docs/开发/sprint-contracts/F211-d1-contract.md`
+- 验收基准（F211-c）：`docs/验收/v1.9-F211-c-acceptance.md`（参考格式）
+- 新建服务：`backend/app/services/cockpit/journal_review_service.py`
+- 测试：`backend/tests/test_journal_review_service_f211d1.py`

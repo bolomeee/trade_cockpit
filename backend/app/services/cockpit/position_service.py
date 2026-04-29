@@ -155,7 +155,7 @@ class PositionService:
             background_tasks.add_task(
                 _trade_review_background,
                 session_factory,
-                updated_row.id,
+                int(updated_row.id),  # Column[int] at annotation-time, int at runtime
             )
 
         closes = self._loader.load([updated_row.ticker])

@@ -355,3 +355,66 @@ AiContradictionsSection（DecisionPanel Contradictions 区）验收通过。
 - 验收记录：docs/验收/v1.9-F211-b-acceptance.md
 
 F211 进度：a1 ✅ a2 ✅ b ✅ c ⬜ d ⬜
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-04-29 | F211-d1 Sprint Contract 已确认
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F211-d 因 7 文件超 6 文件预算，拆为 d1（5 文件：平仓 hook + ai_review 迁移）+ d2（4 文件：月度 cron）
+  - features.json sub_sprints 同步：F211-d 删除 → F211-d1/d2 新增（design_needed → d1=contract_agreed）
+  - consistency-check (mode=interactive) C5 通过；C8 active_sprint 已修为 F211-d1
+  - F211-d1 Sprint Contract 已起草并经用户确认（方案 A + 全采 Q1-Q10 默认方案）
+  - 文件：docs/开发/sprint-contracts/F211-d1-contract.md
+
+⚠️ 核心决定（默认方案）：
+  - FastAPI BackgroundTasks 异步触发，PATCH 立刻返回；BackgroundTask 内开新 SQLAlchemy session
+  - 任何 AI 错误（Provider/Schema/Guardrail/Budget）→ ai_review 留 null，positions 已 CLOSED 不回滚
+  - 平仓自动 INSERT 一条 SELL journal_entry；同 ticker+date 已有 SELL → 复用第一条
+  - 复用 entry 已有 ai_review → 跳过 gateway，避免重复烧 budget
+  - ai_review_memo_id 不加 DB FK（兼容 D069 ai_memos 180 天滚动清理）
+  - 本 sprint 不动前端
+
+🔧 拆分文件清单（5 文件 + 1 余量）：
+  1. backend/alembic/versions/017_f211d1_journal_entries_ai_review.py（新建）
+  2. backend/app/models/journal_entry.py + services/journal_service.py::_to_dto（修改）
+  3. backend/app/services/cockpit/journal_review_service.py（新建，仅 trade 模式）
+  4. backend/app/services/cockpit/position_service.py + routers/cockpit/positions.py（修改）
+  5. backend/tests/test_journal_review_service_f211d1.py（新建，15 case）
+
+  辅助变更（不计入预算）：features.json / DECISIONS.md (D076 待写) / claude-progress.txt / SESSION-HANDOFF.md
+
+📊 F211 进度：a1 ✅ a2 ✅ b ✅ c ✅ d1 📝(contract_agreed) d2 ⬜(design_needed)
+
+[下一 Session]
+  开新 session 用 Sonnet，粘贴：
+  > 继续开发 F211-d1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-d1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（预检）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] Sprint：F211-d1 平仓 hook + journal_entries.ai_review 迁移 — ✅ done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  步骤 1（预检）：alembic current=016 ✅ / Position 字段名 ✅ / GatewayResult 结构 ✅ / conftest fixtures ✅ / SessionLocal ✅
+  步骤 2（Alembic 017）：journal_entries.ai_review (Text) + ai_review_memo_id (Integer, no FK)，upgrade+downgrade 均通过
+  步骤 3（Model+DTO）：journal_entry.py 加 2 列；journal_service._to_dto 加 json.loads 解码 + memo_id 透传
+  步骤 4（JournalReviewService）：新建 journal_review_service.py — trade_review_for_position / _upsert_sell_journal_entry / _build_trade_input；13 tests (U1-U5 + I1-I8) 全过
+  步骤 5（close hook+路由）：position_service.update_position 加 BackgroundTasks/SessionFactory 可选参数 + OPEN→CLOSED hook；positions.py 路由注入 BackgroundTasks+get_session_factory；E1/E2 e2e 全过
+  步骤 6（回归+静态）：908 passed (+15 新增 F211-d1 tests)；ruff 0 新增违例；mypy 173←174 净减 1
+  步骤 7（最终）：DECISIONS.md D082 追加；features.json F211-d1 → done；test_schema.py journal_entries 白名单更新
+
+📊 测试：5 单元 + 8 集成 + 2 e2e = 15 case 全过
+
+📁 改动文件（5 个 + 辅助）：
+  1. backend/alembic/versions/017_f211d1_journal_entries_ai_review.py（新建）
+  2. backend/app/models/journal_entry.py + backend/app/services/journal_service.py（修改）
+  3. backend/app/services/cockpit/journal_review_service.py（新建）
+  4. backend/app/services/cockpit/position_service.py + backend/app/routers/cockpit/positions.py（修改）
+  5. backend/tests/test_journal_review_service_f211d1.py（新建）
+  辅助：docs/需求/features.json / docs/系统设计/DECISIONS.md (D082) / tests/test_schema.py / claude-progress.txt / SESSION-HANDOFF.md
+
+📊 F211 进度：a1 ✅ a2 ✅ b ✅ c ✅ d1 ✅ d2 ⬜(design_needed)
+
+[下一步] F211-d2（月度复盘 cron）或其它 P0 Feature。建议开新 session。

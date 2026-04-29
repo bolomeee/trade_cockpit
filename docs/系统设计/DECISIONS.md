@@ -1916,3 +1916,23 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **未来扩展点**：
 - 若需要 LiteLLM Router 多模型 fallback，扩展 `ResolvedRoute` 加 `fallbacks: list[str]`，gateway 改用 `litellm.Router.completion`。本 sprint 不做。
 - 若需要 `extra_headers` / `timeout` / `max_retries`，a3 sprint 扩展 `ResolvedRoute` 字段。
+
+## D082：F211-d1 close hook 异步策略 + ai_review 列形态
+日期：2026-04-29 | Feature: F211-d1
+
+**方案**：
+1. PATCH /api/cockpit/positions/{id} OPEN→CLOSED 触发 FastAPI `BackgroundTasks`，不阻塞响应
+2. BackgroundTask 内开新 SQLAlchemy session（不复用请求 session）
+3. journal_entries 加 ai_review (Text/JSON 字符串) + ai_review_memo_id (Integer, no DB FK)
+4. 平仓自动 INSERT/复用 SELL journal_entry（同 ticker+date 的 SELL 复用，避免重复打 LLM）
+5. 任何 AI 错误（Provider / Schema / Guardrail / Budget）→ ai_review 留 null，positions 已 CLOSED 不回滚
+
+**理由**：
+- 异步：journal_assistant complex tier ~5–15s，不能阻塞 PATCH 响应
+- Text 列：与 ai_memos.input_json/output_json 一致，避开 SQLite JSON 类型移植性问题
+- 无 FK：D069 ai_memos 180 天滚动清理，FK 会阻塞清理；ai_review_memo_id 接受 dangling
+- 复用 SELL entry：避免同一交易多次平仓尝试时重复打 LLM 烧 budget
+
+**对应代码**：`position_service._trade_review_background`, `journal_review_service.JournalReviewService.trade_review_for_position`
+
+**注**：Sprint Contract 原规划 D076，因 D076 已被占用改为 D082。

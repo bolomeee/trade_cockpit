@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F211-c",
+    "active_sprint": "F211-d1",
     "active_sprint_phase": "done"
   },
   "_iteration_log": [
@@ -3470,13 +3470,14 @@
       "priority": "P2",
       "status": "planned",
       "phase": "design_ready",
-      "sub_sprint_notes": "拆 5 段（2026-04-28 用户确认）：a1 后端 3 schemas + REGISTRY；a2 per-task model override 基建（D064 兄弟决策，env-driven，默认 opt-in，不动 cockpit_params.py 因 D070 line 1527 明文规定 AI 模型走 .env）；b DecisionPanel Contradictions 区前端；c News 页 AI 摘要 bar 前端（含 tokens/cost 展示）；d 平仓 hook + journal_entries.ai_review 迁移 + 月度复盘 cron。依赖链：a1 → {a2 并行 / b / c / d}。",
+      "sub_sprint_notes": "拆 5 段（2026-04-28 用户确认），其中 d 因 7 文件超 6 文件预算，2026-04-29 进一步拆为 d1+d2：a1 后端 3 schemas + REGISTRY；a2 per-task model override 基建（D064 兄弟决策，env-driven，默认 opt-in，不动 cockpit_params.py 因 D070 line 1527 明文规定 AI 模型走 .env）；b DecisionPanel Contradictions 区前端；c News 页 AI 摘要 bar 前端（含 tokens/cost 展示）；d1 平仓 hook + journal_entries.ai_review 迁移（5 文件：alembic 017 / journal_entry 模型 / journal_review_service 新建 trade 模式 / position_service close hook / 单测）；d2 月度复盘 cron（4 文件：journal_review_service +monthly / refresh_job +tick / config +cron settings / 单测）。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。",
       "sub_sprints": {
         "F211-a1": "done",
         "F211-a2": "done",
         "F211-b": "done",
         "F211-c": "done",
-        "F211-d": "design_needed"
+        "F211-d1": "done",
+        "F211-d2": "design_needed"
       },
       "dependencies": [
         "F208-c",
@@ -3596,9 +3597,24 @@
           "phase": "done",
           "session": "F211-c Acceptance",
           "changes": "F211-c accepted: AiNewsSummaryBar (6-state machine, lazy trigger, catalystSummary + sentiment badge + relevantTickers chips + risks list); newsSummaryUtils.ts helpers; News.tsx integration. All V1-V9 visual checks, B1-B7 business logic, E1-E3 edge cases passed. 验收记录: docs/验收/v1.9-F211-c-acceptance.md"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d1",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：平仓 hook + journal_entries.ai_review 迁移（5 文件：alembic 017 / journal_entry 模型+DTO / journal_review_service 新建 trade 模式 / position_service close hook+positions 路由 / 单测 15 case）。F211-d 因 7 文件超预算 2026-04-29 拆为 d1+d2，d1 仅 trade 模式 + 迁移；月度 cron 留 d2。核心决定：FastAPI BackgroundTasks 异步触发，失败不阻塞 PATCH；ai_review 列 Text+JSON+无 FK（D069 兼容）；平仓自动 INSERT/复用 SELL journal_entry；ai_review 已存在则跳过 gateway 避免重复烧 budget。Q1-Q10 全采默认方案，新增 D076。下一 session Generator 模式从开发步骤 1（预检：alembic current / GatewayResult 形态 / SessionLocal 验证）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-d1-contract.md",
+          "contract_agreed_at": "2026-04-29"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d1",
+          "phase": "done",
+          "session": "F211-d1 Generator",
+          "changes": "F211-d1 完成：alembic 017 (journal_entries.ai_review Text + ai_review_memo_id Integer) / journal_entry 模型+DTO / JournalReviewService.trade_review_for_position / position_service OPEN→CLOSED BackgroundTasks hook / positions.py 路由注入 BackgroundTasks+SessionFactory / 15 tests (5U+8I+2E 全过) / test_schema.py 更新。回归 908 passed (+15)；mypy 173←174 净减 1；ruff 0 新增违例。DECISIONS.md D082 已追加。"
         }
       ],
-      "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 5 段拆分 (a1 schemas / a2 model override 基建 / b DecisionPanel Contradictions / c News AI bar / d 平仓 hook + ai_review 迁移 + 月度 cron) 已经过 consistency-check C5 验证。a1/a2/b/c/d 依赖链：a1 → {a2 并行 / b / c / d}。"
+      "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 拆分迭代：初版 5 段 a1/a2/b/c/d，2026-04-29 因 d 超 6 文件预算二次拆为 d1+d2，最终 6 段。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。"
     }
   ]
 }
