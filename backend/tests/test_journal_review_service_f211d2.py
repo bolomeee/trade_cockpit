@@ -18,6 +18,12 @@ from app.ai.errors import AiBudgetExceeded, AiGuardrailViolation, AiProviderErro
 from app.ai.schemas.journal_assistant import ClosedTradeBrief, JournalAssistantInput
 from app.models.position import Position
 from app.services.cockpit.journal_review_service import JournalReviewService
+from app.services.refresh_job import (
+    JOURNAL_MONTHLY_JOB_ID,
+    _journal_monthly_tick,
+    _previous_month_utc,
+    start_scheduler,
+)
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
@@ -278,3 +284,75 @@ class TestMonthlyReviewIntegration:
 
         assert result is None
         assert "monthly_review AI error" in caplog.text
+
+
+# ─── U1-U3: _previous_month_utc ──────────────────────────────────────────────
+
+
+class TestPreviousMonthUtc:
+    def test_u1_normal_month(self):
+        """U1: 2026-04-29 06:00 UTC → '2026-03'。"""
+        now = datetime(2026, 4, 29, 6, 0, tzinfo=timezone.utc)
+        assert _previous_month_utc(now) == "2026-03"
+
+    def test_u2_cross_year_boundary(self):
+        """U2: 2026-01-15 → '2025-12'（跨年）。"""
+        now = datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)
+        assert _previous_month_utc(now) == "2025-12"
+
+    def test_u3_first_day_of_month(self):
+        """U3: 2026-03-01 00:00 → '2026-02'（边界：1 号当天取上个月）。"""
+        now = datetime(2026, 3, 1, 0, 0, tzinfo=timezone.utc)
+        assert _previous_month_utc(now) == "2026-02"
+
+
+# ─── S1-S3: scheduler registration + tick ────────────────────────────────────
+
+
+class TestJournalMonthlyScheduler:
+    def test_s1_job_registered_with_correct_trigger(self):
+        """S1: start_scheduler 注册 JOURNAL_MONTHLY_JOB_ID，trigger day=1/hour=6/minute=0。"""
+        sched = start_scheduler(
+            session_factory=lambda: None,
+            fmp_factory=lambda: None,
+            autostart=False,
+        )
+        job_ids = {j.id for j in sched.get_jobs()}
+        assert JOURNAL_MONTHLY_JOB_ID in job_ids
+
+        job = next(j for j in sched.get_jobs() if j.id == JOURNAL_MONTHLY_JOB_ID)
+        fields = {f.name: str(f) for f in job.trigger.fields}
+        assert fields["day"] == "1"
+        assert fields["hour"] == "6"
+        assert fields["minute"] == "0"
+
+    def test_s2_tick_calls_monthly_review_with_previous_month(self):
+        """S2: _journal_monthly_tick 调用 JournalReviewService.monthly_review_for_month，参数为 _previous_month_utc(now)。"""
+        fixed_now = datetime(2026, 4, 29, 6, 0, tzinfo=timezone.utc)
+        expected_month = _previous_month_utc(fixed_now)  # "2026-03"
+
+        mock_service = MagicMock()
+        mock_db = MagicMock()
+
+        def session_factory():
+            return mock_db
+
+        with patch("app.services.refresh_job.datetime") as mock_dt, \
+             patch("app.services.refresh_job.JournalReviewService", return_value=mock_service) as MockCls:
+            mock_dt.now.return_value = fixed_now
+            _journal_monthly_tick(session_factory)
+
+        MockCls.assert_called_once_with(mock_db)
+        mock_service.monthly_review_for_month.assert_called_once_with(expected_month)
+
+    def test_s3_tick_swallows_exception(self):
+        """S3: _journal_monthly_tick 内部异常不向上抛出。"""
+        def session_factory():
+            return MagicMock()
+
+        with patch(
+            "app.services.refresh_job.JournalReviewService",
+            side_effect=RuntimeError("db down"),
+        ):
+            # Must not raise
+            _journal_monthly_tick(session_factory)

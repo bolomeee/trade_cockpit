@@ -17,7 +17,7 @@ import logging
 import threading
 import traceback
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -28,6 +28,7 @@ from app.config import settings
 from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.earnings_service import EarningsService
+from app.services.cockpit.journal_review_service import JournalReviewService
 from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
 from app.services.cockpit.pool_cache_service import PoolCacheService
@@ -56,6 +57,8 @@ PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
 #         setup_cron (weekdays 22:30). Gives 8h buffer after the prior day's setup tick.
 POOL_CACHE_CRON = "30 6 * * 1"
 POOL_CACHE_JOB_ID = "cockpit_pool_cache_rebuild"
+# F211-d2: monthly journal review — 1st of month 06:00 UTC (1h after universe at 05:00)
+JOURNAL_MONTHLY_JOB_ID = "f211_journal_monthly_review"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -282,6 +285,19 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F211-d2: monthly journal review cron (1st of month 06:00 UTC, after universe at 05:00)
+        sched.add_job(
+            _journal_monthly_tick,
+            trigger=CronTrigger(
+                day=settings.journal_monthly_cron_day,
+                hour=settings.journal_monthly_cron_hour,
+                minute=settings.journal_monthly_cron_minute,
+                timezone="UTC",
+            ),
+            id=JOURNAL_MONTHLY_JOB_ID,
+            args=[session_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -391,6 +407,23 @@ def _pool_cache_tick(
             PoolCacheService(db, fmp=fmp_factory()).rebuild()
     except Exception:  # noqa: BLE001
         logger.error("pool cache tick failed\n%s", traceback.format_exc())
+
+
+def _journal_monthly_tick(session_factory: SessionFactory) -> None:
+    """APScheduler tick for F211-d2 monthly journal review: 1st of month 06:00 UTC."""
+    try:
+        year_month = _previous_month_utc(datetime.now(timezone.utc))
+        with _session_scope(session_factory) as db:
+            JournalReviewService(db).monthly_review_for_month(year_month)
+    except Exception:  # noqa: BLE001
+        logger.error("journal monthly tick failed\n%s", traceback.format_exc())
+
+
+def _previous_month_utc(now: datetime) -> str:
+    """Return 'YYYY-MM' for the month preceding `now` (UTC). Pure function for testability."""
+    first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_of_prev = first_of_this_month - timedelta(days=1)
+    return f"{last_of_prev.year:04d}-{last_of_prev.month:02d}"
 
 
 # ----- helpers ---------------------------------------------------------------
