@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v1.9",
     "active_sprint": "F211-c",
-    "active_sprint_phase": "needs_review"
+    "active_sprint_phase": "done"
   },
   "_iteration_log": [
     {
@@ -3475,7 +3475,7 @@
         "F211-a1": "done",
         "F211-a2": "done",
         "F211-b": "done",
-        "F211-c": "needs_review",
+        "F211-c": "done",
         "F211-d": "design_needed"
       },
       "dependencies": [
@@ -3589,6 +3589,13 @@
           "phase": "needs_review",
           "session": "F211-c Generator",
           "changes": "F211-c complete: newsSummaryUtils.ts (new, 4 pure helpers: stripHtml/sortByPublishedDesc/articlesHash/buildSummarizerArticles); AiNewsSummaryBar.tsx (new, ~330 lines, 6-state machine mirroring AiContradictionsSection: closed/loading/error-502/error-409/success-with-risks/success-no-risks); AiNewsSummaryBar.test.tsx (new, 14 tests — C1-C8 component + 6 helper unit tests); News.tsx (+4 lines import + bar container). Pre-check findings: --color-surface-muted absent → chip uses --color-input-background instead; queryKey=['news','articles'] confirmed; crypto.subtle available (Node 24); jsdom DOMParser available. tsc 0 error, ESLint 0 warnings, 273/276 tests pass (3 pre-existing TopNav failures)."
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-c",
+          "phase": "done",
+          "session": "F211-c Acceptance",
+          "changes": "F211-c accepted: AiNewsSummaryBar (6-state machine, lazy trigger, catalystSummary + sentiment badge + relevantTickers chips + risks list); newsSummaryUtils.ts helpers; News.tsx integration. All V1-V9 visual checks, B1-B7 business logic, E1-E3 edge cases passed. 验收记录: docs/验收/v1.9-F211-c-acceptance.md"
         }
       ],
       "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 5 段拆分 (a1 schemas / a2 model override 基建 / b DecisionPanel Contradictions / c News AI bar / d 平仓 hook + ai_review 迁移 + 月度 cron) 已经过 consistency-check C5 验证。a1/a2/b/c/d 依赖链：a1 → {a2 并行 / b / c / d}。"
