@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from app.models import JournalEntry
@@ -112,6 +113,12 @@ class JournalService:
         return stock
 
     def _to_dto(self, entry: JournalEntry) -> dict[str, Any]:
+        ai_review = None
+        if entry.ai_review:
+            try:
+                ai_review = json.loads(entry.ai_review)
+            except (json.JSONDecodeError, TypeError):
+                ai_review = None  # corrupt JSON in DB → silent null
         return {
             "id": entry.id,
             "ticker": entry.stock.ticker,
@@ -124,6 +131,8 @@ class JournalService:
             "target_price": entry.target_price,
             "reason": entry.reason,
             "reference": entry.reference,
+            "ai_review": ai_review,
+            "ai_review_memo_id": entry.ai_review_memo_id,
             "created_at": entry.created_at,
             "updated_at": entry.updated_at,
         }
