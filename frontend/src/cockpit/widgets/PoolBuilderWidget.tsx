@@ -3,6 +3,7 @@ import { CirclePlus } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getCockpitPool, type PoolFilters, type PoolItem } from '../lib/api/cockpitPoolApi'
 import { addStock } from '@/lib/api/watchlist'
+import { useCockpitStore } from '@/store/cockpitStore'
 import { PoolFilterBar } from './_poolFilterBar'
 import { SetupTypeBadge } from '../components/SetupTypeBadge'
 
@@ -32,6 +33,7 @@ export function PoolBuilderWidget() {
   const [addingTickers, setAddingTickers] = useState<Set<string>>(new Set())
   const [knownSectors, setKnownSectors] = useState<string[]>([])
   const queryClient = useQueryClient()
+  const setSelectedTicker = useCockpitStore((s) => s.setSelectedTicker)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cockpit-pool', filters],
@@ -163,6 +165,7 @@ export function PoolBuilderWidget() {
                   item={item}
                   isAdding={addingTickers.has(item.ticker)}
                   onAdd={() => handleAddStock(item.ticker)}
+                  onRowClick={() => setSelectedTicker(item.ticker)}
                 />
               ))}
             </tbody>
@@ -220,10 +223,12 @@ function PoolRow({
   item,
   isAdding,
   onAdd,
+  onRowClick,
 }: {
   item: PoolItem
   isAdding: boolean
   onAdd: () => void
+  onRowClick: () => void
 }) {
   const distStr =
     item.distanceToPivotPct != null
@@ -239,7 +244,11 @@ function PoolRow({
 
   return (
     <tr
-      style={{ borderBottom: '1px solid var(--color-border)' }}
+      onClick={onRowClick}
+      style={{
+        borderBottom: '1px solid var(--color-border)',
+        cursor: 'pointer',
+      }}
       onMouseEnter={(e) => {
         ;(e.currentTarget as HTMLTableRowElement).style.background =
           'var(--color-table-row-hover)'
@@ -295,7 +304,10 @@ function PoolRow({
       <td style={{ ...tdStyle, color: actionColor }}>{item.suggestedAction ?? '—'}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>
         <button
-          onClick={onAdd}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAdd()
+          }}
           disabled={disabled}
           aria-label={
             item.inWatchlist ? `${item.ticker} in watchlist` : `Add ${item.ticker}`
@@ -303,9 +315,7 @@ function PoolRow({
           style={{
             fontSize: 'var(--font-size-badge)',
             cursor: disabled ? 'default' : 'pointer',
-            color: disabled
-              ? 'var(--color-text-muted)'
-              : 'var(--color-signal-breakout)',
+            color: 'var(--color-text-muted)',
             background: 'none',
             border: 'none',
             padding: '2px 4px',
