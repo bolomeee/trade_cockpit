@@ -398,7 +398,6 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
     isFetching,
     error,
     refetch,
-    dataUpdatedAt,
   } = useQuery({
     queryKey: ['ai', 'market_narrator', data.date],
     queryFn: () => {
@@ -415,8 +414,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
   })
 
   const isBudgetExceeded = error instanceof ApiError && error.code === 'AI_BUDGET_EXCEEDED'
-  const isCooldown = dataUpdatedAt > 0 && Date.now() - dataUpdatedAt < 60 * 60 * 1000
-  const isRefreshDisabled = isLoading || isFetching || isCooldown || isBudgetExceeded
+  const isRefreshDisabled = isLoading || isFetching || isBudgetExceeded
 
   const handleRefresh = () => {
     forceNoCache.current = true
