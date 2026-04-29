@@ -25,6 +25,8 @@ Rules:
 - warnings: up to 5 risk flags or tail-risk reminders
 
 Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
+When referencing sectors, use the sector name (e.g. Technology, Financials, Energy) instead of ETF ticker symbols (e.g. XLK, XLF, XLE).
+All text fields (headline, summary, preferredSetups, avoid, warnings) must be written in Chinese.
 Output must be valid JSON matching the schema exactly. No extra keys.
 """
 
