@@ -42,6 +42,7 @@ def _call_litellm(
     route: ResolvedRoute,
     input_dict: dict[str, Any],
     output_schema: type,
+    system_prompt: str = "",
 ) -> tuple[dict[str, Any], int, int, Decimal]:
     """Lazy-import litellm and call completion.
 
@@ -61,10 +62,15 @@ def _call_litellm(
     if route.custom_output_cost is not None:
         kwargs["output_cost_per_token"] = route.custom_output_cost / 1_000_000.0
 
+    messages: list[dict[str, str]] = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": json.dumps(input_dict)})
+
     try:
         response = litellm.completion(
             model=route.model,
-            messages=[{"role": "user", "content": json.dumps(input_dict)}],
+            messages=messages,
             response_format=output_schema,
             api_key=route.api_key or None,
             api_base=route.base_url,  # None → litellm uses provider default
@@ -155,6 +161,7 @@ class AiGateway:
             route=route,
             input_dict=validated_dict,
             output_schema=pair.output_schema,
+            system_prompt=pair.system_prompt,
         )
         latency_ms = int((time.monotonic() - t0) * 1000)
 

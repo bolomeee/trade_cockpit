@@ -16,6 +16,7 @@ from app.ai import guardrail as _gr
 class SchemaPair(NamedTuple):
     input_schema: type[BaseModel]
     output_schema: type[BaseModel]
+    system_prompt: str = ""
 
 
 # Internal echo task — F208-c smoke test only, NOT in API-CONTRACT 7 enums
@@ -31,13 +32,13 @@ class _EchoOutput(BaseModel):
 
 REGISTRY: dict[str, SchemaPair] = {
     "echo": SchemaPair(_EchoInput, _EchoOutput),
-    "market_narrator": SchemaPair(_mn.MarketNarratorInput, _mn.MarketNarratorOutput),
-    "setup_explainer":   SchemaPair(_se.SetupExplainerInput, _se.SetupExplainerOutput),
-    "candidate_ranker":  SchemaPair(_cr.CandidateRankerInput, _cr.CandidateRankerOutput),
-    "trade_plan":          SchemaPair(_tp.TradePlanInput, _tp.TradePlanOutput),
-    "contradiction_detector": SchemaPair(_cd.ContradictionDetectorInput, _cd.ContradictionDetectorOutput),
-    "news_summarizer":        SchemaPair(_ns.NewsSummarizerInput, _ns.NewsSummarizerOutput),
-    "journal_assistant":      SchemaPair(_ja.JournalAssistantInput, _ja.JournalAssistantOutput),
+    "market_narrator":        SchemaPair(_mn.MarketNarratorInput, _mn.MarketNarratorOutput, _mn.SYSTEM_PROMPT),
+    "setup_explainer":        SchemaPair(_se.SetupExplainerInput, _se.SetupExplainerOutput, _se.SYSTEM_PROMPT),
+    "candidate_ranker":       SchemaPair(_cr.CandidateRankerInput, _cr.CandidateRankerOutput, _cr.SYSTEM_PROMPT),
+    "trade_plan":             SchemaPair(_tp.TradePlanInput, _tp.TradePlanOutput, _tp.SYSTEM_PROMPT),
+    "contradiction_detector": SchemaPair(_cd.ContradictionDetectorInput, _cd.ContradictionDetectorOutput, _cd.SYSTEM_PROMPT),
+    "news_summarizer":        SchemaPair(_ns.NewsSummarizerInput, _ns.NewsSummarizerOutput, _ns.SYSTEM_PROMPT),
+    "journal_assistant":      SchemaPair(_ja.JournalAssistantInput, _ja.JournalAssistantOutput, _ja.SYSTEM_PROMPT),
 }
 
 # Guardrail hooks — registered as module load side effect (D068)
