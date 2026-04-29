@@ -167,17 +167,17 @@ export function TopNav() {
               <Settings />
             </Button>
           )}
-        </ButtonGroup>
-        {showLayoutSync && (
-          <ButtonGroup>
+          {showLayoutSync && (
             <Button variant="outline" size="sm" title="保存当前 Layout" onClick={handleSaveLayout}>
               <CloudUpload size={14} />
             </Button>
+          )}
+          {showLayoutSync && (
             <Button variant="outline" size="sm" title="导入已保存的 Layout" onClick={handleLoadLayout}>
               <CloudDownload size={14} />
             </Button>
-          </ButtonGroup>
-        )}
+          )}
+        </ButtonGroup>
         {showCockpitReset && (
           <UserSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         )}
