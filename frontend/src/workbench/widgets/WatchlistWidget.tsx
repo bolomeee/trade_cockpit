@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Loader2, Upload, X } from 'lucide-react'
+import { Download, Loader2, Upload, CircleX } from 'lucide-react'
 
 import { getSignals } from '@/lib/api/signals'
 import { removeStock } from '@/lib/api/watchlist'
@@ -213,9 +213,9 @@ function WatchlistRow({ stock, onSelect }: { stock: SignalBoardItem; onSelect: (
             <button
               type="button"
               aria-label={`删除 ${ticker}`}
-              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-destructive"
             >
-              <X size={12} strokeWidth={2} />
+              <CircleX size={14} strokeWidth={1.5} />
             </button>
           </AlertDialogTrigger>
           <AlertDialogContent>

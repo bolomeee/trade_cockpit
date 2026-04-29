@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { X } from 'lucide-react'
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -21,6 +22,10 @@ export default function CockpitShell() {
     setLayout(next.map((i) => ({ ...i })))
   }
 
+  const handleClose = (id: string) => {
+    setLayout(layout.filter((item) => item.i !== id))
+  }
+
   return (
     <div className="p-4">
       <div ref={containerRef}>
@@ -30,6 +35,7 @@ export default function CockpitShell() {
             layout={layout}
             gridConfig={{ cols: 12, rowHeight: 40, margin: [12, 12] }}
             dragConfig={{ enabled: true, handle: '.widget-handle' }}
+            resizeConfig={{ handles: ['se', 'sw', 'nw'] }}
             compactor={verticalCompactor}
             onLayoutChange={handleChange}
           >
@@ -41,12 +47,24 @@ export default function CockpitShell() {
                 <div key={item.i}>
                   <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
                     <div
-                      className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center border-b border-border px-2 active:cursor-grabbing"
+                      className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
                       style={{ backgroundColor: '#ebf2fa' }}
                     >
                       <span className="text-xs text-foreground">{manifest.title}</span>
+                      <button
+                        type="button"
+                        aria-label={`关闭 ${manifest.title}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleClose(item.i)
+                        }}
+                        className="flex h-3 w-3 items-center justify-center text-muted-foreground hover:text-foreground"
+                      >
+                        <X size={10} strokeWidth={2} />
+                      </button>
                     </div>
-                    <div className="flex-1 overflow-auto p-4">
+                    <div className="flex-1 overflow-auto">
                       <Widget />
                     </div>
                   </div>

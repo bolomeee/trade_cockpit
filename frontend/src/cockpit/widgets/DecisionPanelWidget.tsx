@@ -324,8 +324,8 @@ export function DecisionPanelWidget() {
   const is422 = err instanceof ApiError && err.status === 422
 
   const headerTitle = data
-    ? `Decision · ${data.ticker} · ${data.setupType} · ${data.setupQuality}`
-    : `Decision · ${ticker}`
+    ? `${data.ticker} · ${data.setupType} · ${data.setupQuality}`
+    : ticker ?? ''
 
   const overrideFormProps = {
     inputValues,

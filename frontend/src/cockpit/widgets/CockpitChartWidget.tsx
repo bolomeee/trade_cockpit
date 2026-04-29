@@ -238,8 +238,8 @@ export function CockpitChartWidget() {
 
   const decision = decisionQuery.data
   const headerText = decision
-    ? `Chart · ${ticker} · ${decision.setupType} · ${decision.setupQuality ?? '—'}`
-    : `Chart · ${ticker}`
+    ? `${ticker} · ${decision.setupType} · ${decision.setupQuality ?? '—'}`
+    : ticker
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>

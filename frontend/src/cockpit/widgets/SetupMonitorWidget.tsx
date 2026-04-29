@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { CircleX, Loader2 } from 'lucide-react'
 import { useCockpitStore } from '@/store/cockpitStore'
 import {
   getSetupMonitor,
@@ -7,6 +8,7 @@ import {
   type SetupItem,
   type SetupSummary,
 } from '../lib/api/setupMonitorApi'
+import { removeStock } from '@/lib/api/watchlist'
 import { SetupTypeBadge } from '../components/SetupTypeBadge'
 import { SetupQualityBadge } from '../components/SetupQualityBadge'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
@@ -14,6 +16,17 @@ import { AiSetupExplainerPopover } from '../components/AiSetupExplainerPopover'
 import { getCockpitRegime } from '../lib/api/cockpitRegimeApi'
 import { AiCandidateRankerSection } from '../components/AiCandidateRankerSection'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 type FilterTab = 'all' | SetupFilterValue
 
@@ -179,9 +192,9 @@ export function SetupMonitorWidget() {
                 <Th width="11%">Stop</Th>
                 <Th width="8%">R:R</Th>
                 <Th width="10%">Dist</Th>
-                <Th width="8%">RS</Th>
-                <Th width="8%">Earn</Th>
-                <Th width="5%">?</Th>
+                <Th width="6%">RS</Th>
+                <Th width="8%" align="center">Earn</Th>
+                <Th width="5%"></Th>
               </tr>
             </thead>
             <tbody>
@@ -200,12 +213,12 @@ export function SetupMonitorWidget() {
   )
 }
 
-function Th({ children, width }: { children: React.ReactNode; width: string }) {
+function Th({ children, width, align = 'left' }: { children: React.ReactNode; width: string; align?: 'left' | 'center' | 'right' }) {
   return (
     <th
       style={{
         padding: '4px 6px',
-        textAlign: 'left',
+        textAlign: align,
         fontSize: 'var(--font-size-badge)',
         fontWeight: 'var(--font-weight-normal)',
         width,
@@ -225,6 +238,22 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
   const dist = item.distanceToEntryPct ?? null
   const distStr =
     dist != null ? `${dist >= 0 ? '+' : ''}${dist.toFixed(2)}%` : '—'
+  const queryClient = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const deleteMutation = useMutation({
+    mutationFn: () => removeStock(item.ticker),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cockpit-setup-monitor'] })
+      queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      setDialogOpen(false)
+      setDeleteError(null)
+    },
+    onError: () => {
+      setDeleteError('删除失败，请重试')
+    },
+  })
 
   return (
     <tr
@@ -233,6 +262,7 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
         cursor: 'pointer',
         borderBottom: '1px solid var(--color-border)',
         position: 'relative',
+        opacity: deleteMutation.isPending ? 0.5 : 1,
       }}
       onMouseEnter={(e) => {
         ;(e.currentTarget as HTMLTableRowElement).style.background =
@@ -290,22 +320,78 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
       <td style={{ ...tdStyle, fontFamily: 'var(--font-family-numeric)' }}>
         {item.rsPercentile}
       </td>
-      <td style={tdStyle}>
+      <td style={{ ...tdStyle, textAlign: 'center' }}>
         <EarningsRiskDot value={item.earningsRisk} />
       </td>
-      <td style={{ ...tdStyle, textAlign: 'right' }}>
-        {(item.setupType === 'BREAKOUT' || item.setupType === 'PULLBACK' || item.setupType === 'RECLAIM') &&
-          item.entryPrice > 0 &&
-          item.stopPrice > 0 && (
-            <AiSetupExplainerPopover
-              ticker={item.ticker}
-              setupType={item.setupType}
-              trendScore={item.trendScore}
-              rsPercentile={item.rsPercentile}
-              entryPrice={item.entryPrice}
-              stopPrice={item.stopPrice}
-            />
-          )}
+      <td style={{ ...tdStyle, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+        <AlertDialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open)
+            if (!open) setDeleteError(null)
+          }}
+        >
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              aria-label={`删除 ${item.ticker}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '18px',
+                height: '18px',
+                borderRadius: '3px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                padding: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--color-destructive, #ef4444)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-text-muted)'
+              }}
+            >
+              <CircleX size={13} strokeWidth={1.5} />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除</AlertDialogTitle>
+              <AlertDialogDescription>
+                从 watchlist 中移除 <strong>{item.ticker}</strong>？
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError && (
+              <div style={{ color: 'var(--color-change-negative)', fontSize: 'var(--font-size-caption)' }}>
+                {deleteError}
+              </div>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault()
+                  deleteMutation.mutate()
+                }}
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    删除中…
+                  </>
+                ) : (
+                  '删除'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </td>
     </tr>
   )

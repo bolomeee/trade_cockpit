@@ -5,9 +5,10 @@ type WidgetShellProps = {
   title: string
   children: ReactNode
   onClose?: () => void
+  noPaddingRight?: boolean
 }
 
-export function WidgetShell({ title, children, onClose }: WidgetShellProps) {
+export function WidgetShell({ title, children, onClose, noPaddingRight }: WidgetShellProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
       <div
@@ -30,7 +31,7 @@ export function WidgetShell({ title, children, onClose }: WidgetShellProps) {
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-auto p-4">{children}</div>
+      <div className="flex-1 overflow-auto p-4" style={noPaddingRight ? { paddingRight: 0 } : undefined}>{children}</div>
     </div>
   )
 }

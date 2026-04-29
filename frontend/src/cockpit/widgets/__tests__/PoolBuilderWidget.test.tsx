@@ -11,6 +11,13 @@ vi.mock('@/lib/api/watchlist', () => ({
   addStock: vi.fn().mockResolvedValue({ ticker: 'NVDA', id: 1, isActive: true }),
 }))
 
+const mockSetSelectedTicker = vi.fn()
+vi.mock('@/store/cockpitStore', () => ({
+  useCockpitStore: (
+    selector: (s: { selectedTicker: null; setSelectedTicker: typeof mockSetSelectedTicker }) => unknown,
+  ) => selector({ selectedTicker: null, setSelectedTicker: mockSetSelectedTicker }),
+}))
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeClient() {
@@ -243,6 +250,47 @@ describe('T8 – [+ Add] click → addStock + invalidate both query keys', () =>
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['cockpit-pool'] })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['watchlist'] })
     })
+  })
+})
+
+describe('T8b – row click triggers setSelectedTicker', () => {
+  beforeEach(() => {
+    mockSetSelectedTicker.mockClear()
+    vi.unstubAllGlobals()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('clicking the row calls setSelectedTicker with the ticker', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/pool': () => Promise.resolve(makeOkResponse(POOL_DATA)),
+      }),
+    )
+    renderWidget()
+
+    const tickerCell = await screen.findByText('NVDA')
+    const row = tickerCell.closest('tr') as HTMLTableRowElement
+    fireEvent.click(row)
+
+    expect(mockSetSelectedTicker).toHaveBeenCalledWith('NVDA')
+  })
+
+  it('clicking the [+ Add] button does NOT trigger setSelectedTicker (stopPropagation)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/pool': () => Promise.resolve(makeOkResponse(POOL_DATA)),
+        '/watchlist': () => Promise.resolve(makeOkResponse({ ticker: 'NVDA', id: 1 })),
+      }),
+    )
+    renderWidget()
+
+    await screen.findByText('NVDA')
+    const addBtn = screen.getByRole('button', { name: /Add NVDA/i })
+    fireEvent.click(addBtn)
+
+    expect(mockSetSelectedTicker).not.toHaveBeenCalled()
   })
 })
 

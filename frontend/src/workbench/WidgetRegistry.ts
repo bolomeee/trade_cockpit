@@ -16,6 +16,7 @@ export type WidgetManifest = {
   component: ComponentType
   defaultLayout: Omit<LayoutItem, 'i'>
   category: WidgetCategory
+  noPaddingRight?: boolean
 }
 
 export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
@@ -25,6 +26,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     component: ChartWidget,
     defaultLayout: { x: 0, y: 0, w: 8, h: 8, minW: 4, minH: 4 },
     category: 'sma150',
+    noPaddingRight: true,
   },
   'sma150.fundamentals': {
     id: 'sma150.fundamentals',
@@ -74,6 +76,7 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     component: ChartWidget,
     defaultLayout: { x: 8, y: 0, w: 4, h: 8, minW: 3, minH: 6 },
     category: 'news',
+    noPaddingRight: true,
   },
   'news.fundamentals': {
     id: 'news.fundamentals',

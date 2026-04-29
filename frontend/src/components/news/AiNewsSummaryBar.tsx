@@ -108,8 +108,9 @@ function SectionHeader({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AiNewsSummaryBar(): JSX.Element {
-  const [open, setOpen] = useState(false)
+export function AiNewsSummaryBar(): JSX.Element | null {
+  const open = useAppStore((s) => s.aiNewsSummaryOpen)
+  const setOpen = useAppStore((s) => s.setAiNewsSummaryOpen)
   const [hash, setHash] = useState<string | null>(null)
   const setSelectedSymbol = useAppStore((s) => s.setSelectedSymbol)
 
@@ -145,30 +146,7 @@ export function AiNewsSummaryBar(): JSX.Element {
   const is409 = error instanceof ApiError && error.status === 409
 
   // ── State 1: closed ──────────────────────────────────────────────────────
-  if (!open) {
-    return (
-      <button
-        data-testid="ai-news-summary-trigger"
-        aria-label="Generate AI News Summary"
-        disabled={isDisabled}
-        title={isDisabled ? '暂无 news' : undefined}
-        onClick={() => setOpen(true)}
-        style={{
-          padding: '6px 12px',
-          borderRadius: '4px',
-          border: '1px solid var(--color-border)',
-          background: 'var(--color-input-background)',
-          color: isDisabled ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
-          cursor: isDisabled ? 'not-allowed' : 'pointer',
-          fontSize: 'var(--font-size-caption)',
-          fontWeight: 'var(--font-weight-medium)',
-          opacity: isDisabled ? 0.6 : 1,
-        }}
-      >
-        Generate AI News Summary
-      </button>
-    )
-  }
+  if (!open) return null
 
   // ── State 2: loading ─────────────────────────────────────────────────────
   if (isSpinning) {
