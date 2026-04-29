@@ -98,18 +98,18 @@ function ScoreHero({ data }: { data: CockpitRegimeData }) {
             borderRadius: '4px',
             backgroundColor: color,
             color: 'var(--color-text-on-dark)',
-            fontSize: 'var(--font-size-label)',
+            fontSize: 'var(--font-size-caption)',
             fontWeight: 600,
             letterSpacing: '0.04em',
           }}
         >
           {data.regime}
         </span>
-        <span style={{ fontSize: 'var(--font-size-body)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <span style={{ fontSize: 'var(--font-size-caption)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
           {data.marketScore} / 100
         </span>
       </div>
-      <div style={{ fontSize: 'var(--font-size-body)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
         <div>Allowed Exposure: <span style={{ color: 'var(--color-text-primary)' }}>{data.allowedExposurePct.toFixed(1)}%</span></div>
         <div>Single Trade Risk: <span style={{ color: 'var(--color-text-primary)' }}>{data.singleTradeRiskPct.toFixed(1)}%</span></div>
       </div>
@@ -128,23 +128,18 @@ function SubscoreCard({ label, value, max }: { label: string; value: number; max
         border: '1px solid var(--color-border)',
         borderRadius: '6px',
         minHeight: '52px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
       }}
     >
-      <div style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {label}
       </div>
-      <div style={{ fontSize: 'var(--font-size-body)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '4px' }}>
+      <div style={{ fontSize: 'var(--font-size-caption)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
         {value} / {max}
-      </div>
-      <div style={{ height: '4px', borderRadius: '2px', backgroundColor: 'var(--color-muted)' }}>
-        <div
-          style={{
-            height: '100%',
-            borderRadius: '2px',
-            width: `${Math.round(pct * 100)}%`,
-            backgroundColor: subscoreBarColor(pct),
-          }}
-        />
       </div>
     </div>
   )
@@ -154,7 +149,7 @@ function SubscoresGrid({ subscores }: { subscores: RegimeSubscores }) {
   const keys = Object.keys(SUBSCORE_MAX) as Array<keyof typeof SUBSCORE_MAX>
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Subscores</div>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Subscores</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
         {keys.map((key) => (
           <SubscoreCard
@@ -184,7 +179,7 @@ function IndexRow({ idx }: { idx: RegimeIndex }) {
         alignItems: 'center',
         gap: '6px',
         padding: '4px 0',
-        fontSize: 'var(--font-size-body)',
+        fontSize: 'var(--font-size-caption)',
         borderBottom: '1px solid var(--color-border-subtle)',
       }}
     >
@@ -206,7 +201,7 @@ function IndexRow({ idx }: { idx: RegimeIndex }) {
 function IndicesCard({ indices }: { indices: RegimeIndex[] }) {
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Indices</div>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Indices</div>
       <div>
         {indices.map((idx) => (
           <IndexRow key={idx.symbol} idx={idx} />
@@ -250,7 +245,7 @@ function SectorCell({ sector }: { sector: RegimeSector }) {
           justifyContent: 'center',
         }}
       >
-        <div style={{ fontSize: 'var(--font-size-label)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <div style={{ fontSize: 'var(--font-size-caption)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
           {sector.symbol}
         </div>
         <div
@@ -290,7 +285,7 @@ function SectorHeatmap({ sectors }: { sectors: RegimeSector[] }) {
   const bySymbol = Object.fromEntries(sectors.map((s) => [s.symbol, s]))
   return (
     <div>
-      <div style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Sector Heatmap</div>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Sector Heatmap</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
         {SECTOR_ORDER.map((sym) => {
           const sector = bySymbol[sym]
@@ -334,7 +329,7 @@ function RegimeEmptyState() {
         padding: '24px 16px',
         textAlign: 'center',
         color: 'var(--color-text-secondary)',
-        fontSize: 'var(--font-size-body)',
+        fontSize: 'var(--font-size-caption)',
       }}
     >
       首日 regime 计算中，明日开盘后可见
@@ -451,7 +446,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
             }}
           >
             <div
-              style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)' }}
+              style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)' }}
             >
               AI Market Notes
             </div>
@@ -460,13 +455,13 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
               variant="ghost"
               disabled={isRefreshDisabled}
               onClick={handleRefresh}
-              style={{ fontSize: 'var(--font-size-label)', padding: '2px 6px', height: 'auto' }}
+              style={{ fontSize: 'var(--font-size-caption)', padding: '2px 6px', height: 'auto' }}
             >
               ↻ Refresh
             </Button>
           </div>
           <div
-            style={{ fontSize: 'var(--font-size-label)', color: 'var(--color-text-secondary)' }}
+            style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)' }}
           >
             AI 暂不可用
           </div>
@@ -493,7 +488,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
         >
           <div
             style={{
-              fontSize: 'var(--font-size-label)',
+              fontSize: 'var(--font-size-caption)',
               color: 'var(--color-text-secondary)',
             }}
           >
@@ -504,7 +499,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
             variant="ghost"
             disabled={isRefreshDisabled}
             onClick={handleRefresh}
-            style={{ fontSize: 'var(--font-size-label)', padding: '2px 6px', height: 'auto' }}
+            style={{ fontSize: 'var(--font-size-caption)', padding: '2px 6px', height: 'auto' }}
           >
             {isFetching ? '…' : '↻ Refresh'}
           </Button>
@@ -512,7 +507,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
 
         <div
           style={{
-            fontSize: 'var(--font-size-body)',
+            fontSize: 'var(--font-size-caption)',
             fontWeight: 600,
             color: 'var(--color-text-primary)',
             marginBottom: '4px',
@@ -523,7 +518,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
 
         <div
           style={{
-            fontSize: 'var(--font-size-body)',
+            fontSize: 'var(--font-size-caption)',
             fontWeight: 400,
             color: 'var(--color-text-secondary)',
             lineHeight: 1.5,
@@ -539,7 +534,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
               <div
                 key={i}
                 style={{
-                  fontSize: 'var(--font-size-label)',
+                  fontSize: 'var(--font-size-caption)',
                   padding: '2px 8px',
                   borderRadius: '4px',
                   backgroundColor: `color-mix(in srgb, var(--color-log-warn) 25%, var(--color-card))`,
