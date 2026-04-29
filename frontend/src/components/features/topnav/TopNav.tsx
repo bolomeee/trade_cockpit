@@ -12,6 +12,7 @@ import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
 import { useLayoutStore } from '@/workbench/useLayoutStore'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RefreshButton } from './RefreshButton'
 import { useAppStore } from '@/store/useAppStore'
 import { useNewsArticles } from '@/hooks/useNewsArticles'
@@ -150,32 +151,71 @@ export function TopNav() {
         </span>
         <ButtonGroup>
           {showNewsSummary && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isNewsDisabled || aiNewsSummaryOpen}
-              onClick={() => setAiNewsSummaryOpen(true)}
-            >
-              AI Summary
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isNewsDisabled || aiNewsSummaryOpen}
+                  onClick={() => setAiNewsSummaryOpen(true)}
+                >
+                  AI Summary
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>生成 AI 新闻摘要</TooltipContent>
+            </Tooltip>
           )}
-          <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
-          {showResetLayout && <ResetLayoutButton />}
-          {showCockpitReset && <CockpitResetLayoutButton />}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
+            </TooltipTrigger>
+            <TooltipContent>刷新数据</TooltipContent>
+          </Tooltip>
+          {showResetLayout && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ResetLayoutButton />
+              </TooltipTrigger>
+              <TooltipContent>重置 Workbench 布局</TooltipContent>
+            </Tooltip>
+          )}
           {showCockpitReset && (
-            <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-              <Settings />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CockpitResetLayoutButton />
+              </TooltipTrigger>
+              <TooltipContent>重置 Cockpit 布局</TooltipContent>
+            </Tooltip>
+          )}
+          {showCockpitReset && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+                  <Settings />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>用户设置</TooltipContent>
+            </Tooltip>
           )}
           {showLayoutSync && (
-            <Button variant="outline" size="sm" title="保存当前 Layout" onClick={handleSaveLayout}>
-              <CloudUpload size={14} />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleSaveLayout}>
+                  <CloudUpload size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>保存当前布局到服务器</TooltipContent>
+            </Tooltip>
           )}
           {showLayoutSync && (
-            <Button variant="outline" size="sm" title="导入已保存的 Layout" onClick={handleLoadLayout}>
-              <CloudDownload size={14} />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleLoadLayout}>
+                  <CloudDownload size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>从服务器导入已保存的布局</TooltipContent>
+            </Tooltip>
           )}
         </ButtonGroup>
         {showCockpitReset && (

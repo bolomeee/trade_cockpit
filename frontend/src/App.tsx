@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { TopNav } from '@/components/features/topnav/TopNav'
-import { MarketOverviewBar } from '@/components/features/market-overview/MarketOverviewBar'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const Workbench = lazy(() => import('@/workbench/Workbench'))
 const Cockpit = lazy(() => import('@/pages/Cockpit'))
@@ -10,11 +10,10 @@ const Logs = lazy(() => import('@/pages/Logs'))
 const News = lazy(() => import('@/pages/News'))
 
 export default function App() {
-  const { pathname } = useLocation()
   return (
+    <TooltipProvider>
     <div className="min-h-screen">
       <TopNav />
-      {pathname !== '/cockpit' && <MarketOverviewBar />}
       <main>
         <Suspense fallback={null}>
           <Routes>
@@ -27,5 +26,6 @@ export default function App() {
         </Suspense>
       </main>
     </div>
+    </TooltipProvider>
   )
 }
