@@ -4,6 +4,23 @@
 
 ---
 
+## [v2.0.0] - 2026-04-29
+
+> ⚠️ consistency-check 违例覆盖：部分早期 feature 修正未纳入 feature-dev 流程，C2/C5 违例均为历史遗留 artifact（旧 status 值 "completed"、已重组的 feature ID），不影响当前功能完整性。
+
+### ✨ 新增
+- **F211 AI Layer（6 个子 sprint 全部交付）**
+  - AI Contradiction Detector：Decision Panel 新增矛盾检测区，单击生成 severity badge + recommendation
+  - AI News Summarizer：News 页新增 AI 摘要 Bar，单击触发对当日新闻的 AI 汇总
+  - AI Journal Assistant：平仓后自动触发后台 journal review（BackgroundTask 写入 ai_review 字段）
+  - 月度复盘 cron：APScheduler 月度 job，自动聚合上月交易发起 AI 复盘；0 笔交易月份跳过
+
+### 🏗️ 基础设施
+- AI task type schema（contradiction_detector / news_summarizer / journal_assistant）+ tier 路由（contradiction_detector → default，journal_assistant → complex）
+- Playwright E2E 冒烟探针框架（8 探针，Vite 模块注入 + Zustand setState）
+
+---
+
 ## [v1.10.0] - 2026-04-28
 
 ### ✨ 新增
