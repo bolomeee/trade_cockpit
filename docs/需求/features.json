@@ -3631,6 +3631,44 @@
       ],
       "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 拆分迭代：初版 5 段 a1/a2/b/c/d，2026-04-29 因 d 超 6 文件预算二次拆为 d1+d2，最终 6 段。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。",
       "completed_at": "2026-04-29"
+    },
+    {
+      "id": "F212",
+      "name": "跨设备 Layout 同步",
+      "description": "三个页面（Workbench / Cockpit / News）的 widget layout 可持久化到 backend/layouts/{page}.json，随 git commit/push 同步到其他机器。TopNav 新增 CloudUpload / CloudDownload 图标按钮，保存时写入后端文件，导入时读取并更新对应 Zustand layout store。",
+      "user_story": "作为用户，我需要在换机器或新浏览器时能一键恢复我自定义的 widget 布局，而不需要手动重新调整。",
+      "priority": "P2",
+      "status": "done",
+      "phase": "needs_review",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "GET /api/layouts/{page} 返回已保存的 layout 数组，文件不存在时返回空数组",
+        "PUT /api/layouts/{page} 将 layout 写入 backend/layouts/{page}.json",
+        "三个 JSON 文件（workbench/cockpit/news）存在于 backend/layouts/ 并已 commit",
+        "TopNav 在 /, /cockpit, /news 路径显示 CloudUpload + CloudDownload 按钮",
+        "保存/导入成功有 sonner toast 反馈",
+        "保存/导入失败有 toast.error 反馈"
+      ],
+      "estimated_files_changed": [
+        "backend/app/routers/layouts.py (新建)",
+        "backend/app/main.py (修改)",
+        "backend/layouts/workbench.json (新建)",
+        "backend/layouts/cockpit.json (新建)",
+        "backend/layouts/news.json (新建)",
+        "frontend/src/lib/api/layouts.ts (新建)",
+        "frontend/src/components/features/topnav/TopNav.tsx (修改)"
+      ],
+      "iteration_history": [
+        {
+          "date": "2026-04-29",
+          "subtask": "F212",
+          "phase": "needs_review",
+          "session": "F212 Generator",
+          "changes": "F212 完成：backend/app/routers/layouts.py（GET+PUT /api/layouts/{page}，读写 backend/layouts/*.json）；main.py 注册 layouts.router；backend/layouts/{workbench,cockpit,news}.json 初始化（均为 []）；frontend/src/lib/api/layouts.ts（loadLayout/saveLayout）；TopNav 新增 CloudUpload/CloudDownload ButtonGroup，showLayoutSync 控制显示（/, /cockpit, /news），使用 getState() 避免不必要订阅，sonner toast 反馈成功/失败。API-CONTRACT.md 新增 F212 Layouts 章节。Evaluator 全部通过。"
+        }
+      ],
+      "notes": "layout 文件存在 backend/layouts/ 目录，随 git push 跨设备同步。导入后直接覆盖 Zustand store（localStorage 会同步更新）。",
+      "completed_at": "2026-04-29"
     }
   ]
 }

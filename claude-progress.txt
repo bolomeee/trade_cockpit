@@ -1,1 +1,29 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] Sprint：F212 跨设备 Layout 同步
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+✅ 完成内容：
+  - GET /api/layouts/{page}：读取 backend/layouts/{page}.json，文件不存在时返回 []
+  - PUT /api/layouts/{page}：将 layout 数组写入 backend/layouts/{page}.json
+  - backend/layouts/{workbench,cockpit,news}.json 初始化为 []，已 commit
+  - frontend/src/lib/api/layouts.ts：loadLayout / saveLayout 函数
+  - TopNav：CloudUpload（保存）+ CloudDownload（导入）按钮，显示在 /, /cockpit, /news 路径
+  - save/load 均通过 getState() 读写 Zustand store，避免不必要订阅
+  - 成功/失败均有 sonner toast 反馈
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新建 backend/app/routers/layouts.py
+  - 修改 backend/app/main.py（注册 layouts.router）
+  - 新建 backend/layouts/workbench.json, cockpit.json, news.json
+  - 新建 frontend/src/lib/api/layouts.ts
+  - 修改 frontend/src/components/features/topnav/TopNav.tsx
+  - 更新 docs/系统设计/API-CONTRACT.md（新增 F212 Layouts 章节）
+
+📊 功能状态：
+  F212 跨设备 Layout 同步：🔍 needs_review
+
+[下一个 Session]
+  F212 待用户验收。验收通过后 phase → done。
+  下一个可开发功能请参考 features.json。
