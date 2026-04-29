@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-28",
+  "last_updated": "2026-04-29",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F211-d1",
+    "active_sprint": "F211-d2",
     "active_sprint_phase": "done"
   },
   "_iteration_log": [
@@ -3477,7 +3477,7 @@
         "F211-b": "done",
         "F211-c": "done",
         "F211-d1": "done",
-        "F211-d2": "design_needed"
+        "F211-d2": "done"
       },
       "dependencies": [
         "F208-c",
@@ -3612,6 +3612,21 @@
           "phase": "done",
           "session": "F211-d1 Generator",
           "changes": "F211-d1 完成：alembic 017 (journal_entries.ai_review Text + ai_review_memo_id Integer) / journal_entry 模型+DTO / JournalReviewService.trade_review_for_position / position_service OPEN→CLOSED BackgroundTasks hook / positions.py 路由注入 BackgroundTasks+SessionFactory / 15 tests (5U+8I+2E 全过) / test_schema.py 更新。回归 908 passed (+15)；mypy 173←174 净减 1；ruff 0 新增违例。DECISIONS.md D082 已追加。"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d2",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：journal_assistant monthly mode + 月度 cron（每月 1 号 06:00 UTC）。0 schema / 0 迁移 / 0 前端 / 0 新依赖。4 文件（2 余量）：journal_review_service.py +monthly_review_for_month/_fetch_closed_positions_for_month/_build_monthly_input/_brief_for_position；refresh_job.py +JOURNAL_MONTHLY_JOB_ID/add_job/_journal_monthly_tick/_previous_month_utc helper；config.py +journal_monthly_cron_day/hour/minute；test_journal_review_service_f211d2.py 14 case (6U+5I+3 调度)。核心决定：monthly 输出仅落 ai_memos（依赖 D069 滚动清理 + 24h memo dedup，不新增表/迁移/journal_entries action）；0 trades 月份跳过 gateway；ASC 取最早 100；失败 swallow 与现有 cron tick 一致；不重试。Q1-Q15 全采默认方案，新增 D083（合约标 D077，被占用）。F211-d2 完成后父 F211 6 个 sub_sprints 全 done，acceptance 阶段决定父 status。下一 session Generator 模式从开发步骤 1（预检：alembic current / refresh_job datetime imports / GatewayResult / conftest fixtures / Position closed_at 类型）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-d2-contract.md",
+          "contract_agreed_at": "2026-04-29"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d2",
+          "phase": "done",
+          "session": "F211-d2 Generator",
+          "changes": "F211-d2 完成：journal_review_service.py +monthly_review_for_month/_fetch_closed_positions_for_month/_build_monthly_input/_brief_for_position；refresh_job.py +JOURNAL_MONTHLY_JOB_ID/add_job/_journal_monthly_tick/_previous_month_utc+timedelta import；config.py +journal_monthly_cron_{day,hour,minute}；.env.example 注释；test_journal_review_service_f211d2.py 17 tests (3U+3U+5I+3S+I5×4参数化，全过)。回归 925 passed（基线 908+17）；d1 15 tests 不受影响；mypy 0 新增错误；ruff 0 新增违例。DECISIONS.md D083 已追加。caplog 隔离问题（alembic fileConfig disable_existing_loggers=True）通过 autouse fixture _restore_app_loggers 修复。"
         }
       ],
       "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 拆分迭代：初版 5 段 a1/a2/b/c/d，2026-04-29 因 d 超 6 文件预算二次拆为 d1+d2，最终 6 段。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。"

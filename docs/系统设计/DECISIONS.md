@@ -1936,3 +1936,32 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **对应代码**：`position_service._trade_review_background`, `journal_review_service.JournalReviewService.trade_review_for_position`
 
 **注**：Sprint Contract 原规划 D076，因 D076 已被占用改为 D082。
+
+---
+
+## D083：F211-d2 月度复盘 cron 策略
+日期：2026-04-29 | Feature: F211-d2
+
+**方案**：
+1. 月度复盘输出**仅落 ai_memos**（不写 journal_entries，不新增表/迁移/action 类型）
+2. cron 时间：每月 1 号 06:00 UTC（universe 05:00 之后 1h 错峰）
+3. 0 trades 月份：主动跳过 gateway（MonthlyReviewPayload min_length=1，空列表会 schema 报错），log INFO，return None
+4. 重入幂等：依赖 AiGateway memo dedup（input_hash + 24h TTL + schema_version=v1），不加标记位
+5. 失败不重试：tick 顶层 try/except swallow，与 refresh_job 现有 7 个 cron tick 一致，下月自然再来
+6. closedTrades 上限 100 条，ORDER BY closed_at ASC（最早 100 条，早期更有归因价值）
+
+**理由**：
+- 仅落 ai_memos：避免新增 action 类型 / schema 迁移，依赖 D069 180 天滚动清理保证存储不膨胀
+- 月初 06:00 UTC：universe refresh 05:00 在前，避免并发争锁；早于 scanner 06:15，月初 API 正常
+- 跳过 0 trades：主动检测比依赖 schema 报错更清晰，避免 warning log 的噪声
+- 不重试：月度复盘错过则下月补，低频触发（1 次/月）不值得引入 tenacity / APScheduler reschedule 复杂性
+
+**放弃了什么**：
+- 新表 monthly_reviews（+迁移 +表 +FK，超 sprint 范围）
+- journal_entries 新增 action='MONTHLY_REVIEW'（+迁移 +schema 变更）
+- Redis lock 幂等（无 Redis 依赖，系统单用户，重入概率极低）
+- 重试机制（月度频率不值得 tenacity 复杂度）
+
+**对应代码**：`journal_review_service.JournalReviewService.monthly_review_for_month`, `refresh_job._journal_monthly_tick`, `refresh_job._previous_month_utc`
+
+**注**：Sprint Contract 原规划 D077，因 D077 已被占用（F207-b）改为 D083。

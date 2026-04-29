@@ -418,3 +418,60 @@ F211 进度：a1 ✅ a2 ✅ b ✅ c ⬜ d ⬜
 📊 F211 进度：a1 ✅ a2 ✅ b ✅ c ✅ d1 ✅ d2 ⬜(design_needed)
 
 [下一步] F211-d2（月度复盘 cron）或其它 P0 Feature。建议开新 session。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] Sprint：F211-d2 月度复盘 cron — Contract Agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Sprint Contract 协商完成：
+  范围：journal_assistant monthly mode + 月度 cron（每月 1 号 06:00 UTC），0 schema / 0 迁移 / 0 前端 / 0 新依赖
+  文件：4 个（2 余量）— journal_review_service.py +monthly + refresh_job.py +cron + config.py +settings + test_f211d2.py 14 case
+  存储：仅落 ai_memos（D069 滚动清理 + 24h memo dedup），不新增表，不动 journal_entries
+  幂等：依赖 gateway input_hash + schema_version=v1
+  失败策略：tick swallow，下月再来，不重试
+  Q1-Q15 全采默认方案，将追加 D077
+
+📁 Contract：docs/开发/sprint-contracts/F211-d2-contract.md
+📊 features.json：sub_sprints["F211-d2"]: design_needed → contract_agreed
+                 _pipeline_status.active_sprint: F211-d1 → F211-d2
+                 iteration_history 追加 F211-d2 contract_agreed 记录
+
+✅ consistency-check (interactive) 全清：C4/C5/C6 0 violations
+
+[下一步] 开新 session 用 Sonnet 进入 Generator 模式：
+  > 继续开发 F211-d2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F211-d2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（预检）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] F211-d2 Generator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+步骤 1 预检：alembic=017 ✅ / timedelta 缺失（步骤 4 补）/ GatewayResult.memo_id: int|None ✅ / db_session fixture ✅ / Position.closed_at=DateTime(tz=True) ✅
+
+步骤 2 config：journal_monthly_cron_day/hour/minute 3 行 + .env.example 注释
+  commit: wip(F211-d2): config + env journal monthly cron settings
+
+步骤 3 journal_review_service monthly 接口：
+  +datetime import / +monthly_review_for_month / +_fetch_closed_positions_for_month / +_build_monthly_input / +_brief_for_position
+  +tests U4-U6 + I1-I5（11 tests，含 I5×4 参数化）全过
+  commit: wip(F211-d2): JournalReviewService monthly mode + 9 tests
+
+步骤 4 refresh_job：
+  +timedelta import / +JournalReviewService import / +JOURNAL_MONTHLY_JOB_ID / +add_job in start_scheduler / +_journal_monthly_tick / +_previous_month_utc
+  +tests U1-U3 + S1-S3（6 tests）全过
+  commit: wip(F211-d2): refresh_job journal monthly cron + 6 tests
+
+步骤 5 回归 + 静态检查：
+  ✅ pytest 全量：925 passed（基线 908 + 17 新增），0 新增失败
+  ✅ d1 15 tests 不受影响
+  ✅ mypy：0 新增错误（baseline 预存在错误不变）
+  ✅ ruff：0 新增违例（refresh_job field import 是预存在）
+  🔧 caplog 隔离 bug 修复：alembic fileConfig(disable_existing_loggers=True) 污染 app.* loggers，通过 autouse fixture _restore_app_loggers 修复
+
+步骤 6 文档：
+  ✅ DECISIONS.md D083 追加（合约标 D077，被占用，同 D082 处理）
+  ✅ features.json：F211-d2 → done / active_sprint_phase → done / iteration_history 追加 done 记录
+  ✅ claude-progress.txt 更新
+
+[下一步] 步骤 7 最终 commit → consistency-check → acceptance

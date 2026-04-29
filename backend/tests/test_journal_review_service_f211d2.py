@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import logging
+
 from app.ai.errors import AiBudgetExceeded, AiGuardrailViolation, AiProviderError, AiSchemaError
 from app.ai.schemas.journal_assistant import ClosedTradeBrief, JournalAssistantInput
 from app.models.position import Position
@@ -24,6 +26,15 @@ from app.services.refresh_job import (
     _previous_month_utc,
     start_scheduler,
 )
+
+
+@pytest.fixture(autouse=True)
+def _restore_app_loggers():
+    """Re-enable app loggers disabled by alembic fileConfig(disable_existing_loggers=True)."""
+    for name in ["app", "app.services", "app.services.cockpit",
+                 "app.services.cockpit.journal_review_service"]:
+        logging.getLogger(name).disabled = False
+    yield
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
@@ -196,7 +207,7 @@ class TestMonthlyReviewIntegration:
         svc = self._svc(db_session)
 
         with patch.object(svc._gateway, "run") as mock_run, \
-             caplog.at_level("INFO", logger="app.services.cockpit.journal_review_service"):
+             caplog.at_level("INFO"):
             result = svc.monthly_review_for_month("2026-03")
 
         assert result is None
@@ -279,7 +290,7 @@ class TestMonthlyReviewIntegration:
 
         svc = self._svc(db_session)
         with patch.object(svc._gateway, "run", side_effect=exc_cls("test error")), \
-             caplog.at_level("WARNING", logger="app.services.cockpit.journal_review_service"):
+             caplog.at_level("WARNING"):
             result = svc.monthly_review_for_month("2026-03")
 
         assert result is None
