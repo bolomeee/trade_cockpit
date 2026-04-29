@@ -1,19 +1,26 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Settings } from 'lucide-react'
+import { CloudDownload, CloudUpload, Settings } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
+import { useCockpitLayoutStore } from '@/cockpit/useCockpitLayoutStore'
 import { UserSettingsDialog } from '@/cockpit/components/UserSettingsDialog'
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
+import { loadLayout, saveLayout } from '@/lib/api/layouts'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
+import { useLayoutStore } from '@/workbench/useLayoutStore'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { RefreshButton } from './RefreshButton'
+import { useAppStore } from '@/store/useAppStore'
+import { useNewsArticles } from '@/hooks/useNewsArticles'
+import { useNewsLayoutStore } from '@/pages/useNewsLayoutStore'
 
 const NAV_LINKS = [
   { to: '/cockpit', label: 'Cockpit', end: false },
-  { to: '/journal', label: 'Journal', end: false },
   { to: '/news', label: 'News', end: false },
+  { to: '/journal', label: 'Journal', end: false },
   { to: '/logs', label: 'Logs', end: false },
 ] as const
 
@@ -35,11 +42,61 @@ export function TopNav() {
   const { pathname } = useLocation()
   const showResetLayout = pathname === '/'
   const showCockpitReset = pathname === '/cockpit'
+  const showNewsSummary = pathname === '/news'
+  const showLayoutSync = pathname === '/' || pathname === '/cockpit' || pathname === '/news'
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const aiNewsSummaryOpen = useAppStore((s) => s.aiNewsSummaryOpen)
+  const setAiNewsSummaryOpen = useAppStore((s) => s.setAiNewsSummaryOpen)
+  const { data: newsArticles = [] } = useNewsArticles()
+  const isNewsDisabled = showNewsSummary && newsArticles.length === 0
+
+  const handleSaveLayout = async () => {
+    let page: 'workbench' | 'cockpit' | 'news'
+    let layout
+    if (pathname === '/') {
+      page = 'workbench'
+      layout = useLayoutStore.getState().layout
+    } else if (pathname === '/cockpit') {
+      page = 'cockpit'
+      layout = useCockpitLayoutStore.getState().layout
+    } else {
+      page = 'news'
+      layout = useNewsLayoutStore.getState().layout
+    }
+    try {
+      await saveLayout(page, layout)
+      toast('Layout 已保存')
+    } catch {
+      toast.error('保存失败，请重试')
+    }
+  }
+
+  const handleLoadLayout = async () => {
+    let page: 'workbench' | 'cockpit' | 'news'
+    if (pathname === '/') page = 'workbench'
+    else if (pathname === '/cockpit') page = 'cockpit'
+    else page = 'news'
+    try {
+      const layout = await loadLayout(page)
+      if (layout.length === 0) {
+        toast('暂无保存的 Layout')
+        return
+      }
+      if (pathname === '/') useLayoutStore.getState().setLayout(layout)
+      else if (pathname === '/cockpit') useCockpitLayoutStore.getState().setLayout(layout)
+      else useNewsLayoutStore.getState().setLayout(layout)
+      toast('Layout 已导入')
+    } catch {
+      toast.error('导入失败，请重试')
+    }
+  }
 
   return (
     <nav
       style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
         height: '64px',
         display: 'flex',
         alignItems: 'center',
@@ -92,6 +149,16 @@ export function TopNav() {
           {formatLastRefresh(lastRefreshedAt)}
         </span>
         <ButtonGroup>
+          {showNewsSummary && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isNewsDisabled || aiNewsSummaryOpen}
+              onClick={() => setAiNewsSummaryOpen(true)}
+            >
+              AI Summary
+            </Button>
+          )}
           <RefreshButton isRefreshing={isRefreshing} onClick={refresh} />
           {showResetLayout && <ResetLayoutButton />}
           {showCockpitReset && <CockpitResetLayoutButton />}
@@ -101,6 +168,16 @@ export function TopNav() {
             </Button>
           )}
         </ButtonGroup>
+        {showLayoutSync && (
+          <ButtonGroup>
+            <Button variant="outline" size="sm" title="保存当前 Layout" onClick={handleSaveLayout}>
+              <CloudUpload size={14} />
+            </Button>
+            <Button variant="outline" size="sm" title="导入已保存的 Layout" onClick={handleLoadLayout}>
+              <CloudDownload size={14} />
+            </Button>
+          </ButtonGroup>
+        )}
         {showCockpitReset && (
           <UserSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         )}

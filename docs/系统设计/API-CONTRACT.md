@@ -1735,6 +1735,39 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 
 ---
 
+## Layouts（/api/layouts）
+> Feature：F212 跨设备 Layout 同步
+
+### GET /api/layouts/{page}
+
+**用途**：读取指定页面已保存的 layout（JSON 数组），文件不存在时返回空数组
+**路径参数**：`page` — `workbench` | `cockpit` | `news`
+
+**成功响应（200）**：
+```json
+{ "data": [{ "i": "watchlist", "x": 0, "y": 0, "w": 4, "h": 8 }], "message": "success" }
+```
+文件不存在时 `data` 为 `[]`。
+
+---
+
+### PUT /api/layouts/{page}
+
+**用途**：持久化当前页面的 layout 到 `backend/layouts/{page}.json`
+**路径参数**：`page` — `workbench` | `cockpit` | `news`
+**请求 Body**：layout 数组（直接 `[...]`，非 wrapped object）
+
+```json
+[{ "i": "watchlist", "x": 0, "y": 0, "w": 4, "h": 8 }]
+```
+
+**成功响应（200）**：
+```json
+{ "data": null, "message": "success" }
+```
+
+---
+
 ## Cockpit/AI Namespace 汇总
 
 | 命名空间 | Endpoint 总数 | Feature 映射 |
