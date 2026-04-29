@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -433,14 +434,12 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
     />
   )
 
-  if (isLoading || (isFetching && !aiData)) {
+  if (isLoading || isFetching) {
     return (
       <>
         {divider}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Skeleton data-testid="ai-skeleton" style={{ height: '20px', borderRadius: '4px' }} />
-          <Skeleton data-testid="ai-skeleton" style={{ height: '40px', borderRadius: '4px' }} />
-          <Skeleton data-testid="ai-skeleton" style={{ height: '20px', borderRadius: '4px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
+          <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-text-secondary)' }} />
         </div>
       </>
     )
@@ -515,7 +514,7 @@ function AiMarketNotes({ data }: { data: CockpitRegimeData }) {
             onClick={handleRefresh}
             style={{ fontSize: 'var(--font-size-caption)', padding: '2px 6px', height: 'auto' }}
           >
-            {isFetching ? '…' : '↻ Refresh'}
+            ↻ Refresh
           </Button>
         </div>
 
