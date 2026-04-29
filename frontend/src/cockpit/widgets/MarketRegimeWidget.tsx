@@ -22,6 +22,20 @@ import {
 
 // ── constants ────────────────────────────────────────────────────────────────
 
+const SECTOR_LABELS: Record<string, string> = {
+  XLK: 'Tech',
+  XLY: 'Cons. Disc.',
+  XLF: 'Financials',
+  XLI: 'Industrials',
+  XLE: 'Energy',
+  XLV: 'Health Care',
+  XLC: 'Comm. Svcs',
+  XLP: 'Cons. Stpl.',
+  XLU: 'Utilities',
+  XLB: 'Materials',
+  XLRE: 'Real Estate',
+}
+
 const SUBSCORE_MAX = {
   spyTrend: 25,
   qqqTrend: 20,
@@ -236,19 +250,24 @@ function SectorCell({ sector }: { sector: RegimeSector }) {
           border: `1px solid color-mix(in srgb, ${bgColor} 40%, transparent)`,
           textAlign: 'center',
           cursor: 'default',
-          minHeight: '36px',
+          minHeight: '46px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <div style={{ fontSize: 'var(--font-size-caption)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+        <div style={{ fontSize: 'var(--font-size-caption)', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.2 }}>
           {sector.symbol}
         </div>
+        {SECTOR_LABELS[sector.symbol] && (
+          <div style={{ fontSize: '9px', color: 'var(--color-text-secondary)', lineHeight: 1.2 }}>
+            {SECTOR_LABELS[sector.symbol]}
+          </div>
+        )}
         <div
           data-testid={`sector-${sector.symbol}-close`}
-          style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}
+          style={{ fontSize: '10px', color: 'var(--color-text-secondary)', lineHeight: 1.2 }}
         >
           {closeStr}
         </div>
