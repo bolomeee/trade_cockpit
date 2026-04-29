@@ -109,9 +109,9 @@ function ScoreHero({ data }: { data: CockpitRegimeData }) {
           {data.marketScore} / 100
         </span>
       </div>
-      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-        <div>Allowed Exposure: <span style={{ color: 'var(--color-text-primary)' }}>{data.allowedExposurePct.toFixed(1)}%</span></div>
-        <div>Single Trade Risk: <span style={{ color: 'var(--color-text-primary)' }}>{data.singleTradeRiskPct.toFixed(1)}%</span></div>
+      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px' }}>
+        <div>Exposure: <span style={{ color: 'var(--color-text-primary)' }}>{data.allowedExposurePct.toFixed(1)}%</span></div>
+        <div>Risk/Trade: <span style={{ color: 'var(--color-text-primary)' }}>{data.singleTradeRiskPct.toFixed(1)}%</span></div>
       </div>
     </div>
   )
