@@ -200,7 +200,6 @@ function IndexRow({ idx }: { idx: RegimeIndex }) {
 function IndicesCard({ indices }: { indices: RegimeIndex[] }) {
   return (
     <div style={{ marginBottom: '12px' }}>
-      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Indices</div>
       <div>
         {indices.map((idx) => (
           <IndexRow key={idx.symbol} idx={idx} />
@@ -284,7 +283,6 @@ function SectorHeatmap({ sectors }: { sectors: RegimeSector[] }) {
   const bySymbol = Object.fromEntries(sectors.map((s) => [s.symbol, s]))
   return (
     <div>
-      <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', marginBottom: '6px' }}>Sector Heatmap</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
         {SECTOR_ORDER.map((sym) => {
           const sector = bySymbol[sym]
