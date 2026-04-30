@@ -44,7 +44,7 @@ POOL_TREND_CAP: int = 200
 class PoolParams:
     """Query parameters for the pool funnel (mirrors API-CONTRACT.md §GET /api/cockpit/pool)."""
 
-    market_cap_min: int = 20_000_000_000
+    market_cap_min: int = 10_000_000_000
     price_min: float = 10.0
     adv_min: int = 20_000_000
     trend_score_min: int = 3       # accepted but intentionally ignored (D080)
