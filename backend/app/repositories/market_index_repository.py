@@ -12,7 +12,7 @@ from app.models.market_index import MarketIndex
 MARKET_INDEX_WINDOW = 260
 MARKET_INDEX_SYMBOLS = ("SPX", "NDX", "TNX")
 REGIME_ETF_SYMBOLS = (
-    "SPY", "QQQ", "IWM",
+    "SPY", "QQQ", "IWM", "VXX",
     "XLK", "XLY", "XLF", "XLI", "XLE", "XLV", "XLC", "XLP", "XLU", "XLB", "XLRE",
 )
 

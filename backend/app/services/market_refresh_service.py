@@ -37,6 +37,7 @@ REGIME_ETF_NAMES: dict[str, str] = {
     "SPY": "SPDR S&P 500 ETF Trust",
     "QQQ": "Invesco QQQ Trust",
     "IWM": "iShares Russell 2000 ETF",
+    "VXX": "iPath Series B S&P 500 VIX Short-Term Futures ETN",
     "XLK": "Technology Select Sector SPDR",
     "XLY": "Consumer Discretionary Select Sector SPDR",
     "XLF": "Financial Select Sector SPDR",

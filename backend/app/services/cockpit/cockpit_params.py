@@ -19,8 +19,8 @@ class CockpitSharedParams(BaseModel):
         description="11 GICS sector ETFs for breadth and participation scoring",
     )
     INDEX_ETFS: list[str] = Field(
-        default=["SPY", "QQQ", "IWM"],
-        description="3 broad-market index ETFs (SPY/QQQ/IWM) used in trend scoring",
+        default=["SPY", "QQQ", "IWM", "VXX"],
+        description="Broad-market index ETFs used in trend scoring; VXX proxies VIX (iPath S&P 500 VIX Short-Term Futures)",
     )
 
 

@@ -970,7 +970,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 ### GET /api/cockpit/regime
 > Feature：F201 Market Regime Widget
 
-**用途**：获取最新一日 market regime 打分 + SPY/QQQ/IWM 三大盘卡片 + 11 sector ETF heatmap。数据来自 `market_regime_snapshots`（最新一行）+ `market_indices`（相关 17 个 symbol 的最近一行）
+**用途**：获取最新一日 market regime 打分 + SPY/QQQ/IWM/VXX 大盘卡片 + 11 sector ETF heatmap。数据来自 `market_regime_snapshots`（最新一行）+ `market_indices`（相关 18 个 symbol 的最近一行）
 
 **请求参数**：无
 
@@ -996,7 +996,8 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
     "indices": [
       { "symbol": "SPY", "close": 520.50, "changePct": 0.43, "aboveMa50": true, "aboveMa200": true, "rsTrend": "up", "state": "Bullish" },
       { "symbol": "QQQ", "close": 450.20, "changePct": 0.62, "aboveMa50": true, "aboveMa200": true, "rsTrend": "up", "state": "Leading" },
-      { "symbol": "IWM", "close": 210.10, "changePct": -0.15, "aboveMa50": false, "aboveMa200": true, "rsTrend": "down", "state": "Weak" }
+      { "symbol": "IWM", "close": 210.10, "changePct": -0.15, "aboveMa50": false, "aboveMa200": true, "rsTrend": "down", "state": "Weak" },
+      { "symbol": "VXX", "close": 23.45, "changePct": 1.20, "aboveMa50": true, "aboveMa200": false, "rsTrend": "up", "state": "Constructive" }
     ],
     "sectors": [
       { "symbol": "XLK", "close": 210.10, "changePct": 0.52, "state": "Strong" },
@@ -1019,7 +1020,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 | 场景 | 错误码 | HTTP |
 |------|--------|------|
 | `market_regime_snapshots` 为空（冷启动未跑过调度） | NOT_FOUND | 404 |
-| `market_indices` 17 个 symbol 数据不全 | 返回 200 + 部分字段 null，**不报错**，前端占位 | — |
+| `market_indices` 18 个 symbol 数据不全 | 返回 200 + 部分字段 null，**不报错**，前端占位 | — |
 
 ---
 
