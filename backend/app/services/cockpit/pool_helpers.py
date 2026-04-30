@@ -89,9 +89,9 @@ def passes_fundamental_sanity(
 ) -> bool:
     """True when the ticker meets the revenue growth threshold.
 
-    None growth (e.g. ETFs) → fail-closed: exclude rather than letting
-    data-less tickers bypass an explicit user filter.
+    None growth (e.g. ETFs, missing FMP data) → fail-open: pass through
+    so tickers aren't penalised purely for missing vendor data (D079).
     """
     if growth_yoy_pct is None:
-        return False
+        return True
     return growth_yoy_pct >= threshold_pct
