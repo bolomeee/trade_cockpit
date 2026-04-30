@@ -49,7 +49,7 @@ export function PoolFilterBar({ value, onChange, availableSectors = [] }: Props)
               update({ marketCapMin: e.target.value ? Number(e.target.value) * 1_000_000_000 : undefined })
             }
             style={{ ...inputStyle(60), paddingRight: '14px' }}
-            placeholder="50"
+            placeholder="10"
           />
           <span style={{
             position: 'absolute',
