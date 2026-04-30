@@ -1,5 +1,4 @@
-import { useRef } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,6 +19,7 @@ import {
   type MarketNarratorInput,
   type MarketNarratorOutput,
 } from '../lib/api/aiApi'
+import { useCockpitStore } from '@/store/cockpitStore'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -180,14 +180,19 @@ function SubscoresGrid({ subscores }: { subscores: RegimeSubscores }) {
 
 // ── indices card ───────────────────────────────────────────────────────────────
 
-function IndexRow({ idx }: { idx: RegimeIndex }) {
-  const changePctStr = idx.changePct >= 0 ? `+${idx.changePct.toFixed(2)}%` : `${idx.changePct.toFixed(2)}%`
-  const changePctColor = idx.changePct >= 0 ? 'var(--color-change-positive)' : 'var(--color-change-negative)'
+function IndexRow({ idx, onClick }: { idx: RegimeIndex; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const closeStr = idx.close != null ? `$${idx.close.toFixed(2)}` : '—'
+  const changePctStr = idx.changePct == null ? '—' : idx.changePct >= 0 ? `+${idx.changePct.toFixed(2)}%` : `${idx.changePct.toFixed(2)}%`
+  const changePctColor = (idx.changePct ?? 0) >= 0 ? 'var(--color-change-positive)' : 'var(--color-change-negative)'
   const rsTrendArrow = idx.rsTrend === 'up' ? '↑' : idx.rsTrend === 'down' ? '↓' : '→'
   const stateColor = indexStateColor(idx.state)
 
   return (
     <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -195,10 +200,13 @@ function IndexRow({ idx }: { idx: RegimeIndex }) {
         padding: '4px 0',
         fontSize: 'var(--font-size-caption)',
         borderBottom: '1px solid var(--color-border-subtle)',
+        cursor: 'pointer',
+        backgroundColor: hovered ? 'var(--color-surface-hover)' : 'transparent',
+        transition: 'background-color 0.12s',
       }}
     >
       <span style={{ fontWeight: 600, width: '36px', flexShrink: 0 }}>{idx.symbol}</span>
-      <span style={{ width: '60px', flexShrink: 0 }}>${idx.close.toFixed(2)}</span>
+      <span style={{ width: '60px', flexShrink: 0 }}>{closeStr}</span>
       <span style={{ color: changePctColor, width: '56px', flexShrink: 0 }}>{changePctStr}</span>
       <span style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }}>
         50MA{idx.aboveMa50 ? '✓' : '✗'}
@@ -213,11 +221,12 @@ function IndexRow({ idx }: { idx: RegimeIndex }) {
 }
 
 function IndicesCard({ indices }: { indices: RegimeIndex[] }) {
+  const setSelectedTicker = useCockpitStore((s) => s.setSelectedTicker)
   return (
     <div style={{ marginBottom: '12px' }}>
       <div>
         {indices.map((idx) => (
-          <IndexRow key={idx.symbol} idx={idx} />
+          <IndexRow key={idx.symbol} idx={idx} onClick={() => setSelectedTicker(idx.symbol)} />
         ))}
       </div>
     </div>
