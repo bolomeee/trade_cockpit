@@ -166,7 +166,17 @@ export function PriceChart({ data }: PriceChartProps) {
       createSeriesMarkers(candleSeries, markers)
     }
 
-    chart.timeScale().fitContent()
+    if (data.bars.length > 0) {
+      const lastDate = data.bars[data.bars.length - 1].date
+      const from = new Date(`${lastDate}T00:00:00Z`)
+      from.setMonth(from.getMonth() - 6)
+      chart.timeScale().setVisibleRange({
+        from: (from.getTime() / 1000) as UTCTimestamp,
+        to: toUtcTimestamp(lastDate),
+      })
+    } else {
+      chart.timeScale().fitContent()
+    }
 
     const barByTime = new Map<UTCTimestamp, ChartBar>()
     for (const b of data.bars) {
