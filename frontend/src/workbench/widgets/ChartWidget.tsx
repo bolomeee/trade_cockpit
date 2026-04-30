@@ -61,7 +61,7 @@ export function ChartWidget() {
           pointerEvents: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span
             style={{
               fontSize: '18px',
