@@ -132,7 +132,7 @@ export function PoolBuilderWidget() {
           </div>
         )}
         {!isLoading && !isError && (data?.items.length ?? 0) > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead>
               <tr
                 style={{
