@@ -1,5 +1,6 @@
 """Admin endpoints: manual triggers for background jobs.
 
+POST /api/admin/refresh-universe    — trigger UniverseRefreshService.refresh().
 POST /api/admin/refresh-pool-cache  — trigger PoolCacheService.rebuild() (F205-e Q5=B).
 POST /api/admin/refresh-earnings    — trigger EarningsService.fetch_and_store().
 POST /api/admin/refresh-setup       — trigger SetupService.compute_and_store_all().
@@ -17,8 +18,19 @@ from app.external.fmp_client import FmpClient
 from app.services.cockpit.earnings_service import EarningsService
 from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
+from app.services.universe_refresh_service import UniverseRefreshService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@router.post("/refresh-universe")
+def refresh_universe(
+    db: Session = Depends(get_db),
+    fmp: FmpClient = Depends(get_fmp_client),
+) -> dict:
+    """Manually trigger a universe refresh from FMP screener."""
+    result = UniverseRefreshService(db=db, fmp=fmp).refresh()
+    return {"status": result.status, "upserted": result.upserted, "skipped": result.skipped, "error": result.error}
 
 
 @router.post("/refresh-pool-cache")
