@@ -235,7 +235,7 @@ function IndicesCard({ indices }: { indices: RegimeIndex[] }) {
 
 // ── sector heatmap ────────────────────────────────────────────────────────────
 
-function SectorCell({ sector }: { sector: RegimeSector }) {
+function SectorCell({ sector, onClick }: { sector: RegimeSector; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
   const bgColor = sectorStateColor(sector.state)
   const closeStr = sector.close != null ? `$${sector.close.toFixed(2)}` : '—'
@@ -253,13 +253,14 @@ function SectorCell({ sector }: { sector: RegimeSector }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div
+        onClick={onClick}
         style={{
           padding: '4px 2px',
           borderRadius: '4px',
           backgroundColor: `color-mix(in srgb, ${bgColor} 25%, var(--color-card))`,
           border: `1px solid color-mix(in srgb, ${bgColor} 40%, transparent)`,
           textAlign: 'center',
-          cursor: 'default',
+          cursor: 'pointer',
           minHeight: '46px',
           display: 'flex',
           flexDirection: 'column',
@@ -309,6 +310,7 @@ function SectorCell({ sector }: { sector: RegimeSector }) {
 const SECTOR_ORDER = ['XLK', 'XLY', 'XLF', 'XLI', 'XLE', 'XLV', 'XLC', 'XLP', 'XLU', 'XLB', 'XLRE'] as const
 
 function SectorHeatmap({ sectors }: { sectors: RegimeSector[] }) {
+  const setSelectedTicker = useCockpitStore((s) => s.setSelectedTicker)
   const bySymbol = Object.fromEntries(sectors.map((s) => [s.symbol, s]))
   return (
     <div>
@@ -316,7 +318,7 @@ function SectorHeatmap({ sectors }: { sectors: RegimeSector[] }) {
         {SECTOR_ORDER.map((sym) => {
           const sector = bySymbol[sym]
           if (!sector) return null
-          return <SectorCell key={sym} sector={sector} />
+          return <SectorCell key={sym} sector={sector} onClick={() => setSelectedTicker(sym)} />
         })}
         {/* empty placeholder for 12th cell */}
         <div />
