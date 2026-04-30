@@ -61,28 +61,30 @@ export function ChartWidget() {
           pointerEvents: 'none',
         }}
       >
-        <span
-          style={{
-            fontSize: '18px',
-            fontWeight: 'var(--font-weight-bold)',
-            color: 'var(--color-text-primary)',
-            lineHeight: 1.2,
-          }}
-        >
-          {symbol}
-        </span>
-        {companyName && (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
           <span
             style={{
-              fontSize: '14px',
-              fontWeight: 'var(--font-weight-regular)',
-              color: 'var(--color-text-secondary)',
+              fontSize: '18px',
+              fontWeight: 'var(--font-weight-bold)',
+              color: 'var(--color-text-primary)',
               lineHeight: 1.2,
             }}
           >
-            {companyName}
+            {symbol}
           </span>
-        )}
+          {companyName && (
+            <span
+              style={{
+                fontSize: '14px',
+                fontWeight: 'var(--font-weight-regular)',
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.2,
+              }}
+            >
+              {companyName}
+            </span>
+          )}
+        </div>
         <div
           style={{
             marginTop: 4,
