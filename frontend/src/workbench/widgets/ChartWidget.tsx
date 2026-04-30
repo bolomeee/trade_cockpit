@@ -89,9 +89,9 @@ export function ChartWidget() {
           style={{
             marginTop: 4,
             display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            fontSize: 11,
+            flexDirection: 'row',
+            gap: 6,
+            fontSize: 8,
             fontFamily: 'var(--font-family-numeric)',
             lineHeight: 1.2,
           }}
