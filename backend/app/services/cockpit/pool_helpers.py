@@ -89,9 +89,9 @@ def passes_fundamental_sanity(
 ) -> bool:
     """True when the ticker meets the revenue growth threshold.
 
-    None growth means FMP data is unavailable — fail-open (return True) so
-    we do not penalise a ticker purely because of missing vendor data (D079).
+    None growth (e.g. ETFs) → fail-closed: exclude rather than letting
+    data-less tickers bypass an explicit user filter.
     """
     if growth_yoy_pct is None:
-        return True
+        return False
     return growth_yoy_pct >= threshold_pct
