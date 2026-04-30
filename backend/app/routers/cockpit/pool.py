@@ -19,7 +19,7 @@ router = APIRouter(tags=["cockpit-pool"])
 
 @router.get("/pool", response_model=PoolResponse)
 def get_pool(
-    marketCapMin: int = Query(50_000_000_000, description="Market cap lower bound (USD)"),
+    marketCapMin: int = Query(20_000_000_000, description="Market cap lower bound (USD)"),
     priceMin: float = Query(10.0, description="Stock price lower bound"),
     advMin: int = Query(20_000_000, description="Dollar volume lower bound (USD, single-day proxy)"),
     trendScoreMin: int = Query(3, ge=0, le=5, description="Accepted but ignored this sprint (D080)"),

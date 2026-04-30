@@ -352,7 +352,7 @@ class FmpClient:
 
     def get_screener_universe(
         self,
-        market_cap_gte: int = 50_000_000_000,
+        market_cap_gte: int = 20_000_000_000,
         exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
         page_size: int = 500,
     ) -> list[dict[str, Any]]:
