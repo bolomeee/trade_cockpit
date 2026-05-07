@@ -1657,9 +1657,9 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 > Feature：F208 LLM Gateway / F209 / F210 / F211
 > 决策依据：D064（单一动态入口）+ D068（guardrail post-validate）+ D069（memo 去重缓存）
 
-**用途**：7 种 AI task 的统一入口。后端按 `task_type` 路由到对应 Pydantic schema 和 tier 配置，LiteLLM 调用，schema 校验后返回。每次调用写入 `ai_memos`
+**用途**：8 种 AI task 的统一入口。后端按 `task_type` 路由到对应 Pydantic schema 和 tier 配置，LiteLLM 调用，schema 校验后返回。每次调用写入 `ai_memos`
 
-**路径参数**：`task_type` — 必须是以下 7 个枚举之一（Pydantic `Literal`）：
+**路径参数**：`task_type` — 必须是以下 8 个枚举之一（Pydantic `Literal`）：
 - `market_narrator`（default tier, F209）
 - `setup_explainer`（default tier, F209）
 - `candidate_ranker`（critical tier, F210）
@@ -1667,6 +1667,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 - `contradiction_detector`（default tier, F211）
 - `news_summarizer`（default tier, F211）
 - `journal_assistant`（complex tier, F211）
+- `translate_article`（default tier, F213; DeepSeek per-task override via `AI_TASK_OVERRIDES_JSON`，D084）
 
 **请求体**：
 ```json
@@ -1774,7 +1775,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 | 命名空间 | Endpoint 总数 | Feature 映射 |
 |---------|------|------------|
 | `/api/cockpit/*` | 18 | F200（框架，零 endpoint） / F201 / F202 / F203 (×4) / F204 / F205 / F206 (×8) / F207 |
-| `/api/ai/{task_type}` | 1 动态（7 task） | F208（基座） / F209 / F210 / F211 |
+| `/api/ai/{task_type}` | 1 动态（8 task） | F208（基座） / F209 / F210 / F211 / F213 |
 
 **依赖层级约束**（与 ARCHITECTURE.md 同步）：
 - `backend/app/routers/cockpit/*` ⇄ `backend/app/routers/{watchlist,signals,stocks,news,...}/*` **零交叉 import**

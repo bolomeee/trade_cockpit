@@ -1965,3 +1965,34 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **对应代码**：`journal_review_service.JournalReviewService.monthly_review_for_month`, `refresh_job._journal_monthly_tick`, `refresh_job._previous_month_utc`
 
 **注**：Sprint Contract 原规划 D077，因 D077 已被占用（F207-b）改为 D083。
+
+---
+
+## D084：F213-a DeepSeek 通过 per-task override 接入，不进 settings 字段
+
+**日期**：2026-05-07
+**Feature**：F213-a News Article Auto-Translate 后端 schema
+
+**背景**：F213 News 翻译任务选用 DeepSeek（deepseek-v4-flash 或 OpenAI 兼容路径），其 base_url / api_key 与主力 OpenAI 端点不同。D075 (F211-a2) 已建立 `AI_TASK_OVERRIDES_JSON` 机制可按 task_type 注入自定义 model/base_url/api_key/cost，无需改 Settings 类。
+
+**决策**：
+
+1. **不在 `app/config.py` 增加 `DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL` 等独立字段**。
+   - 理由：D075 `AI_TASK_OVERRIDES_JSON` 已可覆盖 model + base_url + api_key + cost，增加独立字段是冗余且会污染 Settings 命名空间；每加一个 provider 就加若干字段，不可扩展。
+
+2. **`translate_article` 在 `_TASK_TIER` 注册为 `"default"` tier**（gateway 正常走 tier 逻辑兜底），部署时在 `.env` 写 `AI_TASK_OVERRIDES_JSON` 覆盖 model/base_url/api_key；如果未配置 override，fallback 到 `settings.ai_model_default`（OpenAI），功能仍可用但翻译质量可能下降。
+
+3. **DeepSeek 接入路径（部署时选其一）**：
+   - 原生路径：`"model": "deepseek/deepseek-v4-flash"`（LiteLLM 原生 provider，需 LiteLLM ≥ 1.x 且已注册 deepseek provider）
+   - OpenAI 兼容路径（推荐，可靠性更高）：`"model": "openai/deepseek-v4-flash", "base_url": "https://api.deepseek.com", "api_key": "sk-..."`
+   - 两条路径在 `routing.resolve()` 中均通过 `base_url` 透传 LiteLLM，代码无需分支。
+
+4. **不注册 guardrail**：翻译输出为中文文本，现有 BANNED_PHRASES 体系专为英文 LLM 金融建议设计；为纯翻译结果添加 guardrail 会造成误伤（如"忽略止损"可能出现在新闻正文的翻译中）。
+
+**放弃**：
+- 方案 A：新增 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` settings 字段。放弃：D075 已有更通用机制，重复引入强约定。
+- 方案 B：guardrail 检测翻译输出。放弃：翻译任务是原文的结构化映射，BANNED_PHRASES 命中率高但精度极低，误伤概率大于防护价值。
+
+**参考**：D064（tier 路由）/ D069（ai_memos 去重）/ D075（per-task override 机制）
+
+**影响**：`backend/app/ai/schemas/translate_article.py`（新建）/ `backend/app/ai/schemas/__init__.py`（+1 import + REGISTRY 行）/ `backend/app/ai/routing.py`（+1 _TASK_TIER 行）
