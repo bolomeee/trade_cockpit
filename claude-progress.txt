@@ -1,4 +1,31 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] Sprint：F213-a News Article Auto-Translate 后端 schema
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+
+**文档前置（3 文件）**
+- API-CONTRACT.md：POST /api/ai/{task_type} task_type 枚举 7→8，加 translate_article（default tier, F213, D084）
+- DATA-MODEL.md：§AiMemo task_type 枚举表 6→8，加 translate_article 一行
+- DECISIONS.md：追加 D084（DeepSeek 通过 per-task override 接入，不进 settings 字段）
+
+**代码实现（5 文件，含 1 个 router 扩展）**
+- backend/app/ai/schemas/translate_article.py（新建，~45 行）：TranslateArticleInput（title/contentText/targetLang）+ TranslateArticleOutput（titleZh/contentZh）+ SYSTEM_PROMPT + SCHEMA_VERSION=v1；无 guardrail
+- backend/app/ai/schemas/__init__.py（+2 行）：import translate_article + REGISTRY 注册
+- backend/app/ai/routing.py（+1 行）：_TASK_TIER["translate_article"] = "default"
+- backend/app/routers/ai.py（+1 行）：TaskTypeEnum 加 translate_article（7→8）
+- backend/tests/test_ai_schemas_f213a.py（新建，28 测试）：TI1-6+/TO1-4+/R1-3/G1+G1b/TT1-4/INT1-2，全部通过
+
+**测试修复（3 既有文件）**
+- test_ai_core_modules_f208b.py：production_types 断言 7→8，加 translate_article tier
+- test_ai_gateway_e2e_f208c.py：12 个 mock 函数补 system_prompt="" 参数
+- test_ai_schemas_f209.py：mock 函数补 system_prompt="" 参数
+
+**回归结论**
+- F213-a 测试：28/28 通过
+- 全量回归：901 通过，5 个预存失败不变，无新增失败
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-04-29] Sprint：F212 跨设备 Layout 同步
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

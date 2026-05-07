@@ -389,7 +389,7 @@ class TestGuardrail:
 def _make_litellm_mock(output: dict, cost: Decimal = Decimal("0.001234")):
     """Return a _call_litellm replacement that returns fixed data."""
 
-    def mock(route, input_dict, output_schema):
+    def mock(route, input_dict, output_schema, system_prompt=""):
         return output, 10, 5, cost
 
     return mock

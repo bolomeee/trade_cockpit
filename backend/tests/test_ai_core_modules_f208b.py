@@ -82,9 +82,10 @@ def test_input_hash_stable_with_unicode():
 
 def test_routing_seven_task_types_mapped():
     types = known_task_types()
-    # 7 production types + "echo" test-only entry (F208-c, not in API-CONTRACT)
+    # 8 production types + "echo" test-only entry (F208-c, not in API-CONTRACT)
+    # F213-a added translate_article (default tier, D084)
     production_types = [t for t in types if t != "echo"]
-    assert len(production_types) == 7
+    assert len(production_types) == 8
     expected_tiers = {
         "market_narrator": "critical",
         "setup_explainer": "default",
@@ -93,6 +94,7 @@ def test_routing_seven_task_types_mapped():
         "contradiction_detector": "critical",
         "news_summarizer": "critical",
         "journal_assistant": "complex",
+        "translate_article": "default",
     }
     for task, expected_tier in expected_tiers.items():
         route = resolve(task)

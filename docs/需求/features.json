@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F213-a",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint": "F213-b",
+    "active_sprint_phase": "design_needed"
   },
   "_iteration_log": [
     {
@@ -3680,7 +3680,7 @@
       "phase": "contract_agreed",
       "sub_sprint_notes": "拆 a/b 两段（2026-05-07 用户确认）：F213-a 后端新增 translate_article schema + REGISTRY 注册 + routing._TASK_TIER 映射 default tier + 单元测试（4 文件）；F213-b 前端 ArticleModal 改造（点开自动 fetch 翻译并替换 contentHtml/title）+ translateArticleApi 新建 + 测试（3 文件）。引入 DeepSeek 作为 LiteLLM provider（per-task override，不污染默认 tier）。",
       "sub_sprints": {
-        "F213-a": "contract_agreed",
+        "F213-a": "done",
         "F213-b": "design_needed"
       },
       "dependencies": [
@@ -3734,6 +3734,13 @@
           "summary": "Sprint Contract 已确认。范围：translate_article schema (input: title/contentText/targetLang; output: titleZh/contentZh) + SYSTEM_PROMPT + REGISTRY 注册 + routing._TASK_TIER 加 default tier + 25 单元测试 + 2 mocked 集成测试。4 个代码文件（schema + __init__ + routing + tests）+ 3 个文档前置（API-CONTRACT 7→8 enum / DATA-MODEL §AiMemo 枚举行 / DECISIONS D084 DeepSeek 接入）。Q1-Q5 全采默认（LiteLLM deepseek/ 原生 provider 优先 + OpenAI-兼容回退；contentText 20k 字符；targetLang 保留扩展；HTML 剥离前端做；DeepSeek 价格 Generator 阶段查最新）。下一 session Generator 从开发顺序步骤 1（更新 API-CONTRACT.md）开始。",
           "contract": "docs/开发/sprint-contracts/F213-a-contract.md",
           "contract_agreed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-a",
+          "phase": "done",
+          "summary": "Generator 完成。实现 5 个代码文件：translate_article.py（schema + SYSTEM_PROMPT + SCHEMA_VERSION v1）/ schemas/__init__.py（+1 import + REGISTRY 行）/ routing.py（+1 _TASK_TIER 行 default tier）/ routers/ai.py（TaskTypeEnum 7→8）/ tests/test_ai_schemas_f213a.py（28 测试 TI1-TI6+/TO1-TO4+/R1-R3/G1+G1b/TT1-TT4/INT1-INT2）。3 个文档前置：API-CONTRACT 7→8 enum、DATA-MODEL §AiMemo 8 种枚举、DECISIONS D084。另修复 3 个既有测试文件 mock 签名（gateway 升级 system_prompt 参数）。全量回归：28/28 通过，5 个预存失败不变，无新增失败。",
+          "generator_completed_at": "2026-05-07"
         }
       ],
       "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。"
