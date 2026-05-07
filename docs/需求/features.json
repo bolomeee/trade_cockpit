@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": "F213-b",
-    "active_sprint_phase": "design_needed"
+    "active_sprint": null,
+    "active_sprint_phase": null
   },
   "_iteration_log": [
     {
@@ -2212,7 +2212,7 @@
       "description": "market_regime_snapshots 新表 + MarketRegimeRepository + cockpit_params.py §0+§1（D070 首次落地）+ MarketRegimeService 计分引擎（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100）+ get_indices_and_sectors_state 方法。",
       "user_story": "作为开发者，需要可独立测试的计分引擎，能从 market_indices 历史数据计算 regime 打分并持久化到 market_regime_snapshots。",
       "priority": "P0",
-      "status": "completed",
+      "status": "done",
       "phase": "done",
       "dependencies": [
         "F200-a",
@@ -3366,7 +3366,7 @@
       "description": "critical-tier AI task。candidate_ranker 输入 setup monitor 候选列表，输出 top_candidates 排序（rank / reason / action）；trade_plan 输入单股 setup + user_settings，输出结构化 trade_plan（action / entry / stop / size / targets / management / memo）。前端：Setup Monitor 顶部'AI 排序'按钮；Decision Panel 新增'Generate Trade Plan'按钮。",
       "user_story": "作为投资者，当我 watchlist 有很多 setup 同时接近触发时，我需要 AI 帮我排序 top 3 优先；当我决定交易某只股票时，我需要 AI 帮我生成一份完整的 trade memo（在 deterministic 数字之上做叙述和 management rule）",
       "priority": "P1",
-      "status": "completed",
+      "status": "done",
       "phase": "done",
       "completed_at": "2026-04-26",
       "sub_phase_notes": "拆 a/b/c 三段（参 F208/F209 先例）：F210-a 后端 schemas + trade_plan guardrail（4 文件）/ F210-b SetupMonitor 'AI 排序' 集成 / F210-c DecisionPanel 'Generate AI Plan' 集成",
@@ -3639,7 +3639,7 @@
       "user_story": "作为用户，我需要在换机器或新浏览器时能一键恢复我自定义的 widget 布局，而不需要手动重新调整。",
       "priority": "P2",
       "status": "done",
-      "phase": "needs_review",
+      "phase": "done",
       "dependencies": [],
       "acceptance_criteria": [
         "GET /api/layouts/{page} 返回已保存的 layout 数组，文件不存在时返回空数组",
@@ -3676,12 +3676,12 @@
       "description": "在 News widget / News 页 ArticleModal 打开文章时，自动调用 LLM 把英文标题+正文翻译成中文，直接替换原文显示。复用 /api/ai/{task_type} 统一入口（D064），新增第 8 个 task_type=translate_article，通过 per-task model override（D075/F211-a2 已建基建）路由到 DeepSeek deepseek-v4-flash。重复点开同一篇文章命中 ai_memos 缓存（D069）零额外开销。",
       "user_story": "作为投资者，我需要英文新闻一键中文化才能快速消化，且重复打开同一篇文章不应再花 token。",
       "priority": "P2",
-      "status": "in_progress",
-      "phase": "contract_agreed",
+      "status": "done",
+      "phase": "done",
       "sub_sprint_notes": "拆 a/b 两段（2026-05-07 用户确认）：F213-a 后端新增 translate_article schema + REGISTRY 注册 + routing._TASK_TIER 映射 default tier + 单元测试（4 文件）；F213-b 前端 ArticleModal 改造（点开自动 fetch 翻译并替换 contentHtml/title）+ translateArticleApi 新建 + 测试（3 文件）。引入 DeepSeek 作为 LiteLLM provider（per-task override，不污染默认 tier）。",
       "sub_sprints": {
         "F213-a": "done",
-        "F213-b": "design_needed"
+        "F213-b": "done"
       },
       "dependencies": [
         "F208-c",
@@ -3741,9 +3741,37 @@
           "phase": "done",
           "summary": "Generator 完成。实现 5 个代码文件：translate_article.py（schema + SYSTEM_PROMPT + SCHEMA_VERSION v1）/ schemas/__init__.py（+1 import + REGISTRY 行）/ routing.py（+1 _TASK_TIER 行 default tier）/ routers/ai.py（TaskTypeEnum 7→8）/ tests/test_ai_schemas_f213a.py（28 测试 TI1-TI6+/TO1-TO4+/R1-R3/G1+G1b/TT1-TT4/INT1-INT2）。3 个文档前置：API-CONTRACT 7→8 enum、DATA-MODEL §AiMemo 8 种枚举、DECISIONS D084。另修复 3 个既有测试文件 mock 签名（gateway 升级 system_prompt 参数）。全量回归：28/28 通过，5 个预存失败不变，无新增失败。",
           "generator_completed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围（前端 3 文件）：新建 src/lib/api/translateArticle.ts（类型化薄封装，内部转 callAiTask）+ 修改 src/components/common/ArticleModal.tsx（注入 useQuery + loading/error/cacheHit 状态条 + sonner toast.error 回退原文 + 译文按 \\n\\n 拆段 React <p> 渲染）+ 新建 src/components/common/__tests__/ArticleModal.test.tsx（15 用例 AM1-14 + LIB1）。复用现有 ArticleModal（News 页 + Workbench NewsWidget 共用，改一处覆盖两处；SESSION-HANDOFF 中提到的 widgets/News/ArticleModal.tsx 路径不准确）。技术栈：react-query useQuery（queryKey 用 articleKey，staleTime Infinity，gcTime 5min，retry 1）+ sonner toast + 复用 stripHtml + 保留 dompurify 兜底。Q1-Q7 全采默认（API client 放 lib/api/ 同级 news.ts；loading 不禁交互；error 不显示重试按钮；译文 \\n\\n 自然降级单 <p>；cacheHit 显示已缓存徽标；不暴露 noCache；staleTime Infinity + gcTime 5min）。不引入新依赖，不改 News.tsx/NewsWidget.tsx/AiNewsSummaryBar.tsx，不修改后端 F213-a 4 文件，不持久化 localStorage。下一 session Generator 从开发顺序步骤 1（新建 translateArticle.ts）开始。",
+          "contract": "docs/开发/sprint-contracts/F213-b-contract.md",
+          "contract_agreed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "done",
+          "summary": "Generator 完成。实现 3 个代码文件：src/lib/api/translateArticle.ts（类型化薄封装）+ src/components/common/ArticleModal.tsx（useQuery 注入，loading/error/cacheHit 状态条，sonner toast 回退，译文 \\n\\n 段落渲染）+ src/components/common/__tests__/ArticleModal.test.tsx（15 用例 AM1-AM14 + LIB1，全 14/14 通过）。不引入新依赖，复用 react-query + sonner。",
+          "generator_completed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "needs_review",
+          "summary": "Generator 完成，测试 15/15 通过（AM1-AM14 + LIB1），进入人工验收阶段。"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "done",
+          "summary": "人工验收通过：ArticleModal 翻译功能端到端验证（json_mode 修复后）。"
         }
       ],
-      "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。"
+      "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。",
+      "completed_at": "2026-05-07"
     }
   ]
 }

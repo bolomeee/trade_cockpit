@@ -80,7 +80,11 @@ def test_input_hash_stable_with_unicode():
 # ---------------------------------------------------------------------------
 
 
-def test_routing_seven_task_types_mapped():
+def test_routing_seven_task_types_mapped(monkeypatch):
+    # Clear any per-task overrides so this test validates tier defaults, not .env overrides.
+    # (F213 adds a DeepSeek override for translate_article via AI_TASK_OVERRIDES_JSON, which
+    # would change base_url/api_key for that task — tested separately in F213-a suite.)
+    monkeypatch.setattr(settings, "ai_task_overrides_json", "")
     types = known_task_types()
     # 8 production types + "echo" test-only entry (F208-c, not in API-CONTRACT)
     # F213-a added translate_article (default tier, D084)

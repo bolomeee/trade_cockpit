@@ -67,11 +67,15 @@ def _call_litellm(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": json.dumps(input_dict)})
 
+    # json_mode=True: provider doesn't support JSON schema structured output (e.g. DeepSeek flash).
+    # Use {"type":"json_object"} instead; Step 8 secondary validation still enforces the schema.
+    effective_response_format = {"type": "json_object"} if route.json_mode else output_schema
+
     try:
         response = litellm.completion(
             model=route.model,
             messages=messages,
-            response_format=output_schema,
+            response_format=effective_response_format,
             api_key=route.api_key or None,
             api_base=route.base_url,  # None → litellm uses provider default
             **kwargs,

@@ -33,6 +33,7 @@ class ResolvedRoute:
     api_key: str                # 绝不为 None，回落到 settings.openai_api_key
     custom_input_cost: float | None   # per 1M tokens; None = 使用 LiteLLM 内置
     custom_output_cost: float | None  # per 1M tokens; None = 使用 LiteLLM 内置
+    json_mode: bool = False     # True = 用 {"type":"json_object"} 代替 JSON schema（D084 DeepSeek）
 
 
 def known_task_types() -> tuple[str, ...]:
@@ -92,12 +93,14 @@ def resolve(task_type: str) -> ResolvedRoute:
         out_cost = entry.get("output_cost_per_1m")
         custom_input_cost = float(in_cost) if isinstance(in_cost, (int, float)) else None
         custom_output_cost = float(out_cost) if isinstance(out_cost, (int, float)) else None
+        json_mode = bool(entry.get("json_mode", False))
     else:
         model = resolve_model(tier)
         base_url = None
         api_key = settings.openai_api_key
         custom_input_cost = None
         custom_output_cost = None
+        json_mode = False
 
     return ResolvedRoute(
         tier=tier,
@@ -106,4 +109,5 @@ def resolve(task_type: str) -> ResolvedRoute:
         api_key=api_key,
         custom_input_cost=custom_input_cost,
         custom_output_cost=custom_output_cost,
+        json_mode=json_mode,
     )

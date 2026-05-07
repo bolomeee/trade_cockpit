@@ -232,10 +232,18 @@ class FmpClient:
     # --- public API -----------------------------------------------------
 
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
-        """Two-phase search: symbol prefix → name fallback (preserves D028 ordering)."""
+        """Two-phase search: symbol prefix → name fallback (preserves D028 ordering).
+
+        FMP normalizes share-class separators to hyphens (BRK-B, BF-A), so
+        queries with dots (BRK.B) must be tried with the hyphen form first.
+        """
         q = query.strip()
         if not q:
             return []
+        if "." in q:
+            hyphen_results = self._request(FMP_EP_SEARCH_SYMBOL, {"query": q.replace(".", "-"), "limit": limit})
+            if hyphen_results:
+                return list(hyphen_results)[:limit]
         symbol_results = self._request(FMP_EP_SEARCH_SYMBOL, {"query": q, "limit": limit})
         if symbol_results:
             return list(symbol_results)[:limit]
