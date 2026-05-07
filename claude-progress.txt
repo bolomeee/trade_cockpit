@@ -27,3 +27,47 @@
 [下一个 Session]
   F212 待用户验收。验收通过后 phase → done。
   下一个可开发功能请参考 features.json。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] Sprint：F213-a News Article Auto-Translate 后端 schema
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 阶段：Sprint Contract 协商完成（contract_agreed）
+
+🎯 范围：
+  - 后端新增第 8 个 AI task type：translate_article
+  - 复用 F208-c gateway + F211-a2 per-task override 基建
+  - 不动 gateway / endpoint / DB / 前端
+  - DeepSeek 通过 AI_TASK_OVERRIDES_JSON env 注入（不进 settings.py 字段）
+
+📂 预计 4 个代码文件：
+  - backend/app/ai/schemas/translate_article.py（新建）
+  - backend/app/ai/schemas/__init__.py（+3 行 REGISTRY 注册）
+  - backend/app/ai/routing.py（+1 行 _TASK_TIER 映射）
+  - backend/tests/test_ai_schemas_f213a.py（新建，~25 单元 + 2 集成测试）
+
+📂 Generator 步骤 1-3 文档前置：
+  - docs/系统设计/API-CONTRACT.md（task_type 7 → 8 enum）
+  - docs/系统设计/DATA-MODEL.md §AiMemo（task_type 枚举行）
+  - docs/系统设计/DECISIONS.md（新增 D084）
+
+⚙️ 5 个开放问题全采默认方案（详见 contract §7）：
+  - Q1 LiteLLM deepseek/ 原生 provider，回退 OpenAI-兼容 base_url
+  - Q2 contentText max_length 20k 字符
+  - Q3 targetLang 字段保留扩展
+  - Q4 HTML 剥离前端做
+  - Q5 DeepSeek 价格 Generator 阶段用 Context7 查最新
+
+📊 功能状态：
+  F213 News Article Auto-Translate：🟡 in_progress
+    F213-a：🤝 contract_agreed
+    F213-b：⬜ design_needed
+
+[下一个 Session — 强制开新 session]
+  Sonnet 模式，恢复指令：
+
+  > 继续开发 F213-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F213-a-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1（更新 API-CONTRACT.md）开始。
+

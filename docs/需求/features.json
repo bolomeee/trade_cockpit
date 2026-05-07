@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.0-planning",
-  "last_updated": "2026-04-29",
+  "last_updated": "2026-05-07",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.9",
-    "active_sprint": null,
-    "active_sprint_phase": null
+    "active_sprint": "F213-a",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -3669,6 +3669,74 @@
       ],
       "notes": "layout 文件存在 backend/layouts/ 目录，随 git push 跨设备同步。导入后直接覆盖 Zustand store（localStorage 会同步更新）。",
       "completed_at": "2026-04-29"
+    },
+    {
+      "id": "F213",
+      "name": "News Article Auto-Translate (DeepSeek via /api/ai)",
+      "description": "在 News widget / News 页 ArticleModal 打开文章时，自动调用 LLM 把英文标题+正文翻译成中文，直接替换原文显示。复用 /api/ai/{task_type} 统一入口（D064），新增第 8 个 task_type=translate_article，通过 per-task model override（D075/F211-a2 已建基建）路由到 DeepSeek deepseek-v4-flash。重复点开同一篇文章命中 ai_memos 缓存（D069）零额外开销。",
+      "user_story": "作为投资者，我需要英文新闻一键中文化才能快速消化，且重复打开同一篇文章不应再花 token。",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "contract_agreed",
+      "sub_sprint_notes": "拆 a/b 两段（2026-05-07 用户确认）：F213-a 后端新增 translate_article schema + REGISTRY 注册 + routing._TASK_TIER 映射 default tier + 单元测试（4 文件）；F213-b 前端 ArticleModal 改造（点开自动 fetch 翻译并替换 contentHtml/title）+ translateArticleApi 新建 + 测试（3 文件）。引入 DeepSeek 作为 LiteLLM provider（per-task override，不污染默认 tier）。",
+      "sub_sprints": {
+        "F213-a": "contract_agreed",
+        "F213-b": "design_needed"
+      },
+      "dependencies": [
+        "F208-c",
+        "F211-a2"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "News",
+          "Workbench (NewsWidget)"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/translate_article"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=translate_article)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo (复用现有，无 schema 变更)"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 去重缓存",
+          "D075 per-task model override 基建"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "translate_article task_type 加入 7→8 enum，schema/registry/tier 三处一致",
+        "per-task override 配置 deepseek-v4-flash + DeepSeek base_url + api_key（生产配置走 .env，AI_TASK_OVERRIDES_JSON）",
+        "ArticleModal 打开文章时自动调用 /api/ai/translate_article，loading 期显示原文 + loading 指示，成功后用译文替换 contentHtml + title",
+        "重复点开同一篇文章命中 ai_memos 缓存（meta.cacheHit=true，0 token 0 cost）",
+        "翻译失败时 Modal 显示原文（不阻塞用户阅读）+ 顶部 toast 错误提示"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-a",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：translate_article schema (input: title/contentText/targetLang; output: titleZh/contentZh) + SYSTEM_PROMPT + REGISTRY 注册 + routing._TASK_TIER 加 default tier + 25 单元测试 + 2 mocked 集成测试。4 个代码文件（schema + __init__ + routing + tests）+ 3 个文档前置（API-CONTRACT 7→8 enum / DATA-MODEL §AiMemo 枚举行 / DECISIONS D084 DeepSeek 接入）。Q1-Q5 全采默认（LiteLLM deepseek/ 原生 provider 优先 + OpenAI-兼容回退；contentText 20k 字符；targetLang 保留扩展；HTML 剥离前端做；DeepSeek 价格 Generator 阶段查最新）。下一 session Generator 从开发顺序步骤 1（更新 API-CONTRACT.md）开始。",
+          "contract": "docs/开发/sprint-contracts/F213-a-contract.md",
+          "contract_agreed_at": "2026-05-07"
+        }
+      ],
+      "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。"
     }
   ]
 }
