@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import DOMPurify from 'dompurify'
-import { X } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import { articleKey } from '@/lib/news-persist'
+import { stripHtml } from '@/components/news/newsSummaryUtils'
+import { translateArticle } from '@/lib/api/translateArticle'
 import { useReadArticlesStore } from '@/store/useReadArticlesStore'
 import type { NewsArticle } from '@/types/news'
 
@@ -16,6 +20,25 @@ export function ArticleModal({ article, onClose, onSelectTicker }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null)
   const prevFocusRef = useRef<HTMLElement | null>(null)
   const markAsRead = useReadArticlesStore((s) => s.markAsRead)
+
+  const contentText = article ? stripHtml(article.contentHtml ?? '') : ''
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['translate-article', article ? articleKey(article) : null],
+    queryFn: () =>
+      translateArticle({
+        title: article!.title,
+        contentText,
+      }),
+    enabled: !!article && contentText.length > 0,
+    staleTime: Infinity,
+    gcTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  useEffect(() => {
+    if (isError) toast.error('文章翻译失败，已显示原文')
+  }, [isError])
 
   useEffect(() => {
     if (article) markAsRead(articleKey(article))
@@ -39,6 +62,8 @@ export function ArticleModal({ article, onClose, onSelectTicker }: Props) {
   }, [article, onClose])
 
   if (!article) return null
+
+  const displayTitle = data?.output.titleZh ?? article.title ?? 'Untitled'
 
   const cleanHtml = DOMPurify.sanitize(article.contentHtml || '', {
     FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed'],
@@ -91,7 +116,35 @@ export function ArticleModal({ article, onClose, onSelectTicker }: Props) {
           <X size={16} />
         </button>
 
-        <h2 className="pr-10 text-lg font-semibold">{article.title || 'Untitled'}</h2>
+        <h2 className="pr-10 text-lg font-semibold">{displayTitle}</h2>
+
+        {/* Translation status bar */}
+        {isLoading && (
+          <div
+            className="mt-1 flex items-center gap-1 text-xs"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            <Loader2 size={12} className="animate-spin" />
+            <span>正在翻译...</span>
+          </div>
+        )}
+        {isError && (
+          <div
+            className="mt-1 text-xs"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            翻译失败，显示原文
+          </div>
+        )}
+        {data?.meta.cacheHit && (
+          <div
+            className="mt-1 text-xs"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            已缓存
+          </div>
+        )}
+
         {meta && (
           <p
             className="mt-1 text-xs"
@@ -121,11 +174,25 @@ export function ArticleModal({ article, onClose, onSelectTicker }: Props) {
           </div>
         )}
 
-        <div
-          className="article-content mt-4 text-sm leading-relaxed"
-          style={{ color: 'var(--color-text-primary)' }}
-          dangerouslySetInnerHTML={{ __html: cleanHtml }}
-        />
+        {data?.output.contentZh ? (
+          <div
+            className="article-content mt-4 text-sm leading-relaxed"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            {data.output.contentZh.split('\n\n').map((para, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <p key={i} className={i > 0 ? 'mt-3' : undefined}>
+                {para}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="article-content mt-4 text-sm leading-relaxed"
+            style={{ color: 'var(--color-text-primary)' }}
+            dangerouslySetInnerHTML={{ __html: cleanHtml }}
+          />
+        )}
       </div>
     </div>,
     document.body,
