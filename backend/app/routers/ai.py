@@ -17,7 +17,7 @@ from app.services.watchlist_service import APIError
 
 router = APIRouter(tags=["ai"])
 
-# 7 production task_types — strictly per API-CONTRACT §POST /api/ai/{task_type}
+# 8 production task_types — strictly per API-CONTRACT §POST /api/ai/{task_type}
 # "echo" is NOT listed here (F208-c internal test task only)
 TaskTypeEnum = Literal[
     "market_narrator",
@@ -27,6 +27,7 @@ TaskTypeEnum = Literal[
     "contradiction_detector",
     "news_summarizer",
     "journal_assistant",
+    "translate_article",   # F213-a, DeepSeek per-task override (D084)
 ]
 
 
