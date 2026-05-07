@@ -10,6 +10,7 @@ from app.ai.schemas import market_narrator as _mn
 from app.ai.schemas import news_summarizer as _ns
 from app.ai.schemas import setup_explainer as _se
 from app.ai.schemas import trade_plan as _tp
+from app.ai.schemas import translate_article as _ta
 from app.ai import guardrail as _gr
 
 
@@ -39,6 +40,7 @@ REGISTRY: dict[str, SchemaPair] = {
     "contradiction_detector": SchemaPair(_cd.ContradictionDetectorInput, _cd.ContradictionDetectorOutput, _cd.SYSTEM_PROMPT),
     "news_summarizer":        SchemaPair(_ns.NewsSummarizerInput, _ns.NewsSummarizerOutput, _ns.SYSTEM_PROMPT),
     "journal_assistant":      SchemaPair(_ja.JournalAssistantInput, _ja.JournalAssistantOutput, _ja.SYSTEM_PROMPT),
+    "translate_article":      SchemaPair(_ta.TranslateArticleInput, _ta.TranslateArticleOutput, _ta.SYSTEM_PROMPT),
 }
 
 # Guardrail hooks — registered as module load side effect (D068)

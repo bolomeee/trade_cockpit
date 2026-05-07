@@ -20,7 +20,8 @@ _TASK_TIER: dict[str, Literal["default", "critical", "complex"]] = {
     "contradiction_detector": "critical", # F211 — upgraded to mini
     "news_summarizer": "critical",       # F211 — upgraded to mini
     "journal_assistant": "complex",      # F211
-    "echo": "default",                   # test-only, not in API-CONTRACT §POST /api/ai/{task_type} 7 enums
+    "translate_article": "default",       # F213 — DeepSeek per-task override via AI_TASK_OVERRIDES_JSON (D084)
+    "echo": "default",                    # test-only, not in API-CONTRACT §POST /api/ai/{task_type} 8 enums
 }
 
 
