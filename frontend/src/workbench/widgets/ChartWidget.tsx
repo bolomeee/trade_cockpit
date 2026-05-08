@@ -1,13 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { Component, useState, useEffect, type ReactNode, type ErrorInfo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CirclePlus, Loader2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { getStockChart } from '@/lib/api/stocks'
 import { getSignals } from '@/lib/api/signals'
+import { addStock } from '@/lib/api/watchlist'
+import { ApiError } from '@/lib/api/client'
 import type { ChartData } from '@/types/stockDetail'
 import { PriceChart } from '@/components/features/stock-detail/PriceChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common/ErrorState'
 import { EmptySymbol } from './EmptySymbol'
-import { Component, type ReactNode, type ErrorInfo } from 'react'
 
 class ChartErrorBoundary extends Component<
   { children: ReactNode; onReset: () => void },
@@ -27,6 +30,8 @@ class ChartErrorBoundary extends Component<
 
 export function ChartWidget() {
   const symbol = useAppStore((s) => s.selectedSymbol)
+  const queryClient = useQueryClient()
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['chart', symbol],
@@ -41,11 +46,36 @@ export function ChartWidget() {
     staleTime: 30 * 1000,
   })
   const companyName = signals?.find((s) => s.ticker === symbol)?.name ?? null
+  const isInWatchlist = signals?.some((s) => s.ticker === symbol) ?? false
+
+  const addMutation = useMutation({
+    mutationFn: () => addStock(symbol!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['signals'] })
+      queryClient.invalidateQueries({ queryKey: ['watchlist'] })
+      setErrorMsg(null)
+    },
+    onError: (err) => {
+      const code = err instanceof ApiError ? err.code : 'UNKNOWN'
+      if (code === 'DUPLICATE') setErrorMsg('该股票已在 watchlist')
+      else if (code === 'NOT_FOUND') setErrorMsg('股票代码无效')
+      else setErrorMsg('添加失败，请重试')
+    },
+  })
+
+  useEffect(() => {
+    if (!errorMsg) return
+    const t = setTimeout(() => setErrorMsg(null), 3000)
+    return () => clearTimeout(t)
+  }, [errorMsg])
 
   if (symbol === null) return <EmptySymbol />
   if (isLoading) return <Skeleton style={{ width: '100%', height: '100%' }} />
   if (isError) return <ErrorState title="图表加载失败" onRetry={() => refetch()} />
   if (!data) return null
+
+  const isDisabled = isInWatchlist || addMutation.isPending
+  const btnTitle = errorMsg ?? (isInWatchlist ? '已在 watchlist' : '添加到 watchlist')
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -101,6 +131,40 @@ export function ChartWidget() {
           <span style={{ color: 'var(--color-signal-breakout, #2962ff)' }}>— MA150</span>
         </div>
       </div>
+      <button
+        type="button"
+        title={btnTitle}
+        disabled={isDisabled}
+        onClick={() => addMutation.mutate()}
+        onMouseEnter={(e) => {
+          if (!isDisabled && !errorMsg) e.currentTarget.style.color = 'var(--color-primary)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)'
+        }}
+        style={{
+          position: 'absolute',
+          right: 8,
+          bottom: 8,
+          zIndex: 2,
+          background: 'none',
+          border: `1px solid ${errorMsg ? 'var(--color-error)' : 'transparent'}`,
+          borderRadius: '50%',
+          padding: 4,
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          opacity: isInWatchlist ? 0.4 : 1,
+          color: errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'color 0.15s',
+        }}
+      >
+        {addMutation.isPending
+          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+          : <CirclePlus size={18} />
+        }
+      </button>
       <ChartErrorBoundary onReset={() => refetch()}>
         <PriceChart data={data as ChartData} />
       </ChartErrorBoundary>
