@@ -297,6 +297,21 @@ StockDetailModal (1024 × 804 px，居中)
 │   │   > - **均线图例**（仅在 Workbench ChartWidget 的左上角 absolute 图例区显示，Dashboard 详情弹窗无）：
 │   │   >   - `— MA5` / `— MA20` / `— MA150` 三行，fontSize 11，font-family `--font-family-numeric`
 │   │   >   - 颜色与线条一致：MA5 橙、MA20 紫、MA150 `var(--color-signal-breakout, #2962ff)`
+│   │
+│   │   > **F214 增强（v2.2 起，仅 Workbench ChartWidget；News 页 Price Chart 共用同一组件，同样显示）**：
+│   │   > - **右下角 Add to Watchlist 按钮**：`position: absolute; right: 70px; bottom: 8px; zIndex: 2`
+│   │   >   - `right: 70px` 让出 lightweight-charts price scale 区域（约 62px），避免遮挡价格刻度
+│   │   >   - 尺寸：18×18px icon（`CirclePlus`），padding 4px，圆形 border-radius
+│   │   > - **四种交互状态**：
+│   │   >   | 状态 | icon | 颜色 | disabled | 说明 |
+│   │   >   |------|------|------|----------|------|
+│   │   >   | idle | CirclePlus | `var(--color-text-secondary)` | false | 可点击；hover 变 `var(--color-primary)` |
+│   │   >   | disabled（已在 watchlist）| CirclePlus | `var(--color-text-secondary)` opacity 0.4 | true | title="已在 watchlist"；判定来源：signals 列表 |
+│   │   >   | pending | Loader2 旋转 | `var(--color-text-secondary)` | true | 调用 addStock 中 |
+│   │   >   | error | CirclePlus | `var(--color-error)` + 1px 红色边框 | false | 错误文案显示在 title；3s 后自动恢复 idle |
+│   │   > - **错误码映射**：DUPLICATE → "该股票已在 watchlist"；NOT_FOUND → "股票代码无效"；其他 → "添加失败，请重试"
+│   │   > - **成功反馈**：无 toast；invalidate `['signals']` + `['watchlist']` 后按钮依 signals 重新判定自动变 disabled
+│   │   > - **symbol === null 时**：走 EmptySymbol 早返回，按钮不渲染
 │   └── BottomRow (976 × 314 px, split 644 + 312)
 │       ├── Card "Pullback History" (644 × 314)
 │       │   └── Table: Date / Distance / 10D / 20D / 30D   [dynamic_pullbacks[]]

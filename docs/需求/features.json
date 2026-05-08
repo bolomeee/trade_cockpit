@@ -1787,7 +1787,7 @@
       "phase": "done",
       "completed_at": null,
       "dependencies": [
-        "F105-b"
+        "F105"
       ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -2415,8 +2415,7 @@
         "F200-a",
         "F200-b",
         "F201-a",
-        "F201-b",
-        "F204"
+        "F201-b"
       ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -2507,8 +2506,7 @@
       "sub_phase_notes": "F203-a/b1/b2/b3/c/d all done",
       "dependencies": [
         "F200-a",
-        "F200-b",
-        "F202"
+        "F200-b"
       ],
       "estimated_sessions": 5,
       "estimated_files_changed": [
@@ -2926,8 +2924,7 @@
         "F207-b": "2026-04-27"
       },
       "dependencies": [
-        "F206",
-        "F202"
+        "F206"
       ],
       "estimated_sessions": 3,
       "estimated_files_changed": [
@@ -3413,7 +3410,6 @@
       },
       "dependencies": [
         "F208-c",
-        "F202",
         "F203"
       ],
       "estimated_sessions": 3,
@@ -3560,7 +3556,8 @@
           "phase": "contract_agreed",
           "summary": "Sprint Contract 已确认。范围：DecisionPanelWidget 内新增 'AI Contradictions' 区，结构镜像 F210-b 的 AiTradePlanSection（lazy trigger / 6 态状态机 / cache badge / divider）。0 行后端改动，复用 F211-a1 的 contradiction_detector schema 和 F208-c /api/ai/{task_type} 通用 endpoint。5 个文件：AiContradictionsSection.tsx 新建（~250 行）+ DecisionPanelWidget.tsx 修改（~10 行 diff，引入 + 渲染 divider）+ DecisionPanelWidget.test.tsx +7 case + cockpit/lib/utils/dates.ts 新建（calcDaysUntil 抽取共享）+ features.json 更新。input 13 字段中 5 个（trendScore / rsPercentile / readySignal / regime / regimeScore）通过复用 ['setup-monitor'] / ['cockpit-regime'] react-query cache 读取，不新增 endpoint。setupMonitor 缺当前 ticker → trigger disabled。severity tag 颜色 HIGH=--color-error / MEDIUM=--color-signal-warning / LOW=--color-text-muted（步骤 1 须实测 token 存在）。queryKey 含 deterministicHash，24h cache 与 trade_plan 一致。即使后端无 hash guardrail，前端保留 409 分支模板。开放问题 Q1-Q10 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + queryKey + 读 backend schema）开始。",
           "contract": "docs/开发/sprint-contracts/F211-b-contract.md",
-          "contract_agreed_at": "2026-04-28"
+          "contract_agreed_at": "2026-04-28",
+          "iteration": true
         },
         {
           "date": "2026-04-28",
@@ -3582,7 +3579,8 @@
           "phase": "contract_agreed",
           "summary": "Sprint Contract 已确认。范围：News 页顶部新增 AiNewsSummaryBar，结构镜像 F211-b AiContradictionsSection（lazy trigger / 6 态状态机 / cache badge / 关闭按钮）。0 行后端改动，复用 F211-a1 news_summarizer schema 和 F208-c /api/ai/{task_type} 通用 endpoint。4 个文件：AiNewsSummaryBar.tsx 新建（~280 行）+ AiNewsSummaryBar.test.tsx 新建（~11 case）+ pages/News.tsx 修改（+6 行 import + bar 容器）+ features.json 更新。input articles 来自 useNewsArticles cache，按 publishedAt desc slice 30；contentText 经 DOMParser stripHtml 截断 2000 字符。queryKey ['ai','news_summarizer',hash]，hash 由 articles {title,publishedAt} 排序后 sha256 派生；24h staleTime 与 trade_plan/contradictions 一致。sentiment 颜色 positive=--color-success / neutral=--color-text-secondary / negative=--color-error（步骤 1 实测均存在 tokens.css line 28-30）。articles 为空 → trigger disabled + tooltip。relevantTickers chip 点击触发 useAppStore.setSelectedSymbol（与 NewsWidget TickerChip 行为一致）。risks/relevantTickers length 0 时整段隐藏。aiApi.ts 不上提（保留在 cockpit；ESLint 仅约束 cockpit↔workbench 互斥，pages→cockpit/lib import 合法）。开放问题 Q1-Q8 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + 复核 useNewsArticles queryKey + 验证 jsdom DOMParser/crypto.subtle）开始。",
           "contract": "docs/开发/sprint-contracts/F211-c-contract.md",
-          "contract_agreed_at": "2026-04-28"
+          "contract_agreed_at": "2026-04-28",
+          "iteration": true
         },
         {
           "date": "2026-04-29",
@@ -3604,7 +3602,8 @@
           "phase": "contract_agreed",
           "summary": "Sprint Contract 已确认。范围：平仓 hook + journal_entries.ai_review 迁移（5 文件：alembic 017 / journal_entry 模型+DTO / journal_review_service 新建 trade 模式 / position_service close hook+positions 路由 / 单测 15 case）。F211-d 因 7 文件超预算 2026-04-29 拆为 d1+d2，d1 仅 trade 模式 + 迁移；月度 cron 留 d2。核心决定：FastAPI BackgroundTasks 异步触发，失败不阻塞 PATCH；ai_review 列 Text+JSON+无 FK（D069 兼容）；平仓自动 INSERT/复用 SELL journal_entry；ai_review 已存在则跳过 gateway 避免重复烧 budget。Q1-Q10 全采默认方案，新增 D076。下一 session Generator 模式从开发步骤 1（预检：alembic current / GatewayResult 形态 / SessionLocal 验证）开始。",
           "contract": "docs/开发/sprint-contracts/F211-d1-contract.md",
-          "contract_agreed_at": "2026-04-29"
+          "contract_agreed_at": "2026-04-29",
+          "iteration": true
         },
         {
           "date": "2026-04-29",
@@ -3619,7 +3618,8 @@
           "phase": "contract_agreed",
           "summary": "Sprint Contract 已确认。范围：journal_assistant monthly mode + 月度 cron（每月 1 号 06:00 UTC）。0 schema / 0 迁移 / 0 前端 / 0 新依赖。4 文件（2 余量）：journal_review_service.py +monthly_review_for_month/_fetch_closed_positions_for_month/_build_monthly_input/_brief_for_position；refresh_job.py +JOURNAL_MONTHLY_JOB_ID/add_job/_journal_monthly_tick/_previous_month_utc helper；config.py +journal_monthly_cron_day/hour/minute；test_journal_review_service_f211d2.py 14 case (6U+5I+3 调度)。核心决定：monthly 输出仅落 ai_memos（依赖 D069 滚动清理 + 24h memo dedup，不新增表/迁移/journal_entries action）；0 trades 月份跳过 gateway；ASC 取最早 100；失败 swallow 与现有 cron tick 一致；不重试。Q1-Q15 全采默认方案，新增 D083（合约标 D077，被占用）。F211-d2 完成后父 F211 6 个 sub_sprints 全 done，acceptance 阶段决定父 status。下一 session Generator 模式从开发步骤 1（预检：alembic current / refresh_job datetime imports / GatewayResult / conftest fixtures / Position closed_at 类型）开始。",
           "contract": "docs/开发/sprint-contracts/F211-d2-contract.md",
-          "contract_agreed_at": "2026-04-29"
+          "contract_agreed_at": "2026-04-29",
+          "iteration": true
         },
         {
           "date": "2026-04-29",
@@ -3748,7 +3748,8 @@
           "phase": "contract_agreed",
           "summary": "Sprint Contract 已确认。范围（前端 3 文件）：新建 src/lib/api/translateArticle.ts（类型化薄封装，内部转 callAiTask）+ 修改 src/components/common/ArticleModal.tsx（注入 useQuery + loading/error/cacheHit 状态条 + sonner toast.error 回退原文 + 译文按 \\n\\n 拆段 React <p> 渲染）+ 新建 src/components/common/__tests__/ArticleModal.test.tsx（15 用例 AM1-14 + LIB1）。复用现有 ArticleModal（News 页 + Workbench NewsWidget 共用，改一处覆盖两处；SESSION-HANDOFF 中提到的 widgets/News/ArticleModal.tsx 路径不准确）。技术栈：react-query useQuery（queryKey 用 articleKey，staleTime Infinity，gcTime 5min，retry 1）+ sonner toast + 复用 stripHtml + 保留 dompurify 兜底。Q1-Q7 全采默认（API client 放 lib/api/ 同级 news.ts；loading 不禁交互；error 不显示重试按钮；译文 \\n\\n 自然降级单 <p>；cacheHit 显示已缓存徽标；不暴露 noCache；staleTime Infinity + gcTime 5min）。不引入新依赖，不改 News.tsx/NewsWidget.tsx/AiNewsSummaryBar.tsx，不修改后端 F213-a 4 文件，不持久化 localStorage。下一 session Generator 从开发顺序步骤 1（新建 translateArticle.ts）开始。",
           "contract": "docs/开发/sprint-contracts/F213-b-contract.md",
-          "contract_agreed_at": "2026-05-07"
+          "contract_agreed_at": "2026-05-07",
+          "iteration": true
         },
         {
           "date": "2026-05-07",
@@ -3761,7 +3762,8 @@
           "date": "2026-05-07",
           "subtask": "F213-b",
           "phase": "needs_review",
-          "summary": "Generator 完成，测试 15/15 通过（AM1-AM14 + LIB1），进入人工验收阶段。"
+          "summary": "Generator 完成，测试 15/15 通过（AM1-AM14 + LIB1），进入人工验收阶段。",
+          "iteration": true
         },
         {
           "date": "2026-05-07",
@@ -3772,6 +3774,60 @@
       ],
       "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。",
       "completed_at": "2026-05-07"
+    },
+    {
+      "id": "F214",
+      "name": "ChartWidget Add to Watchlist 按钮",
+      "description": "在 ChartWidget 右下角加一个 CirclePlus 浮动按钮，点击把当前 chart 显示的 ticker 加入 watchlist。复用现成 POST /api/watchlist 接口和 useQuery(['signals']) 数据零成本判定 isInWatchlist。News 页和 Workbench 页共用同一组件，按钮在两页都出现（用户确认方案 1A）。",
+      "user_story": "作为投资者，在 News 页看到感兴趣的票时，需要一键把它加入 watchlist，避免切回 Workbench → 搜索 → 添加的冗长流程。",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "frontend/src/workbench/widgets/__tests__/ChartWidget.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "News",
+          "Workbench"
+        ],
+        "components": [
+          "ChartWidget"
+        ],
+        "backend": []
+      },
+      "acceptance_criteria": [
+        "ChartWidget 右下角出现 CirclePlus 浮动按钮，z-index 高于 chart",
+        "symbol 不在 signals 列表时按钮 enabled，点击调用 addStock(symbol)",
+        "symbol 已在 signals 列表时按钮 disabled，title 含\"已在 watchlist\"",
+        "pending 时 icon 替换为 Loader2 旋转",
+        "成功后 invalidateQueries(['signals']) 和 (['watchlist'])",
+        "DUPLICATE / NOT_FOUND / 通用错误显示对应文案，约 3s 自动恢复 idle",
+        "symbol === null 时整个 widget 走 EmptySymbol 分支，按钮不渲染",
+        "News 页和 Workbench 页行为一致",
+        "全量 vitest 回归无新增失败"
+      ],
+      "iteration_history": [
+        {
+          "date": "2026-05-08",
+          "subtask": "F214",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：仅修改 frontend/src/workbench/widgets/ChartWidget.tsx 一个文件 + 新建同目录 __tests__/ChartWidget.test.tsx。复用现成 addStock API + useQuery(['signals']) 数据零成本判定 isInWatchlist。错误码映射沿用 AddStockCard 模式。不动后端、不改 useAppStore、不引入新依赖。两页都显示按钮（方案 1A）。无成功 toast（按钮变 disabled 即反馈）。下一 session Generator 从开发顺序步骤 1（重读 ChartWidget.tsx 当前内容确认无 drift）开始。",
+          "contract": "docs/开发/sprint-contracts/F214-contract.md",
+          "contract_agreed_at": "2026-05-08"
+        },
+        {
+          "date": "2026-05-08",
+          "subtask": "F214",
+          "phase": "needs_review",
+          "summary": "实现完成：ChartWidget 加 CirclePlus 浮动按钮（right:70px/bottom:8px 避开 price scale），useMutation 包 addStock，isInWatchlist 复用 signals query，3s 错误自动清除。7/7 单元测试通过，全量回归 268 passed 零回归，浏览器手验 News+Workbench 两页一致。design-spec.md 追加 F214 四态说明。",
+          "contract": "docs/开发/sprint-contracts/F214-contract.md"
+        }
+      ],
+      "notes": "ChartWidget 是 News 和 Workbench 共用的同一份代码（WidgetRegistry.ts:26 / :76），改一处覆盖两页。"
     }
   ]
 }
