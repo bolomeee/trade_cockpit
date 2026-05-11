@@ -84,20 +84,20 @@ export function ChartWidget() {
           position: 'absolute',
           top: 8,
           left: 12,
-          zIndex: 2,
+          zIndex: 3,
           display: 'flex',
           flexDirection: 'column',
           gap: 2,
-          pointerEvents: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span
             style={{
               fontSize: '18px',
               fontWeight: 'var(--font-weight-bold)',
               color: 'var(--color-text-primary)',
               lineHeight: 1.2,
+              pointerEvents: 'none',
             }}
           >
             {symbol}
@@ -109,11 +109,42 @@ export function ChartWidget() {
                 fontWeight: 'var(--font-weight-regular)',
                 color: 'var(--color-text-secondary)',
                 lineHeight: 1.2,
+                pointerEvents: 'none',
               }}
             >
               {companyName}
             </span>
           )}
+          <button
+            type="button"
+            title={btnTitle}
+            disabled={isDisabled}
+            onClick={() => addMutation.mutate()}
+            onMouseEnter={(e) => {
+              if (!isDisabled && !errorMsg) e.currentTarget.style.color = 'var(--color-primary)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)'
+            }}
+            style={{
+              background: 'none',
+              border: `1px solid ${errorMsg ? 'var(--color-error)' : 'transparent'}`,
+              borderRadius: '50%',
+              padding: 3,
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              opacity: isInWatchlist ? 0.4 : 1,
+              color: errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.15s',
+            }}
+          >
+            {addMutation.isPending
+              ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+              : <CirclePlus size={14} />
+            }
+          </button>
         </div>
         <div
           style={{
@@ -124,6 +155,7 @@ export function ChartWidget() {
             fontSize: 8,
             fontFamily: 'var(--font-family-numeric)',
             lineHeight: 1.2,
+            pointerEvents: 'none',
           }}
         >
           <span style={{ color: '#f59e0b' }}>— MA5</span>
@@ -131,40 +163,6 @@ export function ChartWidget() {
           <span style={{ color: 'var(--color-signal-breakout, #2962ff)' }}>— MA150</span>
         </div>
       </div>
-      <button
-        type="button"
-        title={btnTitle}
-        disabled={isDisabled}
-        onClick={() => addMutation.mutate()}
-        onMouseEnter={(e) => {
-          if (!isDisabled && !errorMsg) e.currentTarget.style.color = 'var(--color-primary)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)'
-        }}
-        style={{
-          position: 'absolute',
-          right: 8,
-          bottom: 8,
-          zIndex: 2,
-          background: 'none',
-          border: `1px solid ${errorMsg ? 'var(--color-error)' : 'transparent'}`,
-          borderRadius: '50%',
-          padding: 4,
-          cursor: isDisabled ? 'not-allowed' : 'pointer',
-          opacity: isInWatchlist ? 0.4 : 1,
-          color: errorMsg ? 'var(--color-error)' : 'var(--color-text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'color 0.15s',
-        }}
-      >
-        {addMutation.isPending
-          ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-          : <CirclePlus size={18} />
-        }
-      </button>
       <ChartErrorBoundary onReset={() => refetch()}>
         <PriceChart data={data as ChartData} />
       </ChartErrorBoundary>

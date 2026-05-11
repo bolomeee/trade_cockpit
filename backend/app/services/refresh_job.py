@@ -157,6 +157,13 @@ class RefreshJobManager:
                     MarketRefreshService(db, fmp=fmp).refresh_all()
                 except Exception:  # noqa: BLE001
                     logger.error("market refresh failed\n%s", traceback.format_exc())
+                # Regime ETF refresh + recompute. Isolated so a failure here
+                # does not mark the overall job failed.
+                try:
+                    MarketRefreshService(db, fmp=fmp).refresh_regime_etfs()
+                    MarketRegimeService(db).compute_and_store()
+                except Exception:  # noqa: BLE001
+                    logger.error("regime refresh failed\n%s", traceback.format_exc())
 
             with self._lock:
                 self._state.status = "completed"

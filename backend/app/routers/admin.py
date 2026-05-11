@@ -4,6 +4,7 @@ POST /api/admin/refresh-universe    — trigger UniverseRefreshService.refresh()
 POST /api/admin/refresh-pool-cache  — trigger PoolCacheService.rebuild() (F205-e Q5=B).
 POST /api/admin/refresh-earnings    — trigger EarningsService.fetch_and_store().
 POST /api/admin/refresh-setup       — trigger SetupService.compute_and_store_all().
+POST /api/admin/refresh-regime      — trigger regime ETF refresh + score recompute.
 """
 from __future__ import annotations
 
@@ -16,8 +17,10 @@ from app.database import get_db
 from app.dependencies import get_fmp_client
 from app.external.fmp_client import FmpClient
 from app.services.cockpit.earnings_service import EarningsService
+from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
+from app.services.market_refresh_service import MarketRefreshService
 from app.services.universe_refresh_service import UniverseRefreshService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -75,3 +78,27 @@ def refresh_setup(db: Session = Depends(get_db)) -> dict:
     t0 = time.monotonic()
     SetupService(db).compute_and_store_all()
     return {"status": "ok", "elapsed_seconds": round(time.monotonic() - t0, 2)}
+
+
+@router.post("/refresh-regime")
+def refresh_regime(
+    db: Session = Depends(get_db),
+    fmp: FmpClient = Depends(get_fmp_client),
+) -> dict:
+    """Manually trigger regime ETF refresh + market regime score recompute.
+
+    Equivalent to the nightly 22:15 UTC cron. Fetches 400 days of history for
+    14 regime ETFs from FMP, then recomputes and stores a new regime snapshot.
+    """
+    t0 = time.monotonic()
+    etf_result = MarketRefreshService(db=db, fmp=fmp).refresh_regime_etfs()
+    snapshot = MarketRegimeService(db).compute_and_store()
+    return {
+        "status": "ok",
+        "etf_completed": etf_result.completed,
+        "etf_failed": etf_result.failed,
+        "regime": snapshot.regime,
+        "market_score": snapshot.market_score,
+        "date": str(snapshot.date),
+        "elapsed_seconds": round(time.monotonic() - t0, 2),
+    }

@@ -1,1 +1,50 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-11] Bug fix：ChartWidget 按钮 + Regime 刷新
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+✅ 完成内容：
+  - F214 CirclePlus 按钮位置调整：从右下角移至 ticker 标签旁边（顶部左侧内联）
+  - Bug fix：按钮无法点击 — 根因是 lightweight-charts canvas z-index:2 与 overlay z-index:2
+    相同，canvas 因 DOM 顺序靠后覆盖按钮；将 overlay zIndex 改为 3 修复
+  - Bug fix：Market Regime 数据停留在 2026-04-25（16 天未更新）
+    根因：regime refresh 只有 22:15 UTC cron，无手动触发入口且主刷新未包含
+    修复：
+      1. 新增 POST /api/admin/refresh-regime endpoint（admin.py）
+      2. RefreshJobManager._run() 内嵌 regime ETF refresh + compute（refresh_job.py）
+      3. useRefreshStatus.ts 完成时 invalidate ['cockpit', 'regime'] 触发前端更新
+  - API-CONTRACT.md：补全 Admin 章节（5 个 endpoint 均已文档化）
+
+📊 文件变更：
+  - frontend/src/workbench/widgets/ChartWidget.tsx（zIndex 2→3，按钮移位）
+  - frontend/src/hooks/useRefreshStatus.ts（invalidate regime query）
+  - backend/app/routers/admin.py（新增 refresh-regime endpoint）
+  - backend/app/services/refresh_job.py（_run() 内嵌 regime refresh）
+  - docs/系统设计/API-CONTRACT.md（Admin 章节）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-08] Sprint：F214 ChartWidget Add to Watchlist 按钮
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（Contract 协商阶段）：
+  - 读取 ChartWidget.tsx / WatchlistWidget.tsx / AddStockCard.tsx / watchlist.ts API 定义
+  - 确认 ChartWidget 是 News 和 Workbench 共用同一组件（WidgetRegistry.ts:26 / :76）
+  - 确认 addStock API 现成，无需后端改动
+  - 确认 useQuery(['signals']) 已在 ChartWidget 中使用，可零成本判定 isInWatchlist
+  - 用户确认 1A（两页都显示）/ 2b（disabled 反馈已在 watchlist）/ 3 简单（无成功 toast）
+  - Sprint Contract 起草并经用户确认
+  - features.json 加入 F214 entry，phase = contract_agreed
+  - docs/开发/sprint-contracts/F214-contract.md 已写
+
+📊 文件清单（预计修改 2 个，远低于 6 文件上限）：
+  - frontend/src/workbench/widgets/ChartWidget.tsx（修改）
+  - frontend/src/workbench/widgets/__tests__/ChartWidget.test.tsx（新建）
+
+📊 功能状态：
+  F213 News Article Auto-Translate：✅ done
+  F214 ChartWidget Add to Watchlist：📝 contract_agreed（待 Generator）
+
+[下一个 Session]
+  用 Sonnet 开新 session，粘贴：
+  > 继续开发 F214，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F214-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1 开始。

@@ -567,6 +567,80 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 
 ---
 
+## Admin（/api/admin）
+
+手动触发后台定时任务，供开发调试和运维使用。所有 endpoint 均为 POST，无请求体，返回执行摘要。
+
+### POST /api/admin/refresh-universe
+> Feature：F105
+
+**用途**：触发 FMP 全量 screener 扫描，更新 pool 股票池。
+
+**成功响应（200）**：
+```json
+{ "status": "ok", "upserted": 120, "skipped": 30, "error": null }
+```
+
+---
+
+### POST /api/admin/refresh-pool-cache
+> Feature：F205-e
+
+**用途**：重建 pool_cache 表（缓存池内每只股票的最新 fundamental 指标）。
+
+**成功响应（200）**：
+```json
+{ "status": "ok", "upserted": 120, "elapsed_seconds": 4.2, "error": null }
+```
+
+---
+
+### POST /api/admin/refresh-earnings
+> Feature：F204-b
+
+**用途**：刷新 earnings 日历（今日 -7 至今日 +30 天范围）。
+
+**成功响应（200）**：
+```json
+{ "inserted": 12, "updated": 3, "skipped": 5 }
+```
+
+---
+
+### POST /api/admin/refresh-setup
+> Feature：F202-b
+
+**用途**：对 watchlist 内所有活跃 ticker 执行 setup snapshot 扫描，等价于 22:30 UTC cron。
+
+**成功响应（200）**：
+```json
+{ "status": "ok", "elapsed_seconds": 8.1 }
+```
+
+---
+
+### POST /api/admin/refresh-regime
+> Feature：F201-b
+
+**用途**：刷新 14 个 regime ETF 历史数据（400 天），并重新计算 market regime 评分快照，等价于 22:15 UTC cron。
+
+**注意**：`POST /api/data/refresh`（主刷新按钮）内部已包含此步骤，通常无需单独调用。
+
+**成功响应（200）**：
+```json
+{
+  "status": "ok",
+  "etf_completed": 15,
+  "etf_failed": 0,
+  "regime": "RISK_ON",
+  "market_score": 95,
+  "date": "2026-05-11",
+  "elapsed_seconds": 7.1
+}
+```
+
+---
+
 ## Market（/api/market）
 
 ### GET /api/market/overview

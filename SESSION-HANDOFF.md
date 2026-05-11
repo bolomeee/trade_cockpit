@@ -1,127 +1,64 @@
-# SESSION-HANDOFF — F213-b Generator 完成
+# SESSION-HANDOFF — F214 needs_review，等待用户验收
 
-> 生成时间：2026-05-07 | Branch: cockpit | 状态：F213-b generator_done，待 consistency-check + acceptance
-> 本 session 模型：Sonnet 4.6（F213-b Generator）
-> 上一 handoff：F213-b Contract 协商完成（已被本文件覆盖）
-
----
-
-## 1. 本 session 完成内容
-
-### 1.1 新建 / 修改文件（3 文件 + 1 测试文件）
-
-| 文件 | 操作 | 关键内容 |
-|------|------|---------|
-| `frontend/src/lib/api/translateArticle.ts` | 新建 | `TranslateArticleInput/Output/Response` 类型 + `translateArticle()` 函数封装 |
-| `frontend/src/components/common/ArticleModal.tsx` | 修改 | useQuery 注入 + loading/error/cacheHit 状态条 + `\n\n` 拆段渲染 + sonner toast |
-| `frontend/src/components/common/__tests__/ArticleModal.test.tsx` | 新建 | AM1-AM14（14 pass） |
-| `frontend/src/lib/api/__tests__/translateArticle.test.ts` | 新建 | LIB1+LIB2（2 pass） |
-
-### 1.2 Commits
-
-```
-e5d590b feat(F213-b): ArticleModal auto-translate via DeepSeek
-c5c9ac0 wip(F213-b): ArticleModal auto-translate + AM1-AM14 tests (14/14 pass)
-bda71c8 wip(F213-b): LIB1 test + ArticleModal.test scaffold
-96971c0 wip(F213-b): translateArticle.ts API client wrapper
-```
-
-### 1.3 测试结果
-
-| 套件 | 结果 |
-|------|------|
-| LIB1+LIB2 (`translateArticle.test.ts`) | 2/2 pass |
-| AM1-AM14 (`ArticleModal.test.tsx`) | 14/14 pass |
-| 全量前端 (`pnpm test --run`) | 33 pre-existing failures（与 F213-b 无关），**无新增失败** |
-| `pnpm tsc --noEmit` | 0 errors |
-| 后端 (`pytest backend/tests/`) | 6 pre-existing failures（SESSION-HANDOFF 记载 5，`test_D1_market_narrator_success` 亦为 pre-existing），**无新增失败** |
-
-### 1.4 浏览器手动验证
-
-- 打开任一英文新闻 → "正在翻译..." spinner 显示 → 中文标题 + 中文正文（按 `\n\n` 拆段）
-- 关闭再打开同一篇 → **立即显示中文**（react-query 内存命中，Network 无第二次 POST）
-- `POST /api/ai/translate_article → 200 OK` 确认后端调用正常
+> 生成：2026-05-08 | Branch: cockpit
+> 阶段：F214 phase = `needs_review`
+> 上一阶段：F214 Generator 完成，consistency-check 全清
 
 ---
 
-## 2. 当前未完成项（下一步）
+## 1. 当前位置
 
-### 2.1 必须执行（consistency-check）
-
-features.json 需更新：
-- `F213.sub_sprints.F213-b.status`: `contract_agreed` → `done`
-- `F213.iteration_history` 追加 generator_done 记录
-- 检查 F213 父级是否可升 done（F213-a 已 done，F213-b 已 done → 待 acceptance）
-
-运行方式：
-```
-调用 consistency-check skill (mode=interactive)
-```
-
-### 2.2 Acceptance 阶段（F213 验收）
-
-1. 确认 `backend/.env` 配置 `AI_TASK_OVERRIDES_JSON`（见 F213-a-contract §6）
-2. 触发 acceptance skill → 跑 F213 acceptance criteria
-3. 验收通过后父 F213 phase → `done`
+**Feature**：F214 — ChartWidget Add to Watchlist 按钮  
+**phase**：`needs_review`  
+**status**：`in_progress`（验收通过后切 done）  
+**本次完成的工作**：Generator 模式全部 14 步执行完毕
 
 ---
 
-## 3. 工作区状态
+## 2. 已完成内容
 
-### 3.1 已提交（F213-b 开发）
+### 代码变更
 
-```
-e5d590b feat(F213-b): ArticleModal auto-translate via DeepSeek
-c5c9ac0 wip(F213-b): ArticleModal auto-translate + AM1-AM14 tests (14/14 pass)
-bda71c8 wip(F213-b): LIB1 test + ArticleModal.test scaffold
-96971c0 wip(F213-b): translateArticle.ts API client wrapper
-```
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `frontend/src/workbench/widgets/ChartWidget.tsx` | 修改 | 加 CirclePlus 浮动按钮 + useMutation + isInWatchlist + 3s 错误自动清除 |
+| `frontend/src/workbench/widgets/__tests__/ChartWidget.test.tsx` | 新建 | 7 个单元测试，7/7 通过 |
 
-### 3.2 未提交（跨 sprint 遗留，与 F213-b 无关）
+### 关键技术决策
 
-- `M backend/app/external/fmp_client.py`
-- `M docs/需求/features.json`（F213-b 状态待 consistency-check 更新）
-- `M claude-progress.txt`
-- `?? docs/开发/sprint-contracts/F213-b-contract.md`
-- `?? docs/cockpit-usage-guide.{png,svg}`
-- `?? docs/stock-portal-architecture.{png,svg}`
-- `?? docs/验收/playwright-report/`
-- `?? docs/验收/screenshots/`
+- 按钮位置从 `right:8px` 调整为 `right:70px`，避开 lightweight-charts price scale（约 62px 宽）
+- `preview_click` 无法触发 React 合成事件；浏览器验证使用 `dispatchEvent(MouseEvent)`
 
-### 3.3 已知预存测试失败（不变，与本 sprint 无关）
-
-**前端（33 个，pre-existing）**：AiNewsSummaryBar (8)、TopNav (5)、DecisionPanelWidget (1)、MarketRegimeWidget (1)、CockpitChartWidget (3)、SetupMonitorWidget (15)
-
-**后端（6 个，pre-existing）**：test_D1_market_narrator_success、test_R5/R6_default_resolver、test_fmp_client screener、test_regime_s14/s4
-
----
-
-## 4. 关键设计说明（供 Evaluator / acceptance）
-
-- **LIB1 独立文件**：`translateArticle.test.ts` 在 `src/lib/api/__tests__/` 而非 ArticleModal.test.tsx，原因：AM* 测试在模块层 mock 了 `translateArticle`，无法在同文件内测试真实实现对 `callAiTask` 的转发。技术决策正确，测试覆盖完整。
-- **retryDelay: 0 in test QC**：AM11/AM12 需要等待 retry 完成才能进入 error 状态。组件设置 `retry: 1`（生产需要），测试 QC 设置 `retryDelay: 0` 让 retry 立即发生避免 waitFor 超时。
-- **"已缓存"徽标**：仅在服务端 `meta.cacheHit=true` 时显示。react-query 内存命中不显示（内存命中不发网络请求，没有 meta 数据）。
-
----
-
-## 5. 下一 session 恢复指令
-
-**用 Sonnet 4.6 或 Opus 4.7 开新 session**，粘贴以下指令：
+### Commits（本 session）
 
 ```
-F213-b Generator 已完成。读取 SESSION-HANDOFF.md，执行：
-1. 调用 consistency-check skill (mode=interactive) 更新 features.json F213-b status → done
-2. 确认 features.json 变更后，根据 F213-a-contract §6 指导用户配置 backend/.env
-3. 触发 acceptance skill 运行 F213 acceptance criteria
+cb74957 wip(F214): update features.json + design-spec for needs_review
+9783dc8 wip(F214): ChartWidget tests (7/7)
+6856dbc wip(F214): ChartWidget add-to-watchlist button
 ```
 
 ---
 
-## 6. 引用
+## 3. 验收要点（用户手动确认）
 
-- F213-b Contract：`docs/开发/sprint-contracts/F213-b-contract.md`
-- 修改文件：
-  - `frontend/src/lib/api/translateArticle.ts`
-  - `frontend/src/components/common/ArticleModal.tsx`
-  - `frontend/src/components/common/__tests__/ArticleModal.test.tsx`
-  - `frontend/src/lib/api/__tests__/translateArticle.test.ts`
+1. **按钮位置**：News 页和 Workbench 页的 ChartWidget 右下角均有 CirclePlus 按钮（`right:70px, bottom:8px`），不遮挡 price scale 数字
+2. **idle 态**：选一个不在 watchlist 的 ticker，按钮 enabled，hover 变 primary 色
+3. **add 成功**：点击后 signals invalidate，ticker 加入 signals 后按钮变 disabled + opacity 0.4 + title "已在 watchlist"
+4. **already-in 态**：选已在 watchlist 的 ticker（如 AAPL），按钮直接 disabled
+5. **错误态**：后端返回 DUPLICATE 时按钮显示红色边框 + title 显示错误文案，3s 后恢复
+
+---
+
+## 4. 遗留事项
+
+- **C5（44处合约无 features.json entry）**：已知 drift，历史 feature 合约文件未拆分 sub_sprints，用户选择跳过
+- **C4（F205/F207 iteration_history 缺失）**：同上，历史积累，跳过
+
+---
+
+## 5. 下一步
+
+验收通过后：
+1. 将 F214 `status` 改为 `done`，`phase` 改为 `done`
+2. 调用 `project-commiter` 发版（v2.2.0 或按项目规划）
+3. 清理 MCD 测试数据（本 session 添加 MCD 到 watchlist 做手验）
