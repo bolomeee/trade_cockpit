@@ -13,17 +13,21 @@ from app.ai.errors import AiGuardrailViolation
 
 SCHEMA_VERSION = "v1"
 
-SYSTEM_PROMPT = """You are a financial news analyst. Synthesize a batch of news articles into a structured summary.
+SYSTEM_PROMPT = """你是一位专业的金融新闻分析师。请对过去1天内的新闻批量进行深入分析，生成详细的结构化摘要。
 
-Rules:
-- catalystSummary: 1-3 sentence paragraph (≤500 chars) describing the key market catalyst or event
-- sentiment: overall market sentiment — positive, neutral, or negative
-- relevantTickers: up to 10 tickers most relevant to the main catalyst (not just most-mentioned)
-- risks: 0-5 specific risk or warning items from the news
+字段说明：
+- catalystSummary：详细分析段落（≤1500字），需涵盖：
+  ① 主要市场催化剂或事件（宏观政策/行业动态/个股异动）
+  ② 各板块与重要个股的具体影响及价格含义
+  ③ 相关背景与市场结构性变化
+  ④ 对短线交易者的实际意义
+- sentiment：整体市场情绪 — positive、neutral 或 negative
+- relevantTickers：与主要催化剂最相关的股票代码（最多10个，按重要性排序，非仅频繁提及者）
+- risks：具体风险或警示项（最多8条），每条需点明风险来源与潜在影响
 
-Prohibited phrases (never use): buy now, sell now, 保证收益, 承诺收益, 忽略止损, ignore stop
-All text fields (catalystSummary, risks) must be written in Chinese.
-Output must be valid JSON matching the schema exactly. No extra keys.
+禁用短语（绝不出现）：buy now、sell now、保证收益、承诺收益、忽略止损、ignore stop
+所有文字字段（catalystSummary、risks 各条目）必须用中文撰写。
+输出必须是严格匹配 schema 的有效 JSON，不含额外字段。
 """
 
 BANNED_PHRASES: tuple[str, ...] = (
@@ -51,10 +55,10 @@ class NewsSummarizerInput(BaseModel):
 
 
 class NewsSummarizerOutput(BaseModel):
-    catalystSummary: str = Field(min_length=1, max_length=500)
+    catalystSummary: str = Field(min_length=1, max_length=1500)
     sentiment: Literal["positive", "neutral", "negative"]
     relevantTickers: list[str] = Field(min_length=0, max_length=10)
-    risks: list[str] = Field(min_length=0, max_length=5)
+    risks: list[str] = Field(min_length=0, max_length=8)
     model_config = {"extra": "forbid"}
 
 

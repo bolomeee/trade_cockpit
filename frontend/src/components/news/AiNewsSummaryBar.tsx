@@ -163,7 +163,7 @@ export function AiNewsSummaryBar(): JSX.Element | null {
       const nc = forceNoCache.current
       return callAiTask<NewsSummarizerInput, NewsSummarizerOutput>('news_summarizer', {
         articles: summarizerArticles,
-        windowDays: 5,
+        windowDays: 1,
       }, { noCache: nc })
     },
     enabled: open && !isDisabled && hashReady,
