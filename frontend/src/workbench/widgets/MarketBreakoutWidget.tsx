@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, Plus } from 'lucide-react'
+import { Check, Loader2, Plus, ScanLine } from 'lucide-react'
 
-import { getBreakouts } from '@/lib/api/market'
+import { getBreakouts, triggerScan } from '@/lib/api/market'
 import { addStock } from '@/lib/api/watchlist'
 import { ApiError } from '@/lib/api/client'
 import { useAppStore } from '@/store/useAppStore'
@@ -36,6 +36,14 @@ const SIGNAL_LABEL: Record<SignalType, string> = {
 
 export function MarketBreakoutWidget() {
   const [tab, setTab] = useState<TabKey>('stage')
+  const queryClient = useQueryClient()
+
+  const scanMutation = useMutation({
+    mutationFn: triggerScan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['breakouts'] })
+    },
+  })
 
   return (
     <Tabs
@@ -44,23 +52,37 @@ export function MarketBreakoutWidget() {
       className="flex h-full flex-col gap-1"
       style={{ marginTop: '-5px', marginLeft: '-5px' }}
     >
-      <TabsList
-        className="rounded-full p-[2px] text-[10px]"
-        style={{ height: 29 }}
-      >
-        <TabsTrigger
-          value="stage"
-          className="rounded-full px-[4px] py-0 text-[10px]"
+      <div className="flex items-center justify-between">
+        <TabsList
+          className="rounded-full p-[2px] text-[10px]"
+          style={{ height: 29 }}
         >
-          Breakout
-        </TabsTrigger>
-        <TabsTrigger
-          value="pullback"
-          className="rounded-full px-[4px] py-0 text-[10px]"
+          <TabsTrigger
+            value="stage"
+            className="rounded-full px-[4px] py-0 text-[10px]"
+          >
+            Breakout
+          </TabsTrigger>
+          <TabsTrigger
+            value="pullback"
+            className="rounded-full px-[4px] py-0 text-[10px]"
+          >
+            Pullback
+          </TabsTrigger>
+        </TabsList>
+        <button
+          type="button"
+          title={scanMutation.isPending ? '扫描中，约 3–6 分钟…' : '重新扫描全市场'}
+          disabled={scanMutation.isPending}
+          onClick={() => scanMutation.mutate()}
+          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
-          Pullback
-        </TabsTrigger>
-      </TabsList>
+          {scanMutation.isPending
+            ? <Loader2 size={13} className="animate-spin" />
+            : <ScanLine size={13} />
+          }
+        </button>
+      </div>
       <TabsContent value="stage" className="min-h-0 flex-1">
         <BreakoutPane signalTypes={TAB_SIGNALS.stage} emptyLabel="No stage breakouts today" />
       </TabsContent>
