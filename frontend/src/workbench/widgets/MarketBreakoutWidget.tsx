@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, Plus, ScanLine } from 'lucide-react'
+import { Check, Loader2, Plus, RefreshCw } from 'lucide-react'
 
 import { getBreakouts, triggerScan } from '@/lib/api/market'
 import { addStock } from '@/lib/api/watchlist'
@@ -79,7 +79,7 @@ export function MarketBreakoutWidget() {
         >
           {scanMutation.isPending
             ? <Loader2 size={13} className="animate-spin" />
-            : <ScanLine size={13} />
+            : <RefreshCw size={13} />
           }
         </button>
       </div>
