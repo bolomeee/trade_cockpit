@@ -5,6 +5,7 @@ POST /api/admin/refresh-pool-cache  — trigger PoolCacheService.rebuild() (F205
 POST /api/admin/refresh-earnings    — trigger EarningsService.fetch_and_store().
 POST /api/admin/refresh-setup       — trigger SetupService.compute_and_store_all().
 POST /api/admin/refresh-regime      — trigger regime ETF refresh + score recompute.
+POST /api/admin/refresh-scanner     — trigger full market breakout scan.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
 from app.services.market_refresh_service import MarketRefreshService
+from app.services.market_scanner_service import MarketScannerService
 from app.services.universe_refresh_service import UniverseRefreshService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -100,5 +102,29 @@ def refresh_regime(
         "regime": snapshot.regime,
         "market_score": snapshot.market_score,
         "date": str(snapshot.date),
+        "elapsed_seconds": round(time.monotonic() - t0, 2),
+    }
+
+
+@router.post("/refresh-scanner")
+def refresh_scanner(
+    db: Session = Depends(get_db),
+    fmp: FmpClient = Depends(get_fmp_client),
+) -> dict:
+    """Manually trigger a full market breakout scan.
+
+    Equivalent to the daily 06:15 UTC cron. Scans the full pool universe
+    (~500 tickers) for MA150 breakout/pullback signals. Takes 3-6 minutes
+    due to FMP rate limits. Returns scan summary.
+    """
+    t0 = time.monotonic()
+    result = MarketScannerService(db=db, fmp=fmp).run_scan()
+    return {
+        "status": result.status,
+        "scanned": result.scanned,
+        "hits": result.hits,
+        "failed": result.failed,
+        "hits_by_type": result.hits_by_type,
+        "scan_date": str(result.scan_date),
         "elapsed_seconds": round(time.monotonic() - t0, 2),
     }

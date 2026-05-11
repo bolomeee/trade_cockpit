@@ -27,6 +27,7 @@ export function useRefreshStatus() {
       queryClient.invalidateQueries({ queryKey: ['signals'] })
       queryClient.invalidateQueries({ queryKey: ['market', 'overview'] })
       queryClient.invalidateQueries({ queryKey: ['cockpit', 'regime'] })
+      queryClient.invalidateQueries({ queryKey: ['breakouts'] })
     }
     prevStatusRef.current = currentStatus
   }, [currentStatus, queryClient])

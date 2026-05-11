@@ -641,6 +641,33 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 
 ---
 
+### POST /api/admin/refresh-scanner
+> Feature：F105
+
+**用途**：对 pool 全量 universe（~500 只）执行 MA150 breakout/pullback 信号扫描，等价于每日 06:15 UTC cron。结果写入 market_breakout_snapshots 表，Market Breakouts widget 自动更新。
+
+**注意**：扫描全量 universe 约需 3–6 分钟（受 FMP 限速影响）。
+
+**成功响应（200）**：
+```json
+{
+  "status": "ok",
+  "scanned": 597,
+  "hits": 94,
+  "failed": 136,
+  "hits_by_type": {
+    "a1_stage_breakout": 2,
+    "a2_slope_flip": 45,
+    "b2_ma_pullback": 28,
+    "legacy_crossover": 19
+  },
+  "scan_date": "2026-05-11",
+  "elapsed_seconds": 295.0
+}
+```
+
+---
+
 ## Market（/api/market）
 
 ### GET /api/market/overview
