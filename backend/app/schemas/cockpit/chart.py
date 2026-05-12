@@ -37,6 +37,7 @@ class CockpitChartData(CamelModel):
     ticker: str
     bars: list[ChartBarItem]
     mas: dict[str, list[ChartSeriesPoint]]
+    emas: dict[str, list[ChartSeriesPoint]]
     atr: list[ChartSeriesPoint]
     avwap: ChartAvwap
 
