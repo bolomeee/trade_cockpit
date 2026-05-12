@@ -16,6 +16,7 @@ import { getCockpitChart } from '../lib/api/cockpitChartApi'
 import { getCockpitDecision } from '../lib/api/cockpitDecisionApi'
 
 const DEFAULT_MAS = [10, 21, 50, 150, 200]
+const DEFAULT_EMAS = [10, 21]
 const DEFAULT_DAYS = 250
 const MAS_KEY = DEFAULT_MAS.join(',')
 
@@ -134,6 +135,20 @@ export function CockpitChartWidget() {
         lastValueVisible: false,
       })
       maSeries.setData(points.map((p) => ({ time: toTs(p.date), value: p.value })))
+    }
+
+    for (const period of DEFAULT_EMAS) {
+      const key = String(period)
+      const points = cd.emas?.[key]
+      if (!points || points.length === 0) continue
+      const emaSeries: ISeriesApi<'Line'> = chart.addSeries(LineSeries, {
+        color: readToken(MA_TOKENS[key], MA_FALLBACKS[key]),
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+      emaSeries.setData(points.map((p) => ({ time: toTs(p.date), value: p.value })))
     }
 
     if (cd.avwap.anchor && cd.avwap.series.length > 0) {
@@ -287,6 +302,25 @@ export function CockpitChartWidget() {
                 style={{ fontSize: 'var(--font-size-badge)', color: 'var(--color-text-secondary)' }}
               >
                 MA{period}
+              </span>
+            </span>
+          ))}
+          {DEFAULT_EMAS.map((period) => (
+            <span key={`ema-${period}`} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '12px',
+                  height: '2px',
+                  background: `var(${MA_TOKENS[String(period)]}, ${MA_FALLBACKS[String(period)]})`,
+                  borderTop: `2px dashed var(${MA_TOKENS[String(period)]}, ${MA_FALLBACKS[String(period)]})`,
+                  height: '0',
+                }}
+              />
+              <span
+                style={{ fontSize: 'var(--font-size-badge)', color: 'var(--color-text-secondary)' }}
+              >
+                EMA{period}
               </span>
             </span>
           ))}

@@ -126,7 +126,7 @@ function ScoreHero({ data }: { data: CockpitRegimeData }) {
       </div>
       <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-secondary)', display: 'flex', gap: '12px' }}>
         <div>Exposure: <span style={{ color: 'var(--color-text-primary)' }}>{data.allowedExposurePct.toFixed(1)}%</span></div>
-        <div>Risk/Trade: <span style={{ color: 'var(--color-text-primary)' }}>{data.singleTradeRiskPct.toFixed(1)}%</span></div>
+        <div>Risk/Trade: <span style={{ color: 'var(--color-text-primary)' }}>{data.singleTradeRiskPct.toFixed(2)}%</span></div>
       </div>
     </div>
   )
