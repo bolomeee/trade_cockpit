@@ -23,6 +23,7 @@ export type CockpitChartData = {
   ticker: string
   bars: ChartBarItem[]
   mas: Record<string, ChartSeriesPoint[]>
+  emas: Record<string, ChartSeriesPoint[]>
   atr: ChartSeriesPoint[]
   avwap: ChartAvwap
 }
