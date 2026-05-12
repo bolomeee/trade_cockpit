@@ -89,6 +89,10 @@ def get_cockpit_chart(
         k: [ChartSeriesPoint.model_validate(p) for p in v]
         for k, v in result["mas"].items()
     }
+    emas_out: dict[str, list[ChartSeriesPoint]] = {
+        k: [ChartSeriesPoint.model_validate(p) for p in v]
+        for k, v in result["emas"].items()
+    }
     atr_out = [ChartSeriesPoint.model_validate(p) for p in result["atr"]]
     avwap_raw = result["avwap"]
     avwap_out = ChartAvwap(
@@ -100,6 +104,7 @@ def get_cockpit_chart(
         ticker=result["ticker"],
         bars=bars,
         mas=mas_out,
+        emas=emas_out,
         atr=atr_out,
         avwap=avwap_out,
     )
