@@ -19,6 +19,8 @@ class JournalEntry(Base):
     target_price = Column(Float, nullable=True)
     reason = Column(Text, nullable=True)
     reference = Column(Text, nullable=True)
+    ai_review = Column(Text, nullable=True)
+    ai_review_memo_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,

@@ -43,9 +43,9 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
       <Table className="table-fixed text-[11px] [&_th]:h-5 [&_th]:py-1 [&_th]:px-2 [&_th]:text-left [&_td]:py-[3px] [&_td]:px-2">
         <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
-            <TableHead className="w-[100px]">Date</TableHead>
+            <TableHead className="w-[60px]">Date</TableHead>
             <TableHead>Title</TableHead>
-            <TableHead className="w-[280px]">
+            <TableHead className="w-[168px]">
               <div className="flex items-center justify-between">
                 <span>Tickers</span>
                 <button
@@ -53,7 +53,7 @@ export function NewsWidget({ onOpenArticle, onSelectTicker }: NewsWidgetProps = 
                   onClick={refresh}
                   disabled={isRefreshing}
                   title="Refresh news"
-                  className="rounded p-0.5 opacity-60 transition-opacity hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="rounded p-0.5 text-blue-500 transition-colors hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <RefreshCw
                     size={13}

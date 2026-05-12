@@ -11,3 +11,7 @@ export function getBreakouts(
   const qs = types && types.length > 0 ? `?type=${types.join(',')}` : ''
   return apiFetch<BreakoutSnapshot>(`/market/breakouts${qs}`)
 }
+
+export function triggerScan(): Promise<{ status: string; scanned: number; hits: number }> {
+  return apiFetch('/admin/refresh-scanner', { method: 'POST' })
+}

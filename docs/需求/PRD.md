@@ -225,3 +225,68 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 - **ARCHITECTURE.md**：FMP 端点映射表新增 screener 条目
 
 **下一步**：触发 system-design skill 补系统设计文档。
+
+---
+
+### v1.8 / v1.9 / v2.0 迭代 — 2026-04-24（Cockpit Epic）
+
+**变更原因**：Workbench 主页偏试验（SMA150 信号验证、watchlist 试错、Chart 联动等），随着个人交易风格固化为"慢交易 / repricing / 周-日结合"，需要一个独立工作流页面承载：Market Regime 判断、结构化 Setup Monitor、Entry/Stop/Size 决策、持仓与条件单管理、复盘。参照 `/Users/wonderer/Downloads/slow_trading_system_proposal.md`（参考稿，非定稿）的 SRS（Slow Repricing System）构想落地。
+
+**关键架构约束**（与 Workbench 哲学不同之处）：
+
+1. **独立页 `/cockpit`**（非 Workbench 新 widget），TopNav 与 Workbench / News 平级。理由：完整工作流视图 + 迭代独立性。
+2. **代码完全解耦**：`frontend/src/cockpit/` 与 `src/workbench/` 互不引用；`backend/app/routers/cockpit/` 与现有 router 互不引用；cockpit 专属 client state（`cockpitStore`）不复用 `useAppStore.selectedSymbol`。
+3. **CockpitChart 与 Workbench ChartWidget 不共享代码**，接受代码重复换解耦。
+4. **持仓全手动录入**（嘉信证券无 API），不做 broker 集成。
+5. **AI 层 provider-agnostic**：选 LiteLLM 作为抽象层，通过 `.env` 配置 tier（default/critical/complex）对应的 model 字符串，换 provider 不改业务代码。
+6. **Earnings 数据仅 cockpit 消费**，不泄露到 Workbench / News widget。
+
+**切分为 3 期**：
+
+| 迭代 | 版本 | 范围 | Features |
+|---|---|---|---|
+| P0 骨架 + 核心工作流 | v1.8 | 页面框架、Regime、Setup Monitor、Decision Panel、Earnings | F200 / F201 / F202 / F203 / F204 |
+| P1 扩展 + 持仓 | v1.9 | Pool Builder、Position Manager、Daily Action List | F205 / F206 / F207 |
+| P2 AI 层 | v2.0 | LLM Gateway、Narrator/Explainer、Ranker/Planner、Contradiction/News/Journal | F208 / F209 / F210 / F211 |
+
+**新增 feature**：
+
+- **F200**：Cockpit 页面框架（TopNav 入口 + `/cockpit` 路由 + 独立 react-grid-layout + 独立 layout localStorage key + CockpitRegistry）
+- **F201**：Market Regime Widget（SPY/QQQ/IWM + 11 sector ETF + regime score + heatmap）
+- **F202**：Setup Monitor Widget（watchlist cockpit 专用扩展视图：R/R / distance to entry / setup quality / earnings risk）
+- **F203**：Decision Panel（独立 CockpitChartWidget + AVWAP/ATR/Entry/Stop/Target 叠加 + Position Size 计算 + `user_settings` 表）
+- **F204**：Earnings Calendar 接入（FMP `/earnings-calendar` + 新表 `earnings_events`，仅 cockpit 消费）
+- **F205**：Pool Builder Widget（多维筛选漏斗，复用 F105/F106 scanner 扩展 RS percentile + ADV filter + fundamental sanity）
+- **F206**：Position Manager（手动录入 `positions` + `pending_orders` 两张新表，R multiple 实时计算）
+- **F207**：Daily Action List Widget（must act / monitor / no action 三栏聚合，deterministic 规则引擎）
+- **F208**：LLM Gateway（LiteLLM Router + tier config via env + budget 熔断 + `ai_memos` 表 + Pydantic schema validation）
+- **F209**：Market Narrator + Setup Explainer（default tier）
+- **F210**：Candidate Ranker + Trade Plan Generator（critical tier）
+- **F211**：Contradiction Detector + News Summarizer + Journal Assistant（混合 tier，复杂任务走 complex）
+
+**修改 feature**：无（cockpit 与现有 widget 完全解耦，不改现有 feature）。
+
+**废弃 feature**：无。
+
+**对下游文档的影响**：
+
+- **DATA-MODEL.md**：新增 `market_regime_snapshots` / `earnings_events` / `user_settings` / `positions` / `pending_orders` / `ai_memos` 共 6 张表；`market_indices` 需扩展 symbol 集合（SPY/QQQ/IWM + 11 sector ETF）或新建 `sector_etfs`（待 system-design 决）。
+- **API-CONTRACT.md**：新增 cockpit 命名空间下约 10 个 endpoint（/regime / /pool / /setup-monitor / /user-settings / /decision/{ticker} / /positions / /pending-orders / /actions/today / /earnings）+ AI 统一入口 `POST /api/ai/{task_type}`（6 个 task 共用路径）。
+- **ARCHITECTURE.md**：新增 `backend/app/ai/` 模块 + `backend/app/routers/cockpit/` + `backend/app/services/cockpit/`；新前端 `frontend/src/pages/Cockpit.tsx` + `frontend/src/cockpit/` + `frontend/src/store/cockpitStore.ts`；依赖层级规则追加 cockpit/workbench 互不引用；外部依赖加 `litellm`；新 env：`OPENAI_API_KEY` / `AI_MODEL_DEFAULT` / `AI_MODEL_CRITICAL` / `AI_MODEL_COMPLEX` / `AI_MONTHLY_BUDGET_USD`。FMP 端点映射表加 `/stable/earnings-calendar`。
+- **DECISIONS.md**：预计追加 5–6 条决策：(a) Cockpit 独立页、(b) 选 LiteLLM 作 AI 抽象（context7 已确认契合）、(c) CockpitChart 不共享 ChartWidget 代码、(d) cockpit 专属 store 不复用 useAppStore、(e) Earnings 仅 cockpit 消费、(f) `market_indices` 表复用 vs 新建 `sector_etfs`（由 system-design 拍板）。
+- **design-spec.md**：全 12 个 cockpit widget 的视觉规格待 design-bridge 阶段补齐。
+
+**明确不做**：
+
+- ❌ 券商 API 接入（手动录入持仓）
+- ❌ Intraday / Level-2（维持 EOD only）
+- ❌ 真实下单（pending_orders 只是计划，不落单）
+- ❌ 多用户系统（保持单用户）
+- ❌ AI 直接改写 deterministic 数字（strict guardrail）
+
+**下一步**：
+
+1. 用户在新 session 中触发 `system-design` skill，扩展 DATA-MODEL / API-CONTRACT / ARCHITECTURE / DECISIONS 覆盖 F200–F211。
+2. system-design 完成后触发 `design-bridge` 设计 Cockpit 页面 Figma。
+3. design-bridge 完成后进入 `feature-dev` 循环，从 F200 开始。
+

@@ -1,17 +1,19 @@
 {
   "_schema_version": "2.0",
-  "project": "MA150 Tracker → Workbench",
-  "version": "1.2.0",
-  "last_updated": "2026-04-23",
-  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架，不在 MVP 功能清单中但为 F001-F008 的前置条件。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget 形式。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 迭代新增 F105 Market Breakout Scanner widget。v1.3 迭代新增 F106 Multi-Signal Scanner（P0：A1 Stage 1→2 Breakout / A2 Slope Flip / B2 MA5 Pullback Bounce）。",
-  "completion_rate": "v1.0.0 + v1.1.0 + v1.2.0 全部 done；v1.3 F106 规划中",
+  "project": "MA150 Tracker → Workbench → Cockpit",
+  "version": "1.8.0-planning",
+  "last_updated": "2026-05-07",
+  "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
+  "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
-    "ui_design": "not_started",
-    "development": "not_started",
+    "ui_design": "done",
+    "development": "done",
     "deployment": "not_started",
-    "current_iteration": "v1.2"
+    "current_iteration": "v1.9",
+    "active_sprint": null,
+    "active_sprint_phase": null
   },
   "_iteration_log": [
     {
@@ -73,6 +75,62 @@
       "deprecated": [],
       "status": "in_progress",
       "description": "Multi-Signal Scanner P0（F106：A1/A2/B2）+ 反向补契约：F107 股价图成交量 + 短均线叠加 / F108 fundamentals 与 pullbacks 放开到任意 ticker（延伸 D041 on-demand 语义）/ F109 Widget UI 规范落实（title 底色 #ebf2fa、widget 内部间距 -5px + gap-1、TopNav ResetLayoutButton 位置调整、search input pill 样式）。F107-F109 为 v1.2.0 发布后绕过 feature-dev 手改的代码，在 v1.3 迭代里反向补 Sprint Contract 归入轨道。"
+    },
+    {
+      "version": "v1.8",
+      "date": "2026-04-24",
+      "added": [
+        "F200-a",
+        "F200-b",
+        "F201",
+        "F202",
+        "F203",
+        "F204-a",
+        "F204-b"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "Cockpit P0：新建独立 /cockpit 页（TopNav 平级入口，与 Workbench / News 并列），实现慢交易工作流骨架。F200 拆分为 F200-a（前端 6 文件骨架 + App.tsx 2 行豁免）和 F200-b（TopNav 集成 + backend 空目录 + ESLint 边界），因 6 文件上限约束。F200-a Sprint Contract 协商通过，进入 Generator 模式。D070 登记 Pydantic cockpit_params.py 参数管理约定（首次创建在 F201-a）。F201 Market Regime / F202 Setup Monitor / F203 Decision Panel / F204 Earnings Calendar 依次依赖 F200-a/b，F203 将拆 a/b/c。"
+    },
+    {
+      "version": "v1.9",
+      "date": "2026-04-24",
+      "added": [
+        "F205",
+        "F206",
+        "F207"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "planned",
+      "description": "Cockpit P1：F205 Pool Builder Widget（多维筛选漏斗：tradability→trend→RS→fundamental→setup，复用现有 scanner 服务并扩展 RS percentile / ADV filter）；F206 Position Manager（手动录入 positions + pending_orders 两张新表，R multiple 实时计算）；F207 Daily Action List Widget（must act / monitor / no action 三栏聚合）。嘉信证券无 API，持仓全手动录入。"
+    },
+    {
+      "version": "v2.0",
+      "date": "2026-04-24",
+      "added": [
+        "F208-a",
+        "F208-b",
+        "F208-c",
+        "F209",
+        "F210",
+        "F211"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "planned",
+      "description": "Cockpit P2：AI 层。F208 LLM Gateway（LiteLLM Router 封装 + tier-based model config via env + budget gate + ai_memos 表 + Pydantic schema validation，provider-agnostic，可灵活切换 OpenAI / Anthropic / 本地模型）；F209 Market Narrator + Setup Explainer（走 default tier）；F210 Candidate Ranker + Trade Plan Generator（走 critical tier）；F211 Contradiction Detector + News Summarizer + Journal Assistant（复杂任务走 complex tier）。用户初始模型：gpt-5.4-nano / gpt-5.4-mini / gpt-5.4，通过 env 可覆盖。F208 因 6 文件上限（D010 适用，但本次按职责清晰拆分而非脚手架豁免）拆为 F208-a（依赖 + ai_memos 表 + 配置层 5 文件）/ F208-b（gateway 核心模块 errors/memo_repo/budget/routing 6 文件）/ F208-c（gateway 主流程 + LiteLLM 集成 + /api/ai/{task_type} endpoint 6 文件），依赖链 a→b→c。"
+    },
+    {
+      "iteration": "v1.8-system-design",
+      "date": "2026-04-24",
+      "summary": "Cockpit Epic 系统设计：扩展 DATA-MODEL / API-CONTRACT / ARCHITECTURE / DECISIONS 覆盖 F200–F211；新增 7 张表 / 18 cockpit endpoint + 1 AI 统一入口 / 10 条新决策 D060–D069。"
+    },
+    {
+      "iteration": "v1.8-design-bridge",
+      "date": "2026-04-24",
+      "summary": "Cockpit Epic UI 设计衔接：design-spec 扩 ~520 行覆盖 9 widget + UserSettingsDialog + 5 共享子组件 + 3 栏 RGL 默认布局；component-plan 追加 §Cockpit-1 ~ §Cockpit-7（9 widget + 4 dialog + CockpitPage/Registry/2 store + 边界红线 + react-query 缓存策略 + 渐进实施清单）；data-mapping 追加 §Cockpit-1 ~ §Cockpit-9 + Settings + AI wrapper 共 25+ 字段映射 + Step 7d/7e/7f 一致性验证全部 PASS；tokens.json/css 加 25 个 cockpit token（regime/setup/quality/earnings/action-bg/chart 横线 等）。Layout 决策：D060 修订为 Cockpit 沿用 react-grid-layout（独立 Registry/Store/localStorage key ma150.cockpit.layouts.v1）。_pipeline_status.ui_design = done。"
     }
   ],
   "_phase_legend": {
@@ -1729,7 +1787,7 @@
       "phase": "done",
       "completed_at": null,
       "dependencies": [
-        "F105-b"
+        "F105"
       ],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -2048,6 +2106,1728 @@
         "回归：F112-a 原调用（无 since/window 参数）行为不变"
       ],
       "subtasks_notes": "按 a → b → c 顺序执行；a 后端稳定是 b 的前提。b 和 c 完成后走最终验收 + v1.7.0 发版。"
+    },
+    {
+      "id": "F200-a",
+      "name": "Cockpit 前端骨架（路由 + RGL 容器 + store）",
+      "description": "新建 /cockpit 路由页的前端骨架：独立 react-grid-layout 容器 + 独立 CockpitRegistry + 独立 layout localStorage key（ma150.cockpit.layouts.v1）+ 独立 cockpit client store，与 Workbench / News 三页彻底解耦。本 sprint 仅写 6 个前端文件（pages/Cockpit.tsx、cockpit/CockpitShell.tsx、cockpit/CockpitRegistry.ts、cockpit/useCockpitLayoutStore.ts、cockpit/widgets/PlaceholderWidget.tsx、store/cockpitStore.ts）+ App.tsx 2 行 lazy import + Route 豁免（D010 脚手架例外）。不改 TopNav（F200-b），不建 backend 目录（F200-b）。",
+      "user_story": "作为慢交易投资者，我希望在主 Workbench 之外有一个独立的 Cockpit 页面，专用于慢交易工作流，与 Workbench 布局和状态完全解耦",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/pages/Cockpit.tsx",
+        "frontend/src/cockpit/CockpitShell.tsx",
+        "frontend/src/cockpit/CockpitRegistry.ts",
+        "frontend/src/cockpit/useCockpitLayoutStore.ts",
+        "frontend/src/cockpit/widgets/PlaceholderWidget.tsx",
+        "frontend/src/store/cockpitStore.ts",
+        "frontend/src/App.tsx (2 行豁免)"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F200-a-contract.md",
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D010 脚手架 2 行豁免",
+          "D060 Cockpit 独立第三页（零交叉引用硬约束）",
+          "D070 Cockpit 参数管理（本 sprint 不创建 cockpit_params.py，首次创建在 F201-a）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "访问 /cockpit 渲染空 RGL 容器，显示 1 个 PlaceholderWidget",
+        "拖动/缩放 widget 后写入 ma150.cockpit.layouts.v1，刷新浏览器保留布局",
+        "Cockpit 布局变更不影响 Workbench (ma150.workbench.layouts.v5) 和 News (ma150.news.layouts.v1)",
+        "cockpit/ 目录不 import workbench/、news/，反向亦然（Evaluator 人工审查）",
+        "useCockpitLayoutStore 与 useWorkbenchLayoutStore 为两个独立 zustand store，persist key 不同",
+        "cockpitStore.selectedTicker 与 useAppStore.selectedSymbol 完全独立"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": [
+          "preview_start → /cockpit 渲染 + localStorage 键正确 + 跨路由互不干扰"
+        ]
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract 见 docs/开发/sprint-contracts/F200-a-contract.md。已协商通过（2026-04-24）。App.tsx 2 行修改按 D010 脚手架豁免，不计入 6 文件上限。"
+    },
+    {
+      "id": "F200-b",
+      "name": "Cockpit TopNav 集成 + 后端目录骨架 + ESLint 边界",
+      "description": "F200-a 完成后的收尾工作：(1) TopNav 新增 Cockpit 链接 + ResetLayoutButton 根据 pathname 条件渲染（/cockpit 时指向 cockpit store）；(2) 新建 backend/app/routers/cockpit/__init__.py 和 backend/app/services/cockpit/__init__.py 空目录骨架；(3) 在 frontend/eslint.config 或 tsconfig paths 强制 cockpit ⇄ workbench 零交叉引用（no-restricted-imports rule）。",
+      "user_story": "作为慢交易投资者，我在 TopNav 看到 Cockpit 入口，点击切换到 /cockpit；Reset Layout 按钮只在 /cockpit 时操作 cockpit 布局",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F200-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D060 Cockpit 独立第三页"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "TopNav 出现 Cockpit 入口，点击进入 /cockpit",
+        "Reset Layout 按钮在 /cockpit 可见并操作 cockpit 布局；在 /workbench 操作 workbench 布局",
+        "backend/app/routers/cockpit/ 和 backend/app/services/cockpit/ 目录存在（空 __init__.py）",
+        "ESLint 报错当 cockpit/*.ts 尝试 import workbench/*，反向亦然"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F200-a 解耦后的收尾。TopNav 集成逻辑从 F200 独立出来，因为 F200-a 已达 6 文件上限。"
+    },
+    {
+      "id": "F201-a",
+      "name": "Market Regime 数据层",
+      "description": "market_regime_snapshots 新表 + MarketRegimeRepository + cockpit_params.py §0+§1（D070 首次落地）+ MarketRegimeService 计分引擎（SPY trend 25 + QQQ trend 20 + IWM breadth 15 + Sector participation 20 + Risk appetite 10 + Volatility stress 10 = 100）+ get_indices_and_sectors_state 方法。",
+      "user_story": "作为开发者，需要可独立测试的计分引擎，能从 market_indices 历史数据计算 regime 打分并持久化到 market_regime_snapshots。",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/009_f201a_market_regime_snapshots.py",
+        "backend/app/models/market_regime_snapshot.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/market_regime_repository.py",
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/market_regime_service.py",
+        "backend/tests/test_regime_f201a.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [
+          "market_regime_snapshots"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
+        ],
+        "decision_refs": [
+          "D061 regime 阈值与权重（修订版）",
+          "D070 cockpit_params.py 首次创建 §0+§1"
+        ],
+        "acceptance_type": "unit_integration"
+      },
+      "acceptance_criteria": [
+        "alembic upgrade/downgrade 双向通过",
+        "compute_and_store 写入 market_regime_snapshots，market_score = 6 子项之和",
+        "全牛市数据 → score=100 / RISK_ON；全熊市数据 → score=0 / RISK_OFF",
+        "sector participation: round(N/11*20)；数据不足 → 子项得 0 不抛异常",
+        "regime 阈值边界 S8 全部通过（参数化测试）",
+        "UPSERT 同一 date 只保留最新一行",
+        "get_indices_and_sectors_state 返回 indices(7字段) + sectors(4字段) 正确结构",
+        "cockpit_params.py import 无异常（Pydantic 校验通过）",
+        "D070：service 内无魔法数字，所有阈值从 cockpit_params 引入"
+      ],
+      "test_cases": {
+        "unit": [
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10",
+          "S11",
+          "S12",
+          "S13",
+          "S14"
+        ],
+        "integration": [
+          "S15"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract: docs/开发/sprint-contracts/F201-a-contract.md"
+    },
+    {
+      "id": "F201-b",
+      "name": "Market Regime 接入层",
+      "description": "market_indices 扩展 14 ETF symbol（MARKET_INDEX_WINDOW=260 + 新 SYMBOL_NAMES / _DB_TO_FMP_INDEX 映射）+ APScheduler regime cron job（config.py REGIME_CRON_*）+ Pydantic RegimeSchema + FastAPI GET /api/cockpit/regime router + routers/cockpit/__init__.py 注册。",
+      "user_story": "作为慢交易投资者，打开 Cockpit 我要先看到今日 market regime（Risk-On/Constructive/Neutral/Defensive/Risk-Off），对应的 allowed exposure 和 single trade risk 区间，以及 SPY/QQQ/IWM 和 11 个 sector ETF 的状态 heatmap，用以决定今日是否开新仓",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F200-a",
+        "F200-b",
+        "F201-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/repositories/market_index_repository.py",
+        "backend/app/services/market_refresh_service.py",
+        "backend/app/config.py",
+        "backend/app/services/refresh_job.py",
+        "backend/app/schemas/cockpit/regime.py",
+        "backend/app/routers/cockpit/regime.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/tests/test_regime_f201b.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /api/cockpit/regime"
+        ],
+        "db_tables": [
+          "market_indices (扩展 symbol 集合至 SPY/QQQ/IWM + 11 sector ETF, window=260)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/regime"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketIndex"
+        ],
+        "decision_refs": [
+          "D061 market_indices 扩展至 17 symbol",
+          "D070 cockpit_params.py（F201-a 已建，本 Sprint 只引用）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/regime 返回 regime / marketScore / subscores / allowedExposurePct / singleTradeRiskPct / preferredSetups / avoidSetups / indices / sectors / computedAt",
+        "indices 含 SPY/QQQ/IWM 各 1 条（含 aboveMa50/aboveMa200/rsTrend/state）",
+        "sectors 含 11 ETF 各 1 条（state: Strong/Constructive/Weak/Defensive）",
+        "market_indices 保留 260 天窗口（原 5 天扩展）",
+        "APScheduler regime cron 每日盘后触发 compute_and_store",
+        "market_regime_snapshots 为空时返回 404 NOT_FOUND",
+        "数据不可用时 sectors 返回 close=null / state=Neutral 占位不报错"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "依赖 F201-a。market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。Sprint Contract 待 F201-a 验收后协商。"
+    },
+    {
+      "id": "F201-c",
+      "name": "Market Regime 前端 Widget",
+      "description": "实现 Cockpit Widget 1 (MarketRegimeWidget) 前端：Score Hero（regime 标签 + marketScore 数值条 + allowedExposurePct + singleTradeRiskPct）、Subscores 6 子项卡片、Indices 行（SPY/QQQ/IWM 三联）、Sectors 11 ETF heatmap。调 GET /api/cockpit/regime（F201-b 已交付），不含任何 AI 内容。CockpitRegistry 中将 cockpit.placeholder（regime 槽）替换为 cockpit.market-regime。",
+      "user_story": "作为慢交易投资者，打开 Cockpit 我要在左上看到今日 regime 状态、可用敞口、单笔风险区间，以及 indices/sectors 的 heatmap，3 秒内决定今天是否加仓",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F201-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/widgets/MarketRegimeWidget.tsx",
+        "frontend/src/cockpit/lib/api/cockpitRegimeApi.ts",
+        "frontend/src/cockpit/CockpitRegistry.ts",
+        "frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx",
+        "frontend/src/cockpit/lib/api/__tests__/cockpitApis.test.ts"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/regime"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/regime"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: MarketIndex"
+        ],
+        "decision_refs": [],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "MarketRegimeWidget 渲染 Score Hero（regime 标签 + marketScore 数值条 + allowedExposurePct + singleTradeRiskPct）",
+        "Subscores 6 子项以网格卡片显示（trend / breadth / rs / volatility / sentiment / earnings）",
+        "Indices 区显示 SPY / QQQ / IWM，含 aboveMa50 / aboveMa200 / rsTrend / state",
+        "Sectors heatmap 显示 11 ETF 格子，按 state 着色（Strong=绿 / Constructive=浅绿 / Weak=橙 / Defensive=红），悬浮显示 changePct",
+        "颜色全部走 tokens.css CSS 变量（--color-regime-* / --color-state-*），无硬编码色值",
+        "四种状态完整：正常 / 空（404 显示 EmptyState）/ 加载（Skeleton）/ 错误（接口 502）",
+        "CockpitRegistry 中 regime 槽位由 PlaceholderWidget 替换为 MarketRegimeWidget，已有 e2e/snapshot 测试不回归",
+        "本 sprint 不实现：Score Hero 浮层 / Sector 过滤联动 / AI Market Notes（留给 F209-b）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F201 历史拆分中遗漏了前端实现，本 sprint 补齐。是 F209-b 的前置条件。AI Market Notes 区由 F209-b 后续追加，本 sprint 不实现。"
+    },
+    {
+      "id": "F202-a",
+      "name": "Setup Monitor 数据层",
+      "description": "setup_snapshots 表 + SetupSnapshot ORM + SetupSnapshotRepository + cockpit_params §2 CockpitSetupParams + SetupService 计算引擎（纯函数 + compute_and_store_all + get_setup_monitor_data）",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F200-a",
+        "F200-b",
+        "F201-a",
+        "F201-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/010_f202a_setup_snapshots.py",
+        "backend/app/models/setup_snapshot.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/setup_snapshot_repository.py",
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/setup_service.py",
+        "backend/tests/test_setup_f202a.py"
+      ],
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot"
+        ],
+        "decision_refs": [
+          "D062 setup_snapshots 独立表",
+          "D070 Cockpit 参数管理（§2 CockpitSetupParams）"
+        ],
+        "acceptance_type": "functional"
+      }
+    },
+    {
+      "id": "F202-b",
+      "name": "Setup Monitor 接入层",
+      "description": "config cron 参数 + refresh_job setup tick + Pydantic Schema + FastAPI Router GET /api/cockpit/setup-monitor",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F202-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot"
+        ],
+        "decision_refs": [
+          "D062",
+          "D070"
+        ],
+        "acceptance_type": "functional"
+      }
+    },
+    {
+      "id": "F202-c",
+      "name": "Setup Monitor 前端 Widget",
+      "description": "3 共享组件（SetupTypeBadge / SetupQualityBadge / EarningsRiskDot）+ SetupMonitorWidget + API client + CockpitRegistry 注册",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F202-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/components/SetupTypeBadge.tsx",
+        "frontend/src/cockpit/components/SetupQualityBadge.tsx",
+        "frontend/src/cockpit/components/EarningsRiskDot.tsx",
+        "frontend/src/cockpit/lib/api/setupMonitorApi.ts",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/CockpitRegistry.ts"
+      ],
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/setup-monitor"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D060 cockpit/workbench 隔离"
+        ],
+        "acceptance_type": "visual"
+      }
+    },
+    {
+      "id": "F203",
+      "name": "Decision Panel Widget (CockpitChart + Entry/Stop/Size)",
+      "description": "个股决策面板。新建 CockpitChartWidget（frontend/src/cockpit/widgets/CockpitChartWidget.tsx），与 Workbench ChartWidget 完全独立不共享代码，K 线 + MA10/21/50/150/200 + AVWAP（anchor: earnings 日或用户指定）+ ATR 可视化 + Entry/Stop/2R/3R 四条水平叠加线。右侧 Decision Card：entry / stop / risk_per_share / position_size / account_risk / setup_quality / earnings_risk。新表 user_settings 单行单用户存储 account_size + max_exposure_pct + single_trade_risk_pct，通过 GET/PUT /api/cockpit/user-settings 读写。Position size = floor(account_size * risk_pct / (entry - stop))。",
+      "user_story": "作为慢交易投资者，我看中一只股票要做决策时，需要一个独立面板：图表叠加 entry/stop/target 线，右侧显示计算好的 position size / R 倍数 / account risk，并能调整我的 account 参数",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "sub_phase_notes": "F203-a/b1/b2/b3/c/d all done",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 5,
+      "estimated_files_changed": [
+        "F203-a: 6 files (done)",
+        "F203-b1: 6 files (user_settings model+alembic+repo+schema+router+tests; cockpit/__init__.py 注册行不计入)",
+        "F203-b2: 6 files (decision_service+cockpit_params §4+schema+router+tests)",
+        "F203-c: ~4 files (CockpitChartWidget + api client + Registry)",
+        "F203-d: ~5 files (DecisionCardWidget + UserSettingsForm + 2 api clients + Registry)"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/user-settings",
+          "PUT /api/cockpit/user-settings",
+          "GET /api/cockpit/decision/{ticker} (entry/stop/size 计算)"
+        ],
+        "db_tables": [
+          "user_settings"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/decision/{ticker}",
+          "API-CONTRACT.md §GET /api/cockpit/chart/{ticker}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D063 CockpitChartWidget 独立",
+          "D066 user_settings 单行 + 仓位公式",
+          "D068 F210 确定性护栏",
+          "D070 Cockpit 参数管理（decision 推荐默认 entry/stop 公式系数进 cockpit_params §3）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "CockpitChartWidget 独立文件，与 ChartWidget 无 import 交叉",
+        "图表叠加 Entry 线 / Stop 线 / 2R 线 / 3R 线 / AVWAP 曲线 / ATR 参考带（可切换）",
+        "AVWAP anchor 支持从 earnings 日（依赖 F204）自动计算或用户手动指定日期",
+        "Decision Card 显示 entry / stop / risk_per_share / suggested_shares / position_value / account_risk_pct / reward_risk / setup_quality / earnings_risk",
+        "user_settings 表单 CRUD：account_size / max_exposure_pct / single_trade_risk_pct / default_risk_per_trade_pct",
+        "Position size 计算 = floor(account_size * risk_pct / (entry - stop))，risk_pct 受 regime 调整（参考 F201 输出）",
+        "Entry/Stop 规则按 setup type 推荐默认值（breakout=pivot*1.001 / pullback=reversal_high*1.001 / reclaim=reclaim_high*1.001）",
+        "修改 user_settings 后，所有 Decision Panel 中的 size 计算立即刷新"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "本 feature 超过常规 6 文件上限，feature-dev Sprint Contract 阶段需要拆分（建议 F203-a CockpitChart 基础、F203-b Entry/Stop/Size 计算 + user_settings、F203-c Decision Card UI）。",
+      "sub_features": {
+        "F203-b1": {
+          "phase": "needs_review",
+          "contract": "docs/开发/sprint-contracts/F203-b1-contract.md"
+        },
+        "F203-b2": {
+          "phase": "contract_agreed",
+          "contract": "docs/开发/sprint-contracts/F203-b2-contract.md"
+        },
+        "F203-c": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F203-c-contract.md"
+        },
+        "F203-d": {
+          "phase": "done",
+          "contract": "docs/开发/sprint-contracts/F203-d-contract.md",
+          "estimated_files_changed": [
+            "frontend/src/cockpit/lib/api/userSettingsApi.ts",
+            "frontend/src/cockpit/components/UserSettingsDialog.tsx",
+            "frontend/src/cockpit/widgets/DecisionPanelWidget.tsx",
+            "frontend/src/cockpit/CockpitRegistry.ts",
+            "frontend/src/components/features/topnav/TopNav.tsx"
+          ]
+        }
+      }
+    },
+    {
+      "id": "F204-a",
+      "name": "Earnings Calendar 数据层（Model + Repo + FMP + Service）",
+      "description": "建立 earnings_events 表（Alembic 008），实现 EarningsEvent SQLAlchemy model、EarningsEventRepository（upsert_batch + get_next + delete_before）、FmpClient.get_earnings_calendar()、EarningsService（fetch_and_store + get_next_earnings）。为 F204-b cron job + API 提供数据基础。",
+      "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F200-a",
+        "F200-b"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/alembic/versions/008_f204_earnings_events.py",
+        "backend/app/models/earnings_event.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/earnings_event_repository.py",
+        "backend/app/external/fmp_client.py",
+        "backend/app/services/cockpit/earnings_service.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [
+          "earnings_events"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: EarningsEvent"
+        ],
+        "decision_refs": [
+          "D065 Earnings 仅 cockpit 消费 + 每日增量 upsert"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "earnings_events 表建立，按 (ticker, earnings_date) 唯一",
+        "upsert_batch：actual 字段 None 时保留旧值，非 None 时覆盖",
+        "EarningsService.fetch_and_store 以 FakeFMP 注入可正确写入 DB",
+        "EarningsService.get_next_earnings 返回字段与 API-CONTRACT.md 对齐"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "Sprint Contract: docs/开发/sprint-contracts/F204-a-contract.md"
+    },
+    {
+      "id": "F204-b",
+      "name": "Earnings Calendar 接入层（Cron + API）",
+      "description": "在 F204-a 数据层基础上，接入 APScheduler cron job（每日 05:30 UTC 增量拉取 FMP earnings）、暴露 GET /api/cockpit/earnings?ticker= endpoint（Pydantic schema + FastAPI router + main.py 注册）。",
+      "user_story": "作为慢交易投资者，我需要知道 watchlist 和决策标的的下一次财报日期，以便判断 earnings risk（3 天内 Danger / 10 天内 Caution / 否则 Safe），避免在财报前夜开新仓",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F204-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/config.py",
+        "backend/app/services/refresh_job.py",
+        "backend/app/schemas/cockpit/earnings.py",
+        "backend/app/routers/cockpit/earnings.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/app/main.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "GET /api/cockpit/earnings?ticker={ticker}"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/earnings"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: EarningsEvent"
+        ],
+        "decision_refs": [
+          "D065 Earnings 仅 cockpit 消费 + 每日增量 upsert",
+          "D070 Cockpit 参数管理（earnings_risk 阈值 3d/10d 进 cockpit_params §4，由 F202 落地）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "APScheduler 每日 05:30 UTC 调度 earnings cron job",
+        "GET /api/cockpit/earnings?ticker=AAPL 返回 nextEarningsDate 和 daysUntil",
+        "未来 30 天内无 earnings 时返回 null + note 字段",
+        "cockpit 外的任何 widget（Workbench/News）不消费此 endpoint"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "依赖 F204-a 完成。Sprint Contract 协商放在 F204-a needs_review 之后。"
+    },
+    {
+      "id": "F205",
+      "name": "Pool Builder Widget",
+      "description": "Cockpit P1 第一个 widget。多维筛选漏斗：全美 tradable universe → Trend Qualified → RS Leaders → Fundamental Qualified → Action Candidates。复用现有 F105 scanner_universe + F106 multi-signal scanner 的服务层，扩展加入 RS percentile（基于 250 天 stock/SPY return ratio）+ ADV filter（avg_dollar_volume_20d > 20M）+ fundamental sanity filter（revenue_growth_yoy > 10% 等）。GET /api/cockpit/pool 返回 funnel 数量 + 结果表。【拆分（2026-04-27）：F205-a universe 字段扩展 / F205-b FMP helper + 子集计算 / F205-c pool service + endpoint / F205-d 前端 widget。每子 sprint ≤6 文件】",
+      "user_story": "作为慢交易投资者，我不只看 watchlist 内股票，还要从全市场发现新候选。我需要一个漏斗 UI：看到 tradable/trend/RS/fundamental 各层淘汰后的数量和最终候选列表，并能一键加入 watchlist",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "active_sub_sprint": null,
+      "sub_sprints": {
+        "F205-a": "done",
+        "F205-b": "done",
+        "F205-c": "done",
+        "F205-d": "done",
+        "F205-e": "done"
+      },
+      "dependencies": [
+        "F201-b"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [
+        "backend/alembic/versions/015_f205a_universe_extra_fields.py (新建, F205-a)",
+        "backend/app/models/market_scan_universe.py (修改, F205-a)",
+        "backend/app/repositories/market_scan_universe_repository.py (修改, F205-a)",
+        "backend/app/services/universe_refresh_service.py (修改, F205-a)",
+        "backend/tests/test_market_scan_repositories.py (修改, F205-a)",
+        "backend/tests/test_universe_refresh_service.py (修改, F205-a)",
+        "backend/app/external/fmp_client.py (修改, F205-b)",
+        "backend/app/services/cockpit/pool_helpers.py (新建, F205-b)",
+        "backend/tests/test_pool_helpers_f205b.py (新建, F205-b)",
+        "backend/tests/test_fmp_client.py (修改, F205-b)",
+        "backend/app/services/cockpit/pool_service.py (新建, F205-c)",
+        "backend/app/routers/cockpit/pool.py (新建, F205-c)",
+        "backend/app/routers/cockpit/__init__.py (修改, F205-c)",
+        "backend/app/schemas/cockpit/pool.py (新建, F205-c)",
+        "backend/tests/test_pool_service.py (新建, F205-c)",
+        "backend/tests/test_cockpit_pool_router.py (新建, F205-c)",
+        "frontend/src/cockpit/lib/api/cockpitPoolApi.ts (新建, F205-d)",
+        "frontend/src/cockpit/widgets/PoolBuilderWidget.tsx (新建, F205-d)",
+        "frontend/src/cockpit/widgets/_poolFilterBar.tsx (新建, F205-d)",
+        "frontend/src/cockpit/CockpitRegistry.ts (修改, F205-d)",
+        "frontend/src/cockpit/widgets/__tests__/PoolBuilderWidget.test.tsx (新建, F205-d)",
+        "frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts (新建, F205-d)"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/pool"
+        ],
+        "db_tables": [
+          "复用 market_scan_universe / market_breakout_scans（扩字段或 join）"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/pool"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
+        ],
+        "decision_refs": [
+          "D062 setup_snapshots 独立表"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/pool 返回 funnel counts（tradable / trend / rs / fundamental / action）+ top N candidates 数组",
+        "筛选器 UI：Market Cap / Price / ADV / Trend Score / RS Percentile / Revenue Growth / Sector / Setup Type",
+        "结果表格列：Ticker / Name / Sector / Price / Trend / RS / Setup / Distance to Pivot / Distance to 50MA / Earnings / Action",
+        "Action 按钮：Add to Watchlist / Ignore / Remove",
+        "筛选器改动后实时重新请求，不刷新整页"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。",
+      "completed_at": "2026-04-28"
+    },
+    {
+      "id": "F206",
+      "name": "Position Manager（手动录入持仓）",
+      "description": "嘉信证券无 API，持仓全手动录入。两张新表：positions（已开仓，ticker / entry_price / entry_date / shares / stop / target_2r / target_3r / setup_type / notes）、pending_orders（条件单计划，ticker / setup_type / entry / stop / size / expiration / status / created_at）。前端 CRUD widget：表单录入 + 列表展示 + R multiple 实时计算（基于 daily_bars 最新 close）。顶部 Risk Summary：open risk / total exposure / pending risk / 持仓数 / 今日动作数。",
+      "user_story": "作为使用嘉信证券（无 API）的投资者，我需要手动同步持仓到 app 中，让系统计算实时 R multiple 和 total exposure，并管理我自己设置的条件单计划（未来去券商手动下单前的 plan）",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "active_sub_sprint": null,
+      "completed_at": "2026-04-28",
+      "sub_sprints": {
+        "F206-a": "done",
+        "F206-b1": "done",
+        "F206-b2": "done",
+        "F206-c1": "done",
+        "F206-c2": "done"
+      },
+      "_status_drift_note": "2026-04-28 二次修正：a8d3445 误将 F206-c2 从 done 重置为 contract_agreed；实际 F206-c2 已在同一 session 内完整实现并提交（commits 4082834→6958fde→e4f8403），9 文件（6 生产 + 3 测试），41/41 tests 全过，S1-S20 满足，Evaluator 自检全过。",
+      "dependencies": [
+        "F203"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [
+        "backend/alembic/versions/013_f206a_positions.py",
+        "backend/app/models/position.py",
+        "backend/app/models/__init__.py",
+        "backend/app/repositories/position_repository.py",
+        "backend/app/schemas/cockpit/position.py",
+        "backend/app/services/cockpit/position_service.py",
+        "backend/app/services/cockpit/position_action_rules.py",
+        "backend/app/services/cockpit/position_sizer.py",
+        "backend/app/routers/cockpit/positions.py",
+        "backend/app/routers/cockpit/__init__.py",
+        "backend/tests/test_position_f206a_schema.py",
+        "backend/tests/test_position_f206a_repo.py",
+        "backend/tests/test_position_f206a_service.py",
+        "backend/tests/test_position_f206a_integration.py"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET/POST /api/cockpit/positions",
+          "PATCH/DELETE /api/cockpit/positions/{id}",
+          "GET/POST /api/cockpit/pending-orders",
+          "PATCH/DELETE /api/cockpit/pending-orders/{id}"
+        ],
+        "db_tables": [
+          "positions",
+          "pending_orders"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/positions",
+          "API-CONTRACT.md §POST /api/cockpit/positions",
+          "API-CONTRACT.md §PATCH /api/cockpit/positions/{id}",
+          "API-CONTRACT.md §DELETE /api/cockpit/positions/{id}",
+          "API-CONTRACT.md §GET /api/cockpit/pending-orders",
+          "API-CONTRACT.md §POST /api/cockpit/pending-orders",
+          "API-CONTRACT.md §PATCH /api/cockpit/pending-orders/{id}",
+          "API-CONTRACT.md §DELETE /api/cockpit/pending-orders/{id}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: Position",
+          "DATA-MODEL.md §Entity: PendingOrder",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D066 user_settings + 仓位公式",
+          "D067 positions/pending_orders ticker 不 FK"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "positions 和 pending_orders 两表建立，Alembic 迁移",
+        "前端录入表单：ticker / setup / entry / stop / size / 备注",
+        "Open Positions 表：显示 entry / last / stop / R multiple / size / unrealized P/L / earnings / next action（R multiple = (last-entry) / (entry-stop)）",
+        "Pending Orders 表：显示 ticker / setup / entry / stop / size / risk / expiration / distance to trigger / status",
+        "Risk Summary：open_risk_pct / total_exposure_pct / pending_risk_pct / positions_count / pending_count",
+        "positions / pending_orders 与 Journal 解耦（两个用途不同），但可互相引用（positions 转入 Journal 作为平仓记录）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-a",
+          "phase": "done",
+          "summary": "Position 数据层 + 后端 CRUD（migration 013 / repo / service / router / 35 tests，全量回归 657/657）"
+        },
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-b1",
+          "phase": "done",
+          "summary": "PendingOrder 数据层 + 后端 CRUD（migration 014 / repo / service / router / 41 tests，全量回归 698/698，last_close_loader 共享重构，状态机 4 终态，riskPct/distanceToTriggerPct 计算）"
+        },
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-b2",
+          "phase": "done",
+          "summary": "Risk Summary 聚合 + APScheduler EXPIRED 自动转换。GET /api/cockpit/positions 增 summary 字段（5 数值口径，与 ?status= 解耦）+ weekdays 22:35 UTC tick 自动过期 ACTIVE pending_orders。共 7 文件（5 业务 + 2 测试），§A 14 + §B 10 = 24 新用例 100% pass，全量回归 722/722。"
+        },
+        {
+          "date": "2026-04-26",
+          "subtask": "F206-c1",
+          "phase": "done",
+          "summary": "PositionListWidget 前端完成。cockpitPositionsApi（4 endpoint client + camelCase types）+ PositionListWidget（Risk Summary 5 字段顶条 + Open Positions 表 + 内联编辑 PATCH + 删除 AlertDialog DELETE）+ PositionFormDialog（react-hook-form v7 + zod v4 校验 + suggestedShares 提示）+ CockpitRegistry 注册 cockpit.position-list。5 生产文件（_positionListRow 拆分 + _positionFormSchemas 拆分）+ 3 测试文件，S1–S20 全过，160/160 tests，build 通过。设计偏离：nextAction 仅彩色 chip 无 rationale 气泡（D076）。"
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F206-c2",
+          "phase": "done",
+          "summary": "PendingOrdersWidget 前端完成。cockpitPendingOrdersApi（4 endpoint client + camelCase types）+ PendingOrdersWidget（Active/All 切换 + [+New Order] + 表头 Ticker/Setup/Entry/Stop/Last/Dist/Risk%/Exp + 4 状态）+ _pendingOrderRow（行渲染 + distance 3 档颜色 + [Triggered]/[Cancel]/[Edit]/[✕] 行按钮）+ PendingOrderFormDialog（react-hook-form + zod，new/edit 模式，dirty fields PATCH）+ _pendingOrderFormSchemas + CockpitRegistry 注册 cockpit.pending-orders。决策回写：DECISIONS.md D060-a + design-spec §Widget 8 标注。6 生产文件 + 3 测试文件，S1–S20 全过，41/41 tests，全量回归 259/262（3 预先存在 TopNav 失败，非本 sprint 引入）。"
+        }
+      ],
+      "notes": "非 broker 集成，纯人工录入。R multiple 计算只用 EOD close，intraday 精度不在 MVP 范围。F206 拆分：F206-a Position 后端 ✅ / F206-b1 PendingOrder 后端 ✅ / F206-b2 Risk Summary + APScheduler EXPIRED ✅ / F206-c1 PositionListWidget 前端 ✅ / F206-c2 PendingOrdersWidget 前端 ✅。F206-c 因 7 文件超 6 上限拆为 c1+c2，每个 ≤6 文件。F206 全部子 sprint 完成。"
+    },
+    {
+      "id": "F207",
+      "name": "Daily Action List Widget",
+      "description": "聚合 positions + pending_orders + setup monitor，生成今日动作清单，分三栏：Must Act（raise stop / cancel order / reduce before earnings）/ Monitor（接近触发 / 持仓稳态）/ No Action。每条动作附 rationale。后端服务 action_service.py 实现规则引擎（订单保留 / 取消 / 修改规则见 proposal §8.27）。GET /api/cockpit/actions/today。【拆分：F207-a 后端 rule engine + endpoint / F207-b 前端 ActionListWidget。每子 sprint ≤6 文件】",
+      "user_story": "作为慢交易投资者，每天盘后我打开 Cockpit 最想知道的是'今天我要做什么'。我需要一个清单：必须做的动作（移动止损/取消订单/财报前减仓）、需要监控的、今天没事的，每条都有明确原因",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "active_sub_sprint": "F207-b",
+      "sub_sprints": {
+        "F207-a": "done",
+        "F207-b": "done"
+      },
+      "sub_sprints_completed_at": {
+        "F207-a": "2026-04-27",
+        "F207-b": "2026-04-27"
+      },
+      "dependencies": [
+        "F206"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "backend/app/services/cockpit/action_service.py (新建)",
+        "backend/app/routers/cockpit/actions.py (新建)",
+        "backend/app/routers/cockpit/__init__.py (修改注册)",
+        "backend/tests/test_action_service.py (新建)",
+        "backend/tests/test_actions_router.py (新建)",
+        "frontend/src/cockpit/lib/api/cockpitActionsApi.ts (新建, F207-b)",
+        "frontend/src/cockpit/widgets/ActionListWidget.tsx (新建, F207-b)",
+        "frontend/src/cockpit/widgets/_actionListSection.tsx (新建, F207-b)",
+        "frontend/src/cockpit/CockpitRegistry.ts (修改注册, F207-b)",
+        "frontend/src/cockpit/lib/api/__tests__/cockpitActionsApi.test.ts (新建, F207-b)",
+        "frontend/src/cockpit/widgets/__tests__/ActionListWidget.test.tsx (新建, F207-b)"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/actions/today"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F207-a-contract.md",
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/actions/today"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: Position",
+          "DATA-MODEL.md §Entity: PendingOrder",
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: EarningsEvent",
+          "DATA-MODEL.md §Entity: MarketRegimeSnapshot"
+        ],
+        "decision_refs": [
+          "D041 last_close on-demand FMP fallback (LastCloseLoader 复用)",
+          "D074 camelCase API"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "GET /api/cockpit/actions/today 返回 must_act[] / monitor[] / no_action[] 三数组，每条含 ticker / action_type / rationale",
+        "Must Act 包括：raise_stop（新 swing low 形成）/ cancel_order（setup 低点破位）/ reduce_before_earnings（财报<=2 天）/ tighten_stop（regime 转 Defensive）",
+        "Monitor 包括：approaching_trigger（<=3% 距离入场）/ stable_position（趋势完好）",
+        "No Action 列出其他稳态持仓，标记'无规则变化'",
+        "所有动作的 rationale 引用具体信号/规则（不使用 AI 生成，走 deterministic 规则引擎）",
+        "前端分栏 UI，Must Act 置顶红色提示"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。",
+      "completed_at": "2026-04-27"
+    },
+    {
+      "id": "F208-a",
+      "name": "AI 基座：依赖 + ai_memos 表 + 配置层",
+      "description": "F208 LLM Gateway 第一阶段（数据 + 配置）。引入 litellm 依赖，新增 7 个 AI 相关 env，在 ORM 与 Alembic 中落地 ai_memos 表（DATA-MODEL §AiMemo 全字段）。本 sprint 不写任何 gateway 业务逻辑，只把'写得进表 + 配得到 model'两件事跑通，给 F208-b/c 提供运行底座。",
+      "user_story": "作为开发者，我需要把 AI 层的依赖、配置和持久化 schema 准备好，使后续 gateway 模块开发不被基础设施阻塞",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/pyproject.toml",
+        "backend/app/config.py",
+        "backend/app/models/ai_memo.py (新建)",
+        "backend/app/models/__init__.py (注册 AiMemo)",
+        "backend/alembic/versions/012_f208a_ai_memos.py (新建)",
+        "backend/tests/test_ai_memo_schema_f208a.py (新建)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [
+          "ai_memos"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-a-contract.md",
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §AiMemo（ai_memos 表完整字段定义）"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint（依赖与 env 由本 sprint 落地）",
+          "D069 ai_memos 双用途（schema_version + 索引由本 sprint 落地）"
+        ],
+        "acceptance_type": "infrastructure"
+      },
+      "acceptance_criteria": [
+        "pyproject.toml 增 litellm>=1.83,<2.0",
+        "config.py Settings 增 7 个字段：ai_model_default / ai_model_critical / ai_model_complex / openai_api_key / ai_monthly_budget_usd / ai_memo_cache_ttl_hours / ai_schema_version，全部含合理默认值",
+        "AiMemo ORM 模型字段类型与 DATA-MODEL.md 完全一致（含 Numeric(10,6) cost_usd / String(64) input_hash 等）",
+        "Alembic 012 迁移可正向 upgrade 到 head + downgrade 回 011 不报错",
+        "辅助索引 (task_type, input_hash, created_at DESC) 与 created_at DESC 在迁移中正确创建",
+        "test_ai_memo_schema_f208a 验证：模型字段完整、写入读取一次、索引存在"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [
+          "alembic upgrade/downgrade 双向跑通",
+          "AiMemo 写入并查询，input_hash + tier 字段正常"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "v2.0 AI 层 3 拆中的第 1 步。F208-b 必须等本 sprint Evaluator 通过后才能启动。"
+    },
+    {
+      "id": "F208-b",
+      "name": "AI Gateway 核心模块（errors / memo_repo / budget / routing）",
+      "description": "F208 LLM Gateway 第二阶段（核心纯函数模块，不打 LLM）。建立 backend/app/ai/ Python 包，落地 4 个支撑模块：errors（AiError 基类 + 4 个具体异常）/ memo_repo（AiMemoRepository class 风格，写入 + 按 (task_type, input_hash, schema_version) + TTL 查询命中）/ budget（月度 SUM cost_usd 熔断，mtd ≥ cap 抛错）/ routing（task_type → tier → env model_id 映射，模块级 dict）。本 sprint 不引入 LiteLLM 调用、不暴露 endpoint，所有模块可单独 unit-test。",
+      "user_story": "作为开发者，我需要 AI gateway 的支撑层（错误模型 / 持久化 / 预算 / 路由）独立可测，再到 F208-c 把它们编排成主流程",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [
+        "F208-a"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/ai/__init__.py (新建)",
+        "backend/app/ai/errors.py (新建)",
+        "backend/app/ai/memo_repo.py (新建)",
+        "backend/app/ai/budget.py (新建)",
+        "backend/app/ai/routing.py (新建)",
+        "backend/tests/test_ai_core_modules_f208b.py (新建)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-b-contract.md",
+        "api_refs": [],
+        "data_model_refs": [
+          "DATA-MODEL.md §AiMemo（memo_repo 操作的目标表）"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + tier 分层（routing 实现）",
+          "D069 ai_memos 双用途（memo_repo 命中规则、budget SUM）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "errors.py 定义 AiProviderError / AiSchemaError / AiBudgetExceeded / AiGuardrailViolation 四个异常",
+        "memo_repo.write(task_type, input_dict, output_dict, ...) 写入 ai_memos 并返回 memo_id",
+        "memo_repo.find_cached(task_type, input_hash, schema_version) 在 TTL 内命中返回 memo，否则 None；schema_version 不一致一律 miss",
+        "budget.assert_within_budget(session) 当月累计 < AI_MONTHLY_BUDGET_USD 不抛错；≥ 抛 AiBudgetExceeded",
+        "routing.resolve(task_type) → (tier, model_id)，7 种 task_type 映射齐全（market_narrator/setup_explainer→default、candidate_ranker/trade_plan→critical、contradiction_detector/news_summarizer→default、journal_assistant→complex），未知 task_type 抛 ValueError",
+        "input_hash 计算：json.dumps(input, sort_keys=True, separators=(',',':')) 后 SHA-256，相同 dict 不同顺序产出相同哈希（单元测试覆盖）",
+        "test_ai_core_modules_f208b 单元 + DB 集成测试全部通过"
+      ],
+      "test_cases": {
+        "unit": [
+          "input_hash 顺序无关性",
+          "routing 7 种映射 + 未知 task_type",
+          "budget SUM 边界（恰好等于上限抛错）"
+        ],
+        "integration": [
+          "memo_repo 写入 + 命中查询 + TTL 过期 miss + schema_version 失效"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "本 sprint 不接 LiteLLM。LiteLLM 真实调用与编排在 F208-c。"
+    },
+    {
+      "id": "F208-c",
+      "name": "AI Gateway 主流程 + LiteLLM 集成 + /api/ai/{task_type} endpoint",
+      "description": "F208 LLM Gateway 第三阶段（编排 + 对外）。把 F208-b 的 4 个核心模块编排为 AiGateway.run(task_type, input)：input_hash → memo dedup → budget check → routing → LiteLLM 调用（response_format=Pydantic）→ output schema 校验 → guardrail post-validate → 写 ai_memos → 返回。新增 guardrail 框架（默认 no-op，F210 trade_plan 在此挂 hook）和 schemas registry（task_type → input/output Pydantic schema；F208-c 内置 1 个 echo 测试 schema 用于验证基座，其他 6 个 task 留给 F209/F210/F211）。新增 POST /api/ai/{task_type} 统一 endpoint。Sprint 包含 1 条 @pytest.mark.live live smoke（用户提供 OPENAI_API_KEY 后真实打 OpenAI 一次验证基座）。",
+      "user_story": "作为系统设计者，我需要一个 AiGateway.run() 统一入口和对外 endpoint，业务代码只写 task_type 和 input，不关心 LiteLLM 调用细节、缓存、预算、schema 校验",
+      "priority": "P0",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-25",
+      "dependencies": [
+        "F208-b"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [
+        "backend/app/ai/gateway.py (新建)",
+        "backend/app/ai/guardrail.py (新建)",
+        "backend/app/ai/schemas/__init__.py (新建，含 echo 测试 task)",
+        "backend/app/routers/ai.py (新建，含 Request/Response envelope 内联)",
+        "backend/app/main.py (修改 2 行：注册 ai router)",
+        "backend/tests/test_ai_gateway_e2e_f208c.py (新建：§A gateway 7 路径 + §B endpoint envelope/错误码 + §C live smoke)"
+      ],
+      "estimated_files_changed_minor": [
+        "backend/app/ai/routing.py (修改 1 行：_TASK_TIER 加 \"echo\": \"default\" 含 test-only 注释)"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "POST /api/ai/{task_type}（统一入口）"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "contract_file": "docs/开发/sprint-contracts/F208-c-contract.md",
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type}（请求/响应/错误码完整契约）"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D068 F210 trade_plan 确定性护栏（guardrail 框架由本 sprint 落地，trade_plan 具体 hook 在 F210）",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "AiGateway.run(task_type, input_dict, no_cache=False) 编排：input_hash → memo dedup → budget → routing → LiteLLM → schema → guardrail → memo write",
+        "缓存命中路径：返回 memo.output_json + meta.cacheHit=true / tokensIn=0 / costUsd=0 / modelUsed='cache'",
+        "schemas registry 内置 echo task（仅 F208-c 测试用）：input { text: str } → output { echoed: str }，F209/F210/F211 在各自 sprint 注册真实 task",
+        "guardrail.run(task_type, input_dict, output_dict) 默认 no-op；可注册 hook，hook 抛 AiGuardrailViolation 时 gateway 不写 memo 直接抛",
+        "POST /api/ai/{task_type} 请求体 { input, noCache? } → 200 响应严格符合 API-CONTRACT §POST /api/ai/{task_type} 的 envelope（data.memoId / output / meta）",
+        "错误码映射：unknown task_type → VALIDATION_ERROR 422；input schema 失败 → VALIDATION_ERROR 422；LiteLLM 异常 → AI_PROVIDER_ERROR 502；output schema 失败 → AI_SCHEMA_ERROR 502；超预算 → AI_BUDGET_EXCEEDED 429；guardrail 违规 → AI_GUARDRAIL_VIOLATION 409",
+        "main.py 注册 ai router 后 GET /docs 可见 POST /api/ai/{task_type}",
+        "test_ai_gateway_e2e_f208c §A 覆盖（mock LiteLLM client）：成功 / cache hit / cache miss / budget 超限 / output schema 失败 / guardrail 违规 / no_cache=True 强制刷新 7 条路径",
+        "test_ai_gateway_e2e_f208c §C live smoke：标记 @pytest.mark.live；OPENAI_API_KEY 设置时真实打 OpenAI（echo task），ai_memos 写入真实 row，cost_usd > 0；未设置时 pytest.skip；默认全量回归 -m 'not live' 不触发"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [
+          "Gateway 编排 7 条路径（mock LiteLLM）",
+          "Endpoint envelope 与错误码映射（FastAPI TestClient）"
+        ],
+        "e2e": [
+          "Live smoke：echo task 真实打 OpenAI（@pytest.mark.live, opt-in）"
+        ]
+      },
+      "iteration_history": [],
+      "notes": "F209/F210/F211 的前置完结于本 sprint。LiteLLM 真实调用在测试中始终 mock，避免烧 token；live smoke test 留给后续 feature 自行覆盖。"
+    },
+    {
+      "id": "F209-a",
+      "name": "AI: 后端 schema 注册（market_narrator + setup_explainer）",
+      "description": "在 backend/app/ai/schemas/ 新增 market_narrator.py 与 setup_explainer.py 两个 Pydantic schema 文件，定义输入/输出结构（含 'extra: forbid'），在 schemas/__init__.py 的 REGISTRY 注册并在包内 import 使其生效。两个 task 均走 default tier（AI_MODEL_DEFAULT=gpt-5.4-nano）。Schema 内嵌 system prompt 与 post-validate guardrail（禁词：buy now / sell now / 承诺收益 / 忽略止损）。本 sprint 不写前端、不改 gateway/router 框架。",
+      "user_story": "作为后端开发者，我希望 F209 的两个 task_type 在 AI Gateway 中被注册和可调用，给前端 sprint 留好接口",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-25",
+      "contract_file": "docs/开发/sprint-contracts/F209-a-contract.md",
+      "contract_agreed_at": "2026-04-25",
+      "dependencies": [
+        "F208-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/ai/schemas/market_narrator.py",
+        "backend/app/ai/schemas/setup_explainer.py",
+        "backend/app/ai/schemas/__init__.py",
+        "backend/tests/test_ai_schemas_f209.py"
+      ],
+      "scope": {
+        "pages": [],
+        "api_endpoints": [
+          "POST /api/ai/market_narrator",
+          "POST /api/ai/setup_explainer"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D068 guardrail post-validate",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "MarketNarratorInput 字段：regime / marketScore / subscores / sectors（与 API-CONTRACT 示例一致，camelCase 在 router 边界转换，schema 内部 snake_case）",
+        "MarketNarratorOutput 字段：headline / summary / riskPosture / preferredSetups / avoid / warnings",
+        "SetupExplainerInput 字段：ticker / trend / rs / setup / risk（含 entry/stop）",
+        "SetupExplainerOutput 字段：label / quality / whyWatch / mainRisks",
+        "两个 schema 均设置 model_config = {'extra': 'forbid'}，schema_version = 'v1'",
+        "REGISTRY['market_narrator'] 与 REGISTRY['setup_explainer'] 注册成功，get_schemas() 可取出",
+        "POST /api/ai/market_narrator 和 /api/ai/setup_explainer 端到端调用（mock LiteLLM）成功，cost_usd 正确写入 ai_memos（D072 修复后）",
+        "Guardrail 关键词检测：mock LiteLLM 输出含 'buy now' 时抛 AI_GUARDRAIL_VIOLATION，不写 ai_memos",
+        "live smoke test（pytest -m live）真实调用 gpt-5.4-nano，cost_usd > 0，输出符合 schema"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "F209-a 是后端 sprint，前端两个 widget 集成由 F209-b（Market Narrator）和 F209-c（Setup Explainer）分别交付。本 sprint 必须含 live smoke 验证 D072 cost fix 在新 task 上仍生效。"
+    },
+    {
+      "id": "F209-b",
+      "name": "AI: Market Narrator 前端集成（MarketRegimeWidget AI Notes）",
+      "description": "在 MarketRegimeWidget 底部新增 AI Market Notes 区：Headline + Summary + Warnings 列表 + 手动 Refresh 按钮（cache TTL >1h 时启用）。新增通用 AI 客户端 frontend/src/cockpit/lib/api/aiApi.ts，封装 POST /api/ai/{task_type}。AI 输出失败/超预算时显示 'AI 暂不可用' 占位，不影响 widget 其他区块。",
+      "user_story": "作为 Cockpit 用户，看完 regime 数值后我想读 AI 用一句话总结当前市场情绪和优先 setup，作为人类直觉的补充",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "contract_file": "docs/开发/sprint-contracts/F209-b-contract.md",
+      "dependencies": [
+        "F209-a",
+        "F201-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/lib/api/aiApi.ts",
+        "frontend/src/cockpit/widgets/MarketRegimeWidget.tsx",
+        "frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx",
+        "frontend/src/cockpit/lib/api/__tests__/aiApi.test.ts"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/market_narrator"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=market_narrator)"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "aiApi.ts 提供 callAiTask<TIn, TOut>(taskType, input, opts) 通用方法，支持 noCache 选项",
+        "MarketRegimeWidget 底部新增 'AI Market Notes' 区，渲染 headline / summary / warnings",
+        "Refresh 按钮：cache TTL <1h 时 disabled，>1h 启用；点击调 callAiTask('market_narrator', ...) noCache=true",
+        "loading 期间按钮 spinner，AI 区域显示 Skeleton",
+        "AI 输出失败（502 / 429 / 网络错误）时区域显示 'AI 暂不可用'，widget 其他区不受影响",
+        "AI 输出仅展示，不影响 deterministic regime 数值",
+        "颜色 / 字体走 tokens.css，无硬编码"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "依赖 F201-c 提供 widget shell。aiApi.ts 在 F209-c 中复用。",
+      "completed_at": "2026-04-25",
+      "last_updated": "2026-04-25"
+    },
+    {
+      "id": "F209-c",
+      "name": "AI: Setup Explainer 前端集成（SetupMonitor 每行 popover）",
+      "description": "在 SetupMonitorWidget 每行右侧新增 '?' 按钮，点击打开 shadcn/ui Popover 显示 AI 输出：label / quality / whyWatch / mainRisks。复用 F209-b 的 aiApi.ts。同 ticker 同 setup 24h 内点击命中 ai_memos 缓存，loading 期间 popover 显示 Skeleton。",
+      "user_story": "作为 Cockpit 用户，扫 Setup Monitor 行列时遇到不熟悉的 setup，我想点 '?' 1 秒看到 AI 解释为什么这是个机会、最大风险是什么",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "contract_agreed_at": "2026-04-25",
+      "dev_completed_at": "2026-04-25",
+      "contract_path": "docs/开发/sprint-contracts/F209-c-contract.md",
+      "dependencies": [
+        "F209-a",
+        "F209-b",
+        "F202-c"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/cockpit/components/AiSetupExplainerPopover.tsx",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/setup_explainer"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=setup_explainer)"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 双用途"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "SetupMonitor 每行右侧出现 '?' 按钮（icon-only，--color-text-muted）",
+        "点击 '?' 打开 Popover，调 callAiTask('setup_explainer', { ticker, trend, rs, setup, risk })",
+        "Popover 显示 label / quality / whyWatch / mainRisks，loading 期间 Skeleton",
+        "失败时 Popover 显示 'AI 暂不可用'，不影响行其他列",
+        "AI 输出仅展示，不修改 deterministic setup_type / quality 列",
+        "同 ticker + 同 setup 24h 内命中 ai_memos 缓存（meta.cacheHit=true）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "复用 F209-b 的 aiApi.ts。Popover 用 shadcn/ui Popover 组件，使用前 context7 查询最新 API。\n验收发现 trendScore 实际值域 0-5（非 0-100），阈值已修正为 >=4 up / <=1 down / else sideways（commit 192d7f5）",
+      "completed_at": "2026-04-25"
+    },
+    {
+      "id": "F210",
+      "name": "AI: Candidate Ranker + Trade Plan Generator",
+      "description": "critical-tier AI task。candidate_ranker 输入 setup monitor 候选列表，输出 top_candidates 排序（rank / reason / action）；trade_plan 输入单股 setup + user_settings，输出结构化 trade_plan（action / entry / stop / size / targets / management / memo）。前端：Setup Monitor 顶部'AI 排序'按钮；Decision Panel 新增'Generate Trade Plan'按钮。",
+      "user_story": "作为投资者，当我 watchlist 有很多 setup 同时接近触发时，我需要 AI 帮我排序 top 3 优先；当我决定交易某只股票时，我需要 AI 帮我生成一份完整的 trade memo（在 deterministic 数字之上做叙述和 management rule）",
+      "priority": "P1",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-04-26",
+      "sub_phase_notes": "拆 a/b/c 三段（参 F208/F209 先例）：F210-a 后端 schemas + trade_plan guardrail（4 文件）/ F210-b SetupMonitor 'AI 排序' 集成 / F210-c DecisionPanel 'Generate AI Plan' 集成",
+      "sub_phases": {
+        "F210-a": {
+          "phase": "done",
+          "scope": "backend candidate_ranker + trade_plan Pydantic schemas + trade_plan D068 guardrail（entry/stop/size 三字段锚点 + BANNED_PHRASES）+ REGISTRY 注册 + 单元/集成测试",
+          "contract": "docs/开发/sprint-contracts/F210-a-contract.md",
+          "files": "4（candidate_ranker.py + trade_plan.py + schemas/__init__.py + tests/test_ai_schemas_f210a.py）",
+          "completed_at": "2026-04-25",
+          "tests": "31 unit (I1-I9/O1-O6/TI1-TI4/G1-G7/R1-R5) + 2 e2e (C9-C10) = 33 passing",
+          "hotfixes": [
+            {
+              "commit": "2853e3b",
+              "date": "2026-04-25",
+              "description": "regime literal align with market_regime_service 5 values (RISK_ON/CONSTRUCTIVE/NEUTRAL/DEFENSIVE/RISK_OFF); CAUTION removed (never produced)"
+            }
+          ]
+        },
+        "F210-b": {
+          "phase": "done",
+          "scope": "前端 SetupMonitor 顶部 'AI 排序' 按钮 + AiCandidateRankerSection 组件（top 3 渲染 + slice(0,20) + 缓存徽章 + 错误态）+ widget 集成 + 测试",
+          "contract": "docs/开发/sprint-contracts/F210-b-contract.md"
+        },
+        "F210-c": {
+          "phase": "done",
+          "completed_at": "2026-04-26",
+          "scope": "前端 DecisionPanel 'Generate AI Plan' 按钮 + AiTradePlanSection 组件（memo + management list + AI_GUARDRAIL_VIOLATION 红色 banner + cache meta）+ widget 集成 + 测试",
+          "contract": "docs/开发/sprint-contracts/F210-c-contract.md",
+          "files_predicted": 3,
+          "contract_agreed_at": "2026-04-26",
+          "acceptance_record": "docs/验收/v2.0-F210-c-acceptance.md",
+          "bugfix_history": [
+            {
+              "date": "2026-04-26",
+              "issue": "earningsRisk=null 时 trade_plan 100% 422",
+              "root_cause": "backend schema earningsRisk 强制 SAFE/CAUTION/DANGER；decision API 无 earnings 数据时返回 null",
+              "fix": "backend schema 接受 None + system prompt 加 null 语义说明 + 前端类型 EarningsRisk|null + 测试新增 TI5/T13",
+              "instruction": "docs/开发/指令/20260426-F210c-earningsRisk-null-bug.md",
+              "user_decision": "方案 A"
+            }
+          ]
+        }
+      },
+      "dependencies": [
+        "F208-c",
+        "F203"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/candidate_ranker",
+          "POST /api/ai/trade_plan"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=rank_pool / plan_trade)",
+          "API-CONTRACT.md §GET /api/cockpit/decision/{ticker}"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo",
+          "DATA-MODEL.md §Entity: SetupSnapshot",
+          "DATA-MODEL.md §Entity: UserSettings"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + tier 分层",
+          "D068 F210 确定性护栏 + deterministicHash",
+          "D066 仓位公式"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "两个 task_type Pydantic schema 定义齐全",
+        "默认走 AI_MODEL_CRITICAL（tier=critical）",
+        "trade_plan 输出的 entry/stop/size 数字必须等于 F203 deterministic 计算结果（AI 不可改写数字，只能新增 memo 和 management 规则）",
+        "candidate_ranker 输入 setup 数组最多 20 个，超过截断并在响应 meta 标记",
+        "Setup Monitor AI 排序结果展示 top 3 + rank reason",
+        "Decision Panel trade plan 展示 memo + management 列表（move stop to breakeven near 2R 等）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [],
+      "notes": "AI 不可改写 deterministic 数字是强硬约束（proposal §10.3 guardrail），通过 post-validate 对比 gateway 输出与 F203 计算结果。"
+    },
+    {
+      "id": "F211",
+      "name": "AI: Contradiction Detector + News Summarizer + Journal Assistant",
+      "description": "混合 tier。contradiction_detector（default tier）：输入单股完整 context，输出矛盾列表（earnings risk / reward-risk / volume distribution 等）+ recommendation；news_summarizer（default tier）：输入最近 N 条 news，输出 catalyst_summary / sentiment / relevance / risks；journal_assistant（complex tier）：出场后自动复盘（plan vs actual / entry quality / stop discipline / mistake classification / lesson）+ 月度策略审计。前端：Decision Panel 增 contradiction 区；News 页增可选 AI 摘要 bar；Position Manager 出场时触发 journal review。",
+      "user_story": "作为投资者，我需要 AI 检测'技术面强但财报太近'这种矛盾；用 AI 把散乱 news 归纳成 catalyst；交易结束后 AI 自动对比 plan vs actual 帮我复盘归因",
+      "priority": "P2",
+      "status": "done",
+      "phase": "done",
+      "sub_sprint_notes": "拆 5 段（2026-04-28 用户确认），其中 d 因 7 文件超 6 文件预算，2026-04-29 进一步拆为 d1+d2：a1 后端 3 schemas + REGISTRY；a2 per-task model override 基建（D064 兄弟决策，env-driven，默认 opt-in，不动 cockpit_params.py 因 D070 line 1527 明文规定 AI 模型走 .env）；b DecisionPanel Contradictions 区前端；c News 页 AI 摘要 bar 前端（含 tokens/cost 展示）；d1 平仓 hook + journal_entries.ai_review 迁移（5 文件：alembic 017 / journal_entry 模型 / journal_review_service 新建 trade 模式 / position_service close hook / 单测）；d2 月度复盘 cron（4 文件：journal_review_service +monthly / refresh_job +tick / config +cron settings / 单测）。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。",
+      "sub_sprints": {
+        "F211-a1": "done",
+        "F211-a2": "done",
+        "F211-b": "done",
+        "F211-c": "done",
+        "F211-d1": "done",
+        "F211-d2": "done"
+      },
+      "dependencies": [
+        "F208-c",
+        "F203",
+        "F206"
+      ],
+      "estimated_sessions": 4,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit",
+          "News"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/contradiction_detector",
+          "POST /api/ai/news_summarizer",
+          "POST /api/ai/journal_assistant"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=contradict_plan / summarize_news / journal_reflect)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D068 F210 确定性护栏（contradict_plan 路径）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "contradiction_detector / news_summarizer / journal_assistant 三个 task_type 定义齐全",
+        "contradiction_detector 走 default tier，journal_assistant 走 complex tier（月度审计等复杂任务）",
+        "Decision Panel 底部 'Contradictions' 区展示 severity (High/Medium/Low) 和 recommendation",
+        "News 页顶部 'AI 摘要'（可选开关）展示 catalyst_summary / sentiment / risks",
+        "Position Manager 关闭持仓（手动录入平仓）时自动触发 journal_assistant，写入 journal_entry 的 ai_review 字段",
+        "journal_assistant 每月 1 号自动生成上月交易复盘报告（rule adherence / expectancy / setup-level performance）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-a1",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：3 个 task 的 Pydantic schema（contradiction_detector / news_summarizer / journal_assistant 双模式 trade+monthly）+ BANNED_PHRASES guardrail（仅文本扫描，无 deterministic 锚点）+ REGISTRY 注册 + ~38 单元测试 + 1 集成测试。5 个文件（3 schema + __init__ + 测试）。开放问题 Q1-Q6 全采默认方案。下一 session Generator 模式从开发步骤 7a 开始（contradiction_detector schema + tests）。",
+          "contract": "docs/开发/sprint-contracts/F211-a1-contract.md",
+          "contract_agreed_at": "2026-04-28"
+        },
+        {
+          "date": "2026-04-28",
+          "session": "F211-a1 Generator",
+          "changes": "F211-a1 complete: 3 schema files (contradiction_detector / news_summarizer / journal_assistant) + schemas/__init__.py registry wiring + 45 unit tests + 2 e2e gateway integration tests (C13). All 877 tests pass, mypy clean, smoke OK."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-a2",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：D064 三 tier 之上叠加可选 per-task model override（env-driven，单 JSON 字段 AI_TASK_OVERRIDES_JSON，task_type → {model, base_url?, api_key?, input_cost_per_1m?, output_cost_per_1m?}）。5 个文件：config.py 加字段；routing.py 新 ResolvedRoute dataclass + _parse_overrides + resolve() 升签（保留 resolve_tier/resolve_model 旧 API）；gateway.py _call_litellm 透传 api_base + 新 _ensure_cost_registered lazy hook；test_ai_routing_overrides.py 13 用例；DECISIONS.md 追加 D075。测试扩展（不计入）：test_ai_core_modules_f208b 1 处适配，test_ai_gateway_e2e_f208c 加 C13c override e2e。fail-soft 原则：JSON 坏 / register 失败 → log warning + fallback 到 tier，绝不阻塞 startup。开放问题 Q1-Q7 全采默认方案；Q1/Q2 须 Generator 步骤 1 用 context7 查 LiteLLM 验证（api_base vs base_url 形参；register_model 后 completion_cost 是否使用注入价）。",
+          "contract": "docs/开发/sprint-contracts/F211-a2-contract.md",
+          "contract_agreed_at": "2026-04-28"
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-a2",
+          "phase": "done",
+          "session": "F211-a2 Generator",
+          "changes": "F211-a2 complete: config.py ai_task_overrides_json field; routing.py ResolvedRoute dataclass + _parse_overrides + resolve() new signature (resolve_tier/resolve_model preserved); gateway.py _call_litellm refactored to take ResolvedRoute, passes api_base + direct input/output_cost_per_token to litellm.completion() (D075 direct-params approach, simpler than register_model); test_ai_routing_overrides.py 15 tests; test_ai_gateway_e2e_f208c C13c override e2e; test_ai_core_modules_f208b adapted; test_ai_schemas_f209 mock adapted; .env.example AI section added; DECISIONS.md D075 appended. 893 tests pass (baseline 877 + 16 new). mypy pre-existing 4 errors unchanged. context7 Q2 finding: direct params approach confirmed as official SDK Custom Pricing path."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-b",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：DecisionPanelWidget 内新增 'AI Contradictions' 区，结构镜像 F210-b 的 AiTradePlanSection（lazy trigger / 6 态状态机 / cache badge / divider）。0 行后端改动，复用 F211-a1 的 contradiction_detector schema 和 F208-c /api/ai/{task_type} 通用 endpoint。5 个文件：AiContradictionsSection.tsx 新建（~250 行）+ DecisionPanelWidget.tsx 修改（~10 行 diff，引入 + 渲染 divider）+ DecisionPanelWidget.test.tsx +7 case + cockpit/lib/utils/dates.ts 新建（calcDaysUntil 抽取共享）+ features.json 更新。input 13 字段中 5 个（trendScore / rsPercentile / readySignal / regime / regimeScore）通过复用 ['setup-monitor'] / ['cockpit-regime'] react-query cache 读取，不新增 endpoint。setupMonitor 缺当前 ticker → trigger disabled。severity tag 颜色 HIGH=--color-error / MEDIUM=--color-signal-warning / LOW=--color-text-muted（步骤 1 须实测 token 存在）。queryKey 含 deterministicHash，24h cache 与 trade_plan 一致。即使后端无 hash guardrail，前端保留 409 分支模板。开放问题 Q1-Q10 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + queryKey + 读 backend schema）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-b-contract.md",
+          "contract_agreed_at": "2026-04-28",
+          "iteration": true
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-b",
+          "phase": "needs_review",
+          "session": "F211-b Generator",
+          "changes": "F211-b complete: AiContradictionsSection.tsx (new, ~285 lines, 6-state machine mirroring AiTradePlanSection); cockpit/lib/utils/dates.ts (new, calcDaysUntil extracted from DecisionPanelWidget); DecisionPanelWidget.tsx updated (import switch + contradictions divider/section); DecisionPanelWidget.test.tsx +8 cases (C1-C8, 29/29 pass). Pre-check adjustments: MEDIUM severity → --color-log-warn (--color-signal-warning absent); queryKey → [cockpit-setup-monitor, all] (actual key vs assumed [setup-monitor, undefined]). tsc 0 error, ESLint 0 new warnings, 3 pre-existing TopNav failures not caused by this sprint."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-b",
+          "phase": "done",
+          "session": "F211-b Acceptance",
+          "changes": "F211-b accepted: AiContradictionsSection.tsx (6-state machine, contradiction list + severity badges + recommendation); cockpit/lib/utils/dates.ts (calcDaysUntil shared helper); DecisionPanelWidget.tsx integration (divider + section); DecisionPanelWidget.test.tsx +8 cases (29/29 pass). MEDIUM severity uses --color-log-warn (--color-signal-warning absent). tsc 0 error, 0 new lint errors."
+        },
+        {
+          "date": "2026-04-28",
+          "subtask": "F211-c",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：News 页顶部新增 AiNewsSummaryBar，结构镜像 F211-b AiContradictionsSection（lazy trigger / 6 态状态机 / cache badge / 关闭按钮）。0 行后端改动，复用 F211-a1 news_summarizer schema 和 F208-c /api/ai/{task_type} 通用 endpoint。4 个文件：AiNewsSummaryBar.tsx 新建（~280 行）+ AiNewsSummaryBar.test.tsx 新建（~11 case）+ pages/News.tsx 修改（+6 行 import + bar 容器）+ features.json 更新。input articles 来自 useNewsArticles cache，按 publishedAt desc slice 30；contentText 经 DOMParser stripHtml 截断 2000 字符。queryKey ['ai','news_summarizer',hash]，hash 由 articles {title,publishedAt} 排序后 sha256 派生；24h staleTime 与 trade_plan/contradictions 一致。sentiment 颜色 positive=--color-success / neutral=--color-text-secondary / negative=--color-error（步骤 1 实测均存在 tokens.css line 28-30）。articles 为空 → trigger disabled + tooltip。relevantTickers chip 点击触发 useAppStore.setSelectedSymbol（与 NewsWidget TickerChip 行为一致）。risks/relevantTickers length 0 时整段隐藏。aiApi.ts 不上提（保留在 cockpit；ESLint 仅约束 cockpit↔workbench 互斥，pages→cockpit/lib import 合法）。开放问题 Q1-Q8 全采默认方案。下一 session Generator 模式从开发步骤 1（预检：grep tokens + 复核 useNewsArticles queryKey + 验证 jsdom DOMParser/crypto.subtle）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-c-contract.md",
+          "contract_agreed_at": "2026-04-28",
+          "iteration": true
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-c",
+          "phase": "needs_review",
+          "session": "F211-c Generator",
+          "changes": "F211-c complete: newsSummaryUtils.ts (new, 4 pure helpers: stripHtml/sortByPublishedDesc/articlesHash/buildSummarizerArticles); AiNewsSummaryBar.tsx (new, ~330 lines, 6-state machine mirroring AiContradictionsSection: closed/loading/error-502/error-409/success-with-risks/success-no-risks); AiNewsSummaryBar.test.tsx (new, 14 tests — C1-C8 component + 6 helper unit tests); News.tsx (+4 lines import + bar container). Pre-check findings: --color-surface-muted absent → chip uses --color-input-background instead; queryKey=['news','articles'] confirmed; crypto.subtle available (Node 24); jsdom DOMParser available. tsc 0 error, ESLint 0 warnings, 273/276 tests pass (3 pre-existing TopNav failures)."
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-c",
+          "phase": "done",
+          "session": "F211-c Acceptance",
+          "changes": "F211-c accepted: AiNewsSummaryBar (6-state machine, lazy trigger, catalystSummary + sentiment badge + relevantTickers chips + risks list); newsSummaryUtils.ts helpers; News.tsx integration. All V1-V9 visual checks, B1-B7 business logic, E1-E3 edge cases passed. 验收记录: docs/验收/v1.9-F211-c-acceptance.md"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d1",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：平仓 hook + journal_entries.ai_review 迁移（5 文件：alembic 017 / journal_entry 模型+DTO / journal_review_service 新建 trade 模式 / position_service close hook+positions 路由 / 单测 15 case）。F211-d 因 7 文件超预算 2026-04-29 拆为 d1+d2，d1 仅 trade 模式 + 迁移；月度 cron 留 d2。核心决定：FastAPI BackgroundTasks 异步触发，失败不阻塞 PATCH；ai_review 列 Text+JSON+无 FK（D069 兼容）；平仓自动 INSERT/复用 SELL journal_entry；ai_review 已存在则跳过 gateway 避免重复烧 budget。Q1-Q10 全采默认方案，新增 D076。下一 session Generator 模式从开发步骤 1（预检：alembic current / GatewayResult 形态 / SessionLocal 验证）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-d1-contract.md",
+          "contract_agreed_at": "2026-04-29",
+          "iteration": true
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d1",
+          "phase": "done",
+          "session": "F211-d1 Generator",
+          "changes": "F211-d1 完成：alembic 017 (journal_entries.ai_review Text + ai_review_memo_id Integer) / journal_entry 模型+DTO / JournalReviewService.trade_review_for_position / position_service OPEN→CLOSED BackgroundTasks hook / positions.py 路由注入 BackgroundTasks+SessionFactory / 15 tests (5U+8I+2E 全过) / test_schema.py 更新。回归 908 passed (+15)；mypy 173←174 净减 1；ruff 0 新增违例。DECISIONS.md D082 已追加。"
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d2",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：journal_assistant monthly mode + 月度 cron（每月 1 号 06:00 UTC）。0 schema / 0 迁移 / 0 前端 / 0 新依赖。4 文件（2 余量）：journal_review_service.py +monthly_review_for_month/_fetch_closed_positions_for_month/_build_monthly_input/_brief_for_position；refresh_job.py +JOURNAL_MONTHLY_JOB_ID/add_job/_journal_monthly_tick/_previous_month_utc helper；config.py +journal_monthly_cron_day/hour/minute；test_journal_review_service_f211d2.py 14 case (6U+5I+3 调度)。核心决定：monthly 输出仅落 ai_memos（依赖 D069 滚动清理 + 24h memo dedup，不新增表/迁移/journal_entries action）；0 trades 月份跳过 gateway；ASC 取最早 100；失败 swallow 与现有 cron tick 一致；不重试。Q1-Q15 全采默认方案，新增 D083（合约标 D077，被占用）。F211-d2 完成后父 F211 6 个 sub_sprints 全 done，acceptance 阶段决定父 status。下一 session Generator 模式从开发步骤 1（预检：alembic current / refresh_job datetime imports / GatewayResult / conftest fixtures / Position closed_at 类型）开始。",
+          "contract": "docs/开发/sprint-contracts/F211-d2-contract.md",
+          "contract_agreed_at": "2026-04-29",
+          "iteration": true
+        },
+        {
+          "date": "2026-04-29",
+          "subtask": "F211-d2",
+          "phase": "done",
+          "session": "F211-d2 Generator",
+          "changes": "F211-d2 完成：journal_review_service.py +monthly_review_for_month/_fetch_closed_positions_for_month/_build_monthly_input/_brief_for_position；refresh_job.py +JOURNAL_MONTHLY_JOB_ID/add_job/_journal_monthly_tick/_previous_month_utc+timedelta import；config.py +journal_monthly_cron_{day,hour,minute}；.env.example 注释；test_journal_review_service_f211d2.py 17 tests (3U+3U+5I+3S+I5×4参数化，全过)。回归 925 passed（基线 908+17）；d1 15 tests 不受影响；mypy 0 新增错误；ruff 0 新增违例。DECISIONS.md D083 已追加。caplog 隔离问题（alembic fileConfig disable_existing_loggers=True）通过 autouse fixture _restore_app_loggers 修复。"
+        }
+      ],
+      "notes": "News 页是 F112 遗留独立页，F211-c 在 cockpit 外会触碰 News.tsx；F211 拆分迭代：初版 5 段 a1/a2/b/c/d，2026-04-29 因 d 超 6 文件预算二次拆为 d1+d2，最终 6 段。依赖链：a1 → {a2 并行 / b / c / d1 → d2}。",
+      "completed_at": "2026-04-29"
+    },
+    {
+      "id": "F212",
+      "name": "跨设备 Layout 同步",
+      "description": "三个页面（Workbench / Cockpit / News）的 widget layout 可持久化到 backend/layouts/{page}.json，随 git commit/push 同步到其他机器。TopNav 新增 CloudUpload / CloudDownload 图标按钮，保存时写入后端文件，导入时读取并更新对应 Zustand layout store。",
+      "user_story": "作为用户，我需要在换机器或新浏览器时能一键恢复我自定义的 widget 布局，而不需要手动重新调整。",
+      "priority": "P2",
+      "status": "done",
+      "phase": "done",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "GET /api/layouts/{page} 返回已保存的 layout 数组，文件不存在时返回空数组",
+        "PUT /api/layouts/{page} 将 layout 写入 backend/layouts/{page}.json",
+        "三个 JSON 文件（workbench/cockpit/news）存在于 backend/layouts/ 并已 commit",
+        "TopNav 在 /, /cockpit, /news 路径显示 CloudUpload + CloudDownload 按钮",
+        "保存/导入成功有 sonner toast 反馈",
+        "保存/导入失败有 toast.error 反馈"
+      ],
+      "estimated_files_changed": [
+        "backend/app/routers/layouts.py (新建)",
+        "backend/app/main.py (修改)",
+        "backend/layouts/workbench.json (新建)",
+        "backend/layouts/cockpit.json (新建)",
+        "backend/layouts/news.json (新建)",
+        "frontend/src/lib/api/layouts.ts (新建)",
+        "frontend/src/components/features/topnav/TopNav.tsx (修改)"
+      ],
+      "iteration_history": [
+        {
+          "date": "2026-04-29",
+          "subtask": "F212",
+          "phase": "needs_review",
+          "session": "F212 Generator",
+          "changes": "F212 完成：backend/app/routers/layouts.py（GET+PUT /api/layouts/{page}，读写 backend/layouts/*.json）；main.py 注册 layouts.router；backend/layouts/{workbench,cockpit,news}.json 初始化（均为 []）；frontend/src/lib/api/layouts.ts（loadLayout/saveLayout）；TopNav 新增 CloudUpload/CloudDownload ButtonGroup，showLayoutSync 控制显示（/, /cockpit, /news），使用 getState() 避免不必要订阅，sonner toast 反馈成功/失败。API-CONTRACT.md 新增 F212 Layouts 章节。Evaluator 全部通过。"
+        }
+      ],
+      "notes": "layout 文件存在 backend/layouts/ 目录，随 git push 跨设备同步。导入后直接覆盖 Zustand store（localStorage 会同步更新）。",
+      "completed_at": "2026-04-29"
+    },
+    {
+      "id": "F213",
+      "name": "News Article Auto-Translate (DeepSeek via /api/ai)",
+      "description": "在 News widget / News 页 ArticleModal 打开文章时，自动调用 LLM 把英文标题+正文翻译成中文，直接替换原文显示。复用 /api/ai/{task_type} 统一入口（D064），新增第 8 个 task_type=translate_article，通过 per-task model override（D075/F211-a2 已建基建）路由到 DeepSeek deepseek-v4-flash。重复点开同一篇文章命中 ai_memos 缓存（D069）零额外开销。",
+      "user_story": "作为投资者，我需要英文新闻一键中文化才能快速消化，且重复打开同一篇文章不应再花 token。",
+      "priority": "P2",
+      "status": "done",
+      "phase": "done",
+      "sub_sprint_notes": "拆 a/b 两段（2026-05-07 用户确认）：F213-a 后端新增 translate_article schema + REGISTRY 注册 + routing._TASK_TIER 映射 default tier + 单元测试（4 文件）；F213-b 前端 ArticleModal 改造（点开自动 fetch 翻译并替换 contentHtml/title）+ translateArticleApi 新建 + 测试（3 文件）。引入 DeepSeek 作为 LiteLLM provider（per-task override，不污染默认 tier）。",
+      "sub_sprints": {
+        "F213-a": "done",
+        "F213-b": "done"
+      },
+      "dependencies": [
+        "F208-c",
+        "F211-a2"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "News",
+          "Workbench (NewsWidget)"
+        ],
+        "api_endpoints": [
+          "POST /api/ai/translate_article"
+        ],
+        "db_tables": [],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §POST /api/ai/{task_type} (task_type=translate_article)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: AiMemo (复用现有，无 schema 变更)"
+        ],
+        "decision_refs": [
+          "D064 LiteLLM + 单一动态 endpoint",
+          "D069 ai_memos 去重缓存",
+          "D075 per-task model override 基建"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "translate_article task_type 加入 7→8 enum，schema/registry/tier 三处一致",
+        "per-task override 配置 deepseek-v4-flash + DeepSeek base_url + api_key（生产配置走 .env，AI_TASK_OVERRIDES_JSON）",
+        "ArticleModal 打开文章时自动调用 /api/ai/translate_article，loading 期显示原文 + loading 指示，成功后用译文替换 contentHtml + title",
+        "重复点开同一篇文章命中 ai_memos 缓存（meta.cacheHit=true，0 token 0 cost）",
+        "翻译失败时 Modal 显示原文（不阻塞用户阅读）+ 顶部 toast 错误提示"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-a",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：translate_article schema (input: title/contentText/targetLang; output: titleZh/contentZh) + SYSTEM_PROMPT + REGISTRY 注册 + routing._TASK_TIER 加 default tier + 25 单元测试 + 2 mocked 集成测试。4 个代码文件（schema + __init__ + routing + tests）+ 3 个文档前置（API-CONTRACT 7→8 enum / DATA-MODEL §AiMemo 枚举行 / DECISIONS D084 DeepSeek 接入）。Q1-Q5 全采默认（LiteLLM deepseek/ 原生 provider 优先 + OpenAI-兼容回退；contentText 20k 字符；targetLang 保留扩展；HTML 剥离前端做；DeepSeek 价格 Generator 阶段查最新）。下一 session Generator 从开发顺序步骤 1（更新 API-CONTRACT.md）开始。",
+          "contract": "docs/开发/sprint-contracts/F213-a-contract.md",
+          "contract_agreed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-a",
+          "phase": "done",
+          "summary": "Generator 完成。实现 5 个代码文件：translate_article.py（schema + SYSTEM_PROMPT + SCHEMA_VERSION v1）/ schemas/__init__.py（+1 import + REGISTRY 行）/ routing.py（+1 _TASK_TIER 行 default tier）/ routers/ai.py（TaskTypeEnum 7→8）/ tests/test_ai_schemas_f213a.py（28 测试 TI1-TI6+/TO1-TO4+/R1-R3/G1+G1b/TT1-TT4/INT1-INT2）。3 个文档前置：API-CONTRACT 7→8 enum、DATA-MODEL §AiMemo 8 种枚举、DECISIONS D084。另修复 3 个既有测试文件 mock 签名（gateway 升级 system_prompt 参数）。全量回归：28/28 通过，5 个预存失败不变，无新增失败。",
+          "generator_completed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围（前端 3 文件）：新建 src/lib/api/translateArticle.ts（类型化薄封装，内部转 callAiTask）+ 修改 src/components/common/ArticleModal.tsx（注入 useQuery + loading/error/cacheHit 状态条 + sonner toast.error 回退原文 + 译文按 \\n\\n 拆段 React <p> 渲染）+ 新建 src/components/common/__tests__/ArticleModal.test.tsx（15 用例 AM1-14 + LIB1）。复用现有 ArticleModal（News 页 + Workbench NewsWidget 共用，改一处覆盖两处；SESSION-HANDOFF 中提到的 widgets/News/ArticleModal.tsx 路径不准确）。技术栈：react-query useQuery（queryKey 用 articleKey，staleTime Infinity，gcTime 5min，retry 1）+ sonner toast + 复用 stripHtml + 保留 dompurify 兜底。Q1-Q7 全采默认（API client 放 lib/api/ 同级 news.ts；loading 不禁交互；error 不显示重试按钮；译文 \\n\\n 自然降级单 <p>；cacheHit 显示已缓存徽标；不暴露 noCache；staleTime Infinity + gcTime 5min）。不引入新依赖，不改 News.tsx/NewsWidget.tsx/AiNewsSummaryBar.tsx，不修改后端 F213-a 4 文件，不持久化 localStorage。下一 session Generator 从开发顺序步骤 1（新建 translateArticle.ts）开始。",
+          "contract": "docs/开发/sprint-contracts/F213-b-contract.md",
+          "contract_agreed_at": "2026-05-07",
+          "iteration": true
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "done",
+          "summary": "Generator 完成。实现 3 个代码文件：src/lib/api/translateArticle.ts（类型化薄封装）+ src/components/common/ArticleModal.tsx（useQuery 注入，loading/error/cacheHit 状态条，sonner toast 回退，译文 \\n\\n 段落渲染）+ src/components/common/__tests__/ArticleModal.test.tsx（15 用例 AM1-AM14 + LIB1，全 14/14 通过）。不引入新依赖，复用 react-query + sonner。",
+          "generator_completed_at": "2026-05-07"
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "needs_review",
+          "summary": "Generator 完成，测试 15/15 通过（AM1-AM14 + LIB1），进入人工验收阶段。",
+          "iteration": true
+        },
+        {
+          "date": "2026-05-07",
+          "subtask": "F213-b",
+          "phase": "done",
+          "summary": "人工验收通过：ArticleModal 翻译功能端到端验证（json_mode 修复后）。"
+        }
+      ],
+      "notes": "DeepSeek API key 通过 AI_TASK_OVERRIDES_JSON env 注入，不进 settings.py 字段（保持 D075 既定模式）。翻译结果不持久化到 news_articles_cache，仅靠 ai_memos 去重缓存（同输入哈希 → 同输出，省钱）。",
+      "completed_at": "2026-05-07"
+    },
+    {
+      "id": "F214",
+      "name": "ChartWidget Add to Watchlist 按钮",
+      "description": "在 ChartWidget 右下角加一个 CirclePlus 浮动按钮，点击把当前 chart 显示的 ticker 加入 watchlist。复用现成 POST /api/watchlist 接口和 useQuery(['signals']) 数据零成本判定 isInWatchlist。News 页和 Workbench 页共用同一组件，按钮在两页都出现（用户确认方案 1A）。",
+      "user_story": "作为投资者，在 News 页看到感兴趣的票时，需要一键把它加入 watchlist，避免切回 Workbench → 搜索 → 添加的冗长流程。",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "frontend/src/workbench/widgets/ChartWidget.tsx",
+        "frontend/src/workbench/widgets/__tests__/ChartWidget.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "News",
+          "Workbench"
+        ],
+        "components": [
+          "ChartWidget"
+        ],
+        "backend": []
+      },
+      "acceptance_criteria": [
+        "ChartWidget 右下角出现 CirclePlus 浮动按钮，z-index 高于 chart",
+        "symbol 不在 signals 列表时按钮 enabled，点击调用 addStock(symbol)",
+        "symbol 已在 signals 列表时按钮 disabled，title 含\"已在 watchlist\"",
+        "pending 时 icon 替换为 Loader2 旋转",
+        "成功后 invalidateQueries(['signals']) 和 (['watchlist'])",
+        "DUPLICATE / NOT_FOUND / 通用错误显示对应文案，约 3s 自动恢复 idle",
+        "symbol === null 时整个 widget 走 EmptySymbol 分支，按钮不渲染",
+        "News 页和 Workbench 页行为一致",
+        "全量 vitest 回归无新增失败"
+      ],
+      "iteration_history": [
+        {
+          "date": "2026-05-08",
+          "subtask": "F214",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：仅修改 frontend/src/workbench/widgets/ChartWidget.tsx 一个文件 + 新建同目录 __tests__/ChartWidget.test.tsx。复用现成 addStock API + useQuery(['signals']) 数据零成本判定 isInWatchlist。错误码映射沿用 AddStockCard 模式。不动后端、不改 useAppStore、不引入新依赖。两页都显示按钮（方案 1A）。无成功 toast（按钮变 disabled 即反馈）。下一 session Generator 从开发顺序步骤 1（重读 ChartWidget.tsx 当前内容确认无 drift）开始。",
+          "contract": "docs/开发/sprint-contracts/F214-contract.md",
+          "contract_agreed_at": "2026-05-08"
+        },
+        {
+          "date": "2026-05-08",
+          "subtask": "F214",
+          "phase": "needs_review",
+          "summary": "实现完成：ChartWidget 加 CirclePlus 浮动按钮（right:70px/bottom:8px 避开 price scale），useMutation 包 addStock，isInWatchlist 复用 signals query，3s 错误自动清除。7/7 单元测试通过，全量回归 268 passed 零回归，浏览器手验 News+Workbench 两页一致。design-spec.md 追加 F214 四态说明。",
+          "contract": "docs/开发/sprint-contracts/F214-contract.md"
+        }
+      ],
+      "notes": "ChartWidget 是 News 和 Workbench 共用的同一份代码（WidgetRegistry.ts:26 / :76），改一处覆盖两页。"
     }
   ]
 }

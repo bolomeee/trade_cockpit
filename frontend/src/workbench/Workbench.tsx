@@ -35,6 +35,7 @@ export default function Workbench() {
             layout={layout}
             gridConfig={{ cols: 12, rowHeight: 40, margin: [6, 6] }}
             dragConfig={{ enabled: true, handle: '.widget-handle' }}
+            resizeConfig={{ handles: ['se', 'sw', 'nw'] }}
             compactor={verticalCompactor}
             onLayoutChange={handleChange}
           >
@@ -44,7 +45,7 @@ export default function Workbench() {
               const Widget = manifest.component
               return (
                 <div key={item.i}>
-                  <WidgetShell title={manifest.title} onClose={() => handleClose(item.i)}>
+                  <WidgetShell title={manifest.title} onClose={() => handleClose(item.i)} noPaddingRight={manifest.noPaddingRight}>
                     <Widget />
                   </WidgetShell>
                 </div>

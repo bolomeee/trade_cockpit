@@ -22,6 +22,14 @@ EXPECTED_TABLES = {
     "market_breakout_scans",
     "daily_payload_cache",
     "news_articles_cache",
+    "earnings_events",  # F204-a
+    "market_regime_snapshots",  # F201-a
+    "setup_snapshots",          # F202-a
+    "user_settings",            # F203-b
+    "ai_memos",                 # F208-a
+    "positions",                # F206-a
+    "pending_orders",           # F206-b1
+    "cockpit_pool_cache",       # F205-e
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {
@@ -42,10 +50,13 @@ EXPECTED_COLUMNS: dict[str, set[str]] = {
     "system_logs": {"id", "level", "source", "message", "detail", "created_at"},
     "journal_entries": {
         "id", "stock_id", "action", "price", "date", "position_size",
-        "stop_loss", "target_price", "reason", "reference", "created_at", "updated_at",
+        "stop_loss", "target_price", "reason", "reference",
+        "ai_review", "ai_review_memo_id",
+        "created_at", "updated_at",
     },
     "market_scan_universe": {
         "id", "ticker", "company_name", "exchange", "market_cap",
+        "sector", "industry", "last_price", "last_volume",
         "last_seen_at", "added_at",
     },
     "market_breakout_scans": {

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 730">
+<style>text { font-family: Inter, -apple-system, Arial, sans-serif; }</style>
+<defs>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
+  <marker id="aV" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#7c3aed"/></marker>
+  <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#6b7280"/></marker>
+  <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000015"/></filter>
+</defs>
+<rect width="1200" height="730" fill="#f8fafc"/>
+<text x="600" y="30" font-size="18" font-weight="700" text-anchor="middle" fill="#0f172a">MA150 Tracker / Workbench → Cockpit · System Architecture</text>
+<text x="600" y="48" font-size="11" text-anchor="middle" fill="#64748b">React 18 + FastAPI + LiteLLM · cockpit branch · 2026-04-29</text>
+<rect x="15" y="58" width="1170" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+<text x="52" y="77" font-size="9" font-weight="700" fill="#1d4ed8">BROWSER</text>
+<rect x="110" y="81" width="130" height="22" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+<text x="175" y="96" font-size="9.5" text-anchor="middle" fill="#1d4ed8">/ workbench</text>
+<rect x="265" y="81" width="130" height="22" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+<text x="330" y="96" font-size="9.5" text-anchor="middle" fill="#1d4ed8">/ cockpit</text>
+<rect x="410" y="81" width="130" height="22" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+<text x="475" y="96" font-size="9.5" text-anchor="middle" fill="#1d4ed8">/ news</text>
+<rect x="550" y="81" width="130" height="22" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+<text x="615" y="96" font-size="9.5" text-anchor="middle" fill="#1d4ed8">/ journal</text>
+<rect x="675" y="81" width="130" height="22" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+<text x="740" y="96" font-size="9.5" text-anchor="middle" fill="#1d4ed8">/ logs</text>
+<text x="1100" y="83" font-size="9" text-anchor="middle" fill="#64748b">React Router v6</text>
+<text x="1100" y="96" font-size="9" text-anchor="middle" fill="#64748b">+ TopNav</text>
+<rect x="15" y="125" width="382" height="130" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" filter="url(#sh)"/>
+<text x="206" y="143" font-size="11" font-weight="700" text-anchor="middle" fill="#15803d">WORKBENCH</text>
+<rect x="28" y="149" width="130" height="21" rx="4" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+<text x="93" y="163" font-size="9" font-weight="600" text-anchor="middle" fill="#15803d">WidgetRegistry.ts</text>
+<rect x="168" y="149" width="100" height="21" rx="4" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+<text x="218" y="163" font-size="9" font-weight="600" text-anchor="middle" fill="#15803d">Zustand stores</text>
+<rect x="278" y="149" width="110" height="21" rx="4" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+<text x="333" y="163" font-size="9" font-weight="600" text-anchor="middle" fill="#15803d">lib/api/* (9 clients)</text>
+<text x="28" y="184" font-size="9.5" fill="#374151">8 widgets: Chart · Fundamentals · Pullback</text>
+<text x="28" y="199" font-size="9.5" fill="#374151">Watchlist · QuickAdd · MarketBreakout · News</text>
+<text x="28" y="214" font-size="9.5" fill="#374151">react-grid-layout drag/resize</text>
+<text x="28" y="231" font-size="8.5" font-style="italic" fill="#6b7280">src/workbench/  src/lib/api/</text>
+<text x="28" y="245" font-size="8.5" font-style="italic" fill="#6b7280">src/store/useAppStore.ts + useLayoutStore.ts</text>
+<rect x="409" y="125" width="382" height="130" rx="8" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.5" filter="url(#sh)"/>
+<text x="600" y="143" font-size="11" font-weight="700" text-anchor="middle" fill="#7e22ce">COCKPIT</text>
+<rect x="422" y="149" width="140" height="21" rx="4" fill="#f3e8ff" stroke="#c084fc" stroke-width="1"/>
+<text x="492" y="163" font-size="9" font-weight="600" text-anchor="middle" fill="#7e22ce">CockpitRegistry.ts</text>
+<rect x="572" y="149" width="105" height="21" rx="4" fill="#f3e8ff" stroke="#c084fc" stroke-width="1"/>
+<text x="624" y="163" font-size="9" font-weight="600" text-anchor="middle" fill="#7e22ce">cockpitStore</text>
+<rect x="687" y="149" width="96" height="21" rx="4" fill="#c4b5fd" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="735" y="163" font-size="9" font-weight="700" text-anchor="middle" fill="#5b21b6">aiApi.ts</text>
+<text x="422" y="184" font-size="9.5" fill="#374151">8 widgets: MarketRegime · SetupMonitor · Chart</text>
+<text x="422" y="199" font-size="9.5" fill="#374151">Decision · Position · PendingOrders · Action · Pool</text>
+<text x="422" y="214" font-size="9.5" fill="#7e22ce">AI: CandidateRanker · Contradictions · SetupExplainer</text>
+<text x="422" y="229" font-size="9.5" fill="#7e22ce">TradePlan · NewsSummaryBar</text>
+<text x="422" y="245" font-size="8.5" font-style="italic" fill="#6b7280">src/cockpit/  src/cockpit/lib/api/ (9 clients)</text>
+<rect x="803" y="125" width="382" height="130" rx="8" fill="#ede9fe" stroke="#a78bfa" stroke-width="1" stroke-dasharray="6,3"/>
+<text x="994" y="178" font-size="14" font-weight="700" text-anchor="middle" fill="#7c3aed">AI SUBSYSTEM</text>
+<text x="994" y="200" font-size="10" text-anchor="middle" fill="#6d28d9">Backend only · app/ai/</text>
+<text x="994" y="220" font-size="9" text-anchor="middle" fill="#8b5cf6">gateway · routing · budget · guardrail</text>
+<text x="994" y="236" font-size="9" text-anchor="middle" fill="#8b5cf6">schemas (7) · memo_repo</text>
+<line x1="206" y1="110" x2="206" y2="123" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="600" y1="110" x2="600" y2="123" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="783" y1="159" x2="801" y2="159" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#aV)"/>
+<rect x="15" y="270" width="382" height="80" rx="8" fill="#fefce8" stroke="#fde68a" stroke-width="1.5" filter="url(#sh)"/>
+<text x="206" y="288" font-size="11" font-weight="700" text-anchor="middle" fill="#92400e">CORE ROUTERS (10)</text>
+<text x="28" y="307" font-size="9.5" fill="#374151">watchlist · stocks · signals · data · market</text>
+<text x="28" y="322" font-size="9.5" fill="#374151">journal · logs · news · layouts · admin</text>
+<text x="200" y="341" font-size="8.5" font-style="italic" fill="#78350f">app/routers/*.py</text>
+<rect x="409" y="270" width="382" height="80" rx="8" fill="#fefce8" stroke="#fde68a" stroke-width="1.5" filter="url(#sh)"/>
+<text x="600" y="288" font-size="11" font-weight="700" text-anchor="middle" fill="#92400e">COCKPIT ROUTERS (10)</text>
+<text x="422" y="307" font-size="9.5" fill="#374151">regime · setup · decision · chart · pool</text>
+<text x="422" y="322" font-size="9.5" fill="#374151">positions · pending_orders · actions · earnings</text>
+<text x="422" y="337" font-size="9.5" fill="#374151">user_settings</text>
+<text x="600" y="341" font-size="8.5" font-style="italic" fill="#78350f">app/routers/cockpit/*.py</text>
+<rect x="803" y="270" width="382" height="80" rx="8" fill="#ede9fe" stroke="#a78bfa" stroke-width="1.5" filter="url(#sh)"/>
+<text x="994" y="288" font-size="11" font-weight="700" text-anchor="middle" fill="#5b21b6">AI ROUTER</text>
+<text x="816" y="307" font-size="9.5" fill="#374151">POST /api/ai/{task_type}</text>
+<text x="816" y="322" font-size="9.5" fill="#374151">TaskTypeEnum: 7 types · noCache flag</text>
+<text x="816" y="337" font-size="9.5" fill="#374151">AiRequestEnvelope → AiResponse</text>
+<text x="900" y="341" font-size="8.5" font-style="italic" fill="#6d28d9">app/routers/ai.py</text>
+<line x1="206" y1="255" x2="206" y2="268" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="600" y1="255" x2="600" y2="268" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="791" y1="307" x2="801" y2="307" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#aV)"/>
+<rect x="15" y="365" width="382" height="93" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" filter="url(#sh)"/>
+<text x="206" y="382" font-size="11" font-weight="700" text-anchor="middle" fill="#15803d">CORE SERVICES</text>
+<text x="28" y="401" font-size="9.5" fill="#374151">data_refresh · market_refresh · news_service</text>
+<text x="28" y="416" font-size="9.5" fill="#374151">signal_engine · stock_detail · journal</text>
+<text x="28" y="431" font-size="9.5" fill="#374151">watchlist · universe_refresh · market_scanner</text>
+<rect x="220" y="440" width="170" height="17" rx="3" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+<text x="305" y="452" font-size="9" font-weight="600" text-anchor="middle" fill="#15803d">APScheduler (refresh_job.py)</text>
+<rect x="409" y="365" width="382" height="93" rx="8" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.5" filter="url(#sh)"/>
+<text x="600" y="382" font-size="11" font-weight="700" text-anchor="middle" fill="#7e22ce">COCKPIT SERVICES (16)</text>
+<text x="422" y="401" font-size="9.5" fill="#374151">market_regime · setup · decision · chart</text>
+<text x="422" y="416" font-size="9.5" fill="#374151">pool · position · pending_order · action</text>
+<text x="422" y="431" font-size="9.5" fill="#374151">earnings · sizer · last_close_loader</text>
+<rect x="422" y="440" width="185" height="17" rx="3" fill="#f3e8ff" stroke="#c084fc" stroke-width="1"/>
+<text x="514" y="452" font-size="9" font-weight="600" text-anchor="middle" fill="#7e22ce">journal_review_service (calls AI)</text>
+<rect x="803" y="365" width="382" height="93" rx="8" fill="#ede9fe" stroke="#a78bfa" stroke-width="1.5" filter="url(#sh)"/>
+<text x="994" y="382" font-size="11" font-weight="700" text-anchor="middle" fill="#5b21b6">AI GATEWAY</text>
+<text x="816" y="401" font-size="9.5" fill="#374151">1 Validate → 2 Cache? → 3 Budget →</text>
+<text x="816" y="416" font-size="9.5" fill="#374151">4 Route → 5 LiteLLM call →</text>
+<text x="816" y="431" font-size="9.5" fill="#374151">6 Schema validate → 7 Guardrail →</text>
+<text x="816" y="446" font-size="9.5" fill="#374151">8 Memo write → GatewayResult</text>
+<text x="920" y="452" font-size="8.5" font-style="italic" fill="#6d28d9">app/ai/gateway.py</text>
+<line x1="206" y1="350" x2="206" y2="363" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="600" y1="350" x2="600" y2="363" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="994" y1="350" x2="994" y2="363" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#aV)"/>
+<line x1="791" y1="447" x2="801" y2="447" stroke="#7c3aed" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#aV)"/>
+<rect x="15" y="472" width="775" height="110" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5" filter="url(#sh)"/>
+<text x="403" y="490" font-size="11" font-weight="700" text-anchor="middle" fill="#9a3412">DATA LAYER</text>
+<rect x="28" y="496" width="195" height="42" rx="4" fill="#ffedd5" stroke="#fb923c" stroke-width="1"/>
+<text x="125" y="512" font-size="10" font-weight="600" text-anchor="middle" fill="#c2410c">Repositories (18)</text>
+<text x="125" y="527" font-size="8.5" text-anchor="middle" fill="#78350f">SQLAlchemy 2.0 sessions</text>
+<rect x="233" y="496" width="195" height="42" rx="4" fill="#ffedd5" stroke="#fb923c" stroke-width="1"/>
+<text x="330" y="512" font-size="10" font-weight="600" text-anchor="middle" fill="#c2410c">ORM Models (18)</text>
+<text x="330" y="527" font-size="8.5" text-anchor="middle" fill="#78350f">SQLAlchemy declarative</text>
+<rect x="438" y="496" width="145" height="42" rx="4" fill="#fed7aa" stroke="#f97316" stroke-width="2"/>
+<text x="510" y="512" font-size="10" font-weight="700" text-anchor="middle" fill="#9a3412">SQLite DB</text>
+<text x="510" y="527" font-size="8.5" text-anchor="middle" fill="#78350f">stock_portal.db</text>
+<text x="28" y="553" font-size="9" fill="#374151">Tables: stock · position · pending_order · market_regime · setup_snapshot · daily_bar</text>
+<text x="28" y="567" font-size="9" fill="#374151">earnings_event · news_article_cache · cockpit_pool_cache · signal · journal_entry</text>
+<text x="28" y="581" font-size="9" fill="#374151">system_log · user_settings · ai_memo · market_index · pullback · daily_payload_cache</text>
+<rect x="803" y="472" width="382" height="110" rx="8" fill="#f0f9ff" stroke="#7dd3fc" stroke-width="1.5" filter="url(#sh)"/>
+<text x="994" y="490" font-size="11" font-weight="700" text-anchor="middle" fill="#075985">AI STORAGE &amp; EXTERNAL</text>
+<rect x="816" y="496" width="145" height="42" rx="4" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1.5"/>
+<text x="888" y="512" font-size="9.5" font-weight="700" text-anchor="middle" fill="#0369a1">LiteLLM</text>
+<text x="888" y="527" font-size="8.5" text-anchor="middle" fill="#0c4a6e">multi-provider</text>
+<rect x="971" y="496" width="100" height="42" rx="4" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1"/>
+<text x="1021" y="512" font-size="9.5" font-weight="600" text-anchor="middle" fill="#0369a1">ai_memo</text>
+<text x="1021" y="527" font-size="8.5" text-anchor="middle" fill="#0c4a6e">result cache</text>
+<rect x="1081" y="496" width="90" height="19" rx="3" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1"/>
+<text x="1126" y="509" font-size="9" text-anchor="middle" fill="#0369a1">FMP API</text>
+<rect x="1081" y="519" width="90" height="19" rx="3" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1"/>
+<text x="1126" y="532" font-size="9" text-anchor="middle" fill="#0369a1">Polygon.io</text>
+<text x="816" y="555" font-size="9" fill="#374151">routing.py: task_type → model + tier</text>
+<text x="816" y="569" font-size="9" fill="#374151">budget.py · guardrail.py</text>
+<text x="816" y="581" font-size="9" fill="#374151">fmp_client.py · polygon_client.py</text>
+<line x1="206" y1="458" x2="206" y2="470" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="600" y1="458" x2="600" y2="470" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aB)"/>
+<line x1="890" y1="458" x2="890" y2="470" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#aV)"/>
+<line x1="1021" y1="458" x2="1021" y2="470" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aV)"/>
+<path d="M 390,445 C 640,445 780,519 1081,519" stroke="#6b7280" stroke-width="1" stroke-dasharray="4,2" fill="none" marker-end="url(#aG)"/>
+<rect x="803" y="595" width="382" height="115" rx="8" fill="#faf5ff" stroke="#c084fc" stroke-width="1" filter="url(#sh)"/>
+<text x="994" y="613" font-size="11" font-weight="700" text-anchor="middle" fill="#6b21a8">AI SCHEMAS (7 Task Types)</text>
+<text x="816" y="631" font-size="9.5" fill="#374151">market_narrator (critical) · setup_explainer</text>
+<text x="816" y="646" font-size="9.5" fill="#374151">candidate_ranker (critical) · trade_plan (critical)</text>
+<text x="816" y="661" font-size="9.5" fill="#374151">contradiction_detector · news_summarizer</text>
+<text x="816" y="676" font-size="9.5" fill="#374151">journal_assistant (complex)</text>
+<text x="816" y="691" font-size="8.5" fill="#374151">Each: Input/Output Pydantic · SYSTEM_PROMPT · guardrail()</text>
+<text x="1010" y="702" font-size="8.5" font-style="italic" fill="#6b7280">app/ai/schemas/</text>
+<line x1="994" y1="582" x2="994" y2="593" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#aV)"/>
+<rect x="15" y="595" width="775" height="115" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+<text x="27" y="613" font-size="10" font-weight="700" fill="#374151">Legend</text>
+<line x1="27" y1="628" x2="68" y2="628" stroke="#2563eb" stroke-width="2" marker-end="url(#aB)"/>
+<text x="73" y="632" font-size="9.5" fill="#374151">HTTP data flow</text>
+<line x1="220" y1="628" x2="261" y2="628" stroke="#7c3aed" stroke-width="2" marker-end="url(#aV)"/>
+<text x="266" y="632" font-size="9.5" fill="#374151">AI request / call</text>
+<line x1="400" y1="628" x2="441" y2="628" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aV)"/>
+<text x="446" y="632" font-size="9.5" fill="#374151">cache write (memo)</text>
+<line x1="600" y1="628" x2="641" y2="628" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aG)"/>
+<text x="646" y="632" font-size="9.5" fill="#374151">external API call</text>
+<text x="27" y="656" font-size="10" font-weight="600" fill="#374151">AI Request Flow (happy path):</text>
+<text x="27" y="673" font-size="9.5" fill="#374151">① Cockpit AI component → aiApi.ts</text>
+<text x="27" y="688" font-size="9.5" fill="#374151">② POST /api/ai/{task_type} → AI Router → AiGateway.run()</text>
+<text x="27" y="703" font-size="9.5" fill="#374151">③ [cache hit → return] OR budget → LiteLLM → schema validate → guardrail → memo.save() → GatewayResult</text>
+<text x="1185" y="724" font-size="8" text-anchor="end" fill="#94a3b8">MA150 Tracker · cockpit branch · fireworks-tech-graph</text>
+</svg>

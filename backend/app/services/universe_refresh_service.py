@@ -32,13 +32,18 @@ from app.repositories.system_log_repository import SystemLogRepository
 
 LOG_SOURCE = "universe_refresher"
 
+# Mutable single-element list used as a thread-local-free counter to signal
+# unexpected parse exceptions from _parse_screener_row back to refresh().
+# reset to 0 after each refresh() call.
+_PARSE_EXCEPTION_COUNTER: list[int] = [0]
+
 
 class _FmpClientLike(Protocol):
     def get_screener_universe(
         self,
         market_cap_gte: int = ...,
         exchanges: tuple[str, ...] = ...,
-        limit_per_exchange: int = ...,
+        page_size: int = ...,
     ) -> list[dict[str, Any]]: ...
 
 
@@ -73,12 +78,29 @@ class UniverseRefreshService:
 
         rows: list[UniverseUpsertRow] = []
         skipped = 0
+        sector_missing = 0
+        industry_missing = 0
+        price_missing = 0
+        volume_missing = 0
+        parse_exception = 0
+
         for item in raw:
             parsed = _parse_screener_row(item)
             if parsed is None:
                 skipped += 1
                 continue
+            if parsed.sector is None:
+                sector_missing += 1
+            if parsed.industry is None:
+                industry_missing += 1
+            if parsed.last_price is None:
+                price_missing += 1
+            if parsed.last_volume is None:
+                volume_missing += 1
             rows.append(parsed)
+
+        parse_exception = _PARSE_EXCEPTION_COUNTER[0]
+        _PARSE_EXCEPTION_COUNTER[0] = 0  # reset for next call
 
         now = datetime.now(timezone.utc)
         self.repo.upsert_many(rows, now=now)
@@ -86,8 +108,18 @@ class UniverseRefreshService:
         self.log_repo.create(
             level="OK",
             source=LOG_SOURCE,
-            message=f"universe refreshed: upserted={len(rows)} skipped={skipped}",
+            message=(
+                f"universe refreshed: upserted={len(rows)} skipped={skipped}"
+                f" sector_missing={sector_missing} industry_missing={industry_missing}"
+                f" price_missing={price_missing} volume_missing={volume_missing}"
+            ),
         )
+        if parse_exception > 0:
+            self.log_repo.create(
+                level="WARN",
+                source=LOG_SOURCE,
+                message=f"universe refresh: unexpected parse errors parse_exception={parse_exception}",
+            )
         return UniverseRefreshResult(
             status="ok", upserted=len(rows), skipped=skipped, error=None
         )
@@ -110,9 +142,39 @@ def _parse_screener_row(item: Any) -> UniverseUpsertRow | None:
         return None
     company_name = item.get("companyName") or symbol
     exchange = item.get("exchange") or item.get("exchangeShortName") or ""
+
+    # Optional fields: degrade to None on missing or bad type rather than
+    # skipping the ticker. FMP ETFs routinely omit sector/industry; price/volume
+    # can arrive as "N/A" strings when the screener snapshot is stale.
+    try:
+        sector_raw = item.get("sector")
+        sector: str | None = str(sector_raw)[:64] if sector_raw else None
+
+        industry_raw = item.get("industry")
+        industry: str | None = str(industry_raw)[:128] if industry_raw else None
+
+        price_raw = item.get("price")
+        try:
+            last_price: float | None = float(price_raw) if price_raw is not None else None  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            last_price = None  # e.g. "N/A" string from stale screener snapshot
+
+        volume_raw = item.get("volume")
+        try:
+            last_volume: int | None = int(volume_raw) if volume_raw is not None else None  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            last_volume = None
+    except Exception:  # noqa: BLE001 — hard guard; unexpected schema breakage
+        _PARSE_EXCEPTION_COUNTER[0] += 1
+        return None
+
     return UniverseUpsertRow(
         ticker=symbol,
         company_name=str(company_name)[:200],
         exchange=str(exchange)[:20],
         market_cap=market_cap,
+        sector=sector,
+        industry=industry,
+        last_price=last_price,
+        last_volume=last_volume,
     )

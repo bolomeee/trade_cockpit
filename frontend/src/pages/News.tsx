@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AiNewsSummaryBar } from '@/components/news/AiNewsSummaryBar'
 import ReactGridLayout, {
   useContainerWidth,
   verticalCompactor,
@@ -39,6 +40,7 @@ export default function News() {
 
   return (
     <div className="p-4">
+      <AiNewsSummaryBar />
       <div ref={containerRef}>
         {mounted && layout.length > 0 && (
           <ReactGridLayout
@@ -46,6 +48,7 @@ export default function News() {
             layout={layout}
             gridConfig={{ cols: 12, rowHeight: 40, margin: [6, 6] }}
             dragConfig={{ enabled: true, handle: '.widget-handle' }}
+            resizeConfig={{ handles: ['se', 'sw', 'nw'] }}
             compactor={verticalCompactor}
             onLayoutChange={handleChange}
           >
@@ -54,7 +57,7 @@ export default function News() {
               if (!manifest) return <div key={item.i} />
               return (
                 <div key={item.i}>
-                  <WidgetShell title={manifest.title} onClose={() => handleClose(item.i)}>
+                  <WidgetShell title={manifest.title} onClose={() => handleClose(item.i)} noPaddingRight={manifest.noPaddingRight}>
                     {item.i === 'news.table' ? (
                       <NewsWidget
                         onOpenArticle={setSelectedArticle}

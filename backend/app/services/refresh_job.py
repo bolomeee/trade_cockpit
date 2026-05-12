@@ -17,7 +17,7 @@ import logging
 import threading
 import traceback
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -27,6 +27,12 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.external.fmp_client import FmpClient
 from app.repositories.stock_repository import StockRepository
+from app.services.cockpit.earnings_service import EarningsService
+from app.services.cockpit.journal_review_service import JournalReviewService
+from app.services.cockpit.market_regime_service import MarketRegimeService
+from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
+from app.services.cockpit.pool_cache_service import PoolCacheService
+from app.services.cockpit.setup_service import SetupService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
 from app.services.market_scanner_service import MarketScannerService
@@ -41,6 +47,18 @@ DAILY_REFRESH_CRON = "30 21 * * 1-5"
 SCHEDULER_JOB_ID = "ma150_daily_refresh"
 SCANNER_JOB_ID = "ma150_market_scanner"
 UNIVERSE_JOB_ID = "ma150_universe_refresh"
+EARNINGS_JOB_ID = "cockpit_earnings_refresh"
+REGIME_JOB_ID = "cockpit_regime_refresh"
+SETUP_JOB_ID = "cockpit_setup_refresh"
+PENDING_ORDERS_EXPIRER_CRON = "35 22 * * 1-5"
+PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
+# F205-e: pool cache weekly rebuild — Mon 06:30 UTC
+# Avoids: universe_cron (1st of month 05:00), earnings_cron (weekdays 05:30),
+#         setup_cron (weekdays 22:30). Gives 8h buffer after the prior day's setup tick.
+POOL_CACHE_CRON = "30 6 * * 1"
+POOL_CACHE_JOB_ID = "cockpit_pool_cache_rebuild"
+# F211-d2: monthly journal review — 1st of month 06:00 UTC (1h after universe at 05:00)
+JOURNAL_MONTHLY_JOB_ID = "f211_journal_monthly_review"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -139,6 +157,13 @@ class RefreshJobManager:
                     MarketRefreshService(db, fmp=fmp).refresh_all()
                 except Exception:  # noqa: BLE001
                     logger.error("market refresh failed\n%s", traceback.format_exc())
+                # Regime ETF refresh + recompute. Isolated so a failure here
+                # does not mark the overall job failed.
+                try:
+                    MarketRefreshService(db, fmp=fmp).refresh_regime_etfs()
+                    MarketRegimeService(db).compute_and_store()
+                except Exception:  # noqa: BLE001
+                    logger.error("regime refresh failed\n%s", traceback.format_exc())
 
             with self._lock:
                 self._state.status = "completed"
@@ -212,6 +237,74 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F204-b: earnings calendar refresh, weekdays 05:30 UTC (before scanner at 06:15)
+        sched.add_job(
+            _earnings_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.earnings_cron_hour,
+                minute=settings.earnings_cron_minute,
+                timezone="UTC",
+            ),
+            id=EARNINGS_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
+        # F201-b: regime ETF refresh + scoring, weekdays 22:15 UTC (after main refresh at 21:30)
+        sched.add_job(
+            _regime_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.regime_cron_hour,
+                minute=settings.regime_cron_minute,
+                timezone="UTC",
+            ),
+            id=REGIME_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
+        # F202-b: setup snapshot scan, weekdays 22:30 UTC (after regime at 22:15)
+        sched.add_job(
+            _setup_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.setup_cron_hour,
+                minute=settings.setup_cron_minute,
+                timezone="UTC",
+            ),
+            id=SETUP_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
+        # F206-b2: pending_orders EXPIRED auto-transition, weekdays 22:35 UTC (after setup tick)
+        sched.add_job(
+            _pending_orders_expirer_tick,
+            trigger=CronTrigger.from_crontab(PENDING_ORDERS_EXPIRER_CRON, timezone="UTC"),
+            id=PENDING_ORDERS_EXPIRER_JOB_ID,
+            args=[session_factory],
+            replace_existing=True,
+        )
+        # F205-e: pool cache weekly rebuild, Mon 06:30 UTC (D081)
+        sched.add_job(
+            _pool_cache_tick,
+            trigger=CronTrigger.from_crontab(POOL_CACHE_CRON, timezone="UTC"),
+            id=POOL_CACHE_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
+        # F211-d2: monthly journal review cron (1st of month 06:00 UTC, after universe at 05:00)
+        sched.add_job(
+            _journal_monthly_tick,
+            trigger=CronTrigger(
+                day=settings.journal_monthly_cron_day,
+                hour=settings.journal_monthly_cron_hour,
+                minute=settings.journal_monthly_cron_minute,
+                timezone="UTC",
+            ),
+            id=JOURNAL_MONTHLY_JOB_ID,
+            args=[session_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -262,6 +355,82 @@ def _universe_tick(
             UniverseRefreshService(db, fmp=fmp_factory()).refresh()
     except Exception:  # noqa: BLE001
         logger.error("universe tick failed\n%s", traceback.format_exc())
+
+
+def _earnings_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for EarningsService (F204-b): weekdays 05:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            EarningsService(db, fmp=fmp_factory()).fetch_and_store()
+    except Exception:  # noqa: BLE001
+        logger.error("earnings tick failed\n%s", traceback.format_exc())
+
+
+def _regime_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for regime ETF refresh + scoring (F201-b): weekdays 22:15 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            fmp = fmp_factory()
+            MarketRefreshService(db, fmp=fmp).refresh_regime_etfs()
+            MarketRegimeService(db).compute_and_store()
+    except Exception:  # noqa: BLE001
+        logger.error("regime tick failed\n%s", traceback.format_exc())
+
+
+def _setup_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for setup snapshot scan (F202-b): weekdays 22:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            SetupService(db).compute_and_store_all()
+    except Exception:  # noqa: BLE001
+        logger.error("setup tick failed\n%s", traceback.format_exc())
+
+
+def _pending_orders_expirer_tick(session_factory: SessionFactory) -> None:
+    """APScheduler tick for pending_orders auto-EXPIRED (F206-b2): weekdays 22:35 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            expire_due_pending_orders(db)
+    except Exception:  # noqa: BLE001
+        logger.error("pending_orders expirer tick failed\n%s", traceback.format_exc())
+
+
+def _pool_cache_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for pool cache weekly rebuild (F205-e): Mon 06:30 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            PoolCacheService(db, fmp=fmp_factory()).rebuild()
+    except Exception:  # noqa: BLE001
+        logger.error("pool cache tick failed\n%s", traceback.format_exc())
+
+
+def _journal_monthly_tick(session_factory: SessionFactory) -> None:
+    """APScheduler tick for F211-d2 monthly journal review: 1st of month 06:00 UTC."""
+    try:
+        year_month = _previous_month_utc(datetime.now(timezone.utc))
+        with _session_scope(session_factory) as db:
+            JournalReviewService(db).monthly_review_for_month(year_month)
+    except Exception:  # noqa: BLE001
+        logger.error("journal monthly tick failed\n%s", traceback.format_exc())
+
+
+def _previous_month_utc(now: datetime) -> str:
+    """Return 'YYYY-MM' for the month preceding `now` (UTC). Pure function for testability."""
+    first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_of_prev = first_of_this_month - timedelta(days=1)
+    return f"{last_of_prev.year:04d}-{last_of_prev.month:02d}"
 
 
 # ----- helpers ---------------------------------------------------------------

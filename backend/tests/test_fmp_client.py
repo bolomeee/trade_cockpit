@@ -16,6 +16,7 @@ import pytest
 
 from app.external.fmp_client import (
     FMP_BASE,
+    FMP_EP_FINANCIAL_GROWTH,
     FMP_EP_HIST_EOD,
     FMP_EP_KEY_METRICS_TTM,
     FMP_EP_RATIOS_TTM,
@@ -420,6 +421,7 @@ def test_get_company_screener_page_endpoint_and_params(clock):
     assert params["marketCapMoreThan"] == "50000000000"
     assert params["exchange"] == "NYSE"
     assert params["limit"] == "500"
+    assert params["page"] == "0"
     assert params["apikey"] == "test-key"
 
 
@@ -546,6 +548,35 @@ def test_get_screener_universe_skips_non_dict_rows(clock):
     client, _ = make_client(handler, clock)
     result = client.get_screener_universe()
     assert [r["symbol"] for r in result] == ["AAPL"]
+
+
+def test_get_screener_universe_paginates_until_last_page(clock):
+    # NYSE: page 0 → full page (2 items, page_size=2), page 1 → 1 item (< page_size, stop)
+    # NASDAQ: page 0 → empty, stop. AMEX: page 0 → empty, stop.
+    pages = {
+        "NYSE": [
+            [{"symbol": "AAPL"}, {"symbol": "MSFT"}],  # page 0 — full
+            [{"symbol": "GOOG"}],                       # page 1 — last
+        ],
+        "NASDAQ": [[]],
+        "AMEX": [[]],
+    }
+    page_counters: dict[str, int] = {"NYSE": 0, "NASDAQ": 0, "AMEX": 0}
+
+    def handler(req):
+        exchange = req.url.params["exchange"]
+        idx = page_counters[exchange]
+        page_counters[exchange] += 1
+        return ok(pages[exchange][idx])
+
+    client, calls = make_client(handler, clock)
+    result = client.get_screener_universe(page_size=2)
+
+    assert [r["symbol"] for r in result] == ["AAPL", "MSFT", "GOOG"]
+    # NYSE needs 2 requests (page 0 + page 1); NASDAQ + AMEX need 1 each → 4 total
+    assert len(calls) == 4
+    nyse_pages = [int(c.url.params["page"]) for c in calls if c.url.params["exchange"] == "NYSE"]
+    assert nyse_pages == [0, 1]
 
 
 # --- F105: sma -----------------------------------------------------------
@@ -846,3 +877,67 @@ def test_get_shares_float_returns_none_on_json_null(clock):
 
     client, _ = make_client(handler, clock)
     assert client.get_shares_float("ZZZZ") is None
+
+
+# --- get_financial_growth (F205-b) ----------------------------------------
+
+
+def test_get_financial_growth_returns_first_record(clock):
+    payload = [{"symbol": "AAPL", "date": "2024-09-30", "revenueGrowth": 0.0202}]
+
+    def handler(req):
+        return ok(payload)
+
+    client, calls = make_client(handler, clock)
+    result = client.get_financial_growth("AAPL")
+
+    assert result == payload[0]
+    assert result["revenueGrowth"] == 0.0202
+    assert calls[0].url.path.endswith(FMP_EP_FINANCIAL_GROWTH)
+    assert calls[0].url.params["symbol"] == "AAPL"
+    assert calls[0].url.params["period"] == "annual"
+    assert calls[0].url.params["limit"] == "1"
+
+
+def test_get_financial_growth_empty_array_returns_none(clock):
+    def handler(req):
+        return ok([])
+
+    client, _ = make_client(handler, clock)
+    assert client.get_financial_growth("XYZ") is None
+
+
+def test_get_financial_growth_http_error_returns_none(clock):
+    def handler(req):
+        return httpx.Response(500)
+
+    client, _ = make_client(handler, clock)
+    assert client.get_financial_growth("AAPL") is None
+
+
+def test_get_financial_growth_http_404_returns_none(clock):
+    def handler(req):
+        return httpx.Response(404)
+
+    client, _ = make_client(handler, clock)
+    assert client.get_financial_growth("UNKNOWN") is None
+
+
+def test_get_financial_growth_429_retries_then_succeeds(clock):
+    """429 on first attempt triggers backoff; second attempt succeeds."""
+    payload = [{"symbol": "AAPL", "date": "2024-09-30", "revenueGrowth": 0.05}]
+    call_count = 0
+
+    def handler(req):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return httpx.Response(429, headers={"Retry-After": "1"}, json={})
+        return ok(payload)
+
+    client, _ = make_client(handler, clock)
+    result = client.get_financial_growth("AAPL")
+
+    assert result == payload[0]
+    assert call_count == 2
+    assert clock.sleeps[0] == 1.0  # honors Retry-After

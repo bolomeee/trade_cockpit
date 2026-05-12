@@ -1291,3 +1291,708 @@ last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
 - `backend/app/services/universe_refresh_service.py`：新增正则 + 过滤分支
 - `backend/tests/test_universe_refresh_service.py`：新增 `test_refresh_skips_mutual_fund_tickers`
 - 既有污染的 `market_scan_universe` 行：下一次月度 refresh 不再续期 `last_seen_at`，`MarketScannerService.list_active(since=latest)` 自动将其排除；breakout 表每次扫描 `replace_scan` 覆盖写，下次扫描即清空。
+
+
+## D060：Cockpit 作为独立第三页（不并入 Workbench）
+
+**日期**：2026-04-24
+**触发**：v1.8 Cockpit Epic 启动，需决定 Cockpit 与现有 Workbench 的关系。
+
+**决策**：新建独立页 `/cockpit`，TopNav 三页并列（`/workbench` / `/news` / `/cockpit`）。`frontend/src/cockpit/` 与 `src/workbench/` 零交叉引用，cockpit 拥有独立 `cockpitStore`（不复用 `useAppStore.selectedSymbol`），`CockpitChartWidget` 独立实现、不共享 `ChartWidget` 代码。
+
+**放弃**：
+- 方案 B：Cockpit 作为 Workbench 新 widget。放弃原因：Cockpit 是**决策工作流**（regime → setup → decision → order），Workbench 是**自由观察工作台**，语义冲突；将 7 个 cockpit widget 塞进 Workbench 会污染 Workbench 的 SMA150 验证场景，也会让 cockpitStore / useAppStore 的所有权混乱。
+- 方案 C：共享 ChartWidget 代码。放弃原因：Cockpit 需要在图表上叠加 entry/stop/target 三条 horizontal line 及 setup annotation，Workbench 不需要；强行抽象会引入条件分支污染两端。接受代码重复换取模块解耦。
+
+**布局引擎说明（2026-04-24 design-bridge 阶段补充）**：Cockpit **沿用 react-grid-layout**（而非"固定 3 栏不可拖"），与 Workbench 共用 RGL 引擎但拥有独立的 `CockpitRegistry` / `useCockpitLayoutStore` / localStorage key（`ma150.cockpit.layouts.v1`）。默认布局按 3 列信息分组（左：regime/earnings/pool；中：chart/setup/decision；右：position/order/action），但用户可拖拽/缩放/重置。理由：(1) 易于后续迭代（增减 widget 不需改框架）；(2) 与 Workbench 视觉一致性高（WidgetShell / 紧凑表规格全站统一）；(3) Cockpit 与 Workbench 的解耦由"工作流语义 + 目录隔离 + cockpitStore 独立 + ChartWidget 不共享"四条硬约束保证，与 RGL 复用无关。
+
+**影响**：
+- 新目录 `frontend/src/cockpit/`（pages / widgets / hooks / store / api / types）
+- 新目录 `backend/app/routers/cockpit/` / `services/cockpit/`
+- ARCHITECTURE.md 依赖规则：`cockpit/` 不得 import `workbench/`，反之亦然（由 ESLint `no-restricted-imports` 硬约束）
+- CSS Token 可共享（design-spec.md 的 palette / spacing / typography 保持全站唯一）
+
+---
+
+## D061：market_indices 扩展至 17 symbol（不新建 sector_etfs）
+
+**日期**：2026-04-24
+**触发**：F201 Market Regime 需要市场宽度（SPY/QQQ/IWM）与 sector rotation（11 sector ETF）信号源。
+
+**决策**：在既有 `market_indices` 表增加 14 行 symbol：SPY / QQQ / IWM + XLK / XLY / XLF / XLI / XLE / XLV / XLC / XLP / XLU / XLB / XLRE，总计 17 行（原有 SPX / NDX / TNX 保留）。不新建 `sector_etfs` 表。
+
+**放弃**：
+- 方案 B：新建 `sector_etfs` 表。放弃原因：schema 几乎与 `market_indices` 完全一致（都是日度 OHLC + 可选辅助指标），拆两张表引入 JOIN 无净收益；ETF 与 index 都是"市场级时间序列"，语义并无本质区别。
+
+**Regime 评分默认阈值**（存入 `cockpit_params.py §1`，D070 修订，不进 .env）：
+- `RISK_ON` ≥ 80
+- `CONSTRUCTIVE` 60–80
+- `NEUTRAL` 40–60
+- `DEFENSIVE` 20–40
+- `RISK_OFF` < 20
+
+**Subscore 权重**（总分 0–100；权威来源 DATA-MODEL.md + API-CONTRACT.md；2026-04-24 F201 Sprint Contract 协商时修订）：
+SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Risk appetite(10) + Volatility stress(10) = 100
+
+> ⚠️ D061 原草案（system-design 阶段）写了不同的 6 维名称（breadth/trend/volatility/credit/rates/sentiment），与 DATA-MODEL.md 及 API-CONTRACT.md 字段冲突，已在 F201 Sprint Contract 协商阶段按 DATA-MODEL 优先级修订为上述版本。
+
+**影响**：
+- `market_indices` retention 由 5 个交易日扩展至 260 个交易日（覆盖 52-week 需求）
+- 新调度 `fetch_sector_etfs_daily`（复用既有 indices 日度 fetch 框架）
+- Regime 阈值与子项权重均写入 `cockpit_params.py §1`（D070 约定）；不新增 .env 变量
+
+---
+
+## D062：Setup 存储使用独立表 setup_snapshots（不扩 signals 表）
+
+**日期**：2026-04-24
+**触发**：F202 Setup Monitor 需要每日快照 setup 质量、distance_to_entry、reward_risk 等 cockpit 特有字段。
+
+**决策**：新建 `setup_snapshots` 表，60 天 retention。不扩 `signals` 表字段。
+
+**放弃**：
+- 方案 B：扩展 `signals` 表，增加 `setup_type` / `quality` / `distance_to_entry` / `reward_risk` 等列。放弃原因：`signals` 是 Workbench watchlist 的 EOD 信号缓存，语义是"单资产多指标快照"；Cockpit 的 setup 是"**候选交易机会**"，二者生命周期不同（signals 每日覆写、setup 有状态流转 new → triggered → invalidated），混表会让 `signals` 膨胀并破坏现有 F104 watchlist 的数据契约。
+
+**影响**：
+- 新表 `setup_snapshots`（Alembic migration）
+- 新 service `cockpit/setup_service.py`（复用 workbench 的 TA 计算但独立落表）
+- 60 天 retention 由 APScheduler 日度任务清理
+
+---
+
+## D063：CockpitChartWidget 独立实现 + 独立 `/api/cockpit/chart/{ticker}` endpoint
+
+**日期**：2026-04-24
+**触发**：Cockpit Decision Panel 需要在图表上叠加 entry / stop / target 横线 + setup annotation；Workbench `ChartWidget` 不具备这些需求。
+
+**决策**：新建 `CockpitChartWidget`（基于 lightweight-charts 重新实现，不 import Workbench 的 `ChartWidget`）+ 新 endpoint `GET /api/cockpit/chart/{ticker}?range=...`（复用后端 OHLC repository 但走独立 service 层）。
+
+**放弃**：方案 B：ChartWidget 抽象出可配置 overlay prop。放弃原因：见 D060。
+
+**影响**：
+- `frontend/src/cockpit/widgets/CockpitChartWidget.tsx`
+- `backend/app/routers/cockpit/chart.py` + `services/cockpit/chart_service.py`
+
+---
+
+## D064：选 LiteLLM 作为 AI 抽象层 + 单一动态 endpoint `/api/ai/{task_type}`
+
+**日期**：2026-04-24
+**触发**：v2.0 AI 层需要跨 provider（OpenAI / Anthropic / local）、结构化输出、fallback、成本追踪。
+
+**决策**：
+1. 选 LiteLLM `>=1.83,<2.0`（pin 到 pyproject.toml），已通过 context7 文档验证四项核心能力：Router / `response_format=Pydantic` / fallbacks / budget。
+2. AI endpoint 采用**单一动态入口** `POST /api/ai/{task_type}`，`task_type` 为 path param（narrate_regime / explain_setup / rank_pool / contradict_plan / summarize_news / journal_reflect 等），后端 dispatch 到对应 handler。
+3. **三 tier 模型配置**（.env 驱动，provider 可自由替换）：
+   - `AI_MODEL_DEFAULT` — 低成本 nano（narrate / summarize / journal_reflect）
+   - `AI_MODEL_CRITICAL` — 中等 mini（contradict_plan / decision-critical 路径）
+   - `AI_MODEL_COMPLEX` — 完整 full（rank_pool 等推理密集任务）
+
+**放弃**：
+- 直接调用 OpenAI SDK：放弃原因：provider lock-in、无法 fallback。
+- 方案 B：每 task 独立 endpoint（如 `POST /api/ai/narrate/regime`）。放弃原因：endpoint 蔓延；task_type 本质是 string dispatch，单入口 + `AiTaskType` enum 更易扩展。
+
+**AI Gateway 架构**（`backend/app/ai/`）：
+- `gateway.py` — 入口：校验 task_type → 查 memo 去重 → budget check → routing → guardrail → 落 ai_memos
+- `routing.py` — task_type → tier → LiteLLM Router config
+- `schemas/` — 每个 task_type 的 Pydantic 响应 schema（response_format 锁定）
+- `budget.py` — 月度预算 cap（`AI_MONTHLY_BUDGET_USD`）
+- `memo_repo.py` — 读写 `ai_memos`
+- `guardrail.py` — 每个 task_type 的 post-validate hook
+- `errors.py` — `AiProviderError` / `AiSchemaError` / `AiBudgetExceeded` / `AiGuardrailViolation`
+
+**影响**：
+- pyproject.toml 增 `litellm>=1.83,<2.0`
+- .env 增 `OPENAI_API_KEY` / `AI_MODEL_DEFAULT` / `AI_MODEL_CRITICAL` / `AI_MODEL_COMPLEX` / `AI_MONTHLY_BUDGET_USD` / `AI_MEMO_CACHE_TTL_HOURS` / `AI_SCHEMA_VERSION`
+- 新表 `ai_memos`（audit + dedup cache 双用途）
+- API-CONTRACT.md 新增 AI 错误码：`AI_PROVIDER_ERROR` / `AI_SCHEMA_ERROR` / `AI_BUDGET_EXCEEDED` / `AI_GUARDRAIL_VIOLATION`
+
+---
+
+## D065：Earnings 数据仅 Cockpit 消费 + 每日增量 upsert
+
+**日期**：2026-04-24
+**触发**：F204 Earnings Panel 需要财报日历；Workbench / News widget 是否也应消费？
+
+**决策**：
+1. Earnings 数据只给 Cockpit 使用（Workbench / News 不读取 `earnings_events`），避免 widget 边界污染。
+2. 使用 FMP `/stable/earnings-calendar`，每日一次增量 upsert（FMP 对未来 estimate 会更新，必须 upsert 而非 append）。
+3. 拉取范围：`today - 7d ~ today + 14d`，老数据按 90 天 retention 清理。
+
+**放弃**：方案 B：每周一次拉取。放弃原因：estimate 更新频率高于每周，会遗漏分析师调整。
+
+**影响**：
+- 新表 `earnings_events`
+- 新调度 `EARNINGS_CRON`（default `0 18 * * *` 美东时间）
+- `backend/app/routers/cockpit/earnings.py`
+- FMP endpoint 映射新增 `/stable/earnings-calendar`
+
+---
+
+## D066：user_settings 单行单用户（CHECK id=1）+ 仓位公式
+
+**日期**：2026-04-24
+**触发**：F207 Position Manager 需要持久化 account size / risk per trade / exposure caps / regime override。
+
+**决策**：
+1. 新表 `user_settings`，`CHECK(id=1)` 约束强制单行（当前为个人单用户；未来多用户场景再改 schema）。
+2. 不走 localStorage（localStorage 不同步后端，无法支撑服务端 regime 计算时的风险上限）。
+3. **仓位公式**（F207 硬约束）：
+   ```
+   shares = floor(account_size × min(user_risk_pct, regime_risk_pct, override_pct) / 100
+                  / (entry_price - stop_price))
+   ```
+   三个 risk pct 取**最小值**（安全优先），其中 `regime_risk_pct` 来自 regime 分层默认值，`override_pct` 允许用户在 user_settings 中手动下调。
+
+**放弃**：方案 B：risk 参数每次交易手输。放弃原因：易错、不符合"慢交易系统"的纪律化目标。
+
+**影响**：
+- 新表 `user_settings`
+- `cockpit/position_sizer.py`（纯函数，不走 LLM）
+- F206 Position Manager 新建/编辑 position 时调用 position_sizer 自动计算 shares
+
+---
+
+## D067：positions / pending_orders 的 ticker 字段不设 FK
+
+**日期**：2026-04-24
+**触发**：Position / Pending Order 表需要引用 ticker，是否 FK 到 `market_scan_universe.ticker`？
+
+**决策**：`positions.ticker` 和 `pending_orders.ticker` 不设 FK，仅建 index。原因：
+1. `market_scan_universe` 的 `active` 状态会变化（月度 refresh 后部分 ticker 退出），但 positions / pending_orders 是**历史不可变**记录，不应随 universe 变动而受限。
+2. 用户可能持有不在 scan universe 中的 ticker（OTC / 新上市），FK 会阻止录入。
+
+**放弃**：方案 B：FK 到 `market_scan_universe`。放弃原因：如上。
+
+**影响**：
+- `positions` / `pending_orders` 表仅对 `ticker` 建 index（用于按 ticker 查询）
+- 前端 ticker 输入时做**软校验**（查不到 scan universe 给 warning 但不阻止提交）
+
+---
+
+## D068：F210 trade_plan 确定性护栏（entry / stop / size post-validate）
+
+**日期**：2026-04-24
+**触发**：F210 Ranker/Planner 由 LLM 生成 trade_plan；LLM 可能幻觉出不符合风险约束的 entry / stop / size。
+
+**决策**：
+1. LLM 生成 `(entry, stop, target)` 后，后端 `guardrail.py` **必须重算** shares（使用 D066 的公式）并**覆写** LLM 返回的 shares 字段。
+2. `/api/cockpit/decision/{ticker}` 响应中增加 `deterministicHash` 字段：`SHA256(ticker + entry + stop + risk_pct + date)`，作为幂等锚点；前端在创建 pending_order 时必须回传该 hash，后端校验一致才入表。
+3. 任何 guardrail 失败（entry ≤ stop、reward_risk < 1、stop 超过 ATR×3 等）抛 `AiGuardrailViolation`，不落表不返回计划。
+
+**放弃**：完全信任 LLM。放弃原因：违反"慢交易系统"的安全原则。
+
+**影响**：
+- `backend/app/ai/guardrail.py` 为每个 task_type 实现 post-validate hook
+- API-CONTRACT.md `POST /api/ai/rank_pool` 和 `/api/cockpit/decision/{ticker}` 响应 schema 增 `deterministicHash`
+
+---
+
+## D069：ai_memos 双用途（audit + dedup cache）+ schema_version 失效
+
+**日期**：2026-04-24
+**触发**：AI 调用需要审计（成本 / 错误追踪）+ 去重（同一 ticker + task_type + setup_hash 在短窗口内重复调用会烧钱）。
+
+**决策**：
+1. `ai_memos` 表同时承担审计和缓存双角色，不拆两表。
+2. 缓存 key：`(task_type, input_hash, schema_version)`，其中 `input_hash = SHA256(normalized_input_json)`。
+3. 命中缓存条件：同 key + `created_at > now() - AI_MEMO_CACHE_TTL_HOURS`（默认 24h）+ `schema_version` 相同。
+4. `AI_SCHEMA_VERSION` 升级（例如 Pydantic schema 字段变更）时，旧缓存自动失效。
+5. 月度预算 `AI_MONTHLY_BUDGET_USD` 由 `budget.py` 累加 `ai_memos.cost_usd`；超额抛 `AiBudgetExceeded`。
+
+**放弃**：拆 `ai_audit` + `ai_cache` 两表。放弃原因：字段 95% 重叠，拆表只是概念洁癖，无实际收益。
+
+**影响**：
+- 新表 `ai_memos`（字段：task_type / input_hash / schema_version / response_json / model / tier / cost_usd / latency_ms / error_code / created_at）
+- 唯一索引 `(task_type, input_hash, schema_version)` 支持快速去重查询
+- `budget.py` 每次调用前 SUM 当月 cost_usd
+
+---
+
+## D070：Cockpit 参数管理用 Pydantic BaseModel 单文件集中
+
+**日期**：2026-04-24（F200-a Sprint Contract 起草同步确定）
+**触发**：F201–F204 涉及大量算法阈值 / 权重 / 规则参数（regime 6 子项权重 / 5 档阈值 / ready 7 门 / setup quality A/B/C / earnings risk 天数 / entry/stop 规则 / 2R/3R 倍数 / MA 周期 / RS 窗口 / retention 天数 等），需要在"散落魔法值"与"过度工程化（YAML / DB / UI）"之间取平衡。
+
+**决策**：
+1. Cockpit 所有算法参数统一落到 `backend/app/services/cockpit/cockpit_params.py`，用 Pydantic v2 `BaseModel` 组织
+2. 每个字段必须带 `Field(description=..., ge=..., le=...)`（description 为业务含义说明，ge/le 为合理范围校验）
+3. 文件内按 feature 分 section，命名前缀 `SHARED_* / REGIME_* / SETUP_* / DECISION_* / EARNINGS_*`
+4. 参数仍是"Python 常量"性质，改参数 = 改代码重启，**不做**运行时热更新 / .env 覆盖 / DB 读取 / YAML 加载 / admin UI
+5. Pydantic 启动时自动校验所有阈值范围，阈值配置错误则进程启动失败（fail fast）
+
+**不进 cockpit_params.py 的参数**：
+- cron 时间（`REGIME_CRON_*` / `SETUP_CRON_*` / `EARNINGS_CRON_*`）→ `.env`（部署差异）
+- `user_settings` 4 字段（account_size / max_exposure_pct / single_trade_risk_pct / default_risk_per_trade_pct）→ DB 表（用户运行时调）
+- AI 模型名 / 预算 / memo TTL / schema_version → `.env`（ARCHITECTURE.md 已定，属部署选项）
+- FMP rate limit / API key → `.env` + `fmp_client.py`（跨模块设施）
+- 前端默认布局 / debounce 时长 / react-query staleTime → 前端代码
+
+**放弃**：
+- 拆文件（`regime_params.py` / `setup_params.py` / `decision_params.py`）— 共享参数（MA_PERIODS / RS_LOOKBACK_DAYS / SECTOR_ETFS）需被多 feature 引用，拆文件多一层 import 无收益
+- 运行时可调（DB / UI 可视化）— 单用户项目 YAGNI；Pydantic 结构化已为未来可视化铺路，真有需求时加 1 步"持久化 overrides"即可
+
+**理由**：
+- 集中常量 → 调参 / 审计 / 测试断言只改一处，grep 不漏
+- Pydantic 结构化 → 启动时自动校验，且字段 description 在用户设计阈值时顺手写最省脑（事后补痛苦）
+- 单文件 → 跨 feature 共享常量零冗余
+- 先例：`backend/app/services/scanner_params.py`（D045）是同款模式（纯 Python 常量版），D070 是其 Pydantic 升级
+
+**Evaluator 强制检查**（写入每个 F201–F211 Sprint Contract 自检清单）：
+- [ ] cockpit service 代码内无魔法数字 / 字符串字面量阈值（grep 确认）
+- [ ] 所有阈值通过 `from app.services.cockpit.cockpit_params import X` 引入
+- [ ] 新增字段必带 `Field(description=..., ge=..., le=...)`
+- [ ] 进程启动时 Pydantic 校验通过（启动 smoke test）
+
+**首次落地**：F201-a Sprint（同时新建 §0 SHARED 部分 + §1 F201 REGIME 部分）。F200-a 纯前端无后端参数，不新建此文件，只立此规矩。
+
+**§4 DECISION 参数（F203-b2 落地，2026-04-25）**：
+- `HASH_DIGEST_LENGTH: int = 16` — deterministicHash 取 SHA-256 前 16 位 hex
+- `HASH_PRICE_DECIMALS: int = 2` — hash preimage 中 entry/stop 小数位数
+- `HASH_RISK_DECIMALS: int = 4` — hash preimage 中 effective_risk_pct 小数位数
+- `PRICE_DECIMAL_PLACES: int = 2` — 价格 / 金额输出字段的小数位
+- `ACCOUNT_RISK_DECIMAL_PLACES: int = 2` — accountRiskPct 输出小数位
+- `OVERRIDE_RECOMPUTE_RR: bool = False` — override 改 entry/stop 后是否重算 rewardRisk；当前 False（保留 setup_snapshots 原值，防副作用扩散）；留作 F210 扩展位
+- `REGIME_FALLBACK: str = "NEUTRAL"` — market_regime_snapshots 表空时 fallback regime 标签
+- `DEFAULT_ACCOUNT_SIZE: float = 100000.0` — user_settings 行不存在时的默认账户规模（镜像 user_settings_repository._DEFAULTS）
+- `DEFAULT_SINGLE_TRADE_RISK_PCT: float = 1.0` — user_settings 行不存在时的默认单笔风险 %（镜像 user_settings_repository._DEFAULTS）
+
+**OVERRIDE_RECOMPUTE_RR 决策理由**：entry/stop override 时保留 setup_snapshots.reward_risk 原值（不重算），避免 override 副作用扩散至下游指标。若业务需要重算（如 F210 AI 校验场景），将此字段改为 True 并在 decision_service 中读取即可，不改接口契约。
+
+**影响**：
+- 新文件 `backend/app/services/cockpit/cockpit_params.py`（F201-a 起）
+- F201–F211 Sprint Contract 模板追加 D070 合规自检项
+
+---
+
+## D071：AiGateway.run 50 行约束豁免
+
+**日期**：2026-04-25（F208-c Evaluator 阶段，用户明确批准）
+**触发**：Contract §5.2 要求单函数 ≤ 50 行，`AiGateway.run` 实际 103 行（含空行和步骤注释），Evaluator 阶段提出。
+
+**决策**：保留 103 行，不拆 `_check_cache` / `_call_and_validate` 私有方法。
+
+**理由**：
+1. `run()` 是严格线性的 11 步编排流程（Contract §1.1.1 明确列出）；每步用注释标注，注释即文档
+2. 拆成私有方法只是机械地把线性序列折叠为"调用序列 + 两段 body"，增加间接层，可读性下降
+3. 实际可执行代码约 45–50 行，103 行里约 50% 是结构化空行和步骤注释
+4. 所有功能测试通过，无代码质量缺陷
+
+**约束**：此豁免仅限 `AiGateway.run`（编排层的线性流程）；其他新增函数仍执行 50 行约束。
+
+---
+
+## D072：litellm.completion_cost 必须显式传 model 参数
+
+**日期**：2026-04-25（F208-c Evaluator live smoke 发现）
+**触发**：live smoke 测试 `cost_usd > Decimal("0")` 断言失败，`cost_usd` 实际为 0。
+
+**根因**：
+- 我们发送 `model='gpt-5.4-nano'`
+- OpenAI API 返回的 `response.model = 'gpt-5.4-nano-2026-03-17'`（带日期版本号）
+- `litellm.completion_cost(response)` 用 `response.model` 查定价库
+- `gpt-5.4-nano-2026-03-17` 不在 LiteLLM 定价库 → 抛异常 → gateway except 兜底 → `Decimal("0")`
+
+**修复**：在 `_call_litellm` 中改为 `litellm.completion_cost(response, model=model)`，用我们发送的短名（`gpt-5.4-nano`）查价，不依赖 OpenAI 返回的版本化名称。
+
+**影响**：`backend/app/ai/gateway.py` L76，1 行改动，mock 测试 + live smoke 全通过。
+
+**教训**：凡调用 `litellm.completion_cost(response)` 的场景，都应显式传 `model=` 参数，防止 provider 返回版本化 model name 导致定价查询失败。
+
+---
+
+## D073：Cockpit Widget 1 颜色 token 映射（MarketRegimeWidget）
+
+**日期**：2026-04-25（F201-c Sprint Contract D1）
+**触发**：`tokens.css` 只有 `--color-regime-*` 系列，无独立的 sector/index state token；design-spec §Widget 1 描述了 state 着色需求。
+
+**决策**：sector state / index state 全部复用现有 `--color-regime-*` 系列，不新增 token。映射表如下：
+
+| 维度 | 枚举值 | 复用 token |
+|------|--------|-----------|
+| Sector state | Strong | `--color-regime-risk-on` |
+| Sector state | Constructive | `--color-regime-constructive` |
+| Sector state | Neutral | `--color-regime-neutral` |
+| Sector state | Weak | `--color-regime-defensive` |
+| Sector state | Defensive | `--color-regime-risk-off` |
+| Index state | Bullish / Leading | `--color-regime-risk-on` |
+| Index state | Constructive | `--color-regime-constructive` |
+| Index state | Neutral | `--color-regime-neutral` |
+| Index state | Weak | `--color-regime-defensive` |
+| Index state | Defensive | `--color-regime-risk-off` |
+| Subscore 进度条 | ≥80% / ≥60% / ≥40% / ≥20% / <20% | risk-on / constructive / `--color-log-warn` / regime-defensive / regime-risk-off |
+
+**影响**：`MarketRegimeWidget.tsx`（`indexStateColor` / `sectorStateColor` / `subscoreBarColor` 三个 helper 函数）。
+
+
+---
+
+## D074：F209-a schema 字段命名 = camelCase
+
+**日期**：2026-04-25（F209-a Sprint Contract §6 D-1）
+**触发**：Pydantic schema 字段命名应与 API-CONTRACT 示例字面一致，但 features.json AC 原写"schema 内部 snake_case，router 边界转换"，与实际 router 实现（不做 camel↔snake 转换）冲突。
+
+**决策**：`MarketNarratorInput/Output` 和 `SetupExplainerInput/Output` 所有字段名直接采用 **camelCase**，与 API-CONTRACT.md line 1733-1734 示例完全一致。
+
+**理由**：
+1. F208-c `routers/ai.py` 把 `body.input` 原样传给 `pair.input_schema(**input_dict)`，无 camel↔snake 自动转换。
+2. 本 sprint 范围"不改 gateway/router 框架"，无法在不动 router 的前提下支持 snake_case schema。
+3. LiteLLM `response_format=Pydantic class` 以 Pydantic 字段名生成 JSON schema，schema 字段名即 LLM 输出字段名，camelCase 保持与前端零阻抗。
+
+**放弃了什么**：features.json AC 描述的"schema 内部 snake_case"。该方案需要 router 改造（在 `routers/ai.py` 做 camel↔snake 自动转换），归档为 v2 改进项（可参考 Pydantic v2 `model_config.alias_generator = to_camel` 方案）。
+
+**影响**：`backend/app/ai/schemas/market_narrator.py`、`setup_explainer.py`（新建，字段名全 camelCase）。
+
+---
+
+## D075：F209-b sector state 5→3 归一化在前端做
+
+**日期**：2026-04-25（F209-b Sprint Contract §5 D-3，用户已确认）
+**触发**：`CockpitRegimeData.RegimeSector.state` 有 5 个值（`Strong / Constructive / Weak / Defensive / Neutral`），但后端 `MarketNarratorInput.sectors[].state` schema 只接受 3 个值（`Strong / Neutral / Weak`）。若直接传 5 值会被 backend 422 拒绝。
+
+**决策**：归一化逻辑放在 `MarketRegimeWidget.tsx`（私有函数 `normalizeSectorState`），不暴露到 `aiApi.ts`，不修改后端 schema：
+- `Strong` / `Constructive` → `Strong`
+- `Weak` / `Defensive` → `Weak`
+- `Neutral` → `Neutral`
+
+**理由**：
+1. 改后端 `MarketNarratorInput` 接受 5 值会破坏 F209-a 的 Pydantic 校验约束，影响 LLM JSON schema 生成。
+2. `aiApi.ts` 作为通用 AI 客户端，不应内嵌 market_narrator 专属归一化逻辑；其他 task type（如 F209-c setup_explainer）有不同的输入 schema。
+3. 前端归一化函数小且可测（S14.6 有显式 regression 覆盖），改动范围最小。
+
+**放弃了什么**：在后端扩展 schema 接受所有 5 值（改动后端 + 迁移，影响面更大）；或在 `aiApi.ts` 内做通用 5→3 映射（破坏通用性假设）。
+
+**影响**：`frontend/src/cockpit/widgets/MarketRegimeWidget.tsx`（`normalizeSectorState` 私有函数）。测试覆盖在 `MarketRegimeWidget.test.tsx §S14.6`。
+
+
+
+---
+
+## D076：F206-c1 nextAction rationale 气泡在 v1.9 不实现
+
+**日期**：2026-04-26（F206-c1 Sprint Contract §2 设计偏离，用户已确认）
+**触发**：design-spec §Widget 7 §1057 描述"点击文字弹气泡说明 rationale"，但 `GET /api/cockpit/positions` 返回的 Position 对象不含 `rationale` 字段（仅有 nextAction 枚举：hold / raise_stop / reduce / exit）。
+
+**决策**：v1.9 简化为彩色 chip，不弹气泡：
+- hold → "Watch"（`--color-action-watch`，灰）
+- raise_stop → "Add"（`--color-action-add`，蓝）
+- reduce → "Reduce"（`--color-action-reduce`，橙）
+- exit → "Sell"（`--color-action-sell`，红）
+
+**理由**：
+1. API 未返回 rationale 字段，前端无数据来源，无法实现气泡内容。
+2. F207 `GET /api/cockpit/actions/today` 将聚合完整 rationale（规则引擎 + AI 解释），届时在 ActionListWidget 中提供该交互更自然。
+3. 保持 F206-c1 范围聚焦（4 生产文件），不额外拉 F207 依赖。
+
+**放弃了什么**：v1.9 的 rationale 气泡交互（design-spec §1057 原始描述）。该功能归档至 F207 scope。
+
+**影响**：`frontend/src/cockpit/widgets/_positionListRow.tsx`（NextAction chip 实现），`docs/设计/design-spec.md §Widget 7`（偏离注释已写入）。
+
+---
+
+## D060-a：PendingOrder Triggered 后 v1.9 不自动创建 Position
+
+**日期**：2026-04-26（F206-c2 Sprint Contract §7 决策，用户已确认）
+**触发**：design-spec §Widget 8 §1172 / component-plan §450 留有"Triggered 后自动创建 Position"的待决策项，F206-c2 Generator 阶段落地。
+
+**决策**：v1.9 中，用户点击 `[Triggered]` 按钮后：
+1. 弹 AlertDialog 确认文案："已在券商手动下单？将把订单标记为 TRIGGERED（不会自动创建 Position）"
+2. 用户确认 → `PATCH /api/cockpit/pending-orders/{id}` body `{ status: 'TRIGGERED' }`
+3. 成功后 invalidate `['cockpit-pending-orders']`，**不** invalidate `['cockpit-positions']`
+4. 弹 toast 提示用户："已标记为 TRIGGERED，可在 Positions widget 手工录入实际持仓"
+
+**理由**：
+1. 自动创建 Position 需要后端在 `pending_order_service` 内开启事务：PATCH status + INSERT position + 回填 entryDate / entryPrice / shares。失败回滚逻辑复杂，且 PendingOrder 的 entryPrice 是"计划触发价"，不是实际成交价，自动复制会导致数据失真。
+2. 手动双录虽然多一步，但给用户机会填入实际成交价格，更符合复盘准确性要求。
+3. 前端只改 status，0 后端工作量，F206-c2 范围保持聚焦。
+
+**放弃了什么**：Triggered 后一键自动在 Positions widget 中创建 Position 记录（design-spec §1172 原始描述）。如后续用户反馈手工双录是痛点，可开 F206-d 或归入 F207 ActionList 的统一动作流。
+
+**影响**：`frontend/src/cockpit/widgets/_pendingOrderRow.tsx`（Triggered mutation 实现），`docs/设计/design-spec.md §Widget 8`（待决策 #3 标注已落地）。
+
+---
+
+## D075：F207-a ActionService 设计决策（Q1-Q8）
+
+**日期**：2026-04-27（F207-a Sprint Contract §7，用户已确认）
+**触发**：F207-a Generator 实施阶段，8 个技术决策点已在 Sprint Contract 协商阶段与用户逐一确认。
+
+**Q1 — raise_stop 触发条件**：复用 `compute_next_action`（R ≥ 2.0），不引入 swing_low 检测。swing_low 精度延至未来 sprint，届时只需改 `position_action_rules.py`，F207 不需要动。
+
+**Q2 — tighten_stop 触发口径**：regime ∈ {DEFENSIVE, RISK_OFF} 时对所有 OPEN positions 全局发送一条 tighten_stop 动作。一次 `MarketRegimeRepository.get_latest()` 查询，遍历每个 position 各发一条；rationale 引用 regime 值。
+
+**Q3 — cancel_order 触发口径**：ticker 当日最新 `setup_snapshot.setup_type == "BROKEN"`。`SetupSnapshotRepository.get_latest_for_tickers()` 已返回最新一行，直接读 setup_type。
+
+**Q4 — stable_position 归属栏**：`stable_position` → noAction；monitor 只出现 `approaching_trigger`。与 API-CONTRACT 兼容（noAction 行说明成立）。
+
+**Q5 — reduce_before_earnings 阈值**：`days_until_earnings ≤ 2` 个自然日（含 0），与 `position_action_rules.compute_next_action` 当前阈值一致。
+
+**Q6 — Widget 槽位**：ActionListWidget x:0 y:16 w:12 h:6（全宽，Positions+PendingOrders 下方），F207-b sprint 实施。
+
+**Q7 — stop breached + regime DEFENSIVE 同时满足**：优先 raise_stop（个体硬信号 > 全局软信号）。理由：stop breached 是 ticker 个体硬信号，"立即处置"语义更强；tighten_stop 是全局建议，可以等 raise_stop 执行完再统一评估。
+
+**Q8 — pending_order distance > 3% 且 setup 非 BROKEN**：不出现在任何栏（避免噪音）。pending order 距离很远时已在 PendingOrdersWidget 可见，ActionList 只关心"可能要动手的"。
+
+**影响**：`backend/app/services/cockpit/action_service.py`（rule engine 实现），`backend/app/routers/cockpit/actions.py`（endpoint + schema）。
+
+---
+
+## D077：F207-b ActionListWidget 前端设计决策（Q1-Q8）
+
+**日期**：2026-04-27（F207-b Sprint Contract §7，用户已确认）
+**触发**：F207-b Generator 实施阶段，8 个前端技术决策点已在 Sprint Contract 协商阶段与用户逐一确认。
+
+**Q1 — 单栏空时是否渲染空标题**：整段不渲染（紧凑）。`_actionListSection.tsx` 头部 `if (items.length === 0) return null`。三栏全空时 widget 容器改用 `data-testid="empty-state"` 显示"暂无今日动作"。
+
+**Q2 — refs 字段前端类型**：弱类型 `Record<string, unknown>`，与后端弱契约一致。hover tooltip 拼 `JSON.stringify(refs)` 供调试用。不做 per-actionType discriminated union，避免后端扩 actionType 时前端编译失败。
+
+**Q3 — AI Daily Brief 区域**：完全不渲染 DOM，仅留代码注释挂载点 `{/* AI Daily Brief 挂载点 — F209/F211 v2.0 */}`。F209/F211 时直接在注释位置插入，无回退成本。
+
+**Q4 — actionType label 中英文**：全英文（"Raise Stop" / "Cancel Order" / "Reduce (Earnings)" / "Tighten Stop" / "Approaching Trigger" / "Stable"）。与现有 widget header（"Pending Orders" / "Setup Monitor"）保持一致；空态文案保持中文。
+
+**Q5 — 行点击触发区**：整行（`onClick` 绑到行 div），与 `SetupMonitorWidget` 一致。光标 `cursor: pointer`。不限定只点 ticker 列。
+
+**Q6 — hover tooltip 实现**：native `title` 属性，与 `SetupMonitorWidget` 一致。不引入 shadcn Tooltip（避免增加文件数；`title` 内容含 rationale + refs JSON 换行拼接）。
+
+**Q7 — 同 ticker 多条 action 前端去重**：不去重，按后端原样 1 行 1 条。与 F207-a §6 "position 和 pending_order 是两个生命周期实体"一致。
+
+**Q8 — empty-state 文案**："暂无今日动作"。与 PendingOrdersWidget "暂无 pending order" 风格一致（中文空态文案）。
+
+**影响**：`frontend/src/cockpit/lib/api/cockpitActionsApi.ts`（类型定义），`frontend/src/cockpit/widgets/_actionListSection.tsx`（行渲染 + label 映射），`frontend/src/cockpit/widgets/ActionListWidget.tsx`（容器 + 4 状态），`frontend/src/cockpit/CockpitRegistry.ts`（manifest 注册）。
+
+---
+
+## D078 — universe 表持久化 screener 快照字段；ADV 不在此层算
+
+**日期**：2026-04-27（F205-a Sprint Contract，用户已确认）
+
+**背景**：F205 Pool Builder 需要 sector / industry / price / volume 数据做 funnel 过滤和 widget 展示。在 API 端点每次实时调用 screener 会造成额外 FMP 请求且延迟高；pool_service 需要在月级 universe 数据基础上做多步 filter，最好在 SELECT 时就能读到这些字段。
+
+**决策**：在 `market_scan_universe` 表新增 4 列（`sector` / `industry` / `last_price` / `last_volume`），在现有月级 universe refresh 时一并从 FMP screener 响应中解析写入。
+
+**关键约束**：
+
+1. **`last_price` / `last_volume` 是快照，不是实时数据**：字段值只在月级 refresh 时更新，不支持实时展示；widget 不得将这两列直接作为"当前价格"展示。
+2. **ADV（20 日均美元成交量）不在此层计算**：`last_volume` 是 refresh 当天的单日成交量，不等同于 advMin filter 所需的 20 日均美元成交量。F205-b 的 `advMin` filter 走 trend 子集 EOD 计算，与 `last_volume` 无直接关系。
+3. **缺字段降级为 null，不跳过 ticker**：FMP ETF 行常缺 sector/industry，强制要求会导致 universe 行数下降。解析时字段缺失或类型异常 → 存 null，ticker 保留。
+4. **字段级降级计数写入 SystemLog**：`universe_refresh_service` 在每次 refresh 的 OK 日志末尾追加 `sector_missing=N` 等计数，供人工或后续监控发现 FMP schema 变化。
+
+**影响**：`backend/alembic/versions/015_f205a_universe_extra_fields.py`（新建），`backend/app/models/market_scan_universe.py`，`backend/app/repositories/market_scan_universe_repository.py`，`backend/app/services/universe_refresh_service.py`。
+
+---
+
+## D079 — pool_helpers：FMP financial-growth 来源、RS mid-rank 算法、fail-open 策略、双实现技术债
+
+**日期**：2026-04-27（F205-b Sprint Contract，用户已确认）
+
+**背景**：F205 Pool Builder 漏斗需要 revenue YoY 增长率（基本面筛选）和 RS percentile（相对强度排序）。setup_service.py 已有内联版 RS 计算，pool 漏斗的 RS 范围是 trend 子集（数百 ticker），需要 population-agnostic 的纯函数版本。
+
+**决策 1：FMP revenue growth 来源**
+
+- 使用 FMP `/stable/financial-growth?period=annual&limit=1` 作为 revenue YoY 来源
+- `period=annual` 而非 `quarterly`：pool funnel 做年维度基本面筛选，季报数据波动大；年报稳定性更好
+- `limit=1`：只需最近一年数据，减少传输量
+- `get_financial_growth` 返回 raw FMP dict（`revenueGrowth` 字段为 decimal，如 0.0202 = 2.02%）；`extract_revenue_growth_yoy_pct` 负责 ×100 转换，两步解耦便于测试
+
+**决策 2：RS 百分位算法 — mid-rank**
+
+- `compute_rs_percentile_map` 使用 mid-rank 公式：`(below + 0.5 × ties) / n × 100`
+- `setup_service._percentile_rank` 使用 strictly-below 公式：`below / n × 100`（历史遗留，int 截断）
+- 两套公式已知不同。mid-rank 是统计上更正确的选择（ties 获得其占据 rank 的平均值，避免系统性低估）
+- F205-b Sprint Contract 的测试用例（#8/9 期望 16.67、50.0、83.33）明确指定 mid-rank 为规范行为
+- **dedup 是已知技术债**：不在本 sprint 范围内修改 setup_service.py（避免 F202-a 回归风险）；建议在 F205-c 完成且 pool 漏斗稳定后，开独立技术债 sprint 统一为 mid-rank
+
+**决策 3：fail-open（passes_fundamental_sanity）**
+
+- `growth_yoy_pct=None`（FMP 数据缺失）→ `passes_fundamental_sanity` 返回 `True`
+- 理由：FMP ETF / 小市值股的 financial-growth 数据偶有缺失；因 vendor 数据缺失直接淘汰整个 ticker 会产生静默的假阴性，与 pool funnel 的目标（找出有潜力的 ticker）矛盾
+- 监控对策：F205-c PoolService 应在漏斗日志中统计 `growth_data_missing=N`，供后续发现 FMP schema 变化
+
+**决策 4：pool_helpers 是纯函数模块**
+
+- 无 IO、无 logger、无 SQLAlchemy、无 httpx；不 import 任何 `app.*` 模块
+- 由 F205-c PoolService 负责编排：调 FmpClient、查 DB、组装 population、调用这些纯函数
+- 纯净度由 AST 静态检查（`test_pool_helpers_f205b.py` test #17）在 CI 中持续验证
+
+**影响**：`backend/app/external/fmp_client.py`（新增 `get_financial_growth`），`backend/app/services/cockpit/pool_helpers.py`（新建），`backend/tests/test_pool_helpers_f205b.py`（新建），`backend/tests/test_fmp_client.py`（追加用例）。
+
+---
+
+## D080 — PoolService：ADV 单日代理、忽略 trendScoreMin、POOL_TREND_CAP、非 watchlist null setup 字段
+
+**日期**：2026-04-27
+**Feature**：F205-c PoolService + GET /api/cockpit/pool
+
+**决策 1：ADV = 单日 dollar volume 代理（技术债）**
+
+- 实现：`tradable` 层过滤条件 = `last_price × last_volume ≥ advMin`（单日代理）
+- 真 20d ADV 需要 universe 内每个 ticker 拉 20 天 bars（≥1500 ticker × 20 calls = 大量 FMP 请求），冷启动不可接受
+- `last_volume` 已在 F205-a 写入 universe 表；单日量作为粗筛已够用，偏严不偏松
+- **技术债**：建议 F205-x 在 `market_scan_universe` 表加 `avg_dollar_volume_20d` 字段，由 `universe_refresh_service` 每日计算
+
+**决策 2：trendScoreMin 参数接受但忽略（技术债）**
+
+- `trend` 层 = tradable ∩ 最新 `market_breakout_scans` 出现；`trendScoreMin` 参数校验范围（0–5）但 service 内部不使用
+- 理由：`trend_score(0–5)` 只在 `setup_snapshots` 表针对 watchlist 计算（F202-a 范围）；对 pool 全集实时计算 trend_score 需要给每个 ticker 拉 200d bars + 5 阶 MA ladder，相当于把 setup_service 改造为 population-agnostic，超出本 sprint 范围
+- F106 扫描器已过 ma150/slope/volume 阈值筛选，被扫到的 ticker = "趋势良好"；用"在最新 breakout_scans 中出现"作为二元 proxy 工程性价比最高
+- **技术债**：真正的 pool-wide trend_score 推到 F205-x 或独立 sprint，需扩 setup_service 或新 service
+
+**决策 3：POOL_TREND_CAP = 200（market_cap 降序截断）**
+
+- trend 子集 > 200 ticker → 按 `universe.market_cap` 降序保留前 200 进入 RS 层
+- 理由：FMP token bucket 稳态 5 calls/s；200 ticker × 2 FMP 调用 = 400 calls；6 并发下预估 30–40s（vs 串行 ~80s），勉强在前端 timeout 60s 内。800+ ticker 不截断则单次请求 ~5min，不可接受
+- market_cap 降序截断：大盘股优先，符合 P1 用户场景
+- `POOL_TREND_CAP` 和 `_FMP_MAX_WORKERS = 6` 作为 `pool_service.py` 顶层常量
+
+**决策 4：非 watchlist ticker 的 setup 字段返回 null（技术债）**
+
+- `setupType / trendScore / distanceToPivotPct` 仅对 watchlist ticker（`stocks.is_active=true`）从 `setup_snapshots` 读取；非 watchlist 全部返回 `null`
+- `suggestedAction` 默认 `"watch"`（非 watchlist）
+- `inWatchlist = ticker ∈ active_stocks`，前端据此控制"+ Add to Watchlist"按钮状态
+- **技术债**：扩展到 pool 全集需要 setup_service 改造，推到 F205-d 之后的独立 sprint
+
+**FMP 并发模型（补充说明）**
+
+- RS 层和 fundamental 层均使用 `ThreadPoolExecutor(max_workers=6)` 并发调用 FMP
+- 限流由 `fmp_client._FmpRateLimiter` 进程级 singleton（token bucket 300 rpm + Semaphore(6)）统一兜底；service 层不重复实现
+- `max_workers=6` 接受"pool 请求期间挤占其他 FMP 消费者"的取舍（pool 是用户主动触发的高优先级查询）
+- SPY closes 在 RS 层串行获取（主线程单次调用），之后所有 trend ticker bars 并发拉取
+
+**影响**：`backend/app/services/cockpit/pool_service.py`（新建），`backend/app/routers/cockpit/pool.py`（新建），`backend/app/routers/cockpit/__init__.py`（注册），`backend/app/schemas/cockpit/pool.py`（新建），`backend/tests/test_pool_service.py`（新建），`backend/tests/test_cockpit_pool_router.py`（新建）。
+
+---
+
+## D081：Pool 漏斗 RS + Fundamental 层改为周级缓存（F205-e）
+
+**背景**：F205-d 验收发现每次 filter 改动触发全量 FMP 调用（~30s），体验不可接受。
+
+**决策**：RS percentile（FMP get_daily_bars）和 fundamental revenue growth（FMP get_financial_growth）两层改为预计算，结果存入 `cockpit_pool_cache` 表，每周一 06:30 UTC 重建（APScheduler cron）。PoolService 不再调用 FMP，直接读 DB。
+
+**关键参数确认（F205-e 用户确认）**：
+
+| # | 问题 | 选择 |
+|---|------|------|
+| Q1 | Cache 范围 | A：仅 trend-passing tickers（~50 个）|
+| Q2 | Cron 时机 | A：每周一 06:30 UTC |
+| Q3 | Cache miss 行为 | A：返回空 funnel + WARN 日志 |
+| Q4 | 缓存 ma50/last_close | A：是 |
+| Q5 | 手动触发 | B：`POST /api/admin/refresh-pool-cache` |
+
+**权衡**：
+- Q1=A（trend-only）vs Q1=B（全 universe）：trend tickers 仅 ~50 个，FMP 调用量从 1200 calls/周 → ~100 calls/周。代价是 cache 里的 percentile 相对 trend 总体计算，非全 universe 排名。
+- Cache miss（Q3=A）：首次部署或 rebuild 失败后 pool 返回空结果，需手动触发 rebuild。
+- Cron Mon 06:30 UTC：避开 setup_cron (22:30)、earnings_cron (05:30)、universe_cron（月初 05:00）。
+
+**预期效果**：GET /api/cockpit/pool filter 改动响应时间 30s → < 500ms。
+
+**影响文件**：`alembic/versions/016_f205e_pool_cache.py`（新建），`app/models/cockpit_pool_cache.py`（新建），`app/services/cockpit/pool_cache_service.py`（新建），`app/services/cockpit/pool_service.py`（修改，删除 FMP 调用），`app/services/refresh_job.py`（新增 cron），`app/routers/admin.py`（新建，Q5=B），`tests/test_pool_service.py`（重写 fixture + 新增 PoolCacheService 测试组）。
+
+---
+
+## D075：F211-a2 per-task model override（D064 增量）
+
+**日期**：2026-04-28
+**触发**：F211 三 task 实际调用中，`news_summarizer`（长上下文）/ `journal_assistant` monthly（推理密集）/ `candidate_ranker`（高频）希望脱离三 tier 单端点，按 task 切到不同 provider/cost。
+
+**决策**：
+1. 新 .env 字段 `AI_TASK_OVERRIDES_JSON`，单 JSON dict，key = task_type，value = `{model, base_url?, api_key?, input_cost_per_1m?, output_cost_per_1m?}`。
+2. `routing.resolve()` 签名升级为返回 `ResolvedRoute` frozen dataclass（tier/model/base_url/api_key/custom_input_cost/custom_output_cost）；override 命中（model 非空）→ 全字段透传；否则走 D064 三 tier 兜底。`resolve_tier()` / `resolve_model()` 旧 API 保留，零回归。
+3. `gateway._call_litellm` 新签名 `(route: ResolvedRoute, input_dict, output_schema)`：透传 `api_base=route.base_url` 给 litellm；若 override 含自定义 cost，直接传 `input_cost_per_token` / `output_cost_per_token` 给 `litellm.completion()`，`completion_cost(completion_response=response)` 自动使用这些值（官方 SDK Custom Pricing 路径，context7 验证）。**不使用 `register_model` 全局 dict**（避免线程锁 + 全局状态）。
+4. JSON 解析失败、非 dict、register 失败：**log warning，整体 fallback 到 tier 默认**，不抛异常 — fail-soft 优先于 fail-fast，保证现有 .env 用户零感知。
+
+**放弃**：
+- 方案 B：每 task 独立 6 个 .env 变量（`AI_NEWS_MODEL` / `AI_NEWS_BASE_URL` …）。放弃：7 task × 5 字段 = 35 变量，污染 .env，增 task 要改 Settings 类。
+- 方案 C：admin endpoint + UI 切 model。放弃：个人投资工具定位，重启改 .env 已足够；增 endpoint 引入鉴权/审计成本。
+- 方案 D：override 写进 `cockpit_params.py`。放弃：违反 D070 line 1527（AI 模型走 .env 不进 cockpit_params.py）。
+- 方案 E：`register_model` 全局注入 cost 后 `completion_cost(response)` 读取。放弃（context7 验证时发现更优路径）：直接传 `input/output_cost_per_token` 给 `completion()` 是官方文档的 SDK Custom Pricing 推荐路径，response 内携带 cost 参数，无需全局状态/锁，且语义更清晰。
+
+**影响**：
+- `backend/app/config.py`：增 `ai_task_overrides_json: str = ""`
+- `backend/app/ai/routing.py`：新 `ResolvedRoute` dataclass + `_parse_overrides` + `resolve()` 新签名
+- `backend/app/ai/gateway.py`：`_call_litellm` 新签名透传 `api_base`；直接 cost params 传 litellm
+- `.env.example`：追加 AI Gateway 完整注释段 + `AI_TASK_OVERRIDES_JSON` 示例
+- D064 段落不需要重写，本 D075 作为增量决策
+
+**未来扩展点**：
+- 若需要 LiteLLM Router 多模型 fallback，扩展 `ResolvedRoute` 加 `fallbacks: list[str]`，gateway 改用 `litellm.Router.completion`。本 sprint 不做。
+- 若需要 `extra_headers` / `timeout` / `max_retries`，a3 sprint 扩展 `ResolvedRoute` 字段。
+
+## D082：F211-d1 close hook 异步策略 + ai_review 列形态
+日期：2026-04-29 | Feature: F211-d1
+
+**方案**：
+1. PATCH /api/cockpit/positions/{id} OPEN→CLOSED 触发 FastAPI `BackgroundTasks`，不阻塞响应
+2. BackgroundTask 内开新 SQLAlchemy session（不复用请求 session）
+3. journal_entries 加 ai_review (Text/JSON 字符串) + ai_review_memo_id (Integer, no DB FK)
+4. 平仓自动 INSERT/复用 SELL journal_entry（同 ticker+date 的 SELL 复用，避免重复打 LLM）
+5. 任何 AI 错误（Provider / Schema / Guardrail / Budget）→ ai_review 留 null，positions 已 CLOSED 不回滚
+
+**理由**：
+- 异步：journal_assistant complex tier ~5–15s，不能阻塞 PATCH 响应
+- Text 列：与 ai_memos.input_json/output_json 一致，避开 SQLite JSON 类型移植性问题
+- 无 FK：D069 ai_memos 180 天滚动清理，FK 会阻塞清理；ai_review_memo_id 接受 dangling
+- 复用 SELL entry：避免同一交易多次平仓尝试时重复打 LLM 烧 budget
+
+**对应代码**：`position_service._trade_review_background`, `journal_review_service.JournalReviewService.trade_review_for_position`
+
+**注**：Sprint Contract 原规划 D076，因 D076 已被占用改为 D082。
+
+---
+
+## D083：F211-d2 月度复盘 cron 策略
+日期：2026-04-29 | Feature: F211-d2
+
+**方案**：
+1. 月度复盘输出**仅落 ai_memos**（不写 journal_entries，不新增表/迁移/action 类型）
+2. cron 时间：每月 1 号 06:00 UTC（universe 05:00 之后 1h 错峰）
+3. 0 trades 月份：主动跳过 gateway（MonthlyReviewPayload min_length=1，空列表会 schema 报错），log INFO，return None
+4. 重入幂等：依赖 AiGateway memo dedup（input_hash + 24h TTL + schema_version=v1），不加标记位
+5. 失败不重试：tick 顶层 try/except swallow，与 refresh_job 现有 7 个 cron tick 一致，下月自然再来
+6. closedTrades 上限 100 条，ORDER BY closed_at ASC（最早 100 条，早期更有归因价值）
+
+**理由**：
+- 仅落 ai_memos：避免新增 action 类型 / schema 迁移，依赖 D069 180 天滚动清理保证存储不膨胀
+- 月初 06:00 UTC：universe refresh 05:00 在前，避免并发争锁；早于 scanner 06:15，月初 API 正常
+- 跳过 0 trades：主动检测比依赖 schema 报错更清晰，避免 warning log 的噪声
+- 不重试：月度复盘错过则下月补，低频触发（1 次/月）不值得引入 tenacity / APScheduler reschedule 复杂性
+
+**放弃了什么**：
+- 新表 monthly_reviews（+迁移 +表 +FK，超 sprint 范围）
+- journal_entries 新增 action='MONTHLY_REVIEW'（+迁移 +schema 变更）
+- Redis lock 幂等（无 Redis 依赖，系统单用户，重入概率极低）
+- 重试机制（月度频率不值得 tenacity 复杂度）
+
+**对应代码**：`journal_review_service.JournalReviewService.monthly_review_for_month`, `refresh_job._journal_monthly_tick`, `refresh_job._previous_month_utc`
+
+**注**：Sprint Contract 原规划 D077，因 D077 已被占用（F207-b）改为 D083。
+
+---
+
+## D084：F213-a DeepSeek 通过 per-task override 接入，不进 settings 字段
+
+**日期**：2026-05-07
+**Feature**：F213-a News Article Auto-Translate 后端 schema
+
+**背景**：F213 News 翻译任务选用 DeepSeek（deepseek-v4-flash 或 OpenAI 兼容路径），其 base_url / api_key 与主力 OpenAI 端点不同。D075 (F211-a2) 已建立 `AI_TASK_OVERRIDES_JSON` 机制可按 task_type 注入自定义 model/base_url/api_key/cost，无需改 Settings 类。
+
+**决策**：
+
+1. **不在 `app/config.py` 增加 `DEEPSEEK_API_KEY`、`DEEPSEEK_BASE_URL` 等独立字段**。
+   - 理由：D075 `AI_TASK_OVERRIDES_JSON` 已可覆盖 model + base_url + api_key + cost，增加独立字段是冗余且会污染 Settings 命名空间；每加一个 provider 就加若干字段，不可扩展。
+
+2. **`translate_article` 在 `_TASK_TIER` 注册为 `"default"` tier**（gateway 正常走 tier 逻辑兜底），部署时在 `.env` 写 `AI_TASK_OVERRIDES_JSON` 覆盖 model/base_url/api_key；如果未配置 override，fallback 到 `settings.ai_model_default`（OpenAI），功能仍可用但翻译质量可能下降。
+
+3. **DeepSeek 接入路径（部署时选其一）**：
+   - 原生路径：`"model": "deepseek/deepseek-v4-flash"`（LiteLLM 原生 provider，需 LiteLLM ≥ 1.x 且已注册 deepseek provider）
+   - OpenAI 兼容路径（推荐，可靠性更高）：`"model": "openai/deepseek-v4-flash", "base_url": "https://api.deepseek.com", "api_key": "sk-..."`
+   - 两条路径在 `routing.resolve()` 中均通过 `base_url` 透传 LiteLLM，代码无需分支。
+
+4. **不注册 guardrail**：翻译输出为中文文本，现有 BANNED_PHRASES 体系专为英文 LLM 金融建议设计；为纯翻译结果添加 guardrail 会造成误伤（如"忽略止损"可能出现在新闻正文的翻译中）。
+
+**放弃**：
+- 方案 A：新增 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` settings 字段。放弃：D075 已有更通用机制，重复引入强约定。
+- 方案 B：guardrail 检测翻译输出。放弃：翻译任务是原文的结构化映射，BANNED_PHRASES 命中率高但精度极低，误伤概率大于防护价值。
+
+**参考**：D064（tier 路由）/ D069（ai_memos 去重）/ D075（per-task override 机制）
+
+**影响**：`backend/app/ai/schemas/translate_article.py`（新建）/ `backend/app/ai/schemas/__init__.py`（+1 import + REGISTRY 行）/ `backend/app/ai/routing.py`（+1 _TASK_TIER 行）

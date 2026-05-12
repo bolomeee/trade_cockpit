@@ -4,6 +4,96 @@
 
 ---
 
+## [v2.1.0] - 2026-05-07
+
+> ⚠️ consistency-check 违例覆盖：C5 违例 45 项均为 F001～F113 时代历史遗留合约文件，features.json 尚无对应 sub_sprints entry，功能本身均已完成，与本次发版无关。
+
+### ✨ 新增
+- **F213 新闻文章自动翻译（DeepSeek）**：打开 ArticleModal 时自动调用 `/api/ai/translate_article`，标题与正文替换为中文译文；loading 状态显示原文 + 进度指示；重复打开同一篇文章命中 ai_memos 缓存；翻译失败时回退显示原文 + toast 错误提示
+- **F212 布局云存储**：TopNav 新增保存/恢复布局按钮，布局持久化至后端 `layouts` 表；支持跨 session 恢复 Workbench widget 位置与大小
+- Regime Widget：新增 VXX 指数 ETF；点击指数行 / 行业 Cell → Cockpit Chart 联动展示对应标的
+- Admin：新增 `POST /api/admin/refresh-universe` 手动触发端点
+- 新闻摘要 Bar 新增 Refresh 按钮（bypass no-cache）
+
+### 🐛 修复
+- 修复 AI Gateway 未将 system_prompt 传入 LLM 的严重 bug（所有 AI 功能均受益）
+- 修复 DeepSeek Flash 不支持 `json_schema` response_format，改用 `json_mode + 二次 Pydantic 验证`
+- Pool：`revenue_growth_yoy` 为 null 时由 fail-closed 改回 fail-open（ETF 通过率修复）
+- Pool：市值门槛从 50B → 10B（分两步调整）
+
+### 💄 样式
+- Workbench：MA 图例内联行、字号微调、ticker/公司名基线对齐、价格图默认 6 个月视图
+- AI 全部任务的 SYSTEM_PROMPT 强制要求中文输出
+- 行业热力图显示中文行业标签
+
+---
+
+## [v2.0.0] - 2026-04-29
+
+> ⚠️ consistency-check 违例覆盖：部分早期 feature 修正未纳入 feature-dev 流程，C2/C5 违例均为历史遗留 artifact（旧 status 值 "completed"、已重组的 feature ID），不影响当前功能完整性。
+
+### ✨ 新增
+- **F211 AI Layer（6 个子 sprint 全部交付）**
+  - AI Contradiction Detector：Decision Panel 新增矛盾检测区，单击生成 severity badge + recommendation
+  - AI News Summarizer：News 页新增 AI 摘要 Bar，单击触发对当日新闻的 AI 汇总
+  - AI Journal Assistant：平仓后自动触发后台 journal review（BackgroundTask 写入 ai_review 字段）
+  - 月度复盘 cron：APScheduler 月度 job，自动聚合上月交易发起 AI 复盘；0 笔交易月份跳过
+
+### 🏗️ 基础设施
+- AI task type schema（contradiction_detector / news_summarizer / journal_assistant）+ tier 路由（contradiction_detector → default，journal_assistant → complex）
+- Playwright E2E 冒烟探针框架（8 探针，Vite 模块注入 + Zustand setState）
+
+---
+
+## [v1.10.0] - 2026-04-28
+
+### ✨ 新增
+- **F205 Pool Builder Widget**：5 个子 sprint 全部交付（universe 字段扩展 / FMP financial-growth / pool service + API / 前端 widget / 周级 cache）
+- F205-e Pool Cache：RS percentile 与 fundamental revenue growth 改为周级预算（每周一 06:30 UTC cron），写入 `cockpit_pool_cache`，filter 重请求 < 500ms 不再打 FMP
+- F204-b / F202-c：Admin 手动触发端点 `POST /api/admin/refresh-earnings` 与 `POST /api/admin/refresh-setup`
+- AiCandidateRanker 区域增加 setup scan 刷新按钮
+- PoolFilterBar：MktCap/ADV 输入改为 B/M 单位显示，Sector 改为下拉选择
+
+### 🐛 修复
+- F204-a：earnings batch 按 (ticker, earnings_date) 去重
+- F105：FMP screener 分页直至最后一页
+- F205-e：`_load_trend_tickers` 去重
+- 多个 Cockpit widget 移除冗余 header 标题，统一视觉
+
+---
+
+## [v1.9.0] - 2026-04-27
+
+### ✨ 新增
+- **Positions Widget**：持仓管理全栈（Position CRUD / Risk Summary / PositionListWidget + PositionFormDialog）（F206-a / F206-c1）
+- **Pending Orders Widget**：挂单管理全栈（PendingOrder CRUD / 到期自动清理 / PendingOrdersWidget + PendingOrderFormDialog）（F206-b1 / F206-b2 / F206-c2）
+- **Today's Actions Widget**：动作清单 widget，deterministic rule engine，按 Must Act / Monitor / No Action 三栏分类，含 6 种 actionType 规则（F207）
+- 后端：Migration 013–014，新增 `positions` / `pending_orders` 表；APScheduler nightly job（挂单到期清理 + regime 快照）
+- 后端：`GET /api/cockpit/actions/today` endpoint，返回 `mustAct / monitor / noAction` 三数组，每条含 ticker / actionType / rationale / refs
+
+---
+
+## [v1.8.0] - 2026-04-26
+
+### ✨ 新增
+- AI 基础设施：ai_memos 数据表 + LiteLLM 路由层 + AI Gateway 统一接入（/api/ai/{task_type}）(F208)
+- MarketRegimeWidget：Score Hero / Subscores / Indices / SectorHeatmap 四区块（F201-c）
+- AI Market Notes：MarketRegimeWidget 新增 AI 市场叙述区块，支持刷新与缓存（F209-b）
+- AI Setup Explainer：SetupMonitor 每行新增 `?` 弹出 AI 解读 Popover（F209-c）
+- DecisionPanel AI Trade Plan + Guardrail Banner：AI 生成交易计划 + 护栏校验（F210-c）
+
+### 🎨 优化
+- Cockpit TopNav action buttons 统一为 shadcn Button 组件
+- SetupMonitor tabs 紧凑化、标题行合并、字体统一
+- CockpitChart 轴标签样式精简
+
+### 🐛 修复
+- SetupMonitor sticky header 背景透明度异常
+- DecisionPanel trade_plan 接受 earningsRisk=null
+- News 缓存永远过期 bug
+
+---
+
 ## [v1.7.0] - 2026-04-23
 
 ### ✨ 新增

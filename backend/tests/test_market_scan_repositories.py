@@ -15,6 +15,7 @@ from app.repositories.market_scan_universe_repository import (
     MarketScanUniverseRepository,
     UniverseUpsertRow,
 )
+from app.services.universe_refresh_service import _parse_screener_row
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,10 @@ def test_schema_market_scan_universe_columns(session_engine):
         "company_name",
         "exchange",
         "market_cap",
+        "sector",
+        "industry",
+        "last_price",
+        "last_volume",
         "last_seen_at",
         "added_at",
     }
@@ -129,6 +134,154 @@ def test_universe_latest_refresh_time_and_count(db_session):
 
     assert repo.count() == 2
     assert repo.latest_refresh_time() == t
+
+
+# ---------------------------------------------------------------------------
+# F205-a: ORM new fields + _parse_screener_row unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_orm_new_fields_are_accessible_and_nullable(db_session):
+    """Contract standard 1: new ORM attributes exist and accept None."""
+    repo = MarketScanUniverseRepository(db_session)
+    t = datetime(2026, 4, 1)
+    row = UniverseUpsertRow(
+        ticker="NVDA",
+        company_name="NVIDIA Corp.",
+        exchange="NASDAQ",
+        market_cap=2_000_000_000_000,
+        sector=None,
+        industry=None,
+        last_price=None,
+        last_volume=None,
+    )
+    repo.upsert_many([row], now=t)
+    obj = db_session.query(MarketScanUniverse).filter_by(ticker="NVDA").one()
+    assert obj.sector is None
+    assert obj.industry is None
+    assert obj.last_price is None
+    assert obj.last_volume is None
+
+
+def test_parse_screener_row_full_fields():
+    """Contract standard 2: all 4 new fields parsed correctly."""
+    row = _parse_screener_row({
+        "symbol": "AAPL",
+        "companyName": "Apple",
+        "marketCap": 3_000_000_000_000,
+        "exchange": "NASDAQ",
+        "sector": "Technology",
+        "industry": "Consumer Electronics",
+        "price": 175.5,
+        "volume": 50_000_000,
+    })
+    assert row is not None
+    assert row.sector == "Technology"
+    assert row.industry == "Consumer Electronics"
+    assert row.last_price == 175.5
+    assert row.last_volume == 50_000_000
+
+
+def test_parse_screener_row_missing_optional_fields_returns_valid_row():
+    """Contract standard 3: missing sector/industry/price/volume → None, ticker kept."""
+    row = _parse_screener_row({
+        "symbol": "SPY",
+        "companyName": "SPDR S&P 500 ETF",
+        "marketCap": 500_000_000_000,
+        "exchange": "NYSE",
+    })
+    assert row is not None
+    assert row.ticker == "SPY"
+    assert row.sector is None
+    assert row.industry is None
+    assert row.last_price is None
+    assert row.last_volume is None
+
+
+@pytest.mark.parametrize("price_val,volume_val", [
+    ("N/A", "N/A"),
+    ("", ""),
+    ("not-a-number", "not-a-number"),
+    ([], {}),
+])
+def test_parse_screener_row_bad_price_volume_degrades_to_none(price_val, volume_val):
+    """Contract standard 4: non-numeric price/volume degrades to None, no exception."""
+    row = _parse_screener_row({
+        "symbol": "TSLA",
+        "companyName": "Tesla",
+        "marketCap": 800_000_000_000,
+        "exchange": "NASDAQ",
+        "price": price_val,
+        "volume": volume_val,
+    })
+    assert row is not None
+    assert row.last_price is None
+    assert row.last_volume is None
+
+
+# ---------------------------------------------------------------------------
+# F205-a: Repository upsert with new fields
+# ---------------------------------------------------------------------------
+
+
+def _u_full(
+    ticker: str,
+    sector: str | None = "Technology",
+    industry: str | None = "Semiconductors",
+    price: float | None = 100.0,
+    volume: int | None = 10_000_000,
+) -> UniverseUpsertRow:
+    return UniverseUpsertRow(
+        ticker=ticker,
+        company_name=f"{ticker} Inc.",
+        exchange="NASDAQ",
+        market_cap=200_000_000_000,
+        sector=sector,
+        industry=industry,
+        last_price=price,
+        last_volume=volume,
+    )
+
+
+def test_upsert_writes_and_reads_new_fields(db_session):
+    """Contract standard 5: upsert writes 4 new fields; DB read returns same values."""
+    repo = MarketScanUniverseRepository(db_session)
+    t = datetime(2026, 4, 1)
+    repo.upsert_many([_u_full("AMD")], now=t)
+
+    obj = db_session.query(MarketScanUniverse).filter_by(ticker="AMD").one()
+    assert obj.sector == "Technology"
+    assert obj.industry == "Semiconductors"
+    assert obj.last_price == 100.0
+    assert obj.last_volume == 10_000_000
+
+
+def test_upsert_new_fields_with_none_values(db_session):
+    """Contract standard 5 (null variant): upsert with None new fields writes null."""
+    repo = MarketScanUniverseRepository(db_session)
+    t = datetime(2026, 4, 1)
+    repo.upsert_many([_u_full("ETF1", sector=None, industry=None, price=None, volume=None)], now=t)
+
+    obj = db_session.query(MarketScanUniverse).filter_by(ticker="ETF1").one()
+    assert obj.sector is None
+    assert obj.industry is None
+    assert obj.last_price is None
+    assert obj.last_volume is None
+
+
+def test_upsert_second_call_overwrites_new_fields(db_session):
+    """Contract standard 6: second upsert overwrites new field values (same as market_cap)."""
+    repo = MarketScanUniverseRepository(db_session)
+    t0 = datetime(2026, 4, 1)
+    t1 = datetime(2026, 5, 1)
+
+    repo.upsert_many([_u_full("INTC", sector="Technology", price=50.0)], now=t0)
+    repo.upsert_many([_u_full("INTC", sector="Industrials", price=55.5)], now=t1)
+
+    obj = db_session.query(MarketScanUniverse).filter_by(ticker="INTC").one()
+    assert obj.sector == "Industrials"
+    assert obj.last_price == 55.5
+    assert obj.added_at == t0  # added_at preserved per existing semantics
 
 
 # ---------------------------------------------------------------------------

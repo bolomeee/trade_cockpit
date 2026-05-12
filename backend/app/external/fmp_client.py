@@ -37,6 +37,8 @@ FMP_EP_SCREENER = "/company-screener"  # F105 universe (D038)
 FMP_EP_SMA = "/technical-indicators/sma"  # F105 daily scan primary path (D039)
 FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
 FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
+FMP_EP_EARNINGS_CALENDAR = "/earnings-calendar"  # F204-a earnings events
+FMP_EP_FINANCIAL_GROWTH = "/financial-growth"  # F205-b D079 revenue growth YoY
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -230,10 +232,18 @@ class FmpClient:
     # --- public API -----------------------------------------------------
 
     def search_tickers(self, query: str, limit: int = 10) -> list[Any]:
-        """Two-phase search: symbol prefix → name fallback (preserves D028 ordering)."""
+        """Two-phase search: symbol prefix → name fallback (preserves D028 ordering).
+
+        FMP normalizes share-class separators to hyphens (BRK-B, BF-A), so
+        queries with dots (BRK.B) must be tried with the hyphen form first.
+        """
         q = query.strip()
         if not q:
             return []
+        if "." in q:
+            hyphen_results = self._request(FMP_EP_SEARCH_SYMBOL, {"query": q.replace(".", "-"), "limit": limit})
+            if hyphen_results:
+                return list(hyphen_results)[:limit]
         symbol_results = self._request(FMP_EP_SEARCH_SYMBOL, {"query": q, "limit": limit})
         if symbol_results:
             return list(symbol_results)[:limit]
@@ -325,6 +335,7 @@ class FmpClient:
         is_fund: bool | None = None,
         is_actively_trading: bool = True,
         limit: int = 500,
+        page: int = 0,
     ) -> list[Any]:
         """Single-exchange FMP company screener call (F105 universe, D038).
 
@@ -338,6 +349,7 @@ class FmpClient:
             "exchange": exchange,
             "isActivelyTrading": "true" if is_actively_trading else "false",
             "limit": limit,
+            "page": page,
         }
         if is_etf is not None:
             params["isEtf"] = "true" if is_etf else "false"
@@ -348,33 +360,40 @@ class FmpClient:
 
     def get_screener_universe(
         self,
-        market_cap_gte: int = 50_000_000_000,
+        market_cap_gte: int = 5_000_000_000,
         exchanges: tuple[str, ...] = ("NYSE", "NASDAQ", "AMEX"),
-        limit_per_exchange: int = 500,
+        page_size: int = 500,
     ) -> list[dict[str, Any]]:
         """Merged, de-duplicated screener universe across US exchanges (F105, D038).
 
         Includes common stocks, ADRs, and ETFs (what the user trades);
         excludes mutual funds via `isFund=false`. De-duplicates by `symbol`,
-        first-seen wins. Any per-exchange error propagates.
+        first-seen wins. Paginates until FMP returns fewer rows than page_size.
+        Any per-exchange error propagates.
         """
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
         for exchange in exchanges:
-            rows = self.get_company_screener_page(
-                market_cap_gte=market_cap_gte,
-                exchange=exchange,
-                is_fund=False,
-                limit=limit_per_exchange,
-            )
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                symbol = row.get("symbol")
-                if not symbol or symbol in seen:
-                    continue
-                seen.add(symbol)
-                merged.append(row)
+            page = 0
+            while True:
+                rows = self.get_company_screener_page(
+                    market_cap_gte=market_cap_gte,
+                    exchange=exchange,
+                    is_fund=False,
+                    limit=page_size,
+                    page=page,
+                )
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    symbol = row.get("symbol")
+                    if not symbol or symbol in seen:
+                        continue
+                    seen.add(symbol)
+                    merged.append(row)
+                if len(rows) < page_size:
+                    break
+                page += 1
         return merged
 
     def get_sma_series(
@@ -455,6 +474,39 @@ class FmpClient:
         if not results:
             return None
         return results[0]
+
+    def get_earnings_calendar(self, from_date: str, to_date: str) -> list[Any]:
+        """FMP `/stable/earnings-calendar` (F204-a).
+
+        from_date / to_date: YYYY-MM-DD strings.
+        Returns raw list; field normalization is the service layer's job.
+        Expected fields per item: symbol, date, epsEstimated, eps,
+        revenueEstimated, revenue, time (BMO/AMC/--).
+        """
+        params = {"from": from_date, "to": to_date}
+        body = self._request(FMP_EP_EARNINGS_CALENDAR, params)
+        return list(body or [])
+
+
+    def get_financial_growth(self, symbol: str) -> dict[str, Any] | None:
+        """FMP /stable/financial-growth annual revenue growth for a single symbol.
+
+        D079: period=annual&limit=1 gives the most recent fiscal year's data.
+        Returns None on empty response, HTTP error, or network error so pool
+        funnel callers can fail-open rather than dropping a ticker due to missing
+        vendor data.
+        """
+        try:
+            body = self._request(
+                FMP_EP_FINANCIAL_GROWTH,
+                {"symbol": symbol, "period": "annual", "limit": 1},
+            )
+            results = list(body or [])
+            if not results:
+                return None
+            return results[0]
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return None
 
 
 def _fmt_date(d: str | date) -> str:

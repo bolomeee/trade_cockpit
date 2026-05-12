@@ -1,0 +1,509 @@
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint Contract 协商：F207-b ActionListWidget（前端三栏动作清单）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F207-b-contract.md
+  - §7 Q1-Q8 全部按建议默认值采纳：
+      Q1 单栏空整段不渲染
+      Q2 refs 弱类型 Record<string, unknown>（与后端一致）
+      Q3 AI Daily Brief 仅留注释占位
+      Q4 actionType label 全英文（与现有 widget 风格一致）
+      Q5 行任意位置点击触发 setSelectedTicker
+      Q6 hover 用 native title 属性，不引入 shadcn Tooltip
+      Q7 同 ticker 多条 action 不去重
+      Q8 空态文案 "暂无今日动作"
+  - 预计修改文件 6/6 个（恰好踩线，无第 7 个文件空间）：
+      1. cockpitActionsApi.ts（新建）
+      2. _actionListSection.tsx（新建）
+      3. ActionListWidget.tsx（新建）
+      4. CockpitRegistry.ts（修改注册）
+      5. __tests__/cockpitActionsApi.test.ts（新建）
+      6. __tests__/ActionListWidget.test.tsx（新建）
+  - features.json：F207.sub_sprints.F207-b → contract_agreed
+  - _pipeline_status.active_sprint=F207-b, active_sprint_phase=contract_agreed
+
+📊 功能状态：
+  F207 Daily Action List Widget：F207-a ✅ done / F207-b 🟡 contract_agreed
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+  > 继续开发 F207-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F207-b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-a Position 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Migration 013：positions 表（14 字段 + 2 index + 2 CHECK constraint）
+  - ORM model Position + models/__init__.py 注册
+  - PositionRepository（CRUD + status 过滤）
+  - position_sizer.py（D066 公式纯函数）
+  - position_action_rules.py（4 分支规则引擎，F207 可直接 import）
+  - position_service.py（list/get/create/update/delete + D041 批量 last_close fallback + _compute_metrics + _enrich）
+  - Pydantic schemas（PositionCreate / PositionUpdate / PositionItem / ListResponse / DeleteResponse）
+  - Router 4 endpoints（GET/POST /positions，PATCH/DELETE /positions/{id}）
+  - 单元测试：§A 8 / §B 5 / §C 12 用例
+  - 集成测试：§D 10 用例
+  - 全量回归：657/657 ✅（原 627 + 新增 30）
+  - Evaluator 自检：全部通过（_enrich 拆分为 _compute_metrics + _enrich，均 < 50 行）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新建迁移：backend/alembic/versions/013_f206a_positions.py
+  - 新增模型：backend/app/models/position.py
+  - 新增 repo：backend/app/repositories/position_repository.py
+  - 新增 services：position_service.py / position_sizer.py / position_action_rules.py
+  - 新增 schema：backend/app/schemas/cockpit/position.py
+  - 新增 router：backend/app/routers/cockpit/positions.py
+  - 修改：test_schema.py（添加 positions），test_ai_memo_schema_f208a.py（调整降级目标）
+
+📊 功能状态：
+  F206（Position Manager）：🔍 F206-a needs_review → F206-b 待开始
+
+[下一个 Session]
+  开启新 session，粘贴：
+  > F206-a 已完成验收，准备开发 F206-b（PendingOrder 后端 + Risk Summary 聚合）
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-a-contract.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint Contract 协商：F206-b2 Risk Summary 聚合 + APScheduler EXPIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F206-b2-contract.md
+  - 5 个开放问题用户全部同意默认值：
+      Q1：summary 与 ?status= 解耦（始终基于 OPEN/ACTIVE）
+      Q2：EXPIRED cron 直接常量（不增 env 覆盖）
+      Q3：list_positions 返回 tuple[summary, items]（不引入新 dataclass）
+      Q4：cron = "35 22 * * 1-5" UTC（接 setup tick 之后 5 分钟）
+      Q5：account_size 默认值确认 = 100000.0（已 grep）
+
+🔧 待开发文件清单（7 个：5 业务 + 2 测试）：
+  1. backend/app/schemas/cockpit/position.py（修改：新增 PositionSummary + 改 _PositionListData）
+  2. backend/app/services/cockpit/position_service.py（修改：增 summary 计算，list_positions 返回 tuple）
+  3. backend/app/routers/cockpit/positions.py（修改：适配 tuple 签名）
+  4. backend/app/services/cockpit/pending_order_expirer.py（新建：expire_due_pending_orders 函数）
+  5. backend/app/services/refresh_job.py（修改：注册 _pending_orders_expirer_tick）
+  6. backend/tests/test_position_summary_f206b2.py（新建 §A 14 用例）
+  7. backend/tests/test_pending_order_expirer_f206b2.py（新建 §B 10 用例）
+
+📊 功能状态：
+  F206-a：🔍 needs_review
+  F206-b1：🔍 needs_review
+  F206-b2：📋 contract_agreed
+  F206-c：⬜ 待 b2 完成
+
+[下一个 Session]
+  开启新 session（建议 Sonnet），粘贴：
+  > 继续开发 F206-b2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-b2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始（grep account_size 默认值已完成 = 100000.0）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint Contract 协商：F206-b1 PendingOrder 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 已确认：
+  - Sprint Contract 草案：docs/开发/sprint-contracts/F206-b1-contract.md
+  - 拆分方案 A：F206-b 拆为 b1（PendingOrder CRUD，14 文件）+ b2（Summary + APScheduler EXPIRED，9 文件）
+  - 4 个开放问题用户全部同意默认值：
+      Q1：抽 last_close_loader.py 共享模块（避免 D041 fallback 双实现）
+      Q2：GET /pending-orders 保持 API-CONTRACT 现行 `data: [...]` 裸数组结构
+      Q3：_VALID_SETUP_TYPES Literal 就地复制（不抽共享，守 14 文件清单）
+      Q4：POST expirationDate < today → 422（拒绝过去日期）
+
+🔧 待开发文件清单（14 个）：
+  1. backend/alembic/versions/014_f206b1_pending_orders.py（新建）
+  2. backend/app/models/pending_order.py（新建）
+  3. backend/app/models/__init__.py（修改 +1 行）
+  4. backend/app/repositories/pending_order_repository.py（新建）
+  5. backend/app/schemas/cockpit/pending_order.py（新建）
+  6. backend/app/services/cockpit/last_close_loader.py（新建，共享）
+  7. backend/app/services/cockpit/pending_order_service.py（新建）
+  8. backend/app/services/cockpit/position_service.py（修改：改用 last_close_loader）
+  9. backend/app/routers/cockpit/pending_orders.py（新建）
+  10. backend/app/routers/cockpit/__init__.py（修改 +2 行）
+  11–14. tests/test_pending_order_f206b1_{schema,repo,service,integration}.py（新建，35 用例）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：🔍 needs_review（待用户验收）
+    F206-b1：🟡 contract_agreed（本次确认）
+    F206-b2：⬜ 待 b1 完成
+    F206-c：⬜ 待 b2 完成
+
+[下一个 Session — 必须新开]
+  推荐使用 Sonnet 开启新 session，粘贴：
+  > 继续开发 F206-b1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-b1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始（Migration 014 + ORM + models/__init__.py 注册）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-b1 PendingOrder 数据层 + 后端 CRUD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Migration 014：pending_orders 表（13 字段 + 2 index + 2 CHECK constraint）
+  - ORM model PendingOrder + models/__init__.py 注册
+  - last_close_loader.py（共享模块 LastCloseLoader，抽自 position_service._load_last_closes + _fmp_latest_close）
+  - position_service.py 重构：改用 LastCloseLoader，删除两个私有方法
+  - PendingOrderRepository（CRUD + status 过滤，"all"→无过滤）
+  - PendingOrderService（list/get/create/update/delete + 状态机 + _enrich + _normalize_status）
+  - Pydantic schemas（Create / Update / Item / ListResponse / SingleResponse / DeleteResponse，D074 camelCase）
+  - Router 4 endpoints（GET/POST /pending-orders，PATCH/DELETE /pending-orders/{id}）
+  - 单元测试：§A 12（含 5 parametrize）/ §B 5 / §C 12 用例
+  - 集成测试：§D 12 用例
+  - 全量回归：698/698 ✅（657 → 698，新增 41）
+  - Ruff lint：无新增 warning
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+⚙️ 状态机落地：
+  - 终态（TRIGGERED / CANCELLED / EXPIRED）不可改回 ACTIVE，不可互转 → 422
+  - ACTIVE → ACTIVE 允许（同状态修订字段）
+  - 合并 entry/stop 校验：patch 只含其中一个时，与 DB 现值合并后再校验
+
+🔧 系统变更：
+  - 新建迁移：backend/alembic/versions/014_f206b1_pending_orders.py
+  - 新增模型：backend/app/models/pending_order.py
+  - 新增共享模块：backend/app/services/cockpit/last_close_loader.py
+  - 新增 repo：backend/app/repositories/pending_order_repository.py
+  - 新增 schema：backend/app/schemas/cockpit/pending_order.py
+  - 新增 service：backend/app/services/cockpit/pending_order_service.py
+  - 新增 router：backend/app/routers/cockpit/pending_orders.py
+  - 修改：position_service.py（改用 loader），routers/cockpit/__init__.py（+2行），models/__init__.py（+1行），test_schema.py（+pending_orders），test_position_f206a_service.py（mock 更新）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：✅ done（2026-04-26 验收通过）
+    F206-b1：✅ done（2026-04-26 验收通过）
+    F206-b2：✅ done（2026-04-26 验收通过）
+    F206-c：⬜ 待开始（前端 Widget）
+
+[下一个 Session]
+  下一步：F206-c 前端 Widget（Position + PendingOrder + Risk Summary 顶条）
+  > 读取 SESSION-HANDOFF.md，准备开发 F206-c Sprint Contract
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] 验收：F206 Position Manager 后端（a + b1 + b2）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户确认）
+  验收文档：docs/验收/v1.9-F206-backend-acceptance.md
+
+测试总计：100/100（F206-a 35 + F206-b1 41 + F206-b2 24），全量 722/722
+功能确认：
+  - Position CRUD（4 端点）：create / list / patch / close / delete ✅
+  - PendingOrder CRUD（4 端点）：create / list / cancel / 终态保护 / status=all ✅
+  - Risk Summary：openRiskPct / totalExposurePct / pendingRiskPct / positionsCount / pendingCount ✅
+  - Summary 与 ?status= 解耦（Q1 验收通过）✅
+  - APScheduler cockpit_pending_orders_expirer（weekdays 22:35 UTC）注册确认 ✅
+  - expire_due_pending_orders 幂等性确认 ✅
+
+phase 更新：F206 → done（features.json 已同步）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-c1 PositionListWidget — Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 草案完成并经用户确认
+    docs/开发/sprint-contracts/F206-c1-contract.md
+  - 6 文件原则触发：F206-c 全量 7 生产文件超上限，拆为 c1+c2
+    - c1：PositionListWidget（4 文件，本 sprint）
+    - c2：PendingOrdersWidget（4 文件，c1 完成后）
+  - 范围确认：
+    - cockpitPositionsApi.ts（4 endpoint client + 类型）
+    - PositionListWidget.tsx（Summary 顶条 5 字段 + 表 + 内联编辑 + 删除）
+    - PositionFormDialog.tsx（react-hook-form + zod + suggestedShares 提示）
+    - CockpitRegistry.ts 注册 cockpit.position-list
+  - 完成标准：S1–S20（5 单测 + 13 集成 + 1 静态 + 1 回归）
+  - 设计偏离已识别：nextAction 不弹 rationale 气泡（API 未返）→ 偏离回写到 design-spec + DECISIONS
+
+⚠️ 待你决策：
+  - 无（5 条待确认条款已在 Contract §7 全部确认）
+
+🔧 系统变更：
+  - features.json：F206 phase 由 done 回退为 in_progress（c1/c2 未完成）
+  - features.json：active_sprint=F206-c1 / active_sprint_phase=contract_agreed
+  - features.json：F206 iteration_history 追加 c1 entry
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：✅ done
+    F206-b1：✅ done
+    F206-b2：✅ done
+    F206-c1：📜 contract_agreed（本 sprint，待 Generator）
+    F206-c2：⬜ 待 c1 完成
+
+[下一个 Session]
+  > 继续开发 F206-c1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+---
+
+## 2026-04-26 F206-c1 PositionListWidget — DONE
+
+### 完成内容
+- cockpitPositionsApi.ts（4 endpoint client + TS types）
+- PositionListWidget.tsx + _positionListRow.tsx（拆分，RiskSummaryBar / InlineEditRow / PositionRow）
+- PositionFormDialog.tsx + _positionFormSchemas.ts（拆分，react-hook-form v7 + zod v4）
+- CockpitRegistry.ts 注册 cockpit.position-list（x:0 y:8 w:6 h:8）
+- S1–S18 全过，160/160 tests，build ✅
+
+### 技术决策
+- Zod v4: invalid_type_error → error（breaking change）
+- target2r/3r: setValueAs 避免 NaN 阻断 superRefine
+- FilterBtn / helper functions 必须在组件外（react-refresh 规则）
+- form.watch() → local useState（incompatible-library）
+- AiSetupExplainerPopover.tsx: as const on conditional → 显式联合类型（pre-existing TS1355 fix）
+
+### 设计偏离
+- D076: nextAction 仅彩色 chip，不弹 rationale 气泡（API 未返 rationale，F207 覆盖）
+
+[下一个 Session]
+  > 继续开发 F206-c2 PendingOrdersWidget。
+  > 读取 SESSION-HANDOFF.md + API-CONTRACT.md §pending-orders + design-spec.md §Widget 8，
+  > 起草 F206-c2 Sprint Contract，用户确认后进入 Generator 模式。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] Sprint：F206-c2 PendingOrdersWidget — Contract Agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 起草并由用户确认（§7 六项决策全部 OK）
+  - docs/开发/sprint-contracts/F206-c2-contract.md 落盘
+  - 范围：6 生产文件 + 3 测试文件，镜像 c1 拆分模式
+    - cockpitPendingOrdersApi.ts（4 endpoint client + camelCase types）
+    - PendingOrdersWidget.tsx + _pendingOrderRow.tsx（行渲染拆分）
+    - PendingOrderFormDialog.tsx + _pendingOrderFormSchemas.ts（zod 拆分）
+    - CockpitRegistry.ts 注册 cockpit.pending-orders（x:6 y:8 w:6 h:8）
+  - 完成标准：S1–S20（4 单测 + 14 集成 + 1 静态 + 1 回归）
+
+⚠️ 待你决策：
+  - 无（§7 六项已确认）
+
+🔧 系统变更：
+  - features.json：active_sprint_phase: planned → contract_agreed
+  - features.json：last_updated → 2026-04-26-F206-c2-contract-agreed
+  - DECISIONS.md：D060-a 决策待 Generator 阶段回写（v1.9 Triggered 不自动建 Position）
+
+📊 功能状态：
+  F206 Position Manager：
+    F206-a：✅ done
+    F206-b1：✅ done
+    F206-b2：✅ done
+    F206-c1：✅ done
+    F206-c2：📜 contract_agreed（本 sprint，待 Generator）
+
+[下一个 Session]
+  > 继续开发 F206-c2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F206-c2-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 开始。
+
+---
+
+## Session: 2026-04-26 — F206-c2 Generator（完成）
+
+**完成内容**：
+- 安装 sonner 2.0.7 + 注册 <Toaster> 到 main.tsx
+- 新建 cockpitPendingOrdersApi.ts：4 endpoint + camelCase 类型（14 tests ✓）
+- 新建 _pendingOrderFormSchemas.ts：zod v4 schema + setupTypeOptions
+- 新建 PendingOrderFormDialog.tsx：new/edit 双模式 + dirty fields PATCH（11 tests ✓）
+- 新建 _pendingOrderRow.tsx：distanceClass 3 档 + ACTIVE-only 按钮（17 tests ✓）
+- 新建 PendingOrdersWidget.tsx：staleTime 30s + 4 状态 + Triggered toast D060-a（10 tests ✓）
+- 修改 CockpitRegistry.ts：注册 cockpit.pending-orders manifest
+- DECISIONS.md 追加 D060-a + design-spec §Widget 8 决策标注
+- 新增 JSDOM pointer capture mock 到 src/test/setup.ts
+
+**踩坑记录**（供后续 session 参考）：
+- Radix Dialog 内的 Radix Select 在 JSDOM 中无法通过 click 打开（body pointer-events:none 阻断 portal）
+  → 解法：vi.mock('@/components/ui/select') 替换为原生 <select>，仅限 dialog 相关测试文件
+- react-hook-form dirtyFields 懒订阅：必须在组件渲染阶段 `const { errors, dirtyFields } = form.formState`，不能只在回调里读
+- dirtyFields PATCH 逻辑应在 handleSubmit 闭包内读（不在 mutationFn 内），避免闭包时序问题
+
+**全量回归**：212/212 tests ✓，lint（c2 文件 0 warning），build ✓
+
+**F206 已完整封闭**（a, b1, b2, c1, c2 全部 done）
+
+[下一个 Feature]
+  F207 ActionListWidget（若规划中）或 F207 相关后端 endpoint
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-26] 验收：F206-c2 PendingOrdersWidget
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户亲眼确认）：
+  - Widget 渲染：标题/筛选按钮/+New Order/空态 ✅
+  - 新建订单 → 表头顺序 / Exp 空值显示 "—" ✅
+  - 表单校验：空提交 + 交叉校验（entry ≤ stop）错误 ✅
+  - Edit → 预填字段 → dirty-fields PATCH ✅
+  - Triggered → AlertDialog → toast 含引导文案 ✅
+  - Cancel 直接 PATCH（无弹窗）✅
+  - Delete → AlertDialog → 确认删除 ✅
+  - Active/All 切换过滤正确 ✅
+
+验收记录：docs/验收/v1.9-F206-c2-acceptance.md
+features.json：F206 phase → done，completed_at → 2026-04-26
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint：F207-a ActionList 后端 — Contract Agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F207 拆分为 a（后端）+ b（前端），每子 sprint ≤6 文件
+  - Sprint Contract 起草并由用户确认（§7 Q1–Q8 全部 OK）
+  - docs/开发/sprint-contracts/F207-a-contract.md 落盘
+  - 范围（5 文件）：
+    - backend/app/services/cockpit/action_service.py（新建，rule engine）
+    - backend/app/routers/cockpit/actions.py（新建，GET /actions/today）
+    - backend/app/routers/cockpit/__init__.py（注册）
+    - backend/tests/test_action_service.py（13 单元）
+    - backend/tests/test_actions_router.py（6 集成）
+  - 完成标准：S1–S20（13 单测 + 6 集成 + 1 静态 + 1 回归）
+  - 关键复用：LastCloseLoader / compute_next_action / SetupSnapshotRepository.get_latest_for_tickers
+              / EarningsEventRepository.get_next_earnings / MarketRegimeRepository.get_latest
+
+🔑 §7 决策（Generator 阶段写入 DECISIONS.md）：
+  Q1 raise_stop 复用 compute_next_action（R≥2.0），不引入 swing_low
+  Q2 tighten_stop：regime DEFENSIVE/RISK_OFF 时对所有 OPEN positions 全局发
+  Q3 cancel_order：ticker 当日最新 setup_snapshot.setup_type=BROKEN
+  Q4 monitor 不出现 stable_position（仅 approaching_trigger 走 monitor）
+  Q5 reduce_before_earnings：days_until_earnings ≤ 2
+  Q6 Widget 槽位 x:0 y:16 w:12 h:6（F207-b 实施）
+  Q7 stop breached + DEFENSIVE → 优先 raise_stop（个体 > 全局）
+  Q8 pending_order distance>3% 且 setup 非 BROKEN → 不展示
+
+⚠️ 待你决策：
+  - 无（§7 Q1-Q8 已确认）
+
+🔧 系统变更：
+  - features.json：F207 phase=design_ready → in_progress；新增 active_sub_sprint=F207-a + sub_sprints map
+  - features.json：active_sprint=F207-a / active_sprint_phase=contract_agreed
+  - features.json：last_updated → 2026-04-27-F207-a-contract-agreed
+  - features.json：F207.estimated_files_changed 11 文件清单（5 后端 + 6 前端）
+  - features.json：F207.contract.contract_file → F207-a-contract.md（F207-b 启动时再切）
+
+📊 功能状态：
+  F206 Position Manager：✅ done（a/b1/b2/c1/c2 全部验收通过）
+  F207 Daily Action List：
+    F207-a：📜 contract_agreed（本 sprint，待 Generator）
+    F207-b：⬜ planned（依赖 F207-a）
+
+[下一个 Session]
+  > 继续开发 F207-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F207-a-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（action_service skeleton）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] Sprint：F207-a ActionList 后端 rule engine + endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - action_service.py：ActionService class + build_today_actions + _classify_position（5 优先级）+ _classify_pending_order（3 优先级）+ 排序逻辑
+  - routers/cockpit/actions.py：GET /api/cockpit/actions/today + Pydantic schemas（ActionItem / ActionsTodayPayload / ActionsTodayResponse）
+  - routers/cockpit/__init__.py：注册 actions_router
+  - test_action_service.py：16 单元用例（含 3 额外 edge cases）全部通过
+  - test_actions_router.py：6 集成用例全部通过
+  - DECISIONS.md D075：F207-a §7 Q1-Q8 全部决策已记录
+  - 全量回归：744 passed（基线 722，+22 本 sprint），0 回归
+  - phase → needs_review
+
+⚠️ 注意事项（Evaluator 自检发现）：
+  - _classify_position（~72 行）和 build_today_actions（~70 行）超过 50 行上限。两函数逻辑内聚，建议保留现状，未来优先级增加再拆分。用户确认后进入最终 commit。
+  - ruff 未安装于项目 dev 依赖，已做手动代码质量检查：无死代码、无魔法值、无重复逻辑。
+
+🔧 系统变更：
+  - 新增：backend/app/services/cockpit/action_service.py（rule engine）
+  - 新增：backend/app/routers/cockpit/actions.py（endpoint + schemas）
+  - 修改：backend/app/routers/cockpit/__init__.py（+2 行注册）
+  - 新增：backend/tests/test_action_service.py（16 单元）
+  - 新增：backend/tests/test_actions_router.py（6 集成）
+  - 追加：docs/系统设计/DECISIONS.md D075
+
+📊 功能状态：
+  F207 Daily Action List Widget：🔍 needs_review（F207-a 待验收 → F207-b 前端待开发）
+
+[下一个 Session]
+  验收 F207-a，或直接开始 F207-b（前端 ActionListWidget）。
+  验收指令："/acceptance F207-a"
+  继续开发："/feature-dev F207-b"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] 验收：F207-a → done（路径 A）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收结论：通过
+  - 路径 A（信任测试门禁，纯后端 sprint，无 UI 视觉确认）
+  - 22/22 测试通过（16 单元 + 6 集成）
+  - 全量回归 744 通过，0 回归
+  - API 契约 camelCase 严格匹配 API-CONTRACT line 1592-1631
+  - 验收记录：docs/验收/v1.9-F207-a-acceptance.md
+
+📊 状态变更：
+  - features.json：F207.sub_sprints.F207-a → done（completed_at 2026-04-27）
+  - active_sub_sprint → F207-b
+  - _pipeline_status.active_sprint → F207-b（phase=planned）
+  - F207 父 feature 仍 needs_review，待 F207-b 前端完成
+
+[下一个 Session]
+  开始 F207-b（前端 ActionListWidget），需先 design-bridge / Sprint Contract 协商。
+  指令示例："开始开发 F207-b" 或 "/feature-dev F207-b"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] F207-b Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sprint: F207-b（前端 ActionListWidget）
+所有开发步骤完成（步骤 1-11），进入 needs_review
+
+新增/修改文件（6/6）：
+  - cockpitActionsApi.ts（新建）
+  - _actionListSection.tsx（新建）
+  - ActionListWidget.tsx（新建）
+  - CockpitRegistry.ts（修改，注册 cockpit.action-list）
+  - cockpitActionsApi.test.ts（新建，10 cases）
+  - ActionListWidget.test.tsx（新建，16 cases）
+
+测试：238/238 通过 | tsc 0 错误 | lint 新文件 0 warning
+浏览器实跑：3 种数据态（空 / 单栏 / 三栏齐全）DOM 验证通过
+
+DECISIONS.md：追加 D077（F207-b §7 Q1-Q8）
+features.json：F207-b = "needs_review"
+
+[当前状态]
+  F207-a：needs_review（后端）
+  F207-b：needs_review（前端）
+  建议一并触发 acceptance skill 验收 F207-a + F207-b
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-27] 验收：F207-b → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收结论：通过
+  - 238/238 前端测试通过（vitest）
+  - tsc --noEmit 0 错误 | eslint 新文件 0 warning
+  - 浏览器 preview 三栏视觉确认：
+      Must Act (3) / Monitor (1) / No Action (1)
+      CSS token 配色验证：must=rgba(239,68,68,0.06) / monitor=rgba(245,158,11,0.06) / noaction=rgba(16,185,129,0.04)
+  - asOfDate 右上角、空态文案、行 ticker label 全部正确
+  - 偏差说明：stable_position 归属 noAction（Contract §7 Q4 决策，可接受）
+  - 验收记录：docs/验收/v1.9-F207-b-acceptance.md
+
+📊 状态变更：
+  - features.json：F207.phase → done（completed_at 2026-04-27）
+  - features.json：F207.sub_sprints.F207-b → done
+  - F207-a：done（2026-04-27，后端 rule engine）
+  - F207-b：done（2026-04-27，前端 ActionListWidget）
+  - F207 整体：done ✅
+
+[下一个 Session]
+  v1.9 Sprint F206 + F207 全部 done。
+  如需发版：触发 project-commiter 生成 CHANGELOG 并打 tag v1.9.x

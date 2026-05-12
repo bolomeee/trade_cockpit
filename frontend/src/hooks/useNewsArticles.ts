@@ -23,7 +23,9 @@ export function useNewsArticles(limit = DEFAULT_LIMIT) {
     queryKey: QUERY_KEY,
     queryFn: () => getNewsArticles({ since: fiveDaysAgoIso(), limit }),
     initialData: persisted ?? undefined,
-    staleTime: persisted ? Infinity : 0,
+    // 5min: instant render from localStorage, background refetch on stale.
+    // Previously `persisted ? Infinity : 0` froze cached views forever.
+    staleTime: 5 * 60 * 1000,
   })
 
   useEffect(() => {

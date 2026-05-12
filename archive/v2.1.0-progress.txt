@@ -1,0 +1,164 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] Sprint：F213-b News Article Auto-Translate 前端 ArticleModal（Contract 协商）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤝 Sprint Contract 已确认：docs/开发/sprint-contracts/F213-b-contract.md
+
+📋 范围（前端 3 文件，远低于 6 文件预算）
+- 新建 frontend/src/lib/api/translateArticle.ts（~35 行，类型化薄封装 → callAiTask）
+- 修改 frontend/src/components/common/ArticleModal.tsx（+60/-5；注入 useQuery + loading/error/cacheHit 状态条 + sonner toast.error 回退原文 + 译文按 \n\n 拆段 React <p> 渲染）
+- 新建 frontend/src/components/common/__tests__/ArticleModal.test.tsx（~280 行，15 用例 AM1-14 + LIB1）
+
+🧠 关键设计
+- 复用现有 ArticleModal（News 页 + Workbench NewsWidget 共用，改一处覆盖两处；SESSION-HANDOFF 中提到的 widgets/News/ArticleModal.tsx 路径不准确）
+- react-query useQuery：queryKey=['translate-article', articleKey(article)]，staleTime Infinity，gcTime 5min，retry 1
+- HTML 剥离前端做（复用 stripHtml）；译文走 React <p>（不走 dangerouslySetInnerHTML，原生抗 XSS）；原文兜底走 dompurify
+- 错误：useQuery retry:1 + sonner toast.error + 显示原文，不阻塞用户阅读
+- 缓存双层：react-query 内存 5min + 服务端 ai_memos 持久（D069）
+
+🚫 不变量
+- 不引入新依赖（react-query/sonner/dompurify/lucide-react 已在）
+- 不改后端 F213-a 4 文件
+- 不改 News.tsx / NewsWidget.tsx / AiNewsSummaryBar.tsx
+- 不持久化译文到 localStorage
+
+📊 状态变更
+- features.json F213.sub_sprints.F213-b: design_needed → contract_agreed
+- features.json F213.phase: contract_agreed → in_progress（F213-a done + F213-b 即将开发）
+- _pipeline_status.active_sprint_phase: design_needed → contract_agreed
+- features.json#F213.iteration_history 追加一条 contract_agreed 记录
+
+⏭ 下一 session（Sonnet）
+- 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F213-b-contract.md
+- 进入 Generator 模式，从开发顺序步骤 1（新建 translateArticle.ts）开始
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] Sprint：F213-a News Article Auto-Translate 后端 schema
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+
+**文档前置（3 文件）**
+- API-CONTRACT.md：POST /api/ai/{task_type} task_type 枚举 7→8，加 translate_article（default tier, F213, D084）
+- DATA-MODEL.md：§AiMemo task_type 枚举表 6→8，加 translate_article 一行
+- DECISIONS.md：追加 D084（DeepSeek 通过 per-task override 接入，不进 settings 字段）
+
+**代码实现（5 文件，含 1 个 router 扩展）**
+- backend/app/ai/schemas/translate_article.py（新建，~45 行）：TranslateArticleInput（title/contentText/targetLang）+ TranslateArticleOutput（titleZh/contentZh）+ SYSTEM_PROMPT + SCHEMA_VERSION=v1；无 guardrail
+- backend/app/ai/schemas/__init__.py（+2 行）：import translate_article + REGISTRY 注册
+- backend/app/ai/routing.py（+1 行）：_TASK_TIER["translate_article"] = "default"
+- backend/app/routers/ai.py（+1 行）：TaskTypeEnum 加 translate_article（7→8）
+- backend/tests/test_ai_schemas_f213a.py（新建，28 测试）：TI1-6+/TO1-4+/R1-3/G1+G1b/TT1-4/INT1-2，全部通过
+
+**测试修复（3 既有文件）**
+- test_ai_core_modules_f208b.py：production_types 断言 7→8，加 translate_article tier
+- test_ai_gateway_e2e_f208c.py：12 个 mock 函数补 system_prompt="" 参数
+- test_ai_schemas_f209.py：mock 函数补 system_prompt="" 参数
+
+**回归结论**
+- F213-a 测试：28/28 通过
+- 全量回归：901 通过，5 个预存失败不变，无新增失败
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-04-29] Sprint：F212 跨设备 Layout 同步
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - GET /api/layouts/{page}：读取 backend/layouts/{page}.json，文件不存在时返回 []
+  - PUT /api/layouts/{page}：将 layout 数组写入 backend/layouts/{page}.json
+  - backend/layouts/{workbench,cockpit,news}.json 初始化为 []，已 commit
+  - frontend/src/lib/api/layouts.ts：loadLayout / saveLayout 函数
+  - TopNav：CloudUpload（保存）+ CloudDownload（导入）按钮，显示在 /, /cockpit, /news 路径
+  - save/load 均通过 getState() 读写 Zustand store，避免不必要订阅
+  - 成功/失败均有 sonner toast 反馈
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新建 backend/app/routers/layouts.py
+  - 修改 backend/app/main.py（注册 layouts.router）
+  - 新建 backend/layouts/workbench.json, cockpit.json, news.json
+  - 新建 frontend/src/lib/api/layouts.ts
+  - 修改 frontend/src/components/features/topnav/TopNav.tsx
+  - 更新 docs/系统设计/API-CONTRACT.md（新增 F212 Layouts 章节）
+
+📊 功能状态：
+  F212 跨设备 Layout 同步：🔍 needs_review
+
+[下一个 Session]
+  F212 待用户验收。验收通过后 phase → done。
+  下一个可开发功能请参考 features.json。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] Sprint：F213-a News Article Auto-Translate 后端 schema
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 阶段：Sprint Contract 协商完成（contract_agreed）
+
+🎯 范围：
+  - 后端新增第 8 个 AI task type：translate_article
+  - 复用 F208-c gateway + F211-a2 per-task override 基建
+  - 不动 gateway / endpoint / DB / 前端
+  - DeepSeek 通过 AI_TASK_OVERRIDES_JSON env 注入（不进 settings.py 字段）
+
+📂 预计 4 个代码文件：
+  - backend/app/ai/schemas/translate_article.py（新建）
+  - backend/app/ai/schemas/__init__.py（+3 行 REGISTRY 注册）
+  - backend/app/ai/routing.py（+1 行 _TASK_TIER 映射）
+  - backend/tests/test_ai_schemas_f213a.py（新建，~25 单元 + 2 集成测试）
+
+📂 Generator 步骤 1-3 文档前置：
+  - docs/系统设计/API-CONTRACT.md（task_type 7 → 8 enum）
+  - docs/系统设计/DATA-MODEL.md §AiMemo（task_type 枚举行）
+  - docs/系统设计/DECISIONS.md（新增 D084）
+
+⚙️ 5 个开放问题全采默认方案（详见 contract §7）：
+  - Q1 LiteLLM deepseek/ 原生 provider，回退 OpenAI-兼容 base_url
+  - Q2 contentText max_length 20k 字符
+  - Q3 targetLang 字段保留扩展
+  - Q4 HTML 剥离前端做
+  - Q5 DeepSeek 价格 Generator 阶段用 Context7 查最新
+
+📊 功能状态：
+  F213 News Article Auto-Translate：🟡 in_progress
+    F213-a：🤝 contract_agreed
+    F213-b：⬜ design_needed
+
+[下一个 Session — 强制开新 session]
+  Sonnet 模式，恢复指令：
+
+  > 继续开发 F213-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F213-a-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1（更新 API-CONTRACT.md）开始。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-07] F213 验收 + 一致性修复
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Consistency-Check 扫描完成（report 模式）：
+  - C1/C3/C8：无违例
+  - C2×5 / C5×44 / C7×6：历史遗留，不阻塞
+  - C4×2 / C6×1：轻微，不阻塞
+  已修复：F213-b → done, F213 parent → needs_review（等待人工验收）
+         F212 phase: needs_review → done, F201-a/F210 status: completed → done
+
+⚙️ DeepSeek .env 配置：
+  AI_TASK_OVERRIDES_JSON 模板已写入项目根 .env
+  ⚠️ 待用户填写真实 DeepSeek API Key 并确认 model ID
+
+🔧 测试修复：
+  test_routing_seven_task_types_mapped 添加 monkeypatch 隔离 ai_task_overrides_json
+
+📋 验收记录：docs/验收/v1.9-F213-acceptance.md
+
+📊 功能状态：
+  F213 News Article Auto-Translate：🟡 needs_review（待人工验收 A3-A6）
+    F213-a：✅ done
+    F213-b：✅ done（代码 + 15 测试通过）
+
+[下一步]
+  1. 填写真实 DeepSeek API Key（.env）
+  2. 起 backend + frontend，人工走一遍 A3-A6
+  3. 确认通过后触发 project-commiter 发版
