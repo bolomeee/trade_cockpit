@@ -1218,6 +1218,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 - MA 计算在 service 层完成（复用 workbench 信号引擎中的 MA utility，作为纯函数被 cockpit 服务 import —— 函数级复用允许，目录级解耦硬约束）
 - ATR（14）固定返回一条序列
 - AVWAP 从 `anchor` 日期起累计计算；无 anchor 且 earnings_events 无数据时 `anchor` 字段为 null，`avwap` 序列为空数组
+- EMA 序列固定计算 EMA 10 / EMA 21（由 `CHART.DEFAULT_EMAS` 参数控制，**不接受查询参数**）；算法：α=2/(period+1)，seed=SMA(period)；bars 不足 period 时对应序列为空数组
 
 **成功响应（200）**：
 ```json
@@ -1238,6 +1239,10 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
     "avwap": {
       "anchor": "2026-02-15",
       "series": [{ "date": "2026-02-15", "value": 770.0 }]
+    },
+    "emas": {
+      "10": [{ "date": "2026-04-24", "value": 848.3 }],
+      "21": [{ "date": "2026-04-24", "value": 837.1 }]
     }
   },
   "message": "success"

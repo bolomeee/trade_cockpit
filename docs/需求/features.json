@@ -1,8 +1,8 @@
 {
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
-  "version": "1.8.0-planning",
-  "last_updated": "2026-05-07",
+  "version": "1.8.1-planning",
+  "last_updated": "2026-05-12",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -3828,6 +3828,84 @@
         }
       ],
       "notes": "ChartWidget 是 News 和 Workbench 共用的同一份代码（WidgetRegistry.ts:26 / :76），改一处覆盖两页。"
+    },
+    {
+      "id": "F215",
+      "name": "Cockpit Phase A — Risk cap + EMA 10/21 + Volume Accumulation",
+      "description": "对照《慢交易系统框架》(SRS) 扫描报告的 Quick Wins 三件套：(1) RISK_ON 单笔风险上限 1.5% → 1.25% 对齐 SRS 推荐；(2) 在 chart_service 加入 EMA 10/21（SRS § 三 退出规则依赖 21EMA/10EMA trailing）；(3) Volume Accumulation 三件套（z-score / OBV / up-down volume ratio）落地到 setup_service，作为 BREAKOUT 机构吸筹确认门槛。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md Phase A。",
+      "user_story": "作为投资者，我需要：(1) 单笔仓位风险与 SRS 设计边界一致，不被系统性超风险；(2) 在日线 chart 上看到 EMA10/EMA21 才能正确判断 trailing 出场；(3) BREAKOUT 候选必须满足机构吸筹的 Volume 确认，否则胜率被稀释。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "sub_sprint_notes": "拆 a/b 两段（2026-05-12 用户确认，6 文件原则）：F215-a 风险上限调整（A1，1 文件）+ EMA 10/21 加入 chart_service 与 CockpitChartWidget（A2，4 文件），合计 5 文件，纯加法零 DB 变更；F215-b Volume Accumulation 三件套（A3，6 文件，含 alembic 018 + setup_snapshots 加 3 列 + BREAKOUT 判定门槛升级）。F215-b 会改变现有 BREAKOUT 候选数量，与 F215-a 隔离以缩小回归面。",
+      "sub_sprints": {
+        "F215-a": "in_progress",
+        "F215-b": "design_needed"
+      },
+      "dependencies": [],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/chart/{ticker} (扩展返回 emas 字段)",
+          "GET /api/cockpit/setup (扩展返回 volumeZscore / upDownVolumeRatio / obvTrend)",
+          "GET /api/cockpit/regime (returns single_trade_risk_pct=1.25 when regime=RISK_ON)"
+        ],
+        "db_tables": [
+          "setup_snapshots (F215-b 新增 3 列)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/chart/{ticker}",
+          "API-CONTRACT.md §GET /api/cockpit/setup",
+          "API-CONTRACT.md §GET /api/cockpit/regime"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: SetupSnapshot (F215-b 新增 volume_zscore / obv_trend / up_down_volume_ratio)"
+        ],
+        "decision_refs": [
+          "对照《慢交易系统框架》(SRS) 扫描报告 docs/对比/cockpit-vs-srs-framework.md",
+          "完整计划文档 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "F215-a: market_regime_snapshots.single_trade_risk_pct 在 regime=RISK_ON 时写入 1.25（不再是 1.5）",
+        "F215-a: GET /api/cockpit/chart/{ticker} 返回结构同级新增 emas 字段（与 mas 平行），默认包含 emas['10'] 与 emas['21'] 两个序列",
+        "F215-a: CockpitChartWidget 在 chart 上渲染 EMA10 / EMA21 两条线，与 SMA 线视觉可区分（虚线或不同 token 颜色）",
+        "F215-b: setup_snapshots 新增列 volume_zscore (FLOAT) / obv_trend (STRING 'UP'|'DOWN'|'FLAT') / up_down_volume_ratio (FLOAT)，alembic 018 迁移可前向也可回滚",
+        "F215-b: setup_service._classify_setup_type 对 BREAKOUT 候选新增门槛：volume_zscore ≥ 1.5 AND up_down_volume_ratio ≥ 1.2，未达标的候选降级为 NONE",
+        "F215-b: GET /api/cockpit/setup 返回 items[] 包含新字段（camelCase: volumeZscore / obvTrend / upDownVolumeRatio）",
+        "F215-b: SetupMonitorWidget 列表新增 'Vol Z' 列展示 volumeZscore",
+        "全量后端 pytest 与前端 vitest 回归通过，无新增失败"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-05-12",
+          "subtask": "F215",
+          "phase": "ready_to_dev",
+          "session": "feature-dev Phase A 协商",
+          "changes": "Phase A 计划已批准。按 6 文件原则拆 F215-a (Risk+EMA, 5 文件) + F215-b (Volume Accumulation, 6 文件)。F215-a 进入 Sprint Contract 起草。"
+        },
+        {
+          "date": "2026-05-12",
+          "subtask": "F215-a",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F215-a Sprint Contract 已确认（用户按推荐方案确认 3 个协商点）：(1) MarketRegimeWidget toFixed(2)，文件清单加入第 6 个；(2) EMA 复用 SMA token + LineStyle.Dashed；(3) EMA 周期固定 [10,21]，不开放 ?emas= 查询参数。Contract 路径：docs/开发/sprint-contracts/F215-a-contract.md。"
+        }
+      ],
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段（A/B/C/D）的第 1 阶段。其余阶段对应未来 features：Phase B = Weekly Stage Layer；Phase C = Capitulation Reversal 重写（移除 SETUP_PULLBACK）；Phase D = Repricing Trigger 5 类框架。每阶段一个独立 feature，按 A→B→C→D 顺序推进。"
     }
   ]
 }
