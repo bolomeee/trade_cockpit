@@ -18,7 +18,7 @@ vi.mock('lightweight-charts', () => {
     addSeries: vi.fn(() => mockSeries),
     applyOptions: vi.fn(),
     remove: vi.fn(),
-    timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
+    timeScale: vi.fn(() => ({ fitContent: vi.fn(), setVisibleRange: vi.fn() })),
   }
   return {
     createChart: vi.fn(() => mockChart),
@@ -60,6 +60,10 @@ const mockChartData = {
     '50': [{ date: '2026-04-24', value: 820 }],
     '150': [{ date: '2026-04-24', value: 780 }],
     '200': [{ date: '2026-04-24', value: 760 }],
+  },
+  emas: {
+    '10': [{ date: '2026-04-24', value: 843.5 }],
+    '21': [{ date: '2026-04-24', value: 836.2 }],
   },
   atr: [{ date: '2026-04-24', value: 15 }],
   avwap: { anchor: '2026-02-15', series: [{ date: '2026-02-15', value: 770 }] },
@@ -170,8 +174,8 @@ describe('S4 – loading and chart creation', () => {
     })
 
     const chart = getMockChart()
-    // candle(1) + volume(1) + MA*5(5) + AVWAP(1) = 8
-    expect(chart.addSeries).toHaveBeenCalledTimes(8)
+    // candle(1) + volume(1) + MA*5(5) + EMA*2(2) + AVWAP(1) = 10
+    expect(chart.addSeries).toHaveBeenCalledTimes(10)
   })
 })
 
@@ -273,5 +277,29 @@ describe('S8 – ResizeObserver → chart.applyOptions called', () => {
     })
 
     expect(chart.applyOptions).toHaveBeenCalledWith({ width: 800, height: 600 })
+  })
+})
+
+// ── S9 (F215-a): EMA10 + EMA21 LineSeries with LineStyle.Dashed ──────────────
+
+describe('S9 (F215-a) – EMA rendering with LineStyle.Dashed', () => {
+  it('adds EMA10 and EMA21 series with lineStyle=Dashed, no console.error', async () => {
+    vi.stubGlobal('fetch', makeFetch())
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const errorSpy = vi.spyOn(console, 'error')
+    renderWidget()
+
+    await waitFor(() => {
+      expect(vi.mocked(createChart)).toHaveBeenCalledTimes(1)
+    })
+
+    const chart = getMockChart()
+    const allCalls = chart.addSeries.mock.calls as Array<[unknown, Record<string, unknown>]>
+    const emaCallsWithDashed = allCalls.filter(
+      ([, opts]) => opts && opts['lineStyle'] === 2,
+    )
+    // EMA10 + EMA21 = 2 dashed LineSeries
+    expect(emaCallsWithDashed).toHaveLength(2)
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 })

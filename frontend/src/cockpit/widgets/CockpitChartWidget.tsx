@@ -311,10 +311,8 @@ export function CockpitChartWidget() {
                 style={{
                   display: 'inline-block',
                   width: '12px',
-                  height: '2px',
-                  background: `var(${MA_TOKENS[String(period)]}, ${MA_FALLBACKS[String(period)]})`,
-                  borderTop: `2px dashed var(${MA_TOKENS[String(period)]}, ${MA_FALLBACKS[String(period)]})`,
                   height: '0',
+                  borderTop: `2px dashed var(${MA_TOKENS[String(period)]}, ${MA_FALLBACKS[String(period)]})`,
                 }}
               />
               <span

@@ -129,10 +129,10 @@ describe('S3 – Score Hero normal state', () => {
     expect(await screen.findByText('68 / 100')).toBeInTheDocument()
   })
 
-  it('renders Allowed Exposure and Single Trade Risk', async () => {
+  it('renders Allowed Exposure and Single Trade Risk (toFixed(2) precision)', async () => {
     renderWidget()
     expect(await screen.findByText(/70\.0%/)).toBeInTheDocument()
-    expect(await screen.findByText(/1\.0%/)).toBeInTheDocument()
+    expect(await screen.findByText(/1\.00%/)).toBeInTheDocument()
   })
 })
 
@@ -463,5 +463,57 @@ describe('S14 – AI Market Notes integration', () => {
     expect(xly.state).toBe('Strong')
     const xle = body.input.sectors.find((s: { symbol: string }) => s.symbol === 'XLE')
     expect(xle.state).toBe('Weak')
+  })
+})
+
+// ── S9 (F215-a): toFixed(2) precision for Risk/Trade ─────────────────────────
+
+describe('S9 (F215-a) – singleTradeRiskPct toFixed(2) precision', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('RISK_ON 1.25 displays as "1.25%"', async () => {
+    const riskOnData = {
+      ...REGIME_OK,
+      regime: 'RISK_ON' as const,
+      singleTradeRiskPct: 1.25,
+    }
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/regime': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ data: riskOnData }),
+          } as { ok: boolean; status: number; json: () => Promise<unknown> }),
+      }),
+    )
+    renderWidget()
+    expect(await screen.findByText(/1\.25%/)).toBeInTheDocument()
+  })
+
+  it('other regimes also show 2 decimal places (0.75%, 1.00%, 0.50%)', async () => {
+    const cases: Array<[number, RegExp]> = [
+      [0.75, /0\.75%/],
+      [1.0, /1\.00%/],
+      [0.5, /0\.50%/],
+    ]
+    for (const [value, pattern] of cases) {
+      vi.unstubAllGlobals()
+      vi.stubGlobal(
+        'fetch',
+        makeRoutedFetch({
+          '/cockpit/regime': () =>
+            Promise.resolve({
+              ok: true,
+              status: 200,
+              json: () => Promise.resolve({ data: { ...REGIME_OK, singleTradeRiskPct: value } }),
+            } as { ok: boolean; status: number; json: () => Promise<unknown> }),
+        }),
+      )
+      const { unmount } = renderWidget()
+      expect(await screen.findByText(pattern)).toBeInTheDocument()
+      unmount()
+    }
   })
 })
