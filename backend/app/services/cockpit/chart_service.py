@@ -40,6 +40,26 @@ def _compute_ma_series(bars: list[dict[str, Any]], period: int) -> list[dict[str
     return result
 
 
+def _compute_ema_series(bars: list[dict[str, Any]], period: int) -> list[dict[str, Any]]:
+    """Standard EMA series over bars close prices.
+
+    seed = SMA(period) at bar index period-1; α = 2/(period+1) thereafter.
+    Returns [{date, value}] starting from bar index period-1 (same start as SMA).
+    Returns [] when period >= len(bars).
+    """
+    n = len(bars)
+    if period <= 0 or period >= n:
+        return []
+    alpha = 2.0 / (period + 1)
+    seed = sum(b["close"] for b in bars[:period]) / period
+    result = [{"date": bars[period - 1]["date"], "value": seed}]
+    ema = seed
+    for i in range(period, n):
+        ema = alpha * bars[i]["close"] + (1 - alpha) * ema
+        result.append({"date": bars[i]["date"], "value": ema})
+    return result
+
+
 def _compute_atr_series(bars: list[dict[str, Any]], period: int) -> list[dict[str, Any]]:
     """Wilder ATR series.
 
@@ -160,6 +180,10 @@ class CockpitChartService:
         for period in resolved_mas:
             ma_series[str(period)] = _compute_ma_series(bars, period)
 
+        ema_series: dict[str, list[dict[str, Any]]] = {}
+        for period in CHART.DEFAULT_EMAS:
+            ema_series[str(period)] = _compute_ema_series(bars, period)
+
         atr_series = _compute_atr_series(bars, CHART.ATR_PERIOD)
 
         if resolved_anchor is not None:
@@ -171,6 +195,7 @@ class CockpitChartService:
             "ticker": ticker,
             "bars": bars,
             "mas": ma_series,
+            "emas": ema_series,
             "atr": atr_series,
             "avwap": {"anchor": resolved_anchor, "series": avwap_series},
         }
