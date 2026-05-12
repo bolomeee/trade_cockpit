@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CirclePlus } from 'lucide-react'
+import { CirclePlus, RefreshCw } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getCockpitPool, type PoolFilters, type PoolItem } from '../lib/api/cockpitPoolApi'
 import { addStock } from '@/lib/api/watchlist'
@@ -32,10 +32,11 @@ export function PoolBuilderWidget() {
   const [activeFunnelStep, setActiveFunnelStep] = useState<FunnelStep | null>(null)
   const [addingTickers, setAddingTickers] = useState<Set<string>>(new Set())
   const [knownSectors, setKnownSectors] = useState<string[]>([])
+  const [spinning, setSpinning] = useState(false)
   const queryClient = useQueryClient()
   const setSelectedTicker = useCockpitStore((s) => s.setSelectedTicker)
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['cockpit-pool', filters],
     queryFn: () => getCockpitPool(filters),
     staleTime: POOL_STALE_TIME_MS,
@@ -48,6 +49,12 @@ export function PoolBuilderWidget() {
       return [...merged].sort()
     })
   }, [data?.items])
+
+  async function handleRefresh() {
+    setSpinning(true)
+    await Promise.all([refetch(), new Promise((r) => setTimeout(r, 600))])
+    setSpinning(false)
+  }
 
   async function handleAddStock(ticker: string) {
     setAddingTickers((prev) => new Set(prev).add(ticker))
@@ -82,23 +89,43 @@ export function PoolBuilderWidget() {
       <div
         style={{
           display: 'flex',
-          justifyContent: 'center',
+          alignItems: 'center',
           padding: '5px 12px',
-          gap: '12px',
           flexShrink: 0,
           borderBottom: '1px solid var(--color-border)',
-          flexWrap: 'wrap',
         }}
       >
-        {FUNNEL_STEPS.map(({ key, label }) => (
-          <FunnelSegment
-            key={key}
-            label={label}
-            count={data?.funnel[key] ?? 0}
-            active={activeFunnelStep === key}
-            onToggle={() => toggleFunnelStep(key)}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {FUNNEL_STEPS.map(({ key, label }) => (
+            <FunnelSegment
+              key={key}
+              label={label}
+              count={data?.funnel[key] ?? 0}
+              active={activeFunnelStep === key}
+              onToggle={() => toggleFunnelStep(key)}
+            />
+          ))}
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={spinning}
+          aria-label="Refresh pool"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '2px 4px',
+            border: 'none',
+            background: 'none',
+            cursor: spinning ? 'default' : 'pointer',
+            color: 'var(--color-text-muted)',
+            flexShrink: 0,
+          }}
+        >
+          <RefreshCw
+            size={13}
+            className={spinning ? 'animate-spin' : ''}
           />
-        ))}
+        </button>
       </div>
 
       <div style={{ flexShrink: 0, borderBottom: '1px solid var(--color-border)' }}>
