@@ -80,7 +80,7 @@ class CockpitRegimeParams(BaseModel):
     # ── Single trade risk by regime ───────────────────────────────────────────
     SINGLE_TRADE_RISK_PCT: dict[str, float] = Field(
         default={
-            "RISK_ON": 1.5,
+            "RISK_ON": 1.25,
             "CONSTRUCTIVE": 1.0,
             "NEUTRAL": 0.75,
             "DEFENSIVE": 0.5,
@@ -225,6 +225,12 @@ class CockpitChartParams(BaseModel):
     MA_MIN: int = Field(default=5, description="Min single MA period", ge=2, le=100)
     MA_MAX: int = Field(default=250, description="Max single MA period", ge=50, le=500)
     MA_MAX_COUNT: int = Field(default=8, description="Max number of MA series allowed in one request", ge=1, le=20)
+
+    # ── EMA 周期（固定，不接受查询参数）────────────────────────────────────
+    DEFAULT_EMAS: list[int] = Field(
+        default=[10, 21],
+        description="EMA periods always computed and returned alongside MAs; α=2/(period+1), seed=SMA(period)",
+    )
 
     # ── ATR ──────────────────────────────────────────────────────────────
     ATR_PERIOD: int = Field(default=14, description="ATR rolling period", ge=5, le=50)
