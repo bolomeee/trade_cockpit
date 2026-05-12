@@ -1,64 +1,72 @@
-# SESSION-HANDOFF — F214 needs_review，等待用户验收
+# SESSION-HANDOFF.md
 
-> 生成：2026-05-08 | Branch: cockpit
-> 阶段：F214 phase = `needs_review`
-> 上一阶段：F214 Generator 完成，consistency-check 全清
-
----
-
-## 1. 当前位置
-
-**Feature**：F214 — ChartWidget Add to Watchlist 按钮  
-**phase**：`needs_review`  
-**status**：`in_progress`（验收通过后切 done）  
-**本次完成的工作**：Generator 模式全部 14 步执行完毕
+> 生成时间：2026-05-12
+> 当前 Skill：feature-dev（类型 A — A-2 Generator + A-3 Evaluator 完成，F215-a needs_review）
+> 当前 Feature：F215-a — Cockpit Phase A: Risk cap (RISK_ON 1.5%→1.25%) + EMA 10/21
 
 ---
 
-## 2. 已完成内容
+## 完成的内容
 
-### 代码变更
+| 步骤 | 状态 |
+|------|------|
+| API-CONTRACT.md 同步（emas 字段） | ✅ |
+| cockpit_params.py（RISK_ON 1.25 + DEFAULT_EMAS） | ✅ |
+| chart_service.py（_compute_ema_series + get_chart emas） | ✅ |
+| schemas/cockpit/chart.py（CockpitChartData.emas） | ✅ |
+| routers/cockpit/chart.py（emas_out） | ✅ |
+| 后端测试 test_f215a.py 12/12 | ✅ |
+| frontend cockpitChartApi.ts（emas 类型） | ✅ |
+| CockpitChartWidget.tsx（EMA10/EMA21 虚线渲染） | ✅ |
+| MarketRegimeWidget.tsx（toFixed(2)） | ✅ |
+| 前端 vitest 测试（S9 EMA + Risk 精度） | ✅ |
+| DECISIONS.md D085 + D086 | ✅ |
+| Evaluator 全量回归 | ✅ 零新增失败 |
 
-| 文件 | 类型 | 说明 |
-|------|------|------|
-| `frontend/src/workbench/widgets/ChartWidget.tsx` | 修改 | 加 CirclePlus 浮动按钮 + useMutation + isInWatchlist + 3s 错误自动清除 |
-| `frontend/src/workbench/widgets/__tests__/ChartWidget.test.tsx` | 新建 | 7 个单元测试，7/7 通过 |
+## 当前状态
 
-### 关键技术决策
+- **F215-a phase：needs_review（sub_sprints: done）**
+- F215 parent phase：in_progress（F215-b 待开发）
+- WIP commits：8 个（2783d72 → 3587fec），均在 `improve_against_plan` 分支
 
-- 按钮位置从 `right:8px` 调整为 `right:70px`，避开 lightweight-charts price scale（约 62px 宽）
-- `preview_click` 无法触发 React 合成事件；浏览器验证使用 `dispatchEvent(MouseEvent)`
+## 预存在测试失败（非 F215-a 引入，记录以便追踪）
 
-### Commits（本 session）
+**后端（4 个）**：
+- `test_s14_cockpit_params_import_no_exception`：INDEX_ETFS 长度断言 3，实际 4（VXX 已加入但测试未更新）
+- `test_s4_indices_has_exactly_3_items`：同上原因
+- `test_R6_news_summarizer_resolves_default`：预存在
+- `test_get_screener_universe_merges_three_exchanges_and_dedupes`：预存在
 
+**前端（7 files）**：AiNewsSummaryBar C1-C8 / SetupMonitorWidget §S / TopNav S12-S13 / DecisionPanelWidget S4
+
+## 已修改文件（共 6 个，按 Sprint Contract 清单）
+
+1. `backend/app/services/cockpit/cockpit_params.py` — RISK_ON 1.25 + DEFAULT_EMAS
+2. `backend/app/services/cockpit/chart_service.py` — _compute_ema_series + get_chart
+3. `backend/app/schemas/cockpit/chart.py` — CockpitChartData.emas
+4. `frontend/src/cockpit/lib/api/cockpitChartApi.ts` — emas type
+5. `frontend/src/cockpit/widgets/CockpitChartWidget.tsx` — EMA渲染
+6. `frontend/src/cockpit/widgets/MarketRegimeWidget.tsx` — toFixed(2)
+
+**额外文件（Sprint 产物）**：
+- `backend/app/routers/cockpit/chart.py` — emas_out（router 漏传修复）
+- `backend/tests/test_f215a.py` — 新增测试
+- `docs/系统设计/API-CONTRACT.md` — emas 字段文档
+- `docs/系统设计/DECISIONS.md` — D085+D086
+
+## 下一步选项
+
+### 选项 A：F215-a 验收（acceptance skill）
 ```
-cb74957 wip(F214): update features.json + design-spec for needs_review
-9783dc8 wip(F214): ChartWidget tests (7/7)
-6856dbc wip(F214): ChartWidget add-to-watchlist button
+/acceptance F215-a
 ```
 
----
+### 选项 B：继续 F215-b Volume Accumulation
+```
+继续开发 F215，准备 F215-b Sprint Contract。
+读取 SESSION-HANDOFF.md + /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md（Phase A3 章节）。
+进入 feature-dev skill A-1 Contract 协商模式。
+```
 
-## 3. 验收要点（用户手动确认）
-
-1. **按钮位置**：News 页和 Workbench 页的 ChartWidget 右下角均有 CirclePlus 按钮（`right:70px, bottom:8px`），不遮挡 price scale 数字
-2. **idle 态**：选一个不在 watchlist 的 ticker，按钮 enabled，hover 变 primary 色
-3. **add 成功**：点击后 signals invalidate，ticker 加入 signals 后按钮变 disabled + opacity 0.4 + title "已在 watchlist"
-4. **already-in 态**：选已在 watchlist 的 ticker（如 AAPL），按钮直接 disabled
-5. **错误态**：后端返回 DUPLICATE 时按钮显示红色边框 + title 显示错误文案，3s 后恢复
-
----
-
-## 4. 遗留事项
-
-- **C5（44处合约无 features.json entry）**：已知 drift，历史 feature 合约文件未拆分 sub_sprints，用户选择跳过
-- **C4（F205/F207 iteration_history 缺失）**：同上，历史积累，跳过
-
----
-
-## 5. 下一步
-
-验收通过后：
-1. 将 F214 `status` 改为 `done`，`phase` 改为 `done`
-2. 调用 `project-commiter` 发版（v2.2.0 或按项目规划）
-3. 清理 MCD 测试数据（本 session 添加 MCD 到 watchlist 做手验）
+### 选项 C：其他待处理（F214 needs_review 验收）
+F214 ChartWidget Add to Watchlist 仍处于 needs_review 状态，可优先验收。

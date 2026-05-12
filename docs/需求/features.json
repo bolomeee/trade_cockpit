@@ -3839,7 +3839,7 @@
       "phase": "in_progress",
       "sub_sprint_notes": "拆 a/b 两段（2026-05-12 用户确认，6 文件原则）：F215-a 风险上限调整（A1，1 文件）+ EMA 10/21 加入 chart_service 与 CockpitChartWidget（A2，4 文件），合计 5 文件，纯加法零 DB 变更；F215-b Volume Accumulation 三件套（A3，6 文件，含 alembic 018 + setup_snapshots 加 3 列 + BREAKOUT 判定门槛升级）。F215-b 会改变现有 BREAKOUT 候选数量，与 F215-a 隔离以缩小回归面。",
       "sub_sprints": {
-        "F215-a": "in_progress",
+        "F215-a": "done",
         "F215-b": "design_needed"
       },
       "dependencies": [],

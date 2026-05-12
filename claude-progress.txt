@@ -48,3 +48,79 @@
   > 继续开发 F214，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F214-contract.md，
   > 进入 Generator 模式，从开发顺序步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-12] Sprint：F215-a Cockpit Phase A — Risk cap + EMA 10/21（Generator + Evaluator 完成）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（Generator + Evaluator 阶段）：
+  - API-CONTRACT.md：§GET /api/cockpit/chart/{ticker} 追加 emas 字段 + 服务端行为说明
+  - cockpit_params.py：RISK_ON 1.5% → 1.25%（对齐 SRS 第十节）；CHART 新增 DEFAULT_EMAS=[10,21]
+  - chart_service.py：新增 _compute_ema_series(bars, period)（α=2/(period+1)，seed=SMA(period)）；get_chart() 返回 emas
+  - schemas/cockpit/chart.py：CockpitChartData 新增 emas: dict[str, list[ChartSeriesPoint]]
+  - routers/cockpit/chart.py：emas_out 串联到 CockpitChartData 构造
+  - cockpitChartApi.ts：CockpitChartData type 增加 emas 字段
+  - CockpitChartWidget.tsx：EMA10/EMA21 虚线（LineStyle.Dashed）渲染 + header 图例
+  - MarketRegimeWidget.tsx：toFixed(1) → toFixed(2)（RISK_ON 1.25% 精确显示）
+  - tests/test_f215a.py（后端）：12/12 通过（EMA 单元/集成/路由，RISK_ON 1.25 断言）
+  - CockpitChartWidget.test.tsx（前端）：S9 EMA 渲染测试 + mockChartData 加 emas
+  - MarketRegimeWidget.test.tsx（前端）：toFixed(2) 精度测试 + RISK_ON 1.25% 测试
+  - DECISIONS.md：追加 D085（RISK_ON 上限调整）+ D086（EMA 序列共存决策）
+  - Evaluator 通过：全量后端 6 failed（全预存在），全量前端 7 failed（全预存在），F215-a 零新增失败
+  - sub_sprints.F215-a → done；F215.phase → in_progress（F215-b 待完成）
+
+⚠️ 已知预存在测试失败（非 F215-a 引入）：
+  后端：test_s14_cockpit_params（INDEX_ETFS 长度）/ test_s4_indices / test_R6_news_summarizer / test_fmp_screener
+  前端：AiNewsSummaryBar C1-C8 / SetupMonitorWidget §S / TopNav S12-S13 / DecisionPanelWidget S4
+
+🔧 文档变更：
+  - API-CONTRACT.md（emas 字段说明）
+  - DECISIONS.md（D085 + D086）
+
+📊 功能状态：
+  F214 ChartWidget Add to Watchlist：🔍 needs_review
+  F215 Cockpit Phase A：🔄 in_progress
+    ├─ F215-a Risk+EMA: ✅ done（待验收）
+    └─ F215-b Volume Accumulation: ⬜ design_needed
+
+[下一个 Session]
+  F215-b Volume Accumulation Sprint Contract 协商，或 F215-a 验收。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-12] Sprint：F215-a Cockpit Phase A — Risk cap + EMA 10/21（Contract 协商阶段记录）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（Contract 协商阶段）：
+  - 完整改善计划已批准：/Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md
+    （对照 SRS 框架 4 个阶段：A=Quick Wins / B=Weekly Stage / C=Capitulation 重写 / D=Repricing Trigger 5 类）
+  - Phase A 按 6-file 原则拆为 F215-a (Risk+EMA, 6 文件) + F215-b (Volume Accumulation, 6 文件，含 alembic 018)
+  - features.json 新增 F215 entry，sub_sprints={F215-a: contract_agreed, F215-b: design_needed}
+  - Sprint Contract F215-a 已起草并经用户确认（按推荐方案）
+  - 三个协商点已确认：
+      1) MarketRegimeWidget.tsx 改 toFixed(2) 让 1.25 精确显示（文件清单第 6 个）
+      2) EMA 复用 SMA 颜色 token + LineStyle.Dashed 区分（零 tokens.css 变更）
+      3) EMA 周期固定 [10,21]，不开放 ?emas= 查询参数
+
+📊 文件清单（预计修改 6 个，命中 6-file 上限）：
+  - backend/app/services/cockpit/cockpit_params.py（修改：RISK_ON 1.5→1.25；CHART 新增 DEFAULT_EMAS=[10,21]）
+  - backend/app/services/cockpit/chart_service.py（修改：新增 _compute_ema_series + get_chart 返回 emas）
+  - backend/app/schemas/cockpit/chart.py（修改：CockpitChartData 加 emas 字段）
+  - frontend/src/cockpit/lib/api/cockpitChartApi.ts（修改：type 加 emas）
+  - frontend/src/cockpit/widgets/CockpitChartWidget.tsx（修改：渲染 EMA10/EMA21 虚线）
+  - frontend/src/cockpit/widgets/MarketRegimeWidget.tsx（修改：toFixed(1) → toFixed(2)）
+
+📊 功能状态：
+  F214 ChartWidget Add to Watchlist：🔍 needs_review
+  F215 Cockpit Phase A：📝 contract_agreed
+    ├─ F215-a Risk+EMA: 📝 contract_agreed（待 Generator）
+    └─ F215-b Volume Accumulation: ⬜ design_needed
+
+🔧 文档同步计划（Generator 阶段执行）：
+  - 开发前：API-CONTRACT.md §GET /api/cockpit/chart/{ticker} 追加 emas 字段
+  - 开发后：DECISIONS.md 追加 D076（RISK_ON 1.25%）+ D077（EMA 序列加入 chart）
+
+[下一个 Session]
+  用 Sonnet 开新 session，粘贴：
+  > 继续开发 F215-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F215-a-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1（API-CONTRACT.md 文档同步）开始。
