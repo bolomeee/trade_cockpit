@@ -1995,4 +1995,37 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 
 **参考**：D064（tier 路由）/ D069（ai_memos 去重）/ D075（per-task override 机制）
 
+---
+
+## D085：F215-a RISK_ON 单笔风险上限从 1.5% 调整为 1.25%
+
+**日期**：2026-05-12
+**Feature**：F215-a Risk cap + EMA 10/21
+
+**背景**：SRS 框架第十节明确规定单笔风险上限 ≤ 1.25%。原 `cockpit_params.py` 中 `RISK_ON` 档位为 1.5%，系统性超出设计边界，会在最积极的市场状态下使用过大仓位。
+
+**决策**：将 `REGIME.SINGLE_TRADE_RISK_PCT["RISK_ON"]` 从 `1.5` 改为 `1.25`。其余四档（CONSTRUCTIVE 1.0% / NEUTRAL 0.75% / DEFENSIVE 0.5% / RISK_OFF 0%）保持不变。
+
+**影响**：下次 `MarketRegimeService.compute_and_store()` 运行后，新快照的 `single_trade_risk_pct` 将自动写入 1.25，无需 DB migration。
+
+**放弃**：保持 1.5%（不符合 SRS 约束，且在 RISK_ON 状态下会系统性高估仓位大小）。
+
+---
+
+## D086：F215-a cockpit chart 新增 EMA 10/21 序列，与 SMA 共存
+
+**日期**：2026-05-12
+**Feature**：F215-a Risk cap + EMA 10/21
+
+**背景**：SRS 框架中 EMA10/EMA21 用于"退出规则 trailing stop"（价格跌破 EMA21 出场），SMA 用于"趋势分类"（Stage 分析）。两者职责不同，需要在 chart 上同时可见。
+
+**决策**：
+1. `chart_service.py` 新增 `_compute_ema_series(bars, period)` 纯函数，α=2/(period+1)，seed=SMA(period)，与 `_compute_ma_series` 同层。
+2. `get_chart()` 在 `mas` 同级返回 `emas` dict，周期固定由 `CHART.DEFAULT_EMAS=[10,21]` 控制，不开放查询参数。
+3. 前端 `CockpitChartWidget` 用 `LineStyle.Dashed` 渲染 EMA，复用 MA 颜色 token，零新 CSS 变量。
+
+**放弃**：
+- 合并 EMA/SMA 为统一参数（两者语义不同，混用会降低可读性）
+- 开放 `?emas=` 查询参数（当前无动态需求，固定周期足够，避免接口过度泛化）
+
 **影响**：`backend/app/ai/schemas/translate_article.py`（新建）/ `backend/app/ai/schemas/__init__.py`（+1 import + REGISTRY 行）/ `backend/app/ai/routing.py`（+1 _TASK_TIER 行）
