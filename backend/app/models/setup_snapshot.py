@@ -32,6 +32,9 @@ class SetupSnapshot(Base):
     earnings_risk: Mapped[str] = mapped_column(String(8), nullable=False)
     ready_signal: Mapped[bool] = mapped_column(Boolean, nullable=False)
     suggested_action: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    volume_zscore: Mapped[float | None] = mapped_column(Float, nullable=True)
+    obv_trend: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    up_down_volume_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
     scanned_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
