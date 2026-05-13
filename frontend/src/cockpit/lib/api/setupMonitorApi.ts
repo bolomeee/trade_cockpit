@@ -19,6 +19,8 @@ export type SuggestedAction = 'enter' | 'watch' | 'wait' | 'reduce' | 'exit' | n
 
 export type SetupFilterValue = 'ready' | 'near' | 'extended' | 'broken' | 'none'
 
+export type ObvTrend = 'UP' | 'DOWN' | 'FLAT' | null
+
 export type SetupItem = {
   ticker: string
   stockName: string
@@ -37,6 +39,9 @@ export type SetupItem = {
   readySignal: boolean
   suggestedAction: SuggestedAction
   scanDate: string
+  volumeZscore: number | null
+  obvTrend: ObvTrend
+  upDownVolumeRatio: number | null
 }
 
 export type SetupSummary = {
