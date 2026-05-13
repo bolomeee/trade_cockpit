@@ -1,4 +1,42 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-13] ✅ 验收通过：F215-b Volume Accumulation 三件套 + BREAKOUT 吸筹门槛
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F215 全部完成（F215-a + F215-b）
+
+完成内容：
+  - setup_snapshots 新增 3 列：volume_zscore / obv_trend / up_down_volume_ratio
+  - 三项纯函数：_compute_volume_zscore / _compute_obv_trend / _compute_up_down_volume_ratio
+  - BREAKOUT 吸筹门槛（D088）：z≥1.5 AND U/D≥1.2，未达标降级为 NONE
+  - API 新增 3 camelCase 字段，SetupMonitorWidget 新增 Vol Z 列
+  - alembic 018 migration 已在本地执行
+
+验收发现：
+  - 需手动指定 `alembic upgrade 018_f215b_setup_volume_accumulation`（head 有游离分支）
+  - 需手动触发一次 compute_and_store_all 填充存量快照
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-13] Sprint Contract 协商：F215-b Volume Accumulation 三件套
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F215-b Sprint Contract 协商完成，用户按推荐方案确认全部 7 个协商点
+  - 确认方案 A（7 文件，cockpit_params 集中配置）
+  - z-score 窗口 N=50，OBV 比较法 FLAT 阈值 2%，U-D ratio 分母为零 return None
+  - obv_trend VARCHAR(4)，历史快照不回填，Vol Z 列仅展示
+  - features.json F215-b phase → contract_agreed
+  - Sprint Contract 路径：docs/开发/sprint-contracts/F215-b-contract.md
+
+📊 功能状态：
+  F215-a (Risk cap + EMA 10/21)：✅ done
+  F215-b (Volume Accumulation)：🟡 contract_agreed → 待 Generator 模式开发
+
+[下一个 Session]
+  继续开发 F215-b，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F215-b-contract.md，
+  进入 Generator 模式，从开发步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-11] Bug fix：ChartWidget 按钮 + Regime 刷新
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -124,3 +162,29 @@
   > 继续开发 F215-a，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F215-a-contract.md，
   > 进入 Generator 模式，从开发顺序步骤 1（API-CONTRACT.md 文档同步）开始。
+
+════════════════════════════════════════
+2026-05-12 | F215-a 验收通过
+════════════════════════════════════════
+
+✅ F215-a Risk cap (1.5%→1.25%) + EMA 10/21 验收通过
+
+📋 验收结果：
+  - EMA10/EMA21 虚线正确渲染在 CockpitChartWidget 图例和 chart 上
+  - API /api/cockpit/chart/{ticker} 返回 emas 字段（已验证 NVDA: ema10=241点，ema21=230点）
+  - MarketRegimeWidget toFixed(2) 精度正确
+  - 无 console.error；无功能回归
+  - 后端 test_f215a.py 12/12 通过；前端 CockpitChartWidget/MarketRegimeWidget F215-a 专项测试全通过
+  - DB 快照仍显示 1.50%（预期，下次 compute_and_store 自动修正，D085 有记录）
+
+📊 功能状态更新：
+  F215 Cockpit Phase A：🔄 in_progress（F215-b 待设计）
+    ├─ F215-a Risk+EMA: ✅ done（2026-05-12）
+    └─ F215-b Volume Accumulation: ⬜ design_needed
+
+📝 生成文件：
+  - docs/验收/v1.9-F215-a-acceptance.md
+
+[下一步]
+  F215-b Volume Accumulation 三件套（z-score/OBV/up-down volume）
+  在新 session 中进入 system-design/feature-dev 规划。

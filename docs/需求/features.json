@@ -3835,12 +3835,13 @@
       "description": "对照《慢交易系统框架》(SRS) 扫描报告的 Quick Wins 三件套：(1) RISK_ON 单笔风险上限 1.5% → 1.25% 对齐 SRS 推荐；(2) 在 chart_service 加入 EMA 10/21（SRS § 三 退出规则依赖 21EMA/10EMA trailing）；(3) Volume Accumulation 三件套（z-score / OBV / up-down volume ratio）落地到 setup_service，作为 BREAKOUT 机构吸筹确认门槛。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md Phase A。",
       "user_story": "作为投资者，我需要：(1) 单笔仓位风险与 SRS 设计边界一致，不被系统性超风险；(2) 在日线 chart 上看到 EMA10/EMA21 才能正确判断 trailing 出场；(3) BREAKOUT 候选必须满足机构吸筹的 Volume 确认，否则胜率被稀释。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-05-13",
       "sub_sprint_notes": "拆 a/b 两段（2026-05-12 用户确认，6 文件原则）：F215-a 风险上限调整（A1，1 文件）+ EMA 10/21 加入 chart_service 与 CockpitChartWidget（A2，4 文件），合计 5 文件，纯加法零 DB 变更；F215-b Volume Accumulation 三件套（A3，6 文件，含 alembic 018 + setup_snapshots 加 3 列 + BREAKOUT 判定门槛升级）。F215-b 会改变现有 BREAKOUT 候选数量，与 F215-a 隔离以缩小回归面。",
       "sub_sprints": {
         "F215-a": "done",
-        "F215-b": "needs_review"
+        "F215-b": "done"
       },
       "dependencies": [],
       "estimated_sessions": 2,
