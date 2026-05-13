@@ -1,72 +1,74 @@
-# SESSION-HANDOFF.md
+# SESSION-HANDOFF — F215-b Volume Accumulation 三件套（完成）
 
-> 生成时间：2026-05-12
-> 当前 Skill：feature-dev（类型 A — A-2 Generator + A-3 Evaluator 完成，F215-a needs_review）
-> 当前 Feature：F215-a — Cockpit Phase A: Risk cap (RISK_ON 1.5%→1.25%) + EMA 10/21
+> 生成时间：2026-05-13 | 阶段：Evaluator pass → needs_review
 
 ---
 
-## 完成的内容
+## 已完成内容
 
-| 步骤 | 状态 |
+F215-b 全部 10 个开发步骤 + Evaluator 自检 **已完成**。
+
+### 实现文件（7 个核心文件 + 2 个测试文件）
+
+| 文件 | 改动 |
 |------|------|
-| API-CONTRACT.md 同步（emas 字段） | ✅ |
-| cockpit_params.py（RISK_ON 1.25 + DEFAULT_EMAS） | ✅ |
-| chart_service.py（_compute_ema_series + get_chart emas） | ✅ |
-| schemas/cockpit/chart.py（CockpitChartData.emas） | ✅ |
-| routers/cockpit/chart.py（emas_out） | ✅ |
-| 后端测试 test_f215a.py 12/12 | ✅ |
-| frontend cockpitChartApi.ts（emas 类型） | ✅ |
-| CockpitChartWidget.tsx（EMA10/EMA21 虚线渲染） | ✅ |
-| MarketRegimeWidget.tsx（toFixed(2)） | ✅ |
-| 前端 vitest 测试（S9 EMA + Risk 精度） | ✅ |
-| DECISIONS.md D085 + D086 | ✅ |
-| Evaluator 全量回归 | ✅ 零新增失败 |
+| `backend/alembic/versions/018_f215b_setup_volume_accumulation.py` | 新建，add_column × 3，downgrade drop |
+| `backend/app/models/setup_snapshot.py` | 新增 3 个 Mapped 字段 |
+| `backend/app/services/cockpit/cockpit_params.py` | 追加 6 个 VOL_ACC_* 常量 |
+| `backend/app/services/cockpit/setup_service.py` | 3 个纯函数 + BREAKOUT gate（D088）+ compute_and_store_all 写入 |
+| `backend/app/schemas/cockpit/setup.py` | SetupItemResponse 新增 3 字段（to_camel 自动转 camelCase）|
+| `frontend/src/cockpit/lib/api/setupMonitorApi.ts` | SetupItem type 新增 3 字段 |
+| `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` | 新增 Vol Z 列（6%），列宽调整 |
+| `backend/tests/test_setup_service_f215b.py` | 新建，21 个单元测试 |
+| `backend/tests/test_decision_f215b.py` | 新建，7 个集成测试 |
+
+### 副作用修复
+
+- `backend/tests/test_setup_f202a.py::test_s14_classify_breakout` — 补传 `vol_zscore=2.0, ud_ratio=1.5` 以满足新 BREAKOUT gate，原测试逻辑不变
+
+### 文档更新
+
+- `docs/系统设计/DATA-MODEL.md` — SetupSnapshot 3 新列 + BREAKOUT gate 业务规则
+- `docs/系统设计/API-CONTRACT.md` — setup-monitor response 3 camelCase 字段 + 降级行为说明
+- `docs/系统设计/DECISIONS.md` — 追加 D087（三件套定义）、D088（BREAKOUT gate）、D089（不回填）
+- `docs/需求/features.json` — F215-b status: `needs_review`
+
+---
 
 ## 当前状态
 
-- **F215-a phase：needs_review（sub_sprints: done）**
-- F215 parent phase：in_progress（F215-b 待开发）
-- WIP commits：8 个（2783d72 → 3587fec），均在 `improve_against_plan` 分支
+- Git branch: `improve_against_plan`
+- 最新 commit: `feat(F215-b): Volume Accumulation 三件套 + BREAKOUT 吸筹门槛 — Evaluator pass`
+- F215-a: done, F215-b: needs_review → **F215 全部 sub_sprint 完成**
 
-## 预存在测试失败（非 F215-a 引入，记录以便追踪）
+### 测试结果
 
-**后端（4 个）**：
-- `test_s14_cockpit_params_import_no_exception`：INDEX_ETFS 长度断言 3，实际 4（VXX 已加入但测试未更新）
-- `test_s4_indices_has_exactly_3_items`：同上原因
-- `test_R6_news_summarizer_resolves_default`：预存在
-- `test_get_screener_universe_merges_three_exchanges_and_dedupes`：预存在
+| 测试集 | 结果 |
+|--------|------|
+| `backend pytest`（全量，排除 test_decision_f203b.py 预存坏文件）| 968 passed, 12 pre-existing failures |
+| `F215-b backend tests` (28 tests) | 28/28 pass |
+| `frontend vitest §V` (V1/V2/V3) | 3/3 pass |
+| `frontend vitest §R` (R1-R10) | 10/10 pass |
 
-**前端（7 files）**：AiNewsSummaryBar C1-C8 / SetupMonitorWidget §S / TopNav S12-S13 / DecisionPanelWidget S4
+---
 
-## 已修改文件（共 6 个，按 Sprint Contract 清单）
+## 下一步任务
 
-1. `backend/app/services/cockpit/cockpit_params.py` — RISK_ON 1.25 + DEFAULT_EMAS
-2. `backend/app/services/cockpit/chart_service.py` — _compute_ema_series + get_chart
-3. `backend/app/schemas/cockpit/chart.py` — CockpitChartData.emas
-4. `frontend/src/cockpit/lib/api/cockpitChartApi.ts` — emas type
-5. `frontend/src/cockpit/widgets/CockpitChartWidget.tsx` — EMA渲染
-6. `frontend/src/cockpit/widgets/MarketRegimeWidget.tsx` — toFixed(2)
+F215 全部完成。建议：
 
-**额外文件（Sprint 产物）**：
-- `backend/app/routers/cockpit/chart.py` — emas_out（router 漏传修复）
-- `backend/tests/test_f215a.py` — 新增测试
-- `docs/系统设计/API-CONTRACT.md` — emas 字段文档
-- `docs/系统设计/DECISIONS.md` — D085+D086
+1. **browser 验证**（可选）：起 dev server，在 SetupMonitorWidget 确认 Vol Z 列正常显示
+2. **下一 feature**：查看 `features.json` 中下一个 pending feature 或 planning
 
-## 下一步选项
+---
 
-### 选项 A：F215-a 验收（acceptance skill）
-```
-/acceptance F215-a
-```
+## 注意事项
 
-### 选项 B：继续 F215-b Volume Accumulation
-```
-继续开发 F215，准备 F215-b Sprint Contract。
-读取 SESSION-HANDOFF.md + /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md（Phase A3 章节）。
-进入 feature-dev skill A-1 Contract 协商模式。
-```
+- `test_decision_f203b.py` 有预存 ImportError（DecisionService 不存在），已有 git untracked 状态，不属于 F215-b 范围
+- 现有 BREAKOUT 候选数量在首次 `compute_and_store_all` 后会下降（D088 预期行为）
+- alembic 018 需在生产环境手动运行 `alembic upgrade head`
 
-### 选项 C：其他待处理（F214 needs_review 验收）
-F214 ChartWidget Add to Watchlist 仍处于 needs_review 状态，可优先验收。
+---
+
+## 恢复指令
+
+无待续任务。如需继续开发，请查看 `features.json` 选择下一个 feature。
