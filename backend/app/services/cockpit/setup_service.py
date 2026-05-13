@@ -1,7 +1,8 @@
-"""F202-a: SetupService — compute and store daily setup snapshots for all watchlist stocks."""
+"""F202-a / F215-b: SetupService — compute and store daily setup snapshots for all watchlist stocks."""
 
 from __future__ import annotations
 
+import math
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -102,10 +103,14 @@ def _classify_setup_type(
     trend_score: int,
     had_recent_earnings: bool,
     prev_closes: list[float],
+    vol_zscore: float | None = None,
+    ud_ratio: float | None = None,
 ) -> tuple[str, float | None, float | None, float | None, float | None]:
     """
     Returns (setup_type, entry_price, stop_price, target_2r, target_3r).
     Priority: BROKEN > EXTENDED > EARNINGS_DRIFT > BREAKOUT > PULLBACK > RECLAIM > NONE.
+    BREAKOUT gate (D088): vol_zscore >= VOL_ACC_BREAKOUT_Z_MIN AND ud_ratio >= VOL_ACC_BREAKOUT_UD_MIN;
+    either unmet (incl. None) → direct NONE, no fall-through.
     """
     ma10 = mas.get(10)
     ma21 = mas.get(21)
@@ -138,11 +143,15 @@ def _classify_setup_type(
         t2r, t3r = _targets(entry, stop)
         return SETUP_EARNINGS_DRIFT, entry, stop, round(t2r, 4), round(t3r, 4)
 
-    # 4. BREAKOUT
+    # 4. BREAKOUT (with volume accumulation gate — D088)
     if len(highs) >= SETUP.PIVOT_LOOKBACK_BARS and trend_score >= 3:
         pivot = max(highs[-SETUP.PIVOT_LOOKBACK_BARS:])
         lower_bound = pivot * (1 - SETUP.BREAKOUT_ZONE_PCT / 100)
         if last_close >= lower_bound:
+            z_ok = vol_zscore is not None and vol_zscore >= SETUP.VOL_ACC_BREAKOUT_Z_MIN
+            ud_ok = ud_ratio is not None and ud_ratio >= SETUP.VOL_ACC_BREAKOUT_UD_MIN
+            if not (z_ok and ud_ok):
+                return SETUP_NONE, None, None, None, None
             entry = round(pivot, 4)
             stop = round(ma50 * (1 - SETUP.BREAKOUT_STOP_MA50_PCT / 100), 4)
             t2r, t3r = _targets(entry, stop)
@@ -251,6 +260,71 @@ def _percentile_rank(values: list[float], value: float) -> int:
     return int(below / len(values) * 100)
 
 
+# ── Volume Accumulation 纯函数（F215-b / D087）───────────────────────────────
+
+
+def _compute_volume_zscore(volumes: list[int], window: int) -> float | None:
+    """Z-score of last bar's volume vs prior `window` bars. Returns None when std==0 or insufficient bars."""
+    if len(volumes) < window + 1:
+        return None
+    sample = volumes[-(window + 1):-1]
+    mean = sum(sample) / window
+    variance = sum((v - mean) ** 2 for v in sample) / window
+    if variance == 0:
+        return None
+    return round((volumes[-1] - mean) / math.sqrt(variance), 4)
+
+
+def _compute_obv_trend(
+    closes: list[float],
+    volumes: list[int],
+    lookback: int,
+    flat_pct: float,
+) -> str | None:
+    """'UP'/'DOWN'/'FLAT' based on OBV relative change over `lookback` bars. None when insufficient data or OBV base is zero."""
+    if len(closes) < lookback + 1 or len(volumes) < lookback + 1:
+        return None
+    obv = [0]
+    for i in range(1, len(closes)):
+        if closes[i] > closes[i - 1]:
+            obv.append(obv[-1] + volumes[i])
+        elif closes[i] < closes[i - 1]:
+            obv.append(obv[-1] - volumes[i])
+        else:
+            obv.append(obv[-1])
+    obv_base = obv[-(lookback + 1)]
+    if abs(obv_base) == 0:
+        return None
+    change = (obv[-1] - obv_base) / abs(obv_base)
+    threshold = flat_pct / 100
+    if change > threshold:
+        return "UP"
+    if change < -threshold:
+        return "DOWN"
+    return "FLAT"
+
+
+def _compute_up_down_volume_ratio(
+    closes: list[float],
+    volumes: list[int],
+    window: int,
+) -> float | None:
+    """O'Neil U/D ratio: up-day vol sum / down-day vol sum over `window` bars. None when no down days or insufficient bars."""
+    if len(closes) < window + 1 or len(volumes) < window + 1:
+        return None
+    up_vol = 0
+    down_vol = 0
+    start = len(closes) - window
+    for i in range(start, len(closes)):
+        if closes[i] > closes[i - 1]:
+            up_vol += volumes[i]
+        elif closes[i] < closes[i - 1]:
+            down_vol += volumes[i]
+    if down_vol == 0:
+        return None
+    return round(up_vol / down_vol, 4)
+
+
 # ── SetupService ───────────────────────────────────────────────────────────────
 
 
@@ -319,6 +393,9 @@ class SetupService:
                     "earnings_risk": earnings_risk,
                     "ready_signal": False,
                     "suggested_action": None,
+                    "volume_zscore": None,
+                    "obv_trend": None,
+                    "up_down_volume_ratio": None,
                     "scanned_at": datetime.now(timezone.utc),
                 })
                 continue
@@ -334,8 +411,14 @@ class SetupService:
             # Determine if had recent earnings (drift scenario)
             had_recent_earnings = self._had_recent_earnings(stock.ticker, today)
 
+            # Volume accumulation metrics (F215-b)
+            vol_zscore = _compute_volume_zscore(volumes, SETUP.VOL_ACC_ZSCORE_WINDOW)
+            obv_trend = _compute_obv_trend(closes, volumes, SETUP.VOL_ACC_OBV_LOOKBACK, SETUP.VOL_ACC_OBV_FLAT_PCT)
+            ud_ratio = _compute_up_down_volume_ratio(closes, volumes, SETUP.VOL_ACC_UD_WINDOW)
+
             setup_type, entry, stop, t2r, t3r = _classify_setup_type(
-                closes[-1], mas, highs, trend_score, had_recent_earnings, closes[:-1]
+                closes[-1], mas, highs, trend_score, had_recent_earnings, closes[:-1],
+                vol_zscore=vol_zscore, ud_ratio=ud_ratio,
             )
 
             dist = None
@@ -370,6 +453,9 @@ class SetupService:
                 "earnings_risk": earnings_risk,
                 "ready_signal": ready,
                 "suggested_action": action,
+                "volume_zscore": vol_zscore,
+                "obv_trend": obv_trend,
+                "up_down_volume_ratio": ud_ratio,
                 "scanned_at": datetime.now(timezone.utc),
             })
 
@@ -483,4 +569,7 @@ def _row_to_dict(r: Any, stock_name: str | None = None) -> dict:
         "readySignal": r.ready_signal,
         "suggestedAction": r.suggested_action,
         "scanDate": r.scan_date.isoformat() if r.scan_date else None,
+        "volumeZscore": r.volume_zscore,
+        "obvTrend": r.obv_trend,
+        "upDownVolumeRatio": r.up_down_volume_ratio,
     }
