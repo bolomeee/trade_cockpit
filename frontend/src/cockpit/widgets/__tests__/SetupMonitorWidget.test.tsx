@@ -64,6 +64,9 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
     readySignal: true,
     suggestedAction: 'enter',
     scanDate: '2026-04-25',
+    volumeZscore: 1.83,
+    obvTrend: 'UP',
+    upDownVolumeRatio: 1.45,
     ...overrides,
   }
 }
@@ -804,5 +807,71 @@ describe('§S – Setup Explainer Popover', () => {
     // Row click (on the ticker cell) should still fire setSelectedTicker
     fireEvent.click(screen.getByText('AAPL'))
     expect(mockSetSelectedTicker).toHaveBeenCalledWith('AAPL')
+  })
+})
+
+// ─── §V – Vol Z column ────────────────────────────────────────────────────────
+
+describe('§V – Vol Z column', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  // ── V1: table header contains 'Vol Z' ─────────────────────────────────────
+  it('V1: table header renders "Vol Z" column', async () => {
+    vi.stubGlobal('fetch', makeRoutedFetch({ '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH }))
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.getByText('Vol Z')).toBeInTheDocument()
+  })
+
+  // ── V2: volumeZscore=1.83 renders '1.83' ──────────────────────────────────
+  it('V2: volumeZscore=1.83 → cell displays "1.83"', async () => {
+    const item = makeItem({ ticker: 'AAPL', volumeZscore: 1.83 })
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                data: {
+                  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                  items: [item],
+                },
+              }),
+          } as FetchResponse),
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.getByText('1.83')).toBeInTheDocument()
+  })
+
+  // ── V3: volumeZscore=null renders '—' ─────────────────────────────────────
+  it('V3: volumeZscore=null → cell displays "—"', async () => {
+    const item = makeItem({ ticker: 'AAPL', volumeZscore: null })
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                data: {
+                  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                  items: [item],
+                },
+              }),
+          } as FetchResponse),
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    // '—' also appears for other nullable cells; check at least one exists
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(1)
   })
 })

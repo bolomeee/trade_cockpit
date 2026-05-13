@@ -2029,3 +2029,61 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 - 开放 `?emas=` 查询参数（当前无动态需求，固定周期足够，避免接口过度泛化）
 
 **影响**：`backend/app/ai/schemas/translate_article.py`（新建）/ `backend/app/ai/schemas/__init__.py`（+1 import + REGISTRY 行）/ `backend/app/ai/routing.py`（+1 _TASK_TIER 行）
+
+---
+
+## D087：F215-b Volume Accumulation 三件套定义
+
+**日期**：2026-05-13
+**Feature**：F215-b Volume Accumulation 三件套
+
+**决策**：在 `setup_service.py` 新增 3 个纯函数，计算方式如下：
+
+| 字段 | 函数 | 逻辑 |
+|------|------|-------|
+| `volume_zscore` | `_compute_volume_zscore` | (last_vol − mean50) / std50；std==0 或 bars<51 → None |
+| `obv_trend` | `_compute_obv_trend` | obv[-1] vs obv[-21]，相对变化 > ±2% → UP/DOWN，否则 FLAT；obv_base==0 或 bars<21 → None |
+| `up_down_volume_ratio` | `_compute_up_down_volume_ratio` | 50 窗口内上涨日成交量之和 / 下跌日成交量之和；无下跌日 → None |
+
+所有参数集中在 `cockpit_params.py` 的 `VOL_ACC_*` 常量组（window/lookback/flat_pct/breakout 阈值）。
+
+**放弃**：
+- 使用 talib 或 pandas（避免引入重依赖；纯 Python 实现可测且足够）
+- 向 API 暴露可配置参数（固定参数对当前需求足够，避免接口复杂化）
+
+**影响**：`setup_snapshots` 表新增 3 列（alembic 018），`SetupItemResponse` schema 新增 3 字段，前端 `SetupMonitorWidget` 新增 Vol Z 列。
+
+---
+
+## D088：F215-b BREAKOUT 吸筹门槛升级
+
+**日期**：2026-05-13
+**Feature**：F215-b Volume Accumulation 三件套
+
+**背景**：BREAKOUT 形态中区分"真突破"（高成交量 + 买方主导）和"假突破"（低量、双向成交）。不加量能门槛会让无吸筹的价格突破触发 BREAKOUT 信号。
+
+**决策**：在 `_classify_setup_type` 的 BREAKOUT 分支新增量能门槛（D088）：
+- `vol_zscore ≥ 1.5`（突破日成交量显著高于 50 日均量）
+- `up_down_volume_ratio ≥ 1.2`（50 日窗口内买方成交量占主导）
+- 任一不满足（包括 None 短历史）→ 直接降级为 NONE，**不 fall-through 到 PULLBACK/RECLAIM**
+
+两个阈值在 `cockpit_params.py` 以 `VOL_ACC_BREAKOUT_Z_MIN=1.5` / `VOL_ACC_BREAKOUT_UD_MIN=1.2` 集中管理。
+
+**放弃**：
+- 降级为 PULLBACK（语义不匹配，量能不足的 BREAKOUT 应被完全排除而非重新分类）
+- 使用单一指标（量能 z-score 和 U/D ratio 互补，z-score 检测突破日，U/D 检测蓄势期）
+
+**影响**：`_classify_setup_type` 签名新增 `vol_zscore` / `ud_ratio` 两个可选参数，调用方 `compute_and_store_all` 传入。
+
+---
+
+## D089：F215-b 历史快照不回填量能字段
+
+**日期**：2026-05-13
+**Feature**：F215-b Volume Accumulation 三件套
+
+**决策**：alembic 018 升级后，存量 `setup_snapshots` 行的 3 个量能字段保持 NULL，不执行回填。下次 `compute_and_store_all()` 运行时自动写入新快照。
+
+**放弃**：回填存量数据（增加迁移复杂度 + 历史快照本身仅用于展示历史状态，非实时决策依据）。
+
+**影响**：无额外 migration 脚本，迁移后首次扫描即生效。

@@ -344,7 +344,8 @@ def test_s14_classify_breakout() -> None:
     ts = _compute_trend_score(last_close, mas)
     assert ts >= 3
     st, entry, stop, t2r, t3r = _classify_setup_type(
-        last_close, mas, highs, ts, False, closes[:-1]
+        last_close, mas, highs, ts, False, closes[:-1],
+        vol_zscore=2.0, ud_ratio=1.5,  # satisfy F215-b BREAKOUT gate
     )
     assert st == "BREAKOUT"
     assert entry is not None

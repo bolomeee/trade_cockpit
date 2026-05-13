@@ -3840,7 +3840,7 @@
       "sub_sprint_notes": "拆 a/b 两段（2026-05-12 用户确认，6 文件原则）：F215-a 风险上限调整（A1，1 文件）+ EMA 10/21 加入 chart_service 与 CockpitChartWidget（A2，4 文件），合计 5 文件，纯加法零 DB 变更；F215-b Volume Accumulation 三件套（A3，6 文件，含 alembic 018 + setup_snapshots 加 3 列 + BREAKOUT 判定门槛升级）。F215-b 会改变现有 BREAKOUT 候选数量，与 F215-a 隔离以缩小回归面。",
       "sub_sprints": {
         "F215-a": "done",
-        "F215-b": "design_needed"
+        "F215-b": "needs_review"
       },
       "dependencies": [],
       "estimated_sessions": 2,
@@ -3903,6 +3903,34 @@
           "phase": "contract_agreed",
           "session": "feature-dev Contract 协商",
           "changes": "F215-a Sprint Contract 已确认（用户按推荐方案确认 3 个协商点）：(1) MarketRegimeWidget toFixed(2)，文件清单加入第 6 个；(2) EMA 复用 SMA token + LineStyle.Dashed；(3) EMA 周期固定 [10,21]，不开放 ?emas= 查询参数。Contract 路径：docs/开发/sprint-contracts/F215-a-contract.md。"
+        },
+        {
+          "date": "2026-05-12",
+          "subtask": "F215-a",
+          "phase": "in_progress",
+          "session": "feature-dev Generator",
+          "changes": "实现 6 文件：cockpit_params（RISK_ON 1.5→1.25，DEFAULT_EMAS=[10,21]）、chart_service（_compute_ema_series + get_chart 返回 emas）、chart.py schema（CockpitChartData.emas）、cockpitChartApi.ts（type 加 emas）、CockpitChartWidget.tsx（EMA10/EMA21 虚线渲染）、MarketRegimeWidget.tsx（toFixed(1)→toFixed(2)）。API-CONTRACT.md 同步 emas 字段。"
+        },
+        {
+          "date": "2026-05-12",
+          "subtask": "F215-a",
+          "phase": "testing",
+          "session": "feature-dev Evaluator",
+          "changes": "12 个后端测试全通过（test_f215a.py：EMA 数学精度、get_chart emas 返回、RISK_ON 1.25、router 集成）；前端 vitest：CockpitChartWidget S9（EMA 虚线渲染）、MarketRegimeWidget S9（toFixed(2) 精度）全通过。DECISIONS.md 追加 D085+D086（sprint contract 原规划 D076/D077 已被占用）。"
+        },
+        {
+          "date": "2026-05-12",
+          "subtask": "F215-a",
+          "phase": "done",
+          "session": "acceptance",
+          "changes": "验收通过。API 探针：emas 字段返回正确（ema10=241点，ema21=230点）；chart 图例显示 EMA10/EMA21 虚线；无 console.error；用户视觉确认合格。DB 快照显示 1.50% 属预期（下次 compute_and_store 后自动写 1.25%，D085 有记录）。"
+        },
+        {
+          "date": "2026-05-13",
+          "subtask": "F215-b",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F215-b Sprint Contract 已确认（用户按推荐方案确认全部 7 个协商点）：方案 A（7 文件，cockpit_params 集中配置）、z-score 窗口 N=50、OBV 比较法 + FLAT 阈值 2%、U-D ratio 分母为零 return None、obv_trend VARCHAR(4)、历史快照不回填、Vol Z 列仅展示不排序。Contract 路径：docs/开发/sprint-contracts/F215-b-contract.md。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段（A/B/C/D）的第 1 阶段。其余阶段对应未来 features：Phase B = Weekly Stage Layer；Phase C = Capitulation Reversal 重写（移除 SETUP_PULLBACK）；Phase D = Repricing Trigger 5 类框架。每阶段一个独立 feature，按 A→B→C→D 顺序推进。"
