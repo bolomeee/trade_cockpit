@@ -191,10 +191,11 @@ export function SetupMonitorWidget() {
                 <Th width="11%">Entry</Th>
                 <Th width="11%">Stop</Th>
                 <Th width="8%">R:R</Th>
-                <Th width="10%">Dist</Th>
-                <Th width="6%">RS</Th>
-                <Th width="8%" align="center">Earn</Th>
-                <Th width="5%"></Th>
+                <Th width="9%">Dist</Th>
+                <Th width="5%">RS</Th>
+                <Th width="6%">Vol Z</Th>
+                <Th width="7%" align="center">Earn</Th>
+                <Th width="8%"></Th>
               </tr>
             </thead>
             <tbody>
@@ -319,6 +320,9 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
       </td>
       <td style={{ ...tdStyle, fontFamily: 'var(--font-family-numeric)' }}>
         {item.rsPercentile}
+      </td>
+      <td style={{ ...tdStyle, fontFamily: 'var(--font-family-numeric)' }}>
+        {fmt2(item.volumeZscore)}
       </td>
       <td style={{ ...tdStyle, textAlign: 'center' }}>
         <EarningsRiskDot value={item.earningsRisk} />
