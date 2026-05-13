@@ -206,6 +206,38 @@ class CockpitSetupParams(BaseModel):
     # ── 数据保留 ──────────────────────────────────────────────────────────
     SETUP_RETENTION_DAYS: int = Field(default=60, description="Days to retain setup snapshots (D062)", ge=7, le=365)
 
+    # ── Volume Accumulation 三件套（F215-b / D087 / D088）────────────────
+    VOL_ACC_ZSCORE_WINDOW: int = Field(
+        default=50,
+        description="Rolling window (bars) for volume z-score; need window+1 bars minimum",
+        ge=10, le=200,
+    )
+    VOL_ACC_OBV_LOOKBACK: int = Field(
+        default=20,
+        description="Look-back bars for OBV trend comparison (obv[-1] vs obv[-N])",
+        ge=5, le=100,
+    )
+    VOL_ACC_OBV_FLAT_PCT: float = Field(
+        default=2.0,
+        description="OBV relative change threshold (%); |change| < this → FLAT",
+        ge=0.1, le=20.0,
+    )
+    VOL_ACC_UD_WINDOW: int = Field(
+        default=50,
+        description="Rolling window (bars) for U/D ratio accumulation",
+        ge=10, le=200,
+    )
+    VOL_ACC_BREAKOUT_Z_MIN: float = Field(
+        default=1.5,
+        description="BREAKOUT gate: volume_zscore must be >= this; else downgrade to NONE (D088)",
+        ge=0.0, le=5.0,
+    )
+    VOL_ACC_BREAKOUT_UD_MIN: float = Field(
+        default=1.2,
+        description="BREAKOUT gate: up_down_volume_ratio must be >= this; else downgrade to NONE (D088)",
+        ge=0.0, le=10.0,
+    )
+
 
 SETUP = CockpitSetupParams()
 
