@@ -42,6 +42,7 @@ class SetupItemResponse(CamelModel):
     volume_zscore: float | None = None
     obv_trend: str | None = None
     up_down_volume_ratio: float | None = None
+    weekly_stage: int | None = None
 
 
 class SetupMonitorData(CamelModel):

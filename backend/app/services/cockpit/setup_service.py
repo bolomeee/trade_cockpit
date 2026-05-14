@@ -14,6 +14,7 @@ from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.market_regime_repository import MarketRegimeRepository
 from app.repositories.setup_snapshot_repository import SetupSnapshotRepository
 from app.repositories.stock_repository import StockRepository
+from app.repositories.weekly_stage_repository import WeeklyStageRepository
 from app.services.cockpit.cockpit_params import SETUP
 from app.services.watchlist_service import APIError
 
@@ -338,6 +339,7 @@ class SetupService:
         self.stock_repo = StockRepository(db)
         self.earnings_repo = EarningsEventRepository(db)
         self.regime_repo = MarketRegimeRepository(db)
+        self.weekly_stage_repo = WeeklyStageRepository(db)
 
     def compute_and_store_all(self, today: date | None = None) -> int:
         today = today or date.today()
@@ -348,6 +350,10 @@ class SetupService:
 
         # Active stocks
         stocks = self.stock_repo.list_active()
+
+        # Batch-fetch latest weekly stage per ticker (F216-d2 / D093)
+        active_tickers = [s.ticker for s in stocks]
+        stage_map = self.weekly_stage_repo.get_latest_for_tickers(active_tickers)
 
         # SPY historical closes for RS percentile
         spy_closes = self._get_spy_closes()
@@ -375,6 +381,7 @@ class SetupService:
         rows: list[dict] = []
         for stock in stocks:
             closes, highs, lows, volumes = bars_per_ticker[stock.ticker]
+            weekly_stage_val = stage_map[stock.ticker].stage if stock.ticker in stage_map else None
             if len(closes) < 10:
                 # Insufficient data — write NONE row
                 earnings_ev = self.earnings_repo.get_next_earnings(stock.ticker, today)
@@ -399,6 +406,7 @@ class SetupService:
                     "volume_zscore": None,
                     "obv_trend": None,
                     "up_down_volume_ratio": None,
+                    "weekly_stage": weekly_stage_val,
                     "scanned_at": datetime.now(timezone.utc),
                 })
                 continue
@@ -435,7 +443,8 @@ class SetupService:
             setup_quality = _compute_setup_quality(setup_type, trend_score, rs_percentile)
 
             ready = _compute_ready_signal(
-                trend_score, rs_percentile, setup_quality, dist, rr, earnings_risk, regime
+                trend_score, rs_percentile, setup_quality, dist, rr, earnings_risk, regime,
+                weekly_stage=weekly_stage_val,
             )
             action = _compute_suggested_action(setup_type, ready, dist)
 
@@ -459,6 +468,7 @@ class SetupService:
                 "volume_zscore": vol_zscore,
                 "obv_trend": obv_trend,
                 "up_down_volume_ratio": ud_ratio,
+                "weekly_stage": weekly_stage_val,
                 "scanned_at": datetime.now(timezone.utc),
             })
 
@@ -575,4 +585,5 @@ def _row_to_dict(r: Any, stock_name: str | None = None) -> dict:
         "volumeZscore": r.volume_zscore,
         "obvTrend": r.obv_trend,
         "upDownVolumeRatio": r.up_down_volume_ratio,
+        "weeklyStage": r.weekly_stage,
     }

@@ -337,22 +337,39 @@ def test_t12_short_data_no_stage_writes_none(db_session: Session) -> None:
 # ── T13: multi-ticker — only stage=2 stock ready ─────────────────────────────
 
 
+def _insert_rising_bars_step(db: Session, stock_id: int, step: float, count: int = 260) -> None:
+    """Rising bars with custom step — used to give stocks distinct RS ratios."""
+    for i in range(count):
+        close = 100.0 + i * step
+        db.add(DailyBar(
+            stock_id=stock_id,
+            date=_START + timedelta(days=i),
+            open=close * 0.99,
+            high=close * 1.01,
+            low=close * 0.98,
+            close=close,
+            volume=1_000_000,
+        ))
+    db.flush()
+
+
 def test_t13_multi_ticker_only_stage2_ready(db_session: Session) -> None:
-    # 5 stocks: A (high RS, stage=2), B (high RS-ish, stage=3), C (high RS-ish, no stage)
-    # D and E are dummy low-RS stocks to push A/B/C percentiles higher
+    # AAA has strictly highest RS; BBB and CCC are below AAA, above DDD/EEE.
+    # _percentile_rank uses strict < so all stocks must be at different RS levels.
+    # With 5 stocks and AAA at position 4 (0-indexed), percentile = 4/5*100 = 80% >= 70.
     stock_a = _insert_stock(db_session, "AAA")
     stock_b = _insert_stock(db_session, "BBB")
     stock_c = _insert_stock(db_session, "CCC")
     stock_d = _insert_stock(db_session, "DDD")
     stock_e = _insert_stock(db_session, "EEE")
 
-    _insert_rising_bars(db_session, stock_a.id)  # high RS
-    _insert_rising_bars(db_session, stock_b.id)  # same RS as A — tied at top
-    _insert_rising_bars(db_session, stock_c.id)  # same RS as A — tied at top
-    _insert_flat_bars(db_session, stock_d.id, price=50.0)  # low RS
-    _insert_flat_bars(db_session, stock_e.id, price=50.0)  # low RS
+    _insert_rising_bars_step(db_session, stock_a.id, step=0.50)  # return ≈130%, RS≈10.4
+    _insert_rising_bars_step(db_session, stock_b.id, step=0.30)  # return ≈78%, RS≈6.2
+    _insert_rising_bars_step(db_session, stock_c.id, step=0.15)  # return ≈39%, RS≈3.1
+    _insert_flat_bars(db_session, stock_d.id, price=50.0)        # return=0%, RS=0
+    _insert_flat_bars(db_session, stock_e.id, price=50.0)        # return=0%, RS=0
 
-    # Earnings for all three high-RS stocks to get EARNINGS_DRIFT setup
+    # Past earnings trigger EARNINGS_DRIFT for rising stocks (close > MA21)
     _insert_past_earnings(db_session, "AAA")
     _insert_past_earnings(db_session, "BBB")
     _insert_past_earnings(db_session, "CCC")
@@ -377,8 +394,11 @@ def test_t13_multi_ticker_only_stage2_ready(db_session: Session) -> None:
     assert row_b.weekly_stage == 3
     assert row_c.weekly_stage is None
 
+    # AAA: rs_percentile=80%>=70, stage=2 passes gate → ready=True
     assert row_a.ready_signal is True
+    # BBB: stage=3 blocks even if other conditions met → ready=False
     assert row_b.ready_signal is False
+    # CCC: no stage (None) blocks → ready=False
     assert row_c.ready_signal is False
 
 
@@ -427,26 +447,35 @@ def test_t15_row_to_dict_weekly_stage_none() -> None:
 
 # ── T16: SetupItemResponse schema ─────────────────────────────────────────────
 
+_ITEM_REQUIRED = dict(
+    ticker="TEST",
+    stock_name=None,
+    setup_type="BREAKOUT",
+    setup_quality="A",
+    entry_price=100.0,
+    stop_price=95.0,
+    target2r=110.0,
+    target3r=115.0,
+    distance_to_entry_pct=1.0,
+    reward_risk=2.0,
+    rs_percentile=80.0,
+    volume_status="HIGH",
+    trend_score=4,
+    earnings_risk="SAFE",
+    ready_signal=True,
+    suggested_action="enter",
+    scan_date="2026-05-14",
+)
+
 
 def test_t16_schema_weekly_stage_alias() -> None:
-    resp = SetupItemResponse(
-        ticker="TEST",
-        setup_type="BREAKOUT",
-        ready_signal=True,
-        earnings_risk="SAFE",
-        weekly_stage=2,
-    )
+    resp = SetupItemResponse(**_ITEM_REQUIRED, weekly_stage=2)
     by_alias = resp.model_dump(by_alias=True)
     assert "weeklyStage" in by_alias
     assert by_alias["weeklyStage"] == 2
 
 
 def test_t16_schema_weekly_stage_none_default() -> None:
-    resp = SetupItemResponse(
-        ticker="TEST",
-        setup_type="BREAKOUT",
-        ready_signal=True,
-        earnings_risk="SAFE",
-    )
+    resp = SetupItemResponse(**_ITEM_REQUIRED)
     by_alias = resp.model_dump(by_alias=True)
     assert by_alias["weeklyStage"] is None
