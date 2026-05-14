@@ -2174,6 +2174,29 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 3. 缩短 `SLOPE_LOOKBACK_WEEKS` 后（如 3 周），OLS 相对端点法的抗噪优势显著
 4. numpy 2.x 已成 Python 生态事实标准，依赖风险极低
 
+---
+
+## D093：F216-d2 weekly_stage 作为 ready_signal 第 8 条 AND 门
+
+**日期**：2026-05-14
+**Feature**：F216 Cockpit Phase B — Weekly Stage Layer（sub-sprint d2）
+
+**决策**：在 `_compute_ready_signal` 原 7 条 AND 门基础上加 `weekly_stage == 2` 第 8 条；NULL/0/1/3/4 一律视为不满足；门禁由 `SETUP.READY_REQUIRE_STAGE2` (default=True) 控制。
+
+**原因**：Stan Weinstein Stage 框架认为 Stage 2 (Advancing) 是唯一具备系统性正期望的阶段；Stage 3 顶部分布 + Stage 4 下跌中触发的 BREAKOUT/RECLAIM 胜率历史显著偏低。把 stage 接进 ready_signal 让 setup_monitor 自动屏蔽这两段，用户只看 Stage 2 的有效信号。
+
+**放弃了什么**：
+- 把 stage 一并降级 setup_type=NONE：会抹掉 watch/wait 中间态，用户失去"setup 存在但暂不可 enter"的视野（NP-G 否决）
+- 增加 suggested_action='stage_gate' 中间态：前端 enum/排序/map 全要同步改，冲击超 d2 scope（NP-H 否决）
+- NULL/0 → 跳过门禁的宽松路径：与 ready_signal 7 条 AND 门"NULL 即不满足"的语义不一致，且违背 acceptance criteria 第 8 条（NP-C 否决）
+
+**影响**：
+- ready_signal=True 标的预期减少 30-50%（设计意图，文档化）
+- 冷启动当天 weekly_stage cron 未跑前所有 ticker 的 ready=False（与 F215-b volume_zscore 短历史 pattern 一致）
+- 前端 SetupMonitorWidget 后续 d3 加 WS 列展示 stage（让用户看到"为何 ready=false"）
+
+**回滚方式**：env 或代码层把 `SETUP.READY_REQUIRE_STAGE2` 置 False，无 schema / migration 回滚需求
+
 **放弃**：
 - 端点法 `(ma[-1] / ma[-(N+1)] - 1) * 100` — 只用 2 个点，单周异常值影响大
 - 纯 Python OLS — 功能等价但无法复用，Phase C/D 需另行引入 numpy
