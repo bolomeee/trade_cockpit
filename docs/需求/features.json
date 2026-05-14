@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v1.10",
     "active_sprint": "F216-a",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3953,13 +3953,15 @@
       "phase": "design_needed",
       "sub_sprint_notes": "按 plan B1-B5 拆 5 sub-sprint：F216-a (B1 周线聚合服务，~3 文件)、F216-b (B2 Stage 分类器 + 新表 weekly_stage_snapshots + alembic 019，~6 文件)、F216-c (B3 router + widget，预估 7-8 文件，合约阶段二次拆 c1=后端 c2=前端)、F216-d (B4 setup_service gate + setup_snapshots 加列 + 前端 WS 列，预估 7-9 文件，合约阶段二次拆 d1=DB schema / d2=service gate / d3=前端)、F216-e (B5 scheduler cron，~2 文件)。c/d 二次拆分在各自 Contract 协商时由 feature-dev 6 文件原则触发，先以 a/b/c/d/e 五个 key 注册到 sub_sprints。",
       "sub_sprints": {
-        "F216-a": "contract_agreed",
+        "F216-a": "needs_review",
         "F216-b": "design_needed",
         "F216-c": "design_needed",
         "F216-d": "design_needed",
         "F216-e": "design_needed"
       },
-      "dependencies": ["F215"],
+      "dependencies": [
+        "F215"
+      ],
       "estimated_sessions": 5,
       "estimated_files_changed": [
         "backend/app/services/cockpit/weekly_chart_service.py",
@@ -3981,7 +3983,9 @@
         "backend/layouts/cockpit.json"
       ],
       "scope": {
-        "pages": ["Cockpit"],
+        "pages": [
+          "Cockpit"
+        ],
         "api_endpoints": [
           "GET /api/cockpit/chart/{ticker}/weekly (新增)",
           "GET /api/cockpit/setup (扩展返回 weeklyStage)"
@@ -4041,6 +4045,14 @@
           "changes": "F216-a Sprint Contract 已确认（用户 2026-05-14 全部按推荐方案确认 NP1-NP4）：NP1 weeks=50 不扩窗（daily_bars DAILY_BAR_WINDOW=250 限制），NP2 weekly bar.date = 本周最后实际交易日，NP3 unknown ticker 抛 APIError(NOT_FOUND)，NP4 daily_bars<4 行返回空不抛错。范围 3 文件（weekly_chart_service.py 新建、cockpit_params.py 追加 WEEKLY 配置组、test_weekly_chart_service.py 新建）。复用 chart_service._compute_ma_series 算 Weekly MA 10/30/40，零 FMP 调用。Contract: docs/开发/sprint-contracts/F216-a-contract.md。下个 session Generator 从开发顺序步骤 1 开始。",
           "contract": "docs/开发/sprint-contracts/F216-a-contract.md",
           "contract_agreed_at": "2026-05-14"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-a",
+          "phase": "needs_review",
+          "session": "feature-dev Generator + Evaluator",
+          "changes": "F216-a Generator 完成：新建 weekly_chart_service.py（aggregate_daily_to_weekly 纯函数 + WeeklyChartService.get_weekly_chart）；cockpit_params.py 追加 CockpitWeeklyParams §5（DEFAULT_WEEKS=50/WEEKLY_MAS=[10,30,40]/MIN_DAILY_BARS_FOR_WEEKLY=4）；test_weekly_chart_service.py 9 条测试全通过（标准 1-9）；DECISIONS.md 追加 D090。Evaluator 自检：零 FMP 调用、SMA 复用、无魔法值、隔离确认。回归测试无新增失败。commit: 6e86e75。",
+          "commit": "6e86e75"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。"
