@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.1-planning",
-  "last_updated": "2026-05-12",
+  "last_updated": "2026-05-14",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -11,9 +11,9 @@
     "ui_design": "done",
     "development": "done",
     "deployment": "not_started",
-    "current_iteration": "v1.9",
-    "active_sprint": null,
-    "active_sprint_phase": null
+    "current_iteration": "v1.10",
+    "active_sprint": "F216-a",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -3942,6 +3942,108 @@
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段（A/B/C/D）的第 1 阶段。其余阶段对应未来 features：Phase B = Weekly Stage Layer；Phase C = Capitulation Reversal 重写（移除 SETUP_PULLBACK）；Phase D = Repricing Trigger 5 类框架。每阶段一个独立 feature，按 A→B→C→D 顺序推进。"
+    },
+    {
+      "id": "F216",
+      "name": "Cockpit Phase B — Weekly Stage Layer",
+      "description": "对照《慢交易系统框架》(SRS) 扫描报告的 gap #1 Weekly Stage Chart 缺失。落地 Stan Weinstein Stage 1-4 周线分层：(B1) weekly_chart_service 从本地 daily_bars 聚合到 ISO 周线 + Weekly MA 10/30/40；(B2) weekly_stage_service 按 30wMA 走势 + 斜率分类 Stage 1-4 + 新表 weekly_stage_snapshots；(B3) GET /api/cockpit/chart/{ticker}/weekly endpoint + 新 widget WeeklyStageChartWidget（绿底=2/黄=1或3/红=4）；(B4) setup_service 接入 weekly_stage 作为 ready_signal=true 的强制门禁（Stage 必须=2）+ setup_snapshots 加 weekly_stage 列；(B5) refresh_job 加每日 22:20 UTC cron。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md Phase B。",
+      "user_story": "作为投资者，我需要在做日线买入决策前能看到该标的的周线阶段（Stan Weinstein 模型），避免在 Stage 3 顶部分布或 Stage 4 下跌中触发 BREAKOUT/RECLAIM setup — 因为这两个阶段的胜率系统性偏低。同时 setup_monitor 应该自动屏蔽 Stage 3/4 的 ready_signal，让我专注 Stage 2 的有效信号。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "design_needed",
+      "sub_sprint_notes": "按 plan B1-B5 拆 5 sub-sprint：F216-a (B1 周线聚合服务，~3 文件)、F216-b (B2 Stage 分类器 + 新表 weekly_stage_snapshots + alembic 019，~6 文件)、F216-c (B3 router + widget，预估 7-8 文件，合约阶段二次拆 c1=后端 c2=前端)、F216-d (B4 setup_service gate + setup_snapshots 加列 + 前端 WS 列，预估 7-9 文件，合约阶段二次拆 d1=DB schema / d2=service gate / d3=前端)、F216-e (B5 scheduler cron，~2 文件)。c/d 二次拆分在各自 Contract 协商时由 feature-dev 6 文件原则触发，先以 a/b/c/d/e 五个 key 注册到 sub_sprints。",
+      "sub_sprints": {
+        "F216-a": "contract_agreed",
+        "F216-b": "design_needed",
+        "F216-c": "design_needed",
+        "F216-d": "design_needed",
+        "F216-e": "design_needed"
+      },
+      "dependencies": ["F215"],
+      "estimated_sessions": 5,
+      "estimated_files_changed": [
+        "backend/app/services/cockpit/weekly_chart_service.py",
+        "backend/app/services/cockpit/weekly_stage_service.py",
+        "backend/app/models/weekly_stage_snapshot.py",
+        "backend/alembic/versions/019_f216b_weekly_stage_snapshots.py",
+        "backend/alembic/versions/020_f216d_setup_weekly_stage.py",
+        "backend/app/routers/cockpit/chart.py",
+        "backend/app/schemas/cockpit/chart.py",
+        "backend/app/services/cockpit/setup_service.py",
+        "backend/app/models/setup_snapshot.py",
+        "backend/app/schemas/cockpit/setup.py",
+        "backend/app/scheduler/refresh_job.py",
+        "frontend/src/cockpit/lib/api/cockpitWeeklyChartApi.ts",
+        "frontend/src/cockpit/widgets/WeeklyStageChartWidget.tsx",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/lib/api/setupMonitorApi.ts",
+        "frontend/src/cockpit/CockpitRegistry.ts",
+        "backend/layouts/cockpit.json"
+      ],
+      "scope": {
+        "pages": ["Cockpit"],
+        "api_endpoints": [
+          "GET /api/cockpit/chart/{ticker}/weekly (新增)",
+          "GET /api/cockpit/setup (扩展返回 weeklyStage)"
+        ],
+        "db_tables": [
+          "weekly_stage_snapshots (F216-b 新建)",
+          "setup_snapshots (F216-d 新增 weekly_stage 列)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §GET /api/cockpit/chart/{ticker}/weekly (待 F216-c 添加)",
+          "API-CONTRACT.md §GET /api/cockpit/setup (F216-d 扩展)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §Entity: WeeklyStageSnapshot (F216-b 新建)",
+          "DATA-MODEL.md §Entity: SetupSnapshot (F216-d 新增 weekly_stage 列)"
+        ],
+        "decision_refs": [
+          "对照《慢交易系统框架》(SRS) 扫描报告 docs/对比/cockpit-vs-srs-framework.md",
+          "完整计划文档 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase B"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "F216-a: WeeklyChartService.aggregate_daily_to_weekly(daily_bars) 按 ISO 周分组（周一-周日，week_end_date=周五），open=本周第一日 open / high=max / low=min / close=本周最后一日 close / volume=sum",
+        "F216-a: WeeklyChartService.get_weekly_chart(ticker, weeks=260) 返回 weekly bars + Weekly MA 10/30/40，零 FMP 调用",
+        "F216-b: 新表 weekly_stage_snapshots (ticker, scan_date, stage, weekly_ma_10/30/40, weekly_close, slope_30w)，alembic 019 可前向也可回滚",
+        "F216-b: WeeklyStageService 按 SRS 规则分类 Stage 1-4：Stage 2 = close > 30wMA AND slope_30w > 0 AND ma_10w > 30wMA；Stage 4 = close < 30wMA AND slope_30w < 0；Stage 1 = 30wMA 走平 ±2% 价格在 30wMA 附近震荡；Stage 3 = 30wMA 转平价格反复穿越 30wMA",
+        "F216-c: GET /api/cockpit/chart/{ticker}/weekly?weeks=260 返回 weekly bars + Weekly MAs + stage 标签",
+        "F216-c: WeeklyStageChartWidget 渲染周线 K 线 + 三条 Weekly MA + Stage 标签（绿底=Stage 2 / 黄=Stage 1 或 3 / 红=Stage 4），复用 lightweight-charts",
+        "F216-c: CockpitRegistry 注册 'cockpit.weekly-stage'，backend/layouts/cockpit.json 新增布局项",
+        "F216-d: setup_snapshots 新增 weekly_stage (INT) 列；setup_service._evaluate_ready_signal 强制 weekly_stage == 2 才允许 ready_signal=true；alembic 020 可前向也可回滚",
+        "F216-d: GET /api/cockpit/setup 响应 items[] 含 weeklyStage 字段（camelCase）；SetupMonitorWidget 列表新增 'WS' 列展示",
+        "F216-e: refresh_job 新增 cron 周一-周五 22:20 UTC，调用 WeeklyStageService.compute_and_store_all()，order: regime → weekly_stage → setup",
+        "全量后端 pytest 与前端 vitest 回归通过，无新增失败"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-05-14",
+          "subtask": "F216",
+          "phase": "design_needed",
+          "session": "feature-dev Phase B 注册",
+          "changes": "按 plan B1-B5 注册 5 sub-sprints (a/b/c/d/e)。skip system-design (用户确认计划文件 SoT)，下一步直接进入 F216-a Sprint Contract 协商。c/d 文件预估超 6，合约阶段会二次拆分。"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-a",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-a Sprint Contract 已确认（用户 2026-05-14 全部按推荐方案确认 NP1-NP4）：NP1 weeks=50 不扩窗（daily_bars DAILY_BAR_WINDOW=250 限制），NP2 weekly bar.date = 本周最后实际交易日，NP3 unknown ticker 抛 APIError(NOT_FOUND)，NP4 daily_bars<4 行返回空不抛错。范围 3 文件（weekly_chart_service.py 新建、cockpit_params.py 追加 WEEKLY 配置组、test_weekly_chart_service.py 新建）。复用 chart_service._compute_ma_series 算 Weekly MA 10/30/40，零 FMP 调用。Contract: docs/开发/sprint-contracts/F216-a-contract.md。下个 session Generator 从开发顺序步骤 1 开始。",
+          "contract": "docs/开发/sprint-contracts/F216-a-contract.md",
+          "contract_agreed_at": "2026-05-14"
+        }
+      ],
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。"
     }
   ]
 }

@@ -211,3 +211,42 @@
 [下一步]
   v1.9 release 范围已全部 done — 可触发 project-commiter 收 release tag。
   或先专项清理 consistency-check 报告的 68 项历史 drift（C2 × 1 + C5 × 67）再发版。
+
+---
+[2026-05-14] F216 Phase B 启动 + F216-a Sprint Contract 已确认
+
+📋 完成内容：
+  - F216 (Cockpit Phase B — Weekly Stage Layer) 注册到 features.json，
+    含 5 sub-sprints: a/b/c/d/e（基于 plan §Phase B B1-B5），
+    依赖 F215 done
+  - F216-a Sprint Contract 起草并确认（4 协商点全部按推荐方案落定）：
+    NP1 weeks=50 不扩窗
+    NP2 weekly bar.date = 本周最后实际交易日
+    NP3 unknown ticker → APIError(NOT_FOUND)
+    NP4 daily_bars<4 → 返回空不抛错
+  - F216-a 范围确定 3 文件：weekly_chart_service.py / cockpit_params.py / test_weekly_chart_service.py
+  - phase 流转: F216-a design_needed → contract_agreed
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-a-contract.md（新）
+  - docs/需求/features.json（F216 注册 + iteration_history）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service: 🤝 contract_agreed
+    ├─ F216-b Stage Classifier + DB: ⬜ design_needed
+    ├─ F216-c Router + Widget: ⬜ design_needed
+    ├─ F216-d setup_service gate: ⬜ design_needed
+    └─ F216-e Scheduler cron: ⬜ design_needed
+
+⚠️ 已知限制（用户已接受）：
+  - F216 整体只覆盖 50 周历史（DAILY_BAR_WINDOW=250 限制）
+  - plan §Phase B 验证 §3 的"NVDA 2022 Stage 3 历史回测"不在本期范围
+
+[下一步]
+  下个 session 进入 F216-a Generator 模式。
+  Sonnet 推荐。复制以下提示词：
+
+  > 继续开发 F216-a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-a-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1 开始。
