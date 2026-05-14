@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-c2",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": "F216-d",
+    "active_sprint_phase": "design_needed"
   },
   "_iteration_log": [
     {
@@ -3955,8 +3955,8 @@
       "sub_sprints": {
         "F216-a": "done",
         "F216-b": "needs_review",
-        "F216-c1": "needs_review",
-        "F216-c2": "needs_review",
+        "F216-c1": "done",
+        "F216-c2": "done",
         "F216-d": "design_needed",
         "F216-e": "design_needed"
       },
@@ -4128,6 +4128,18 @@
           "session": "feature-dev Generator + Evaluator",
           "summary": "WeeklyStageChartWidget 前端实现完成。6 文件：cockpitWeeklyChartApi.ts + WeeklyStageChartWidget.tsx + 2 测试文件 + CockpitRegistry.ts + backend/layouts/cockpit.json。22/22 vitest 全绿（含 S4 API client + standards 6-12 widget）；tsc 零错误；pytest 1001 passed 无新增失败；浏览器 smoke：widget 渲染 JD Stage 0 灰底 header + chart SVG；Evaluator 自检：三表 0-4 全覆盖、主函数 199 行≤200、无 EMA/AVWAP/Decision 调用、CockpitWidgetCategory 仍 8 项未修改。",
           "commits": "wip(F216-c2): cockpitWeeklyChartApi + types | wip(F216-c2): API client tests S4 | wip(F216-c2): WeeklyStageChartWidget skeleton | wip(F216-c2): WeeklyStageChartWidget tests | feat(F216-c2): Weekly Stage Chart Widget"
+        },
+        {
+          "sprint": "F216-c1",
+          "status": "done",
+          "completed_at": "2026-05-14",
+          "summary": "GET /api/cockpit/chart/{ticker}/weekly endpoint with stage payload — 7/7 integration tests passed, pure compute no DB write confirmed"
+        },
+        {
+          "sprint": "F216-c2",
+          "status": "done",
+          "completed_at": "2026-05-14",
+          "summary": "WeeklyStageChartWidget frontend — 22/22 tests passed, Stage 2/4 browser verified with screenshots"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",

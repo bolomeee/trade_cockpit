@@ -1,4 +1,27 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14 16:20] 验收：F216-c1 + F216-c2 联合验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收结果：
+  - F216-c1（GET /weekly endpoint）：7/7 pytest 通过，pure compute 无 DB 副作用确认
+  - F216-c2（WeeklyStageChartWidget）：22/22 vitest 通过
+  - 浏览器 Stage 2（AMZN 绿色 header）+ Stage 4（MSFT 红色 header）截图留证
+  - 无 console.error，全量回归无新增失败
+  - features.json：F216-c1/c2 → done
+  - 验收记录：docs/验收/v2.0-F216-c-acceptance.md
+
+📊 F216 sub_sprints：
+  F216-a：✅ done
+  F216-b：🔍 needs_review（独立验收）
+  F216-c1：✅ done（本次）
+  F216-c2：✅ done（本次）
+  F216-d：⬜ design_needed
+  F216-e：⬜ design_needed
+
+[下一个 Session]
+  触发 acceptance F216-b，或协商 F216-d Sprint Contract（setup_service gate + setup_snapshots weekly_stage 列）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-14 14:30] Sprint：F216-c2 Weekly Stage Chart Widget（前端）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
