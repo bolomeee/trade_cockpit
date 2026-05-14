@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-c1",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint": "F216-c2",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3956,7 +3956,7 @@
         "F216-a": "done",
         "F216-b": "needs_review",
         "F216-c1": "needs_review",
-        "F216-c2": "design_needed",
+        "F216-c2": "needs_review",
         "F216-d": "design_needed",
         "F216-e": "design_needed"
       },
@@ -4110,10 +4110,28 @@
           "phase": "needs_review",
           "completed_at": "2026-05-14",
           "summary": "GET /api/cockpit/chart/{ticker}/weekly with WeeklyStagePayload; 7/7 integration tests pass; pure compute confirmed (no DB writes); full regression 1001 passed"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-c2",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-c2 Sprint Contract 已确认（用户 2026-05-14 NP1-NP10 全部按推荐拍板）：NP1 stage 标签用 widget header 整条背景跟随 stage 色 + 白字 / NP2 复用既有 token (--color-change-positive/--color-log-warn/--color-change-negative/--color-text-muted) / NP3 ticker 复用 useCockpitStore.selectedTicker / NP4 默认 weeks=50 / NP5 三态文案完全复用 CockpitChartWidget / NP6 id='cockpit.weekly-stage' 复用 category 'chart' 默认 layout x=0,y=43,w=6,h=10 / NP7 weeklyBars 空→'数据不足'，非空 stage=0→正常渲染+灰底 / NP8 本 sprint 复制 chart helper 不抽公共文件，spawn_task 记录后续重构 / NP9 不渲染 decision price lines（周线粒度不适合）/ NP10 stage 文本 'Stage N · {Label}' 双通道（0=Unknown/1=Base/2=Advancing/3=Distribution/4=Declining）。范围 6 文件（cockpitWeeklyChartApi.ts 新建 / WeeklyStageChartWidget.tsx 新建 / 对应 vitest 测试 2 个新建+追加 / CockpitRegistry.ts + backend/layouts/cockpit.json 各加 1 项）。17 完成标准 + 22 步开发顺序 + 4 WIP commit + 1 Final commit。Contract: docs/开发/sprint-contracts/F216-c2-contract.md。下个 session Generator 从 §6 开发顺序步骤 1 开始。",
+          "contract": "docs/开发/sprint-contracts/F216-c2-contract.md",
+          "contract_agreed_at": "2026-05-14"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-c2",
+          "phase": "needs_review",
+          "completed_at": "2026-05-14",
+          "session": "feature-dev Generator + Evaluator",
+          "summary": "WeeklyStageChartWidget 前端实现完成。6 文件：cockpitWeeklyChartApi.ts + WeeklyStageChartWidget.tsx + 2 测试文件 + CockpitRegistry.ts + backend/layouts/cockpit.json。22/22 vitest 全绿（含 S4 API client + standards 6-12 widget）；tsc 零错误；pytest 1001 passed 无新增失败；浏览器 smoke：widget 渲染 JD Stage 0 灰底 header + chart SVG；Evaluator 自检：三表 0-4 全覆盖、主函数 199 行≤200、无 EMA/AVWAP/Decision 调用、CockpitWidgetCategory 仍 8 项未修改。",
+          "commits": "wip(F216-c2): cockpitWeeklyChartApi + types | wip(F216-c2): API client tests S4 | wip(F216-c2): WeeklyStageChartWidget skeleton | wip(F216-c2): WeeklyStageChartWidget tests | feat(F216-c2): Weekly Stage Chart Widget"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
-      "active_sprint_phase": "design_needed"
+      "active_sprint_phase": "needs_review"
     }
   ]
 }

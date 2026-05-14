@@ -1,4 +1,46 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14 14:30] Sprint：F216-c2 Weekly Stage Chart Widget（前端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - cockpitWeeklyChartApi.ts：WeeklyChartData + WeeklyStagePayload types + getCockpitWeeklyChart
+  - WeeklyStageChartWidget.tsx：Stage 0-4 色底 header + 周线 K+volume+MA10/30/40 + 4 态 JSX（199 行主函数）
+  - cockpitApis.test.ts S4：4 条 API client 测试追加
+  - WeeklyStageChartWidget.test.tsx：standards 6-12 全覆盖（9 条）
+  - CockpitRegistry.ts：追加 cockpit.weekly-stage manifest
+  - backend/layouts/cockpit.json：追加 layout entry（x=0, y=43, w=6, h=10）
+  - vitest（F216-c2）：22/22 通过
+  - vitest 全量：预存失败（TopNav/AiNewsSummaryBar/SetupMonitorExplainer）无新增
+  - pytest 全量：1001 passed（baseline 持平）
+  - 浏览器 smoke：JD Stage 0 灰底 + chart SVG 渲染；无 console.error
+  - Evaluator 自检：三表 0-4 全覆盖、199 行≤200、无 EMA/AVWAP/Decision、CockpitWidgetCategory 8 项
+
+⚠️ 待决策：
+  - 无
+
+🔧 系统变更：
+  - 新增：frontend/src/cockpit/lib/api/cockpitWeeklyChartApi.ts
+  - 新增：frontend/src/cockpit/widgets/WeeklyStageChartWidget.tsx
+  - 新增：frontend/src/cockpit/widgets/__tests__/WeeklyStageChartWidget.test.tsx
+  - 修改：frontend/src/cockpit/lib/api/__tests__/cockpitApis.test.ts（追加 S4）
+  - 修改：frontend/src/cockpit/CockpitRegistry.ts（追加 cockpit.weekly-stage）
+  - 修改：backend/layouts/cockpit.json（追加 cockpit.weekly-stage layout）
+  - features.json：F216-c2 → needs_review；F216 sub_sprints.F216-c2 → needs_review
+
+📊 功能状态：
+  F216-a WeeklyChartService：✅ done
+  F216-b WeeklyStageService：🔍 needs_review
+  F216-c1 GET /weekly endpoint：🔍 needs_review
+  F216-c2 WeeklyStageChartWidget：🔍 needs_review（本次完成）
+  F216-d setup_service gate：⬜ design_needed
+  F216-e scheduler cron：⬜ design_needed
+
+[下一个 Session]
+  建议：acceptance skill 走 c1+c2 联合验收（preview_screenshot + 浏览器 smoke），
+  再触发 F216-d Sprint Contract 协商。
+  NP8 follow-up（抽 _chartHelpers.ts）已 spawn_task 记录。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-13] ✅ 验收通过：F215-b Volume Accumulation 三件套 + BREAKOUT 吸筹门槛
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -381,3 +423,37 @@
 [下一个 Session]
   F216-c2 Sprint Contract 协商（前端 widget + API client + Registry + cockpit.json 布局，预计 4 文件）
   或先做 F216-b acceptance（已在 needs_review 等待）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14] Sprint：F216-c2 — Weekly Stage Chart Widget（Contract 协商）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F216-c2 Sprint Contract 已确认（用户 NP1-NP10 全部按推荐拍板）
+  - 范围 6 文件（前端：API client + Widget + 2 测试 + Registry / 后端：cockpit.json layout）
+  - 17 完成标准 + 22 步开发顺序 + 4 WIP commit + 1 Final commit
+  - features.json：active_sprint → F216-c2 / contract_agreed；F216 iteration_history 追加 c2 协商记录
+  - 生成 SESSION-HANDOFF.md（覆盖前一份 F216-c1）
+
+⚠️ 待你决策：
+  - 无（NP1-NP10 已全部用户拍板）
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-c2-contract.md（新建）
+  - docs/需求/features.json（active_sprint / sub_sprints F216-c2 仍 design_needed 等 Generator 启动 → in_progress）
+  - SESSION-HANDOFF.md（覆盖）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:        🔍 needs_review (commit ab6a16b)
+    ├─ F216-c1 Router + Stage Payload:      🔍 needs_review (commit e87a08c)
+    ├─ F216-c2 Widget + Registry:           📝 contract_agreed  ← 本次
+    ├─ F216-d setup_service gate:           ⬜ design_needed
+    └─ F216-e Scheduler cron:              ⬜ design_needed
+
+[下一个 Session]
+  开 Sonnet 新 session，粘贴：
+  > 继续开发 F216-c2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-c2-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1 开始。

@@ -1,109 +1,109 @@
-# SESSION-HANDOFF — F216-c1 完成（needs_review）
+# SESSION-HANDOFF — F216-c2 needs_review → 下一步 acceptance c1+c2
 
 > 生成时间：2026-05-14
 > 当前分支：improve_against_plan
 > 父 feature：F216 Cockpit Phase B — Weekly Stage Layer（in_progress）
+> 本 sprint：F216-c2 **needs_review**（Final commit 待 push）
+> 上一 sprint：F216-c1 needs_review（commit e87a08c）
 
 ---
 
-## 本 session 完成内容
+## 1. F216-c2 完成摘要
 
-### F216-c1 — GET /api/cockpit/chart/{ticker}/weekly（后端）
+**目标已达成**：WeeklyStageChartWidget 前端实现完整交付。
 
-**Generator 阶段（21 步全部完成）**：
+**6 文件变更（等于 sprint 上限）**：
 
-1. DATA-MODEL.md WeeklyStageSnapshot 字段已确认（去掉 id/computed_at，7 字段对齐）
-2. API-CONTRACT.md 已包含 GET /api/cockpit/chart/{ticker}/weekly 子节
-3. 无 schema 变更（不新建表，不动 WeeklyStageSnapshot）
-4. 新建 3 个 schema：`WeeklyStagePayload` / `WeeklyChartData` / `WeeklyChartResponse`
-5. 追加 `CockpitChartWeeklyParams §7` + `CHART_WEEKLY` 单例（MIN=10 / MAX=50）
-6. WIP commit 1：`ca8486b wip(F216-c1): schema + cockpit_params CHART_WEEKLY`
-7. Router 追加 `GET /{ticker}/weekly`（pure compute：调 classify，不写 DB）
-8. WIP commit 2：`df443b8 wip(F216-c1): router GET /weekly endpoint`
-9. 集成测试 7/7 全通过（标准 1-9）
-10. WIP commit 3：`2b8d803 wip(F216-c1): integration tests for GET /weekly`
-11. API-CONTRACT.md 子节追加（包含 slope30W 大写 W 的正确 camelCase）
-12. 全量回归：1001 passed，12 failed 全部预先存在（非本 sprint 引入）
-13. Evaluator 自检全清
-14. consistency-check C1/C4/C5 全清（exit=0）
-15. F216-c1 sub_sprints → needs_review
+| # | 文件 | 状态 |
+|---|------|------|
+| 1 | `frontend/src/cockpit/lib/api/cockpitWeeklyChartApi.ts` | ✅ 新建 |
+| 2 | `frontend/src/cockpit/widgets/WeeklyStageChartWidget.tsx` | ✅ 新建 |
+| 3 | `frontend/src/cockpit/widgets/__tests__/WeeklyStageChartWidget.test.tsx` | ✅ 新建 |
+| 4 | `frontend/src/cockpit/lib/api/__tests__/cockpitApis.test.ts` | ✅ 修改（追加 S4） |
+| 5 | `frontend/src/cockpit/CockpitRegistry.ts` | ✅ 修改 |
+| 6 | `backend/layouts/cockpit.json` | ✅ 修改 |
 
-**关键发现**：
-- `slope_30w` 经 pydantic `to_camel` 转换为 `slope30W`（大写 W），因 `capitalize()` 将 `w` 大写。测试和 API-CONTRACT.md 均已使用正确大写。
+**测试结果**：
+- vitest F216-c2：22/22 通过（API client S4 × 4 + widget standards 6-12 × 9）
+- vitest 全量：预存失败（TopNav/AiNewsSummaryBar/SetupMonitorExplainer）无新增
+- pytest 全量：1001 passed（baseline 持平）
+- 浏览器 smoke：JD Stage 0 灰底 header（`rgb(107, 114, 128)` = `#6b7280`）+ TradingView chart SVG 渲染；无 console.error
 
----
+**WIP commits**：
+1. e8bd0fc — `wip(F216-c2): cockpitWeeklyChartApi + types`
+2. 3a2f14c — `wip(F216-c2): API client tests S4`
+3. 05b51b7 — `wip(F216-c2): WeeklyStageChartWidget skeleton`
+4. c21f09b — `wip(F216-c2): WeeklyStageChartWidget tests`
 
-## 已修改文件（5 文件 Contract + features.json + claude-progress.txt + SESSION-HANDOFF.md）
-
-| 文件 | 改动 |
-|------|------|
-| `backend/app/schemas/cockpit/chart.py` | 追加 WeeklyStagePayload / WeeklyChartData / WeeklyChartResponse |
-| `backend/app/services/cockpit/cockpit_params.py` | 追加 §7 CockpitChartWeeklyParams + CHART_WEEKLY |
-| `backend/app/routers/cockpit/chart.py` | 追加 _get_weekly_*_service Depends + GET /{ticker}/weekly route |
-| `backend/tests/test_cockpit_chart_weekly_router.py` | 新建，7 条集成测试 |
-| `docs/系统设计/API-CONTRACT.md` | 新增 GET /weekly 子节（路径/参数/响应/错误） |
+**Final commit**（待执行）：`feat(F216-c2): Weekly Stage Chart Widget`
 
 ---
 
-## 当前功能状态
+## 2. NP1-NP10 拍板落地状态
 
-```
-F216 Phase B Weekly Stage Layer：🔄 in_progress
-  ├─ F216-a Weekly Aggregation Service:  ✅ done (commit 6e86e75)
-  ├─ F216-b Stage Classifier + DB:       🔍 needs_review (commit ab6a16b)
-  ├─ F216-c1 Router + Stage Payload:     🔍 needs_review  ← 本次完成
-  ├─ F216-c2 Widget + Registry:          ⬜ design_needed
-  ├─ F216-d setup_service gate:          ⬜ design_needed
-  └─ F216-e Scheduler cron:              ⬜ design_needed
-```
-
----
-
-## 未决事项
-
-1. **预先存在的测试失败（12 个，非本 sprint 引入）**：
-   - `test_regime_f201a.py::test_s14_cockpit_params_import_no_exception`（INDEX_ETFS 4≠3 — VXX 后加）
-   - Alembic schema 相关测试（环境问题）
-   - 其余 AI/FMP 客户端测试
-   - 这些不阻塞 F216-c1 的 needs_review 流转
-
-2. **`test_decision_f203b.py`（untracked）**：引用不存在的 `DecisionService`，收集阶段就报错。与 F216-c1 无关。
+| NP | 议题 | 落地状态 |
+|----|------|---------|
+| 1 | Stage 标签 UI | ✅ header 整条 background 跟随 stage 色 + 白字 |
+| 2 | 色映射 token | ✅ readToken + STAGE_BG_TOKENS/FALLBACKS（0-4 全覆盖） |
+| 3 | ticker 来源 | ✅ `useCockpitStore.selectedTicker` |
+| 4 | 默认 weeks | ✅ DEFAULT_WEEKS = 50 |
+| 5 | 文案 | ✅ 完全复用 CockpitChartWidget |
+| 6 | registry / layout | ✅ id=cockpit.weekly-stage / chart / x=0,y=43,w=6,h=10 |
+| 7 | 数据不足 | ✅ weeklyBars.length===0 → "数据不足"；stage=0 → 灰底 |
+| 8 | helper 抽取 | ✅ 本 sprint 复制，spawn_task 已记录后续重构 |
+| 9 | decision price lines | ✅ 不渲染（无 cockpitDecisionApi import） |
+| 10 | stage 文本 | ✅ "Stage N · {Label}"（0-4 全覆盖） |
 
 ---
 
-## 下一步选项
+## 3. 下一步任务
 
-### 选项 A：继续 F216-c2（前端 widget）
-> 直接进入 F216-c2 Sprint Contract 协商
+### 优先：acceptance c1+c2 联合验收
 
+F216-c1（GET /weekly endpoint）和 F216-c2（WeeklyStageChartWidget）均在 needs_review。
+
+**建议下个 session 启动指令**：
 ```
-准备开发 F216-c2，需要协商 Sprint Contract。
-读取 SESSION-HANDOFF.md，F216-c1 已完成（needs_review），
-现在进行 F216-c2 前端 widget Sprint Contract 协商。
-```
-
-预计 4 文件：
-- `src/workbench/widgets/WeeklyStageChartWidget.tsx`（新建）
-- `src/api/cockpit/weeklyChart.ts`（新建 API client）
-- `src/workbench/WidgetRegistry.ts`（修改，注册 widget）
-- `src/workbench/layouts/cockpit.json`（修改，加 widget slot）
-
-### 选项 B：先完成 F216-b acceptance
-> F216-b 已在 needs_review，可先验收再继续 c2
-
-```
-验收 F216-b（Weekly Stage Classifier + DB），needs_review 状态。
+触发 acceptance skill，对 F216-c1 和 F216-c2 做联合验收。
+读取 SESSION-HANDOFF.md 了解当前状态，两个 sub-sprint 都是 needs_review。
+验收重点：
+1. 后端需重启 uvicorn（当前运行实例未加载 c1 weekly 路由，touch main.py 触发 reload 即可）
+2. 浏览器 /cockpit → Setup Monitor 选 ticker → Weekly Stage widget 出现 + 正确颜色 + chart 渲染
+3. screenshot 留证 stage=2/4 各 1 张
 ```
 
-### 选项 C：Final commit 收尾 + 开新 session
-> 当前 WIP commits 可 final commit，然后开新 session 继续 c2
+### 之后：F216-d Sprint Contract 协商
+
+- setup_service gate（Stage 必须=2 才允许 ready_signal=true）
+- setup_snapshots 加 weekly_stage 列
+- 前端 SetupMonitorWidget 新增 WS 列
 
 ---
 
-## 启动下个 Session 指令（F216-c2）
+## 4. 重要技术细节（避免下次踩坑）
 
-> **F216-c2 Sprint Contract 协商**（建议 Sonnet）：
->
-> 读取 SESSION-HANDOFF.md，F216-c1 已完成（needs_review）。
-> 现在准备开发 F216-c2：前端 WeeklyStageChart Widget。
-> 进行 F216-c2 Sprint Contract 协商，从预计修改文件清单开始。
+- **uvicorn 热重载问题**：dev server 在 F216-c1 合并前启动，`/weekly` 路由未加载。`touch backend/app/main.py` 可强制 reload。长期方案：重启 uvicorn 进程
+- **localStorage 布局**：cockpit.json 的 default layout 更新后，浏览器需清 localStorage key `ma150.cockpit.layouts.v1` 才会看到新 widget（`localStorage.removeItem('ma150.cockpit.layouts.v1')`）
+- **camelCase 字段**：`slope30W`（W 大写）、`weeklyMa10/30/40`、`scanDate`、`weeklyClose`、`weeklyBars`、`weeklyMas`。tsc 已锁定
+- **WeeklyStageChartWidget 主函数 199 行**：接近 200 行上限。NP8 follow-up（抽 `_chartHelpers.ts`）已 spawn_task 记录，后续执行可降至 ~150 行
+
+---
+
+## 5. F216 sub_sprints 当前状态
+
+| sub_sprint | phase | 备注 |
+|------------|-------|------|
+| F216-a | done | commit 6e86e75 — WeeklyChartService |
+| F216-b | needs_review | commit ab6a16b — WeeklyStageService.classify + numpy + DB |
+| F216-c1 | needs_review | commit e87a08c — GET /weekly endpoint |
+| F216-c2 | needs_review | 本次完成 — WeeklyStageChartWidget |
+| F216-d | design_needed | setup_service gate + setup_snapshots 加列 + 前端 WS 列 |
+| F216-e | design_needed | scheduler cron 22:20 UTC |
+
+C1 invariant：父 F216 status 必须保持 `in_progress`（d/e 仍 design_needed）。
+
+---
+
+## 6. NP8 follow-up（spawn_task 已记录）
+
+`toTs` / `readToken` / `MA_TOKENS` / `MA_FALLBACKS` 同时存在于 `CockpitChartWidget.tsx` 和 `WeeklyStageChartWidget.tsx`。后续单独 sprint 抽取到 `frontend/src/cockpit/lib/_chartHelpers.ts`。
