@@ -503,3 +503,47 @@
   > 继续开发 F216-c2，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-c2-contract.md，
   > 进入 Generator 模式，从开发顺序步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14] Sprint Contract 协商：F216-d1 — setup_snapshots 加 weekly_stage 列
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F216-d 6 文件原则触发，拆分为 d1/d2/d3 三段（与父 feature sub_sprint_notes 预告一致）
+  - features.json sub_sprints 同步：删 F216-d，加 F216-d1/d2/d3 三 key
+  - consistency-check C5 双向校验全清（C1/C2/C3/C5/C6/C7/C8 无违例；C4 1 项轻微违例用户选择不补占位 entry）
+  - F216-d1 Sprint Contract 协商完毕，NP1-NP7 全部按推荐拍板：
+    · NP1 列类型 Integer NULL（区分 NULL=cron未跑 / 0=UNKNOWN / 1-4=真实 stage）
+    · NP2 命名 weekly_stage
+    · NP3 不加独立索引
+    · NP4 现存行不回填，保留 NULL
+    · NP5 不新建测试文件，alembic 升降级 evaluator 手工三段跑 + 全量回归
+    · NP6 列位置追加在 up_down_volume_ratio 之后（保持 alembic 时间序）
+    · NP7 DATA-MODEL.md 业务规则段不提前写门禁（留给 d2）
+  - 范围：3 文件（alembic 020 新建 + setup_snapshot.py 加字段 + DATA-MODEL.md 加行）
+  - phase: F216-d1 design_needed → contract_agreed
+
+⚠️ 待你决策：无（Contract 已确认，等待新 session 进入 Generator）
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-d1-contract.md（新建）
+  - docs/需求/features.json（active_sprint=F216-d1，sub_sprints F216-d 拆为 d1/d2/d3，d1 contract_agreed）
+  - SESSION-HANDOFF.md（覆盖）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:        ✅ done
+    ├─ F216-c1 Router + Stage Payload:      ✅ done
+    ├─ F216-c2 Widget + Registry:           ✅ done
+    ├─ F216-d1 setup_snapshots schema col:  📝 contract_agreed  ← 本次
+    ├─ F216-d2 service gate + API:          ⬜ design_needed
+    ├─ F216-d3 前端 WS 列:                  ⬜ design_needed
+    └─ F216-e Scheduler cron:               ⬜ design_needed
+
+[下一个 Session]
+  开 Sonnet 新 session，粘贴：
+  > 继续开发 F216-d1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-d1-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1 开始。
+

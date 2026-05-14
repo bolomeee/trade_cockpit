@@ -12,7 +12,7 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-d",
+    "active_sprint": "F216-d2",
     "active_sprint_phase": "design_needed"
   },
   "_iteration_log": [
@@ -3957,7 +3957,9 @@
         "F216-b": "done",
         "F216-c1": "done",
         "F216-c2": "done",
-        "F216-d": "design_needed",
+        "F216-d1": "done",
+        "F216-d2": "design_needed",
+        "F216-d3": "design_needed",
         "F216-e": "design_needed"
       },
       "dependencies": [
@@ -4146,10 +4148,50 @@
           "status": "done",
           "completed_at": "2026-05-14",
           "summary": "WeeklyStageService.classify (numpy OLS) + weekly_stage_snapshots table + upsert repo — 17/17 tests passed, live API confirms AMZN stage=2 / MSFT stage=4"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d",
+          "phase": "split",
+          "session": "feature-dev 6 文件原则触发",
+          "changes": "F216-d 预估 ~13 文件（后端 7 + 前端 3 + 文档 3），远超 6 文件单 sprint 上限。按父 feature sub_sprint_notes 预告拆分为 F216-d1 (DB schema：alembic 020 + model + DATA-MODEL.md，3-4 文件)、F216-d2 (service gate：setup_service ready_signal 门禁 + schema + cockpit_params + test + API-CONTRACT + DECISIONS D093，6 文件)、F216-d3 (前端 WS 列：API client type + Widget + vitest，3 文件)。依赖链 d1 → d2 → d3。sub_sprints 字段同步：删 F216-d，加 F216-d1/d2/d3 三 key 全 design_needed。下一步 F216-d1 Contract 协商。"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d1",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-d1 Sprint Contract 已确认（用户 2026-05-14 NP1-NP7 全部按推荐拍板）：NP1 列类型 Integer NULL（区分 NULL/0/1-4 三种语义）/ NP2 字段命名 weekly_stage（snake_case 对齐 weekly_stage_snapshots.stage）/ NP3 不加独立索引（已有 ticker+scan_date 唯一索引覆盖）/ NP4 现存行不回填保留 NULL（与 F215-b 同 pattern）/ NP5 不新建测试文件（alembic 升降级 evaluator 手工三段跑 + 全量回归足够）/ NP6 列位置追加在 up_down_volume_ratio 之后保持 alembic 时间序 / NP7 DATA-MODEL.md 业务规则段不提前写门禁（留给 d2 与代码同步）。范围 3 文件：alembic 020_f216d1_setup_weekly_stage_column.py 新建 + setup_snapshot.py 加字段 + DATA-MODEL.md §SetupSnapshot 字段表加行。9 完成标准 + 10 步开发顺序 + 1 WIP commit + 1 Final commit。明确排除 d2 / d3 范围。Contract: docs/开发/sprint-contracts/F216-d1-contract.md。下个 session Generator 从 §7 开发顺序步骤 1 开始。",
+          "contract": "docs/开发/sprint-contracts/F216-d1-contract.md",
+          "contract_agreed_at": "2026-05-14"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d1",
+          "phase": "in_progress",
+          "note": "Generator 模式启动 — alembic 020 migration 新建 + setup_snapshot.py 加 weekly_stage Mapped 字段"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d1",
+          "phase": "testing",
+          "note": "alembic upgrade/downgrade/upgrade 三段验证通过；ORM weekly_stage=2/None 均 commit+回读；pytest 1019 passed 无新增失败；test_setup_f202a.py 27/27"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d1",
+          "phase": "needs_review",
+          "note": "Evaluator 自检全清；DATA-MODEL.md §SetupSnapshot 字段表追加 weekly_stage 行；业务规则段未提前写门禁；commit: 37c4c20 (wip) + 9fe4ce4 (feat)"
+        },
+        {
+          "sprint": "F216-d1",
+          "status": "done",
+          "completed_at": "2026-05-14",
+          "summary": "setup_snapshots.weekly_stage (INTEGER NULL) column — alembic 020 upgrade/downgrade/upgrade verified; ORM null/int both pass; pytest 1019 passed; DATA-MODEL.md field table updated; business rules section untouched (gate logic deferred to d2)"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
-      "active_sprint_phase": "needs_review"
+      "active_sprint_phase": "contract_agreed"
     }
   ]
 }
