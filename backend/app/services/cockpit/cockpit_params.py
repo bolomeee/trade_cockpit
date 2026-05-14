@@ -320,3 +320,16 @@ class CockpitDecisionParams(BaseModel):
 
 
 DECISION = CockpitDecisionParams()
+
+
+class CockpitWeeklyParams(BaseModel):
+    """§5 WEEKLY — weekly bar aggregation parameters (F216-a / D090)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    DEFAULT_WEEKS: int = Field(default=50, description="Default output weeks for get_weekly_chart", ge=10, le=260)
+    WEEKLY_MAS: list[int] = Field(default=[10, 30, 40], description="Weekly SMA periods computed by WeeklyChartService")
+    MIN_DAILY_BARS_FOR_WEEKLY: int = Field(default=4, description="Minimum daily bars required before aggregation; below this returns empty result", ge=1, le=20)
+
+
+WEEKLY = CockpitWeeklyParams()

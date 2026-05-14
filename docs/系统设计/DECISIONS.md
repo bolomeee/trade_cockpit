@@ -2087,3 +2087,22 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **放弃**：回填存量数据（增加迁移复杂度 + 历史快照本身仅用于展示历史状态，非实时决策依据）。
 
 **影响**：无额外 migration 脚本，迁移后首次扫描即生效。
+
+---
+
+## D090：F216-a Weekly 聚合采用 ISO 周分组，week date 跟随实际最后交易日
+
+**日期**：2026-05-14
+**Feature**：F216-a Weekly Aggregation Service
+
+**背景**：周线 bar 的 `date` 字段需要一个命名约定。计划草稿写的是"week_end_date=周五"，但美股节假日（如感恩节周四休市后周五提前收盘）会导致当周最后实际交易日不是周五。
+
+**决策**：`aggregate_daily_to_weekly` 以 `bar.date.isocalendar()[:2]`（ISO year, ISO week）为分组键，每个 weekly bar 的 `date` 取**该 ISO 周内最后一个实际交易日的日期**，不强制对齐到周五。
+
+分组键选 ISO week 而非自然周（周日起），是因为 ISO week 与交易所日历对齐（周一开盘），跨年周（如 2025-12-29~2026-01-04）也能正确归属 iso_year=2025 W53 or 2026 W01。
+
+**放弃**：强制 `week_end_date = 本周周五`（计划原始方案）。理由：
+- 短周（周五休市）时周五无实际成交，bar.date=周五 会与 lightweight-charts 周线显示约定错位
+- 强制映射需要额外的"上一个/下一个有效交易日"逻辑，引入复杂度
+
+**影响**：`WeeklyBarDict.date` 语义锁定为"本周末日实际交易日"。F216-b stage 分类器、F216-c 前端 widget 均以此字段渲染 x 轴。本决策写入 Sprint Contract NP2。
