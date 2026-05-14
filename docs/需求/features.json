@@ -3955,7 +3955,7 @@
       "sub_sprints": {
         "F216-a": "done",
         "F216-b": "needs_review",
-        "F216-c1": "contract_agreed",
+        "F216-c1": "in_progress",
         "F216-c2": "design_needed",
         "F216-d": "design_needed",
         "F216-e": "design_needed"

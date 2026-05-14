@@ -45,3 +45,25 @@ class CockpitChartData(CamelModel):
 class CockpitChartResponse(BaseModel):
     data: CockpitChartData
     message: str = "success"
+
+
+class WeeklyStagePayload(CamelModel):
+    stage: int
+    weekly_close: float | None
+    weekly_ma_10: float | None
+    weekly_ma_30: float | None
+    weekly_ma_40: float | None
+    slope_30w: float | None
+    scan_date: date | None
+
+
+class WeeklyChartData(CamelModel):
+    ticker: str
+    weekly_bars: list[ChartBarItem]
+    weekly_mas: dict[str, list[ChartSeriesPoint]]
+    stage: WeeklyStagePayload
+
+
+class WeeklyChartResponse(BaseModel):
+    data: WeeklyChartData
+    message: str = "success"

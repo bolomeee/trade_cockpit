@@ -394,3 +394,15 @@ class CockpitWeeklyStageParams(BaseModel):
 
 
 WEEKLY_STAGE = CockpitWeeklyStageParams()
+
+
+class CockpitChartWeeklyParams(BaseModel):
+    """§7 CHART_WEEKLY — router-layer validation bounds for GET /chart/{ticker}/weekly (F216-c1)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    MIN_WEEKS: int = Field(default=10, description="Lower bound for ?weeks query param", ge=1, le=50)
+    MAX_WEEKS: int = Field(default=WEEKLY.DEFAULT_WEEKS, description="Upper bound for ?weeks; mirrors WEEKLY.DEFAULT_WEEKS (50)", ge=10, le=260)
+
+
+CHART_WEEKLY = CockpitChartWeeklyParams()
