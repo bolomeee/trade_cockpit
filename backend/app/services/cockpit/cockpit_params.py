@@ -333,3 +333,64 @@ class CockpitWeeklyParams(BaseModel):
 
 
 WEEKLY = CockpitWeeklyParams()
+
+
+class CockpitWeeklyStageParams(BaseModel):
+    """§6 WEEKLY_STAGE — Stan Weinstein Stage 1-4 classification parameters (F216-b / D091)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # ── 数据门槛 ──────────────────────────────────────────────────────────
+    MIN_WEEKS_FOR_CLASSIFICATION: int = Field(
+        default=30, ge=10, le=100,
+        description="Min weekly bars required to compute 30wMA and classify stage; below → UNKNOWN",
+    )
+    SLOPE_LOOKBACK_WEEKS: int = Field(
+        default=5, ge=2, le=26,
+        description="Window size (weeks) for OLS regression of 30wMA; uses last N+1 points",
+    )
+
+    # ── Stage 1（base / 走平）────────────────────────────────────────────
+    STAGE1_FLAT_TOL_PCT: float = Field(
+        default=2.0, ge=0.1, le=10.0,
+        description="|slope_30w| <= this AND price within band → Stage 1",
+    )
+    STAGE1_PRICE_BAND_PCT: float = Field(
+        default=3.0, ge=0.5, le=10.0,
+        description="|close - ma30|/ma30 <= this → 价格在 30wMA 附近震荡",
+    )
+
+    # ── Stage 2（advancing）──────────────────────────────────────────────
+    STAGE2_SLOPE_MIN_PCT: float = Field(
+        default=0.5, ge=0.0, le=10.0,
+        description="slope_30w > this AND close > 30wMA AND 10wMA>30wMA → Stage 2",
+    )
+
+    # ── Stage 3（distribution / topping）────────────────────────────────
+    STAGE3_FLAT_TOL_PCT: float = Field(
+        default=2.0, ge=0.1, le=10.0,
+        description="|slope_30w| <= this AND 反复穿越 30wMA → Stage 3",
+    )
+    STAGE3_CROSSING_LOOKBACK_WEEKS: int = Field(
+        default=10, ge=4, le=26,
+        description="Look-back weeks to count close-vs-30wMA crossings",
+    )
+    STAGE3_MIN_CROSSINGS: int = Field(
+        default=3, ge=2, le=10,
+        description="Min crossings in lookback to qualify as Stage 3",
+    )
+
+    # ── Stage 4（declining）──────────────────────────────────────────────
+    STAGE4_SLOPE_MIN_PCT: float = Field(
+        default=0.5, ge=0.0, le=10.0,
+        description="slope_30w < -this AND close < 30wMA → Stage 4",
+    )
+
+    # ── 数据保留 ──────────────────────────────────────────────────────────
+    WEEKLY_STAGE_RETENTION_DAYS: int = Field(
+        default=60, ge=7, le=365,
+        description="Days to retain weekly_stage snapshots (与 SetupSnapshot 对齐)",
+    )
+
+
+WEEKLY_STAGE = CockpitWeeklyStageParams()
