@@ -547,3 +547,64 @@
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-d1-contract.md，
   > 进入 Generator 模式，从开发顺序步骤 1 开始。
 
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14] Sprint Contract 协商：F216-d2 — Weekly Stage 强制门禁接入 ready_signal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F216-d2 Sprint Contract 协商完毕，NP-A 至 NP-H 8 个协商点全部按推荐拍板：
+    · NP-A 7 文件单 sprint（doc 文件 <30 行 bullet 级，与代码强耦合，拆无 review 价值）
+    · NP-B _compute_ready_signal weekly_stage 默认 None + _ready_kwargs fixture 加 weekly_stage=2
+    · NP-C NULL/0 都视为不满足 → ready_signal=False（与 7 条 AND 门同语义）
+    · NP-D READY_REQUIRE_STAGE2 flag 默认 True，放 §2 SETUP Ready signal 区
+    · NP-E 取 WeeklyStageRepository.get_latest_for_tickers 最新一行不限 scan_date
+    · NP-F 新建 test_setup_f216d2.py 独立测试文件（15 条 T1-T15）
+    · NP-G 仅门禁 ready_signal，不降级 setup_type（保留 watch/wait 中间态）
+    · NP-H 不加 suggested_action 中间态，复用现有 wait/watch（d3 前端加 WS 列展示 stage）
+  - 范围 7 文件（NP-A 用户同意单 sprint）：
+    1. backend/app/services/cockpit/setup_service.py（3 处改：_compute_ready_signal 加参数+门禁、
+       compute_and_store_all join + 写 weekly_stage、_row_to_dict 加 weeklyStage）
+    2. backend/app/schemas/cockpit/setup.py（SetupItemResponse 加 weekly_stage: int | None）
+    3. backend/app/services/cockpit/cockpit_params.py（§2 加 READY_REQUIRE_STAGE2: bool = True）
+    4. backend/tests/test_setup_f216d2.py（新建，T1-T15）
+    5. docs/系统设计/API-CONTRACT.md（§setup-monitor 加 weeklyStage + readySignal 7→8）
+    6. docs/系统设计/DATA-MODEL.md（§SetupSnapshot 字段表 ready_signal 7→8 + 业务规则段加门禁 bullet）
+    7. docs/系统设计/DECISIONS.md（追加 D093 weekly_stage 作为 ready_signal 第 8 条 AND 门）
+  - 19 完成标准 + 19 步开发顺序 + 3 WIP commit + 1 Final commit
+  - phase: F216-d2 design_needed → contract_agreed
+
+⚠️ 待你决策：无（Contract 已确认，等待新 session 进入 Generator）
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-d2-contract.md（新建）
+  - docs/需求/features.json（active_sprint=F216-d2 仍为 contract_agreed，sub_sprints F216-d2 design_needed → contract_agreed，iteration_history 追加）
+  - SESSION-HANDOFF.md（覆盖）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:        ✅ done
+    ├─ F216-c1 Router + Stage Payload:      ✅ done
+    ├─ F216-c2 Widget + Registry:           ✅ done
+    ├─ F216-d1 setup_snapshots schema col:  ✅ done (commit 9fe4ce4)
+    ├─ F216-d2 service gate + API:          📝 contract_agreed  ← 本次
+    ├─ F216-d3 前端 WS 列:                  ⬜ design_needed
+    └─ F216-e Scheduler cron:               ⬜ design_needed
+
+[下一个 Session]
+  开 Sonnet 新 session，粘贴：
+  > 继续开发 F216-d2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-d2-contract.md，
+  > 进入 Generator 模式，从开发顺序步骤 1 开始。
+
+---
+## F216-d2 — 2026-05-14
+- _compute_ready_signal: 加 weekly_stage 参数 + READY_REQUIRE_STAGE2 flag（8th AND 门）
+- setup_service: __init__ 加 weekly_stage_repo；compute_and_store_all 批量 join stage_map；_row_to_dict 加 weeklyStage
+- SetupItemResponse: 加 weekly_stage: int | None = None
+- 28 测试全绿（T1-T16: 纯函数 + 集成 + schema），全量 1047 passed (+28 new)
+- 3 doc 同步：API-CONTRACT weeklyStage + readySignal 7→8；DATA-MODEL 8 AND 门 + 门禁 bullet；DECISIONS D093
+- consistency-check C1/C4/C5/C7/C8 全清
+- phase: contract_agreed → needs_review（等待 acceptance）
+

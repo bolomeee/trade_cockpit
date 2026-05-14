@@ -3958,7 +3958,7 @@
         "F216-c1": "done",
         "F216-c2": "done",
         "F216-d1": "done",
-        "F216-d2": "design_needed",
+        "F216-d2": "needs_review",
         "F216-d3": "design_needed",
         "F216-e": "design_needed"
       },
@@ -4188,10 +4188,26 @@
           "status": "done",
           "completed_at": "2026-05-14",
           "summary": "setup_snapshots.weekly_stage (INTEGER NULL) column — alembic 020 upgrade/downgrade/upgrade verified; ORM null/int both pass; pytest 1019 passed; DATA-MODEL.md field table updated; business rules section untouched (gate logic deferred to d2)"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d2",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-d2 Sprint Contract 已确认（用户 2026-05-14 NP-A 至 NP-H 全部按推荐拍板）：NP-A 7 文件单 sprint（3 doc 文件 <30 行 bullet 级，与代码强耦合无拆分价值）/ NP-B _compute_ready_signal 加 weekly_stage 参数 default=None + test_setup_f202a._ready_kwargs 加 weekly_stage=2 兼容 / NP-C NULL/0 均视为不满足 → ready=False（与 ready_signal AND 门同语义）/ NP-D READY_REQUIRE_STAGE2 flag 默认 True 放 §2 SETUP Ready signal 区 / NP-E 取 WeeklyStageRepository.get_latest_for_tickers 最新一行不限 scan_date / NP-F 新建 test_setup_f216d2.py 独立测试文件 / NP-G 仅门禁 ready_signal 不降级 setup_type / NP-H 不加 suggested_action 中间态。范围 7 文件：setup_service.py（3 处改）+ schemas/setup.py + cockpit_params.py（READY_REQUIRE_STAGE2 flag）+ test_setup_f216d2.py 新建（15 条 T1-T15）+ API-CONTRACT.md（§setup-monitor 加 weeklyStage + readySignal 7→8）+ DATA-MODEL.md（§SetupSnapshot 业务规则段加 Weekly Stage 门禁 bullet + ready_signal 描述 7→8）+ DECISIONS.md 加 D093。19 完成标准 + 19 步开发顺序 + 3 WIP commit + 1 Final commit。明确排除：d3 前端 WS 列、e cron 编排、_classify_setup_type 不降级 stage、_compute_suggested_action 不加中间态。Contract: docs/开发/sprint-contracts/F216-d2-contract.md。下个 session Generator 从 §7 开发顺序步骤 1 开始。",
+          "contract": "docs/开发/sprint-contracts/F216-d2-contract.md",
+          "contract_agreed_at": "2026-05-14"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-d2",
+          "phase": "needs_review",
+          "session": "F216-d2 Generator",
+          "changes": "F216-d2 实现完成，等待 acceptance：_compute_ready_signal 加第 8 AND 门（weekly_stage==2）+ cockpit_params READY_REQUIRE_STAGE2 flag + compute_and_store_all 批量 join stage_map + _row_to_dict weeklyStage + schema weekly_stage 字段 + 28 测试全绿（T1-T16）+ API-CONTRACT/DATA-MODEL/DECISIONS D093 三文档同步。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
-      "active_sprint_phase": "contract_agreed"
+      "active_sprint_phase": "needs_review"
     }
   ]
 }
