@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { getCockpitChart } from '../cockpitChartApi'
 import { getCockpitDecision } from '../cockpitDecisionApi'
 import { getCockpitRegime } from '../cockpitRegimeApi'
+import { getCockpitWeeklyChart } from '../cockpitWeeklyChartApi'
 
 const chartOkResponse = {
   ok: true,
@@ -188,5 +189,83 @@ describe('S3 – cockpitRegimeApi', () => {
       }),
     )
     await expect(getCockpitRegime()).rejects.toMatchObject({ status: 502 })
+  })
+})
+
+const weeklyOkResponse = {
+  ok: true,
+  status: 200,
+  json: () =>
+    Promise.resolve({
+      data: {
+        ticker: 'AAPL',
+        weeklyBars: [],
+        weeklyMas: { '10': [], '30': [], '40': [] },
+        stage: {
+          stage: 0,
+          weeklyClose: null,
+          weeklyMa10: null,
+          weeklyMa30: null,
+          weeklyMa40: null,
+          slope30W: null,
+          scanDate: null,
+        },
+      },
+    }),
+}
+
+describe('S4 – cockpitWeeklyChartApi', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(weeklyOkResponse))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('default weeks=50 → correct URL', async () => {
+    await getCockpitWeeklyChart('AAPL')
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/cockpit/chart/AAPL/weekly?weeks=50',
+      undefined,
+    )
+  })
+
+  it('custom weeks=30 → URL contains weeks=30', async () => {
+    await getCockpitWeeklyChart('AAPL', { weeks: 30 })
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/cockpit/chart/AAPL/weekly?weeks=30',
+      undefined,
+    )
+  })
+
+  it('404 → throws ApiError with code NOT_FOUND', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: { code: 'NOT_FOUND', message: 'ticker not found' } }),
+      }),
+    )
+    await expect(getCockpitWeeklyChart('UNKNOWN')).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+    })
+  })
+
+  it('422 → throws ApiError with code VALIDATION_ERROR', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({ error: { code: 'VALIDATION_ERROR', message: 'weeks out of range' } }),
+      }),
+    )
+    await expect(getCockpitWeeklyChart('AAPL', { weeks: 5 })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 422,
+    })
   })
 })
