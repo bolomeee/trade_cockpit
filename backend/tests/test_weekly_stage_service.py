@@ -286,7 +286,7 @@ def test_compute_for_ticker_insufficient_data_writes_unknown(db_session):
     from app.models import Stock, DailyBar
 
     # Seed a stock
-    stock = Stock(ticker="TSTX", name="Test Corp", active=True)
+    stock = Stock(ticker="TSTX", name="Test Corp", is_active=True)
     db_session.add(stock)
     db_session.flush()
 
@@ -313,7 +313,7 @@ def test_compute_and_store_all_returns_stage_counts(db_session):
     from app.models import Stock
 
     for ticker in ["AA1", "AA2", "AA3"]:
-        db_session.add(Stock(ticker=ticker, name=f"{ticker} Corp", active=True))
+        db_session.add(Stock(ticker=ticker, name=f"{ticker} Corp", is_active=True))
     db_session.commit()
 
     svc = _svc(db_session)
@@ -329,35 +329,33 @@ def test_compute_and_store_all_returns_stage_counts(db_session):
 
 def test_alembic_019_upgrade_and_downgrade():
     """019 migration creates table + unique constraint; downgrade removes it."""
+    import os
+    import shutil
+    import sqlite3
+    import tempfile
     from alembic.config import Config
     from alembic import command
-    from sqlalchemy import create_engine, inspect, text
-    from sqlalchemy.pool import StaticPool
 
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-        future=True,
-    )
-
-    cfg = Config()
-    cfg.set_main_option("script_location", "alembic")
-    cfg.set_main_option("sqlalchemy.url", "sqlite:///:memory:")
-    cfg.attributes["connection"] = engine.connect()
-
+    tmp = tempfile.mkdtemp()
+    db_path = os.path.join(tmp, "test_019.db")
+    ini_path = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
+    cfg = Config(os.path.abspath(ini_path))
+    cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
     try:
         command.upgrade(cfg, "019_f216b_weekly_stage_snapshots")
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        assert "weekly_stage_snapshots" in tables
 
-        cols = {c["name"] for c in inspector.get_columns("weekly_stage_snapshots")}
+        conn = sqlite3.connect(db_path)
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "weekly_stage_snapshots" in tables, f"table missing; tables={tables}"
+
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(weekly_stage_snapshots)").fetchall()}
         assert {"id", "ticker", "scan_date", "stage", "weekly_close", "slope_30w"} <= cols
+        conn.close()
 
         command.downgrade(cfg, "018_f215b_setup_volume_accumulation")
-        tables_after = inspect(engine).get_table_names()
-        assert "weekly_stage_snapshots" not in tables_after
+        conn2 = sqlite3.connect(db_path)
+        tables_after = {r[0] for r in conn2.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "weekly_stage_snapshots" not in tables_after, f"table still present; tables={tables_after}"
+        conn2.close()
     finally:
-        cfg.attributes["connection"].close()
-        engine.dispose()
+        shutil.rmtree(tmp, ignore_errors=True)

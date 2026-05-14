@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v1.10",
     "active_sprint": "F216-b",
-    "active_sprint_phase": "design_needed"
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -3954,7 +3954,7 @@
       "sub_sprint_notes": "按 plan B1-B5 拆 5 sub-sprint：F216-a (B1 周线聚合服务，~3 文件)、F216-b (B2 Stage 分类器 + 新表 weekly_stage_snapshots + alembic 019，~6 文件)、F216-c (B3 router + widget，预估 7-8 文件，合约阶段二次拆 c1=后端 c2=前端)、F216-d (B4 setup_service gate + setup_snapshots 加列 + 前端 WS 列，预估 7-9 文件，合约阶段二次拆 d1=DB schema / d2=service gate / d3=前端)、F216-e (B5 scheduler cron，~2 文件)。c/d 二次拆分在各自 Contract 协商时由 feature-dev 6 文件原则触发，先以 a/b/c/d/e 五个 key 注册到 sub_sprints。",
       "sub_sprints": {
         "F216-a": "done",
-        "F216-b": "design_needed",
+        "F216-b": "needs_review",
         "F216-c": "design_needed",
         "F216-d": "design_needed",
         "F216-e": "design_needed"
@@ -4060,9 +4060,37 @@
           "phase": "done",
           "session": "acceptance",
           "changes": "F216-a 直接标 done：纯 service 层，无 API / 无前端 / 无可见输出，Evaluator 9 条测试已完全覆盖所有完成标准，无需独立 acceptance 环节。"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-b",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-b Sprint Contract 已确认（用户 2026-05-14 全部按推荐 + 二次拍板）：NP1 Stage 阈值全用推荐默认（MIN_WEEKS=30/SLOPE_LOOKBACK=5/Stage1 flat 2% 价格带 3%/Stage2 slope min 0.5%/Stage3 lookback 10w 至少 3 次穿越/Stage4 slope min 0.5%），NP2 选 B-2 → 引入 numpy 用 np.polyfit 做 OLS（单位 %/周；为 Phase C/D 数值计算预埋），NP3 stage Integer NOT NULL UNKNOWN=0，NP4 scan_date = 本周最后实际交易日（每周一行 upsert），NP5 compute_and_store_all 仅遍历 active_stocks，NP6 保留 60 天与 setup 对齐，NP7 数据不足写 stage=0 + 其他字段 null 不抛错。范围 7 代码文件 + 2 依赖配置（pyproject.toml + uv.lock）+ 2 文档（DATA-MODEL.md / DECISIONS.md 加 D091 D092）。方案 A 不拆分。Contract: docs/开发/sprint-contracts/F216-b-contract.md。下个 session Generator 从 §6 step 1（context7 查 numpy）开始。",
+          "contract": "docs/开发/sprint-contracts/F216-b-contract.md",
+          "contract_agreed_at": "2026-05-14"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-b",
+          "phase": "in_progress",
+          "note": "Generator 模式启动 — numpy dep + DB 层 + classify 纯函数"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-b",
+          "phase": "testing",
+          "note": "17 条单测全部通过（标准 1-13），全量回归 994 passed 无新增失败"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-b",
+          "phase": "needs_review",
+          "note": "Evaluator 自检全清，consistency-check C7 修复，等待 acceptance"
         }
       ],
-      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。"
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
+      "active_sprint_phase": "needs_review"
     }
   ]
 }

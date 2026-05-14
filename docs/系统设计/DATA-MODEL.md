@@ -1004,3 +1004,61 @@ class CockpitPoolCache(Base):
 **范围（Q1=A）**：仅缓存最新 breakout_scans 中的 trend tickers（~50 个）。RS percentile 相对于当次 rebuild 时的 trend 总体计算。
 
 **Cache miss**：表为空时 PoolService 返回空 funnel（rs=0, fundamental=0, action=0）+ WARN 日志，不 fallback 实时 FMP（Q3=A）。
+
+
+## WeeklyStageSnapshot（F216-b — Stan Weinstein Stage 1-4 周线快照）
+
+> 对应数据库表：`weekly_stage_snapshots`
+> Feature：F216-b Weekly Stage Classifier + 持久化
+> 决策依据：D091（Stage 量化判定细则）/ D092（引入 numpy 的范围与版本约束）
+
+Cockpit 专属，每周对 active stocks 计算 Stan Weinstein Stage 分类并持久化。以 `(ticker, scan_date)` 唯一（NP3/NP4），每周 upsert 一行。`scan_date` = 本周最后实际交易日（周 bar 的 date）。数据不足时仍写入 `stage=0(UNKNOWN)`，其他字段 null（NP7）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| scan_date | Date | ✅ | 本周最后实际交易日（= weekly_bars[-1].date），有独立 index |
+| stage | Integer | ✅ | 0=UNKNOWN / 1=Base / 2=Advancing / 3=Distribution / 4=Declining（NP3） |
+| weekly_close | Float | ❌ | 本周收盘价；UNKNOWN 时 null |
+| weekly_ma_10 | Float | ❌ | 10 周 SMA；数据不足时 null |
+| weekly_ma_30 | Float | ❌ | 30 周 SMA；数据不足时 null |
+| weekly_ma_40 | Float | ❌ | 40 周 SMA；数据不足时 null |
+| slope_30w | Float | ❌ | 30wMA 斜率，单位 %/周（OLS 归一化：`beta/mean_y*100`）；数据不足时 null（NP2） |
+| computed_at | DateTime | ✅ | UTC 计算时间戳 |
+
+**唯一约束**：`uq_weekly_stage_ticker_date (ticker, scan_date)`
+
+**Stage 分类规则**（优先级从高到低，详见 D091）：
+1. `weekly_bars < 30 周` → UNKNOWN
+2. `slope_30w > 0.5% AND close > 30wMA AND (10wMA IS NULL OR 10wMA > 30wMA)` → Stage 2
+3. `slope_30w < -0.5% AND close < 30wMA` → Stage 4
+4. `|slope_30w| ≤ 2% AND |close - 30wMA|/30wMA ≤ 3%` → Stage 1
+5. `|slope_30w| ≤ 2% AND 过去 10 周穿越次数 ≥ 3` → Stage 3
+6. 其余 → UNKNOWN（不强行归类）
+
+**保留策略**：`WEEKLY_STAGE_RETENTION_DAYS = 60`（与 SetupSnapshot 对齐），由 F216-e cron 负责清理旧行。
+
+**下游依赖**：F216-c router（`GET /cockpit/chart/{ticker}/weekly` 附带 stage 字段）；F216-d setup_service ready_signal gate（stage ≠ 2 → ready_signal=false）；F216-e cron（22:20 UTC 触发 `compute_and_store_all`）。
+
+```python
+class WeeklyStageSnapshot(Base):
+    __tablename__ = "weekly_stage_snapshots"
+    __table_args__ = (
+        UniqueConstraint("ticker", "scan_date", name="uq_weekly_stage_ticker_date"),
+    )
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    ticker      = Column(String(10), nullable=False, index=True)
+    scan_date   = Column(Date, nullable=False, index=True)   # 本周最后实际交易日（NP4）
+    stage       = Column(Integer, nullable=False)             # 0=UNKNOWN, 1-4（NP3）
+    weekly_close = Column(Float, nullable=True)
+    weekly_ma_10 = Column(Float, nullable=True)
+    weekly_ma_30 = Column(Float, nullable=True)
+    weekly_ma_40 = Column(Float, nullable=True)
+    slope_30w   = Column(Float, nullable=True)               # %/周，OLS 归一化（NP2）
+    computed_at = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```

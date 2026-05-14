@@ -2106,3 +2106,74 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 - 强制映射需要额外的"上一个/下一个有效交易日"逻辑，引入复杂度
 
 **影响**：`WeeklyBarDict.date` 语义锁定为"本周末日实际交易日"。F216-b stage 分类器、F216-c 前端 widget 均以此字段渲染 x 轴。本决策写入 Sprint Contract NP2。
+
+---
+
+## D091：F216-b Weekly Stage 量化判定细则（Stan Weinstein Stage 1-4）
+
+**日期**：2026-05-14
+**Feature**：F216-b Weekly Stage Classifier + 持久化
+
+**背景**：Stan Weinstein Stage Analysis 是定性框架，需要将"走平"、"上行"、"分配"、"下跌"四阶段量化为可计算的指标与阈值，以支持自动分类。
+
+**决策（NP1 全部采用推荐默认值，已用户 2026-05-14 确认）**：
+
+| 参数 | 值 | 含义 |
+|------|-----|------|
+| `MIN_WEEKS_FOR_CLASSIFICATION` | 30 | < 30 周无 30wMA，直接返回 UNKNOWN |
+| `SLOPE_LOOKBACK_WEEKS` | 5 | OLS 用最后 N+1=6 个 30wMA 点 |
+| `STAGE1_FLAT_TOL_PCT` | 2.0 | |slope_30w| ≤ 2% → "走平" |
+| `STAGE1_PRICE_BAND_PCT` | 3.0 | |close - ma30|/ma30 ≤ 3% → 价格在 30wMA 附近 |
+| `STAGE2_SLOPE_MIN_PCT` | 0.5 | slope_30w > 0.5% → 30wMA 有效上行 |
+| `STAGE3_FLAT_TOL_PCT` | 2.0 | 同 Stage 1（Stage 3 靠"穿越次数"区分） |
+| `STAGE3_CROSSING_LOOKBACK_WEEKS` | 10 | 统计过去 10 周穿越次数 |
+| `STAGE3_MIN_CROSSINGS` | 3 | ≥ 3 次穿越 = "反复震荡" |
+| `STAGE4_SLOPE_MIN_PCT` | 0.5 | slope_30w < -0.5% → 30wMA 有效下行 |
+
+**分类优先级**（避免 Stage 1 / Stage 3 互判）：Stage 2 → Stage 4 → Stage 1 → Stage 3 → UNKNOWN。明显趋势（2/4）优先于震荡（1/3）；Stage 1 在 Stage 3 之前（Stage 1 是更严格的"价格带内"条件，Stage 3 需额外满足"多次穿越"）。
+
+**slope_30w 单位**：`%/周`（`beta / mean(y) * 100`）。`STAGE2_SLOPE_MIN_PCT=0.5` 含义：30wMA 每周上升 ≥ 0.5%，折合年化约 +25%，符合 Weinstein 对 Stage 2 "明显上行" 的定性描述。
+
+**UNKNOWN 保留策略（NP7）**：数据不足（< 30 周）、ma30=None、或不满足任一 Stage 规则时，写入 `stage=0`（UNKNOWN）。F216-d 的 setup_service 以 `stage == 0` 判定 `ready_signal=false`，无歧义。
+
+**参数回顾承诺**：上述参数为初始值，在 F216 全 phase（a-e）验收后、实盘运行 4-8 周后，基于实际 stage 分布（UNKNOWN 占比 / Stage 2 召回率）回顾调参。调参不需改代码，只更新 `CockpitWeeklyStageParams` 字段 `default` 值。
+
+**放弃**：
+- 动态阈值（基于历史分布自适应）— 增加不可解释性，与 Weinstein 原书精神矛盾
+- 连续型 Stage 得分（0-1 区间）— 前端映射复杂，F216-d gate 逻辑更难写
+- Stage 3 用"价格超出 30wMA 一定百分比"替代"穿越计数" — 穿越计数更直接对应 Weinstein 对 Stage 3 "股价在 30wMA 附近反复穿插"的描述
+
+---
+
+## D092：F216-b 引入 numpy — 范围、版本约束与使用边界
+
+**日期**：2026-05-14
+**Feature**：F216-b Weekly Stage Classifier + 持久化
+
+**背景**：`slope_30w` 用 OLS 线性回归计算。可选方案：端点法（1 行，无依赖）、纯 Python OLS（8 行）、`numpy.polyfit`（1 行，~25MB 依赖）。用户 2026-05-14 选 B-2（引入 numpy）。
+
+**决策**：
+
+```toml
+# backend/pyproject.toml
+"numpy>=2.0,<3"  # 解析到 v2.4.4（uv lock 2026-05-14）
+```
+
+- context7 查询确认（v2.3.1 文档）：`np.polyfit(x, y, deg=1)` 返回 `[beta, intercept]`，API 在 2.x 与 1.x 行为一致，无 breaking changes
+- 使用形式：`beta, _intercept = np.polyfit(x, y, 1)`；`slope_30w = beta / y.mean() * 100`
+- 启动成本：`import numpy as np` 一次性 ~50ms，可忽略
+
+**numpy 使用边界（强制）**：
+- 允许：`backend/app/services/cockpit/` 数值计算层（slope/std/regression 等）
+- 禁止：router 层、repository 层、models 层
+- 验证方式：`grep -r "import numpy\|from numpy" backend/app` 应只有 1 个命中（`weekly_stage_service.py`）
+
+**为什么选 B-2（numpy）而非纯 Python OLS**：
+1. 单行表达（`np.polyfit(x, y, 1)[0]`），可读性高
+2. 为 Phase C（ATR z-score 当前手写）/ Phase D（repricing 数值计算）预埋基础设施，避免未来多次引入依赖的 review 成本
+3. 缩短 `SLOPE_LOOKBACK_WEEKS` 后（如 3 周），OLS 相对端点法的抗噪优势显著
+4. numpy 2.x 已成 Python 生态事实标准，依赖风险极低
+
+**放弃**：
+- 端点法 `(ma[-1] / ma[-(N+1)] - 1) * 100` — 只用 2 个点，单周异常值影响大
+- 纯 Python OLS — 功能等价但无法复用，Phase C/D 需另行引入 numpy
