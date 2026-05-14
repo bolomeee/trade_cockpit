@@ -3781,8 +3781,9 @@
       "description": "在 ChartWidget 右下角加一个 CirclePlus 浮动按钮，点击把当前 chart 显示的 ticker 加入 watchlist。复用现成 POST /api/watchlist 接口和 useQuery(['signals']) 数据零成本判定 isInWatchlist。News 页和 Workbench 页共用同一组件，按钮在两页都出现（用户确认方案 1A）。",
       "user_story": "作为投资者，在 News 页看到感兴趣的票时，需要一键把它加入 watchlist，避免切回 Workbench → 搜索 → 添加的冗长流程。",
       "priority": "P2",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
+      "completed_at": "2026-05-13",
       "dependencies": [],
       "estimated_sessions": 1,
       "estimated_files_changed": [
@@ -3825,6 +3826,12 @@
           "phase": "needs_review",
           "summary": "实现完成：ChartWidget 加 CirclePlus 浮动按钮（right:70px/bottom:8px 避开 price scale），useMutation 包 addStock，isInWatchlist 复用 signals query，3s 错误自动清除。7/7 单元测试通过，全量回归 268 passed 零回归，浏览器手验 News+Workbench 两页一致。design-spec.md 追加 F214 四态说明。",
           "contract": "docs/开发/sprint-contracts/F214-contract.md"
+        },
+        {
+          "date": "2026-05-13",
+          "subtask": "F214",
+          "phase": "done",
+          "summary": "最终验收通过。consistency-check (mode=report) 入口扫描发现的 68 项 🔴 均为 F214 范围外历史 drift（C2 × 1：F213→F211-a2 失效依赖；C5 × 67：早期 feature 合约目录与 features.json 结构错配），用户决定按惯例继续，留待专项清理。vitest 7/7 通过、单元覆盖 acceptance_criteria 全部 9 条、News+Workbench 两页手验已在 needs_review 阶段完成。"
         }
       ],
       "notes": "ChartWidget 是 News 和 Workbench 共用的同一份代码（WidgetRegistry.ts:26 / :76），改一处覆盖两页。"

@@ -1168,7 +1168,10 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
         "earningsRisk": "SAFE",
         "readySignal": true,
         "suggestedAction": "enter",
-        "scanDate": "2026-04-24"
+        "scanDate": "2026-04-24",
+        "volumeZscore": 1.83,
+        "obvTrend": "UP",
+        "upDownVolumeRatio": 1.45
       }
     ]
   },
@@ -1183,7 +1186,15 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 - `earningsRisk` 枚举：`SAFE`（>10 天）/ `CAUTION`（4–10 天）/ `DANGER`（≤3 天）
 - `readySignal`: 7 条 AND 门（trend≥4 & rs≥70 & quality≥B & dist≤3% & R:R≥2 & earnings≠DANGER & regime≠RISK_OFF），具体定义见 F202 acceptance criteria 和 D062
 - `suggestedAction` 枚举：`enter` / `watch` / `wait` / `reduce` / `exit` / `null`
+- `volumeZscore`：`number | null`；当日 volume 相对过去 50 日均量的 z-score；bars 不足或 std=0 时为 null（F215-b）
+- `obvTrend`：`'UP' | 'DOWN' | 'FLAT' | null`；OBV 20 日趋势分类；历史不足或基值为 0 时为 null（F215-b）
+- `upDownVolumeRatio`：`number | null`；近 50 日 O'Neil U/D ratio；无下跌日时为 null（F215-b）
 - 返回 watchlist 内 active 股票，按 `suggestedAction` 优先级排序（enter > watch > wait > null > reduce > exit）
+
+**BREAKOUT 吸筹门槛（F215-b / D088）**：
+- `setupType=BREAKOUT` 的候选在写入快照前需额外满足 `volumeZscore ≥ 1.5` AND `upDownVolumeRatio ≥ 1.2`。
+- 任一不达标（含 `volumeZscore=null` 短历史），`setupType` **直接降级为 `NONE`**，不 fall-through 至 PULLBACK / RECLAIM。
+- 此门槛有意使 BREAKOUT 数量下降（预期行为）；前端展示无需感知降级过程，读取快照时 `setupType` 已是最终值。
 
 **错误响应**：
 

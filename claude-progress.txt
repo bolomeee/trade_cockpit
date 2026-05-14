@@ -188,3 +188,26 @@
 [下一步]
   F215-b Volume Accumulation 三件套（z-score/OBV/up-down volume）
   在新 session 中进入 system-design/feature-dev 规划。
+
+---
+[2026-05-13] F214 ChartWidget Add to Watchlist 验收通过
+
+📋 验收结果：
+  - ChartWidget 右下角 CirclePlus 按钮，News + Workbench 两页一致（共享同一组件）
+  - vitest 7/7 pass，覆盖 acceptance_criteria 全部 9 条业务路径
+  - 单元覆盖 isInWatchlist 判定、addStock mutation、双 invalidateQueries、DUPLICATE/NOT_FOUND 错误映射、3s 自动清错、EmptySymbol 早返回
+  - 浏览器手验已在 needs_review 阶段（2026-05-08）完成，最终验收为翻牌确认
+
+📌 consistency-check 入口扫描：
+  - mode=report 发现 68 项 🔴 严重违例（C2 × 1 / C5 × 67），全部为 F214 范围外历史 drift
+  - 用户决定按历史惯例继续验收，drift 留待专项清理 feature
+
+📊 功能状态更新：
+  F214 ChartWidget Add to Watchlist：✅ done（2026-05-13）
+
+📝 生成文件：
+  - docs/验收/v1.9-F214-acceptance.md
+
+[下一步]
+  v1.9 release 范围已全部 done — 可触发 project-commiter 收 release tag。
+  或先专项清理 consistency-check 报告的 68 项历史 drift（C2 × 1 + C5 × 67）再发版。
