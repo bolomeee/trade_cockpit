@@ -217,9 +217,11 @@ def _compute_ready_signal(
     reward_risk: float | None,
     earnings_risk: str,
     regime: str,
+    weekly_stage: int | None = None,  # F216-d2: default=None keeps callers backward-compatible
 ) -> bool:
-    """7-condition AND gate (all must be True)."""
+    """8-condition AND gate (all must be True)."""
     allowed_qualities = _QUALITY_SETS.get(SETUP.READY_QUALITY_MIN, {"A", "B"})
+    stage_ok = (not SETUP.READY_REQUIRE_STAGE2) or (weekly_stage == 2)
     return (
         trend_score >= SETUP.READY_TREND_MIN
         and rs_percentile >= SETUP.READY_RS_MIN
@@ -230,6 +232,7 @@ def _compute_ready_signal(
         and reward_risk >= SETUP.READY_REWARD_RISK_MIN
         and earnings_risk != "DANGER"
         and regime != "RISK_OFF"
+        and stage_ok
     )
 
 

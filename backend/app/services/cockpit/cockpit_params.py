@@ -189,6 +189,12 @@ class CockpitSetupParams(BaseModel):
     READY_DIST_MAX_PCT: float = Field(default=3.0, description="Max distanceToEntryPct for readySignal (%)", ge=0.1, le=10.0)
     READY_REWARD_RISK_MIN: float = Field(default=2.0, description="Min rewardRisk for readySignal", ge=1.0, le=10.0)
 
+    # ── Stage 门禁（F216-d2 / D093）─────────────────────────────────────────
+    READY_REQUIRE_STAGE2: bool = Field(
+        default=True,
+        description="If True, readySignal further requires weekly_stage==2 (Stan Weinstein Advancing). NULL/0/1/3/4 → ready=False. Off-switch for debug / pre-cron cold start.",
+    )
+
     # ── Earnings risk 阈值 ────────────────────────────────────────────────
     EARNINGS_DANGER_DAYS: int = Field(default=3, description="Days to next earnings ≤ this → DANGER", ge=1, le=14)
     EARNINGS_CAUTION_DAYS: int = Field(default=10, description="Days to next earnings ≤ this (> DANGER) → CAUTION", ge=2, le=30)

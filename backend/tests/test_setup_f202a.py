@@ -281,6 +281,7 @@ def _ready_kwargs(**overrides) -> dict:
         reward_risk=2.5,
         earnings_risk="SAFE",
         regime="CONSTRUCTIVE",
+        weekly_stage=2,  # F216-d2: 8th AND gate; NP-B compat fix
     )
     return {**base, **overrides}
 
