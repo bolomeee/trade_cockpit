@@ -342,3 +342,42 @@
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-c1-contract.md，
   > 进入 Generator 模式，从 §6 开发顺序步骤 1 开始。
   > 严格按 21 步执行，3 个 WIP commit 节点不要省。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-14 Session] Sprint：F216-c1 Weekly Chart Router + Stage Payload（后端）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - GET /api/cockpit/chart/{ticker}/weekly 端点（pure compute，不写 DB）
+  - WeeklyStagePayload / WeeklyChartData / WeeklyChartResponse 3 个 schema（CamelModel，slope_30w → slope30W）
+  - CockpitChartWeeklyParams §7 + CHART_WEEKLY 单例（MIN_WEEKS=10 / MAX_WEEKS=50）
+  - 集成测试 7/7 全通过（标准 1-9，覆盖 schema / Stage 2 / 边界 / pure compute 验证）
+  - API-CONTRACT.md 子节追加（路径 / 参数表 / 成功响应示例 / 错误响应表）
+  - 全量回归：1001 passed，12 failed 全部预先存在于 baseline，无新增失败
+  - Evaluator 自检：全清
+  - consistency-check：C1/C4/C5 全清（exit=0）
+  - F216-c1 phase → needs_review
+
+⚠️ 待你决策：
+  - 无需决策（纯 API 后端，无 UI 需 validation 确认）
+
+🔧 系统变更：
+  - backend/app/schemas/cockpit/chart.py（追加 3 schema）
+  - backend/app/services/cockpit/cockpit_params.py（追加 §7 CHART_WEEKLY）
+  - backend/app/routers/cockpit/chart.py（追加 GET /{ticker}/weekly）
+  - backend/tests/test_cockpit_chart_weekly_router.py（新建，7 条集成测试）
+  - docs/系统设计/API-CONTRACT.md（追加 weekly 子节）
+  - docs/需求/features.json（F216-c1 → needs_review）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:        🔍 needs_review (commit ab6a16b)
+    ├─ F216-c1 Router + Stage Payload:      🔍 needs_review  ← 本次完成
+    ├─ F216-c2 Widget + Registry:           ⬜ design_needed
+    ├─ F216-d setup_service gate:           ⬜ design_needed
+    └─ F216-e Scheduler cron:              ⬜ design_needed
+
+[下一个 Session]
+  F216-c2 Sprint Contract 协商（前端 widget + API client + Registry + cockpit.json 布局，预计 4 文件）
+  或先做 F216-b acceptance（已在 needs_review 等待）

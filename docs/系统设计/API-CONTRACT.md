@@ -1270,6 +1270,76 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 
 ---
 
+### GET /api/cockpit/chart/{ticker}/weekly
+> Feature：F216-c1 Weekly Stage Layer（后端路由）
+> 决策依据：NP3（pure compute，不写 DB）/ NP4（顶层 stage payload）/ D091（Stage 分类细则）
+
+**用途**：返回周线 OHLCV + 3 条周均线 + Stan Weinstein Stage 分析结果。Stage 为实时纯计算（router 调 `WeeklyStageService.classify`），不写 `weekly_stage_snapshots`（持久化交由 F216-e cron）。
+
+**路径参数**：`ticker` — 股票代码（大小写不敏感，服务端转大写）
+
+**查询参数**：
+
+| 参数 | 类型 | 默认 | 约束 | 说明 |
+|------|------|------|------|------|
+| `weeks` | integer | 50 | [10, 50] | 返回最近 N 周的 weekly bars 及均线；越界 → 422 |
+
+**服务端行为**：
+- `stocks` 表无此 ticker → 404 NOT_FOUND
+- daily_bars < 4 → `weeklyBars=[]`，MAs 全为空，`stage.stage=0`，`stage.scanDate=null`
+- 4 ≤ daily_bars 但聚合后 weekly_bars < 30 → `weeklyBars` 非空，`stage.stage=0`，`stage.scanDate` = 最后周 date
+- weekly_bars ≥ 30 → 按 D091 Stage 规则分类
+- `stage.scanDate` 始终取 `weeklyBars[-1].date`（非空时）；`weeklyBars` 为空时 null
+- MA 周期固定：10w / 30w / 40w；序列长度 = max(0, len(weeklyBars) - period + 1)
+
+**成功响应（200）**：
+```json
+{
+  "data": {
+    "ticker": "AAPL",
+    "weeklyBars": [
+      { "date": "2025-05-09", "open": 210.5, "high": 215.0, "low": 208.2, "close": 213.8, "volume": 18750000 }
+    ],
+    "weeklyMas": {
+      "10": [{ "date": "2025-05-09", "value": 205.3 }],
+      "30": [{ "date": "2025-05-09", "value": 195.1 }],
+      "40": [{ "date": "2025-05-09", "value": 190.8 }]
+    },
+    "stage": {
+      "stage": 2,
+      "weeklyClose": 213.8,
+      "weeklyMa10": 205.3,
+      "weeklyMa30": 195.1,
+      "weeklyMa40": 190.8,
+      "slope30W": 0.79,
+      "scanDate": "2025-05-09"
+    }
+  },
+  "message": "success"
+}
+```
+
+**stage 字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `stage` | integer | 0=UNKNOWN / 1=Base / 2=Advancing / 3=Distribution / 4=Declining |
+| `weeklyClose` | float \| null | 本周收盘价；bars 为空时 null |
+| `weeklyMa10` | float \| null | 10 周 SMA；数据不足时 null |
+| `weeklyMa30` | float \| null | 30 周 SMA；数据不足时 null |
+| `weeklyMa40` | float \| null | 40 周 SMA；数据不足时 null |
+| `slope30W` | float \| null | 30wMA 斜率（%/周，OLS 归一化）；数据不足时 null |
+| `scanDate` | string (ISO date) \| null | = weeklyBars[-1].date；weeklyBars 为空时 null |
+
+**错误响应**：
+
+| 场景 | 错误码 | HTTP |
+|------|--------|------|
+| ticker 不在 stocks 表 | NOT_FOUND | 404 |
+| weeks 不在 [10, 50] | VALIDATION_ERROR | 422 |
+
+---
+
 ## Cockpit Decision（/api/cockpit/decision/{ticker}）
 
 ### GET /api/cockpit/decision/{ticker}
