@@ -250,3 +250,95 @@
   > 继续开发 F216-a，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-a-contract.md，
   > 进入 Generator 模式，从开发顺序步骤 1 开始。
+
+---
+[2026-05-14] F216-b Sprint Contract 已确认 (contract_agreed)
+
+📋 完成内容：
+  - F216-b (Weekly Stage Classifier + 持久化 + 新表 weekly_stage_snapshots) Sprint Contract 起草并 7 协商点全部拍板
+  - NP1 Stage 阈值 9 参数全用推荐默认（MIN_WEEKS=30 / SLOPE_LOOKBACK=5 / Stage1 flat 2% 价格带 3% / Stage2 slope min 0.5% / Stage3 lookback 10w 至少 3 次穿越 / Stage4 slope min 0.5%）
+  - NP2 二次拍板选 B-2：引入 numpy，用 np.polyfit 跑 OLS slope（单位 %/周）；同时为 Phase C/D 数值计算预埋
+  - NP3 stage Integer NOT NULL UNKNOWN=0
+  - NP4 scan_date = 本周最后实际交易日（每周一行 upsert）
+  - NP5 compute_and_store_all 仅 active_stocks
+  - NP6 retention 60 天（与 setup 对齐）
+  - NP7 数据不足时写 stage=0 + 其他字段 null 不抛错
+  - 方案 A 不拆：7 代码文件 + 2 依赖配置（pyproject.toml + uv.lock）+ 2 文档（DATA-MODEL.md / DECISIONS.md 加 D091 D092）
+  - phase 流转: F216-b design_needed → contract_agreed
+  - features.json active_sprint_phase 已同步
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-b-contract.md（新）
+  - docs/需求/features.json（F216-b sub_sprint 状态 + iteration_history）
+  - SESSION-HANDOFF.md（替换为 F216-b 版本）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:  ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:       🤝 contract_agreed  ← 当前
+    ├─ F216-c Router + Widget:             ⬜ design_needed
+    ├─ F216-d setup_service gate:          ⬜ design_needed
+    └─ F216-e Scheduler cron:              ⬜ design_needed
+
+⚠️ 注意点：
+  - 引入 numpy 是项目首个新数值依赖；D092 必须写明范围限制（仅 cockpit service 层）
+  - Stage 阈值为初始值，Phase B 整体验收后回顾调参
+  - 数据窗口仍限 50 周（继承 F216-a），lookback 落空 → stage=UNKNOWN
+
+[下一步]
+  下个 session 进入 F216-b Generator 模式。建议 Sonnet。复制以下提示词：
+
+  > 继续开发 F216-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-b-contract.md，
+  > 进入 Generator 模式，从 §6 开发顺序 step 1（context7 查 numpy 最新稳定版及 polyfit API）开始。
+  > 严格按 21 步执行，3 个 WIP commit 节点不要省。
+
+---
+[2026-05-14] F216-c 拆分 + F216-c1 Sprint Contract 已确认 (contract_agreed)
+
+📋 完成内容：
+  - F216-c 预估 8 文件超 6 文件原则，按父 feature sub_sprint_notes 预告拆分：
+      F216-c1 (后端 router + schema + 集成测试 + API-CONTRACT.md，5 文件)
+      F216-c2 (前端 API client + WeeklyStageChartWidget + CockpitRegistry + cockpit.json，4 文件)
+  - features.json sub_sprints 同步：删 F216-c 键，加 F216-c1/F216-c2 两键
+  - 4 协商点全部按推荐方案拍板：
+      NP1 weeks 参数 default=50 range[10,50]（与 F216-a WEEKLY.DEFAULT_WEEKS 一致，daily_bars 窗口 250 限制）
+      NP2 拆分按 c1=后端 / c2=前端
+      NP3 Stage 计算策略：router pure compute 不写 DB
+           （调 WeeklyChartService.get_weekly_chart + WeeklyStageService.classify 纯函数）
+           持久化交给 F216-e cron
+      NP4 顶层 stage: WeeklyStagePayload 7 字段（对齐 DATA-MODEL.md WeeklyStageSnapshot，
+           去掉 id/computed_at）
+  - F216-c1 phase 流转: design_needed → contract_agreed
+  - features.json active_sprint = F216-c1 / active_sprint_phase = contract_agreed
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F216-c1-contract.md（新）
+  - docs/需求/features.json（sub_sprints F216-c → F216-c1+c2、active_sprint 更新、iteration_history 2 新记录）
+  - SESSION-HANDOFF.md（替换为 F216-c1 版本）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:  ✅ done (commit 6e86e75)
+    ├─ F216-b Stage Classifier + DB:       🔍 needs_review (commit ab6a16b)
+    ├─ F216-c1 Router + Stage Payload:     🤝 contract_agreed  ← 当前
+    ├─ F216-c2 Widget + Registry:          ⬜ design_needed
+    ├─ F216-d setup_service gate:          ⬜ design_needed
+    └─ F216-e Scheduler cron:              ⬜ design_needed
+
+⚠️ 注意点：
+  - router 必须严格 pure compute：禁止调用 WeeklyStageRepository.upsert /
+    WeeklyStageService.compute_for_ticker；仅调 classify 纯函数
+  - weeks 参数验证 [10, 50]，越界 → 422 VALIDATION_ERROR
+  - 复用现有 ChartBarItem / ChartSeriesPoint schema（字段兼容 weekly bar）
+  - cockpit_params.py 新增 §7 CHART_WEEKLY 作为 router 层 MIN/MAX_WEEKS 来源
+  - 完成后 features.json C1 invariant：父 F216 保持 in_progress
+    （c2/d/e 仍 design_needed，不得误升 done）
+
+[下一步]
+  下个 session 进入 F216-c1 Generator 模式。Sonnet 推荐。复制以下提示词：
+
+  > 继续开发 F216-c1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-c1-contract.md，
+  > 进入 Generator 模式，从 §6 开发顺序步骤 1 开始。
+  > 严格按 21 步执行，3 个 WIP commit 节点不要省。

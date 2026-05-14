@@ -12,7 +12,7 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-b",
+    "active_sprint": "F216-c1",
     "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
@@ -3955,7 +3955,8 @@
       "sub_sprints": {
         "F216-a": "done",
         "F216-b": "needs_review",
-        "F216-c": "design_needed",
+        "F216-c1": "contract_agreed",
+        "F216-c2": "design_needed",
         "F216-d": "design_needed",
         "F216-e": "design_needed"
       },
@@ -4087,10 +4088,26 @@
           "subtask": "F216-b",
           "phase": "needs_review",
           "note": "Evaluator 自检全清，consistency-check C7 修复，等待 acceptance"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-c",
+          "phase": "split",
+          "session": "feature-dev 6 文件原则触发",
+          "changes": "F216-c 预估 8 文件（后端 router+schema+集成测试+API-CONTRACT 4 个，前端 api+widget+Registry+layout.json 4 个），超 6 文件单 sprint 上限。按父 feature sub_sprint_notes 预告拆分为 F216-c1 (后端) + F216-c2 (前端)。sub_sprints 字段同步：删 F216-c，加 F216-c1/F216-c2 两 key。同时拍板 4 个协商点：NP1 weeks default=50 range[10,50]、NP2 拆分按 c1=后端/c2=前端、NP3 Stage 计算用 pure compute 不写 DB、NP4 顶层 stage: WeeklyStagePayload 对齐 DATA-MODEL.md。下一步 F216-c1 Contract 协商。"
+        },
+        {
+          "date": "2026-05-14",
+          "subtask": "F216-c1",
+          "phase": "contract_agreed",
+          "session": "feature-dev Contract 协商",
+          "changes": "F216-c1 Sprint Contract 已确认（用户 2026-05-14 4 协商点全部按推荐方案确认）：NP1 weeks 参数 default=50 range[10,50]、NP2 c1=后端/c2=前端拆分、NP3 router pure compute 不写 DB（调 WeeklyChartService.get_weekly_chart + WeeklyStageService.classify 纯函数）、NP4 顶层 stage: WeeklyStagePayload 对齐 DATA-MODEL.md WeeklyStageSnapshot 字段。范围 5 文件（chart.py router 修改、chart.py schema 修改加 3 model、cockpit_params.py §7 CHART_WEEKLY 新加、test_cockpit_chart_weekly_router.py 新建、API-CONTRACT.md 新增子节）。11 完成标准 + 21 步开发顺序 + 3 WIP commit 节点 + 1 Final commit。Contract: docs/开发/sprint-contracts/F216-c1-contract.md。下个 session Generator 从 §6 开发顺序步骤 1 开始。",
+          "contract": "docs/开发/sprint-contracts/F216-c1-contract.md",
+          "contract_agreed_at": "2026-05-14"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
-      "active_sprint_phase": "needs_review"
+      "active_sprint_phase": "design_needed"
     }
   ]
 }
