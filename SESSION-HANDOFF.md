@@ -1,127 +1,123 @@
-# SESSION-HANDOFF — F216-a Sprint Contract 已确认（contract_agreed）
+# SESSION-HANDOFF — F216-b 已完成（needs_review）
 
 > 生成时间：2026-05-14
-> 当前 sprint：F216-a — Weekly Aggregation Service (Phase B / B1)
-> 下一阶段：Generator 模式（建议新 session 用 Sonnet 启动）
+> 当前 sprint：F216-c — Router + Widget（下一步）
+> 当前分支：improve_against_plan
 
 ---
 
-## 已完成内容（本 session）
+## 本 session 完成内容
 
-### 1. F214 收尾
-- F214 ChartWidget Add to Watchlist 最终验收通过，features.json 翻 `done`，写 [v1.9-F214-acceptance.md](docs/验收/v1.9-F214-acceptance.md)
+### F216-b：Weekly Stage Classifier + 持久化（全部交付）
 
-### 2. consistency-check drift 清理（release gate 解锁）
-- 45 个 legacy pre-sub_sprints 合约 `git mv` 到 `docs/开发/sprint-contracts/archive/legacy-pre-sub-sprints/`，写归档 README
-- C5 违例 45 → 0；C2 误报澄清后 0；全部检查清零
-- commit `3f3d90f` 已收口（含 F215-a contract / F215-a 验收记录补提交、F215-b 文档同步补提交）
+**3 个 WIP commit + 1 个 Final commit**：
 
-### 3. F216 Phase B 启动
-- F216 (Cockpit Phase B — Weekly Stage Layer) 注册到 features.json
-- 5 sub-sprints: F216-a / b / c / d / e
-- F216-a Sprint Contract 起草并 **全部按推荐方案确认 4 协商点**：
-  - NP1 weeks=50 不扩窗
-  - NP2 weekly bar.date = 本周最后实际交易日
-  - NP3 unknown ticker → APIError(NOT_FOUND)
-  - NP4 daily_bars<4 → 返回空不抛错
-- F216-a sub_sprint status: `design_needed` → `contract_agreed`
+| Commit | 内容 |
+|--------|------|
+| `b789ffa` `chore(F216-b): add numpy dependency` | pyproject.toml `numpy>=2.0,<3` + uv.lock（v2.4.4） |
+| `a290336` `wip(F216-b): alembic 019 + ORM model + params` | cockpit_params §6 + WeeklyStageSnapshot ORM + alembic 019 |
+| `4637efb` `wip(F216-b): repo + classify pure function + 7 unit tests` | WeeklyStageRepository + WeeklyStageService + 11 tests |
+| `ab6a16b` `feat(F216-b): Weekly Stage Classifier + persistence` | test 修复 + docs(DATA-MODEL/DECISIONS D091/D092) + features.json 流转 |
 
 ---
 
-## F216-a Sprint Contract 摘要
+## 交付物清单（完整）
 
-**Contract 文件**：[F216-a-contract.md](docs/开发/sprint-contracts/F216-a-contract.md)
-
-**实现范围（3 个文件，远低于 6 上限）**：
-
-| 文件 | 类型 | 说明 |
+| 文件 | 类型 | 状态 |
 |------|------|------|
-| `backend/app/services/cockpit/weekly_chart_service.py` | 新建 | `aggregate_daily_to_weekly` 纯函数 + `WeeklyChartService.get_weekly_chart` |
-| `backend/app/services/cockpit/cockpit_params.py` | 修改 | 追加 `WEEKLY` 配置组（DEFAULT_WEEKS=50 / WEEKLY_MAS=[10,30,40] / MIN_DAILY_BARS_FOR_WEEKLY=4） |
-| `backend/tests/test_weekly_chart_service.py` | 新建 | 10 条测试（9 单元 + 1 回归） |
-
-**关键约束**：
-- 零 FMP 调用（仅从 `daily_bars` 读取）
-- 复用 `chart_service._compute_ma_series` 算 Weekly MA 10/30/40，不重新实现 SMA
-- 沿用 `app.services.watchlist_service.APIError` 错误类型
-- `weeks=50` 默认（与 DAILY_BAR_WINDOW=250 匹配）
-- ISO 周分组：`bar.date.isocalendar()[:2]` 作为分组键
-
-**完成标准（10 条）**：
-1. `aggregate_daily_to_weekly([])` → `[]`
-2. 标准 5 个交易日 → 1 个 weekly bar，date=周五
-3. 跨周分组：10 个交易日 → 2 个 weekly bars
-4. 短周（周一-周四）→ weekly bar.date=周四
-5. 孤立单日 → 1 个 weekly bar 等于该日 OHLC
-6. `get_weekly_chart("UNKNOWN")` → APIError("NOT_FOUND")
-7. `get_weekly_chart("AAPL", weeks=50)` 在 mock 250 行返回 ~50 个 weekly_bars
-8. daily_bars<4 行 → 返回空 weekly_bars + 空 weekly_mas，不抛错
-9. `WEEKLY.DEFAULT_WEEKS==50 and WEEKLY.WEEKLY_MAS==[10,30,40]`
-10. 全量后端 pytest 无新增失败（test_decision_f203b.py 预存 ImportError 例外）
+| `backend/pyproject.toml` + `uv.lock` | 依赖 | ✅ numpy>=2.0,<3 (v2.4.4) |
+| `backend/app/services/cockpit/cockpit_params.py` | 修改 | ✅ §6 CockpitWeeklyStageParams + WEEKLY_STAGE |
+| `backend/app/models/weekly_stage_snapshot.py` | 新建 | ✅ WeeklyStageSnapshot ORM |
+| `backend/app/models/__init__.py` | 修改 | ✅ 注册 WeeklyStageSnapshot |
+| `backend/alembic/versions/019_f216b_weekly_stage_snapshots.py` | 新建 | ✅ 建表 + uq + 2 indexes |
+| `backend/app/repositories/weekly_stage_repository.py` | 新建 | ✅ upsert/get_latest/get_latest_for_tickers/delete_old |
+| `backend/app/services/cockpit/weekly_stage_service.py` | 新建 | ✅ classify(纯函数) + OLS slope + compute_for_ticker + compute_and_store_all |
+| `backend/tests/test_weekly_stage_service.py` | 新建 | ✅ 17 tests，标准 1-13 全通过 |
+| `docs/系统设计/DATA-MODEL.md` | 文档 | ✅ WeeklyStageSnapshot 章节 |
+| `docs/系统设计/DECISIONS.md` | 文档 | ✅ D091（Stage 量化判定）+ D092（numpy 边界约束） |
 
 ---
 
-## 开发顺序（Generator 阶段，不得跳步）
+## 测试结果
 
-按 Contract §6：
-
-1. 重读 `backend/app/services/cockpit/chart_service.py` 的 `_compute_ma_series`（lines 24-40）和 `_bars_from_db`（lines 215-235）确认接口
-2. 重读 `backend/app/services/cockpit/cockpit_params.py` 当前最末位置，确认在哪里追加 `WEEKLY` 类
-3. 在 cockpit_params.py 追加 `WEEKLY` 配置组
-4. 新建 `weekly_chart_service.py`：先写 `aggregate_daily_to_weekly` 纯函数 + WeeklyBarDict TypedDict
-5. 跑标准 1-5 测试（pure function）确认聚合正确
-6. 在 `weekly_chart_service.py` 加 `WeeklyChartService` 类 + `get_weekly_chart`
-7. 跑标准 6-9 测试确认 service 集成正确
-8. 跑全量后端 pytest，确认标准 10 无回归
-9. 追加 DECISIONS.md 决策记录（编号 D090 — 查 DECISIONS.md 最大号 +1）
-10. Generator 收尾 WIP commit（**不要 `-A`，显式列 3 个文件**）
-11. Evaluator 自检 → 全清后切 needs_review，调用 consistency-check (mode=interactive)
+- **标准 1-13**：17 passed ✅
+- **标准 14（全量回归）**：994 passed，无新增失败
+- 预存失败项（不计入）：`test_decision_f203b.py` ImportError（预存）、`test_schema.py` alembic MultipleHeads（预存 `011_f203b_user_settings.py` untracked）
 
 ---
 
-## 已知限制
+## Evaluator 自检结果（全清）
 
-- F216 整体只覆盖 50 周历史（DAILY_BAR_WINDOW=250 限制）
-- plan §Phase B 验证 §3 的"NVDA 2022 Stage 3 历史回测"不在本期范围
-- 5 年历史回测留待未来"daily_bars 扩窗"专项 feature
+- [x] 标准 1-13 全部通过
+- [x] 标准 14 回归通过
+- [x] `classify` 是纯函数（无 db Session 调用）
+- [x] `compute_for_ticker` 复用 `self._chart.get_weekly_chart(ticker)`
+- [x] 无硬编码魔法值（全部引用 `WEEKLY_STAGE.*`）
+- [x] 沿用 `APIError`，不自定义新异常
+- [x] `classify` 主逻辑 50 行（≤ 50 行）
+- [x] 无 print/console.error
+- [x] 无 SQLAlchemy 1.x 风格
+- [x] `numpy>=2.0,<3` 在 pyproject.toml
+- [x] `uv.lock` 已重生成（v2.4.4）
+- [x] `import numpy as np` 仅在 weekly_stage_service.py（grep 1 命中）
+- [x] DECISIONS.md D092 写明 numpy 使用边界
+- [x] DATA-MODEL.md WeeklyStageSnapshot 章节完整
+- [x] DECISIONS.md D091 完整
+- [x] API-CONTRACT.md 零改动
+- [x] cockpit_params.py 仅末尾追加
+- [x] models/__init__.py 仅追加注册行
+- [x] alembic 019 down_revision = "018_f215b_setup_volume_accumulation"
+- [x] WeeklyStageService 在 backend/app 其他文件 0 引用
 
 ---
 
-## 当前 git 状态
+## consistency-check 结果
 
-- 分支：`improve_against_plan`
-- 最新 commit：`3f3d90f` chore: F214 acceptance + drift cleanup + backfill F215-a artifacts
-- 本 session 尚未 commit 的文件：
-  - `docs/需求/features.json`（F216 注册 + F216-a contract_agreed）
-  - `docs/开发/sprint-contracts/F216-a-contract.md`（新合约文件）
-  - `claude-progress.txt`（追加 F216 启动条目）
-  - `SESSION-HANDOFF.md`（本文件）
-
-⚠️ 建议在 Generator 开始前由本 session 顺手收一个 `docs(F216-a):` commit 把这 4 个 doc 文件落地，避免 Generator session 一上来就要清理这些散落改动。
+- C1/C2/C3/C6/C8：✅ 干净（C2 为预存误报，F211-a2 实际已 done）
+- C4/C5：🟢 轻微（F216-c/d/e 处于 design_needed，无 history/合约 — 符合预期）
+- C7：✅ 已修复（F216-b 流转到 needs_review，iteration_history 3 条新记录）
 
 ---
 
-## 恢复指令（下一 session）
-
-新 session 推荐用 **Sonnet**。复制粘贴：
+## 功能状态
 
 ```
-继续开发 F216-a，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-a-contract.md，
-进入 Generator 模式，从开发顺序步骤 1 开始。
+F216 Phase B Weekly Stage Layer：🔄 in_progress
+  ├─ F216-a Weekly Aggregation Service:  ✅ done (commit 6e86e75)
+  ├─ F216-b Stage Classifier + DB:       ✅ needs_review  ← 本 session 完成
+  ├─ F216-c Router + Widget:             ⬜ design_needed
+  ├─ F216-d setup_service gate:          ⬜ design_needed
+  └─ F216-e Scheduler cron:              ⬜ design_needed
 ```
 
 ---
 
-## 项目整体功能状态
+## 下一步：F216-c（Router + Widget）
 
-| Feature | 状态 |
-|---------|------|
-| F000 – F213 | ✅ done |
-| F214 ChartWidget Add to Watchlist | ✅ done（本 session 验收通过） |
-| F215 Cockpit Phase A | ✅ done |
-| **F216 Cockpit Phase B Weekly Stage Layer** | 🔄 **in_progress** |
-| └─ F216-a Weekly Aggregation Service | 🤝 contract_agreed |
-| └─ F216-b/c/d/e | ⬜ design_needed |
-| F217 Phase C (Capitulation 重写) | ⬜ 未规划 |
-| F218 Phase D (Repricing Trigger) | ⬜ 未规划 |
+**F216-c 范围**：
+- `GET /cockpit/chart/{ticker}/weekly` endpoint（返回 weekly_bars + weekly_mas + stage 字段）
+- Pydantic schema：`WeeklyChartResponse`（含 stage: int + slope_30w: float | None）
+- 前端 `WeeklyStageChartWidget`（lightweight-charts 周线 + Stage 标注）
+- 在 WidgetRegistry.ts 注册一行
+- 依赖 F216-b `WeeklyStageService.compute_for_ticker`（直接调用，不走 cron）
+
+**F216-c 需先 system-design → design-bridge，再 feature-dev**。
+
+---
+
+## 已知约束 / 未决事项
+
+- **Stage 阈值为初始值**：D091 记录"F216 全 phase 验收后回顾调参"
+- **numpy 使用边界（D092 强制）**：仅 cockpit 数值计算层；router/repo/models 层禁止
+- **F216-d setup_service gate** 将把 `stage ≠ 2` 纳入 `ready_signal=false` 门禁（减少 30-50% 标的，符合设计意图）
+- **预存 alembic 双头**：`011_f203b_user_settings.py` untracked，与 F216-b 无关，可在单独 session 清理
+
+---
+
+## 启动下个 Session 指令
+
+> **F216-c system-design + design-bridge**：
+> 继续 F216，读取 SESSION-HANDOFF.md，为 F216-c（Router + Widget）做 system-design。
+> 需设计：GET /cockpit/chart/{ticker}/weekly endpoint schema（含 stage）、
+> WeeklyStageChartWidget 前端组件结构、WidgetRegistry 注册方式。
+> 完成后运行 design-bridge，再进入 feature-dev 开发阶段。
