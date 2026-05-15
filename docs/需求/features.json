@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-e",
-    "active_sprint_phase": "needs_review"
+    "active_sprint": "",
+    "active_sprint_phase": ""
   },
   "_iteration_log": [
     {
@@ -3949,8 +3949,8 @@
       "description": "对照《慢交易系统框架》(SRS) 扫描报告的 gap #1 Weekly Stage Chart 缺失。落地 Stan Weinstein Stage 1-4 周线分层：(B1) weekly_chart_service 从本地 daily_bars 聚合到 ISO 周线 + Weekly MA 10/30/40；(B2) weekly_stage_service 按 30wMA 走势 + 斜率分类 Stage 1-4 + 新表 weekly_stage_snapshots；(B3) GET /api/cockpit/chart/{ticker}/weekly endpoint + 新 widget WeeklyStageChartWidget（绿底=2/黄=1或3/红=4）；(B4) setup_service 接入 weekly_stage 作为 ready_signal=true 的强制门禁（Stage 必须=2）+ setup_snapshots 加 weekly_stage 列；(B5) refresh_job 加每日 22:20 UTC cron。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md Phase B。",
       "user_story": "作为投资者，我需要在做日线买入决策前能看到该标的的周线阶段（Stan Weinstein 模型），避免在 Stage 3 顶部分布或 Stage 4 下跌中触发 BREAKOUT/RECLAIM setup — 因为这两个阶段的胜率系统性偏低。同时 setup_monitor 应该自动屏蔽 Stage 3/4 的 ready_signal，让我专注 Stage 2 的有效信号。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
       "sub_sprint_notes": "按 plan B1-B5 拆 5 sub-sprint：F216-a (B1 周线聚合服务，~3 文件)、F216-b (B2 Stage 分类器 + 新表 weekly_stage_snapshots + alembic 019，~6 文件)、F216-c (B3 router + widget，预估 7-8 文件，合约阶段二次拆 c1=后端 c2=前端)、F216-d (B4 setup_service gate + setup_snapshots 加列 + 前端 WS 列，预估 7-9 文件，合约阶段二次拆 d1=DB schema / d2=service gate / d3=前端)、F216-e (B5 scheduler cron，~2 文件)。c/d 二次拆分在各自 Contract 协商时由 feature-dev 6 文件原则触发，先以 a/b/c/d/e 五个 key 注册到 sub_sprints。",
       "sub_sprints": {
         "F216-a": "done",
@@ -3960,7 +3960,7 @@
         "F216-d1": "done",
         "F216-d2": "done",
         "F216-d3": "done",
-        "F216-e": "needs_review"
+        "F216-e": "done"
       },
       "dependencies": [
         "F215"
@@ -4237,10 +4237,18 @@
           "changes": "F216-e Sprint Contract 已确认（用户 2026-05-15 NP1-NP7 全部按推荐拍板）：NP1 cron 22:20 UTC mon-fri（regime 22:15 / setup 22:30 之间）/ NP2 settings 键 weekly_stage_cron_hour/minute（mirror setup_cron_*）/ NP3 JOB_ID = 'cockpit_weekly_stage_refresh'（mirror cockpit_setup_refresh）/ NP4 _weekly_stage_tick(session_factory, fmp_factory) 收双参但不使用 fmp（统一 add_job args）/ NP5 ordering 用 wall-clock 间隔不引同步链 / NP6 新建 test_weekly_stage_cron_f216e.py 3 测试（S1 注册 + S2a tick happy + S2b tick swallow）/ NP7 D094 双段（时段选址 + ordering 策略）。范围 5 文件：config.py + refresh_job.py + test_weekly_stage_cron_f216e.py 新建 + DECISIONS.md D094 + ARCHITECTURE.md env 段。11 完成标准 + 11 步开发顺序 + 2 WIP commit + 1 Final commit。Contract: docs/开发/sprint-contracts/F216-e-contract.md。下个 session Generator 从 §5 开发顺序步骤 1 开始。",
           "contract": "docs/开发/sprint-contracts/F216-e-contract.md",
           "contract_agreed_at": "2026-05-15"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F216-e",
+          "phase": "done",
+          "summary": "Evaluator 全通过（3/3 测试 + 859 全量回归 0 新增失败）。weekly_stage 22:20 UTC mon-fri APScheduler cron 注册完成。consistency-check 全清后直升 done（纯后端 cron，无 UI）。",
+          "generator_completed_at": "2026-05-15"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
-      "active_sprint_phase": "contract_agreed"
+      "active_sprint_phase": "contract_agreed",
+      "completed_at": "2026-05-15"
     }
   ]
 }

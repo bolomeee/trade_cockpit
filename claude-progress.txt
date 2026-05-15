@@ -801,3 +801,24 @@ F216 sub_sprints 进度：
   调用 consistency-check skill (mode=interactive) 验证 C1 invariant。
   F216 父 feature 所有 sibling 已 done → 预期 consistency-check 允许 F216 升 done。
   F216 全 done 后衔接 v2.0 release 流程（project-commiter skill 打 tag）。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] F216 全部完成 — Weekly Stage Layer
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F216-e → done（纯后端 cron，无 UI，Evaluator 全通过后直升）
+✅ F216 父 feature → done（8/8 sub_sprints 全 done，completed_at=2026-05-15）
+
+📊 F216 全 sub_sprints 完成状态：
+  F216-a: ✅ done（WeeklyStageService 数据层）
+  F216-b: ✅ done（weekly_stage_snapshots API + 前端 WeeklyStageWidget）
+  F216-c1: ✅ done（SetupItem.weeklyStage 字段 + weeklyStageTokens）
+  F216-c2: ✅ done（SetupMonitorWidget WS 列）
+  F216-d1: ✅ done（weekly_stage 数据模型 + 迁移）
+  F216-d2: ✅ done（weekly_stage 作为 ready_signal 第 8 条 AND 门）
+  F216-d3: ✅ done（WS 列展示 + SetupMonitorWidget）
+  F216-e: ✅ done（22:20 UTC APScheduler cron）
+
+[下一步]
+  v2.0 release：project-commiter skill 打 tag，写 changelog。
+  散落未提交项（011_f203b_user_settings.py / cockpit.json 等）由用户决策独立处理。

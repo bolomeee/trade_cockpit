@@ -1,97 +1,74 @@
-# SESSION-HANDOFF — F216-d3 needs_review，下一步：验收
+# SESSION-HANDOFF — F216 全部完成，下一步：v2.0 release
 
 > 生成时间：2026-05-15
 > 当前分支：improve_against_plan
-> 父 feature：F216 Cockpit Phase B — Weekly Stage Layer（in_progress）
-> 本阶段：F216-d3 → needs_review（Evaluator 全清）
-> 下一阶段：acceptance skill 验收 F216-d3
+> F216 Cockpit Phase B — Weekly Stage Layer：✅ **done**（8/8 sub_sprints 完成）
+> 下一阶段：v2.0 release（project-commiter skill 打 tag）
 
 ---
 
-## 1. F216-d3 完成摘要
+## 1. F216 完成摘要
 
-**目标**：SetupMonitorWidget 表格新增 "WS" 列，渲染 weekly_stage（1-4 + 圆点 + title 全名）。
+所有 8 个 sub_sprint 已全部 done：
 
-**状态**：Evaluator 自检全清，consistency-check C1/C4/C5 全清，等待 acceptance。
+| Sub_sprint | 内容 | 状态 |
+|-----------|------|------|
+| F216-a | WeeklyStageService 数据层（weekly_stage_snapshots 表 + OLS slope 计算） | ✅ done |
+| F216-b | weekly_stage_snapshots API + 前端 WeeklyStageWidget | ✅ done |
+| F216-c1 | SetupItem.weeklyStage 字段 + weeklyStageTokens 提取 | ✅ done |
+| F216-c2 | SetupMonitorWidget WS 列展示 | ✅ done |
+| F216-d1 | weekly_stage 数据模型迁移（020_f216d1 alembic） | ✅ done |
+| F216-d2 | weekly_stage 作为 ready_signal 第 8 条 AND 门（D093） | ✅ done |
+| F216-d3 | SetupMonitorWidget WS 列（stage 数值展示） | ✅ done |
+| F216-e | 22:20 UTC APScheduler cron（D094） | ✅ done |
 
-**commits**：
-- `856a2c8` wip(F216-d3): extract weeklyStageTokens + SetupItem.weeklyStage
-- `70bb05f` wip(F216-d3): WS column + tests
-- `ea65575` feat(F216-d3): WS column in SetupMonitorWidget（design-spec.md sync）
-
----
-
-## 2. 改动文件（6 个，全按 Contract §2）
-
-| 文件 | 改动 |
-|------|------|
-| `frontend/src/cockpit/lib/weeklyStageTokens.ts` | 新建（4 const + readStageColor helper） |
-| `frontend/src/cockpit/widgets/WeeklyStageChartWidget.tsx` | 删本地 3 const → import weeklyStageTokens |
-| `frontend/src/cockpit/lib/api/setupMonitorApi.ts` | SetupItem 加 weeklyStage: number \| null |
-| `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` | thead/tbody 加 WS 列 + WeeklyStageCell + 列宽微调 |
-| `frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx` | makeItem 加 weeklyStage:2 + §W W1-W7 测试 |
-| `docs/设计/design-spec.md` | §Widget 5 ASCII mock + WS 规则 bullet |
+父 feature F216：`status=done / phase=done / completed_at=2026-05-15`
 
 ---
 
-## 3. 测试结果
-
-| 范围 | 结果 |
-|------|------|
-| §W W1-W7 新增测试 | 7/7 全绿 |
-| SetupMonitorWidget 全量 | 零新增失败（15 pre-existing 不变） |
-| WeeklyStageChartWidget | 9/9 全绿（import 重构零变更） |
-| 全量 vitest | 297 passed，无新增失败 |
-| tsc --noEmit | 零错误 |
-| lint | 零新 warning（15 error 全预先存在） |
-
----
-
-## 4. features.json 当前状态
+## 2. 当前工作区状态（散落未提交项）
 
 ```
-F216 sub_sprints:
-  F216-a    done
-  F216-b    done
-  F216-c1   done
-  F216-c2   done
-  F216-d1   done
-  F216-d2   done
-  F216-d3   needs_review  ← 本次，等待 acceptance
-  F216-e    design_needed
-
-F216 phase: in_progress（C1：e 未完成，父不升 done）
+M backend/layouts/cockpit.json       (F216-c2 期间改动，未提交)
+?? backend/alembic/versions/011_f203b_user_settings.py  (旧未提交 migration)
+?? backend/tests/test_decision_f203b.py                  (旧未提交测试，import 有误)
+?? docs/开发/sprint-contracts/F216-d2-contract.md        (F216-d2 漏 commit)
+?? docs/开发/sprint-contracts/F216-d3-contract.md        (F216-d3 漏 commit)
+?? docs/验收/v2.0-F216-d2-acceptance.md                  (F216-d2 漏 commit)
+?? docs/验收/v2.0-F216-d3-acceptance.md                  (F216-d3 漏 commit)
+?? SESSION-HANDOFF.md                                    (本次覆写)
 ```
+
+**建议处理**（在 release 前）：
+- `docs/开发/sprint-contracts/F216-d*.md` + `docs/验收/*.md`：`git add` + `chore` commit
+- `backend/layouts/cockpit.json`：确认是否需要提交（视 F216-c2 验收结果）
+- `backend/alembic/versions/011_f203b_user_settings.py` + `test_decision_f203b.py`：用户决策（提交还是丢弃 F203-b 开发残留）
 
 ---
 
-## 5. 预先存在的失败（30 条，非本 sprint 引入）
+## 3. 下一步：v2.0 release
 
-- §R11：`data-testid="ai-rank-close"` 找不到
-- §S1-S3：`?` button 渲染问题（Explain AAPL Breakout button 找不到）
-- §S7-S11：AI Explainer Popover 系列
-
-这些失败在 clean 分支（c5957e6）就存在，与 F216-d3 无关，不阻塞验收。
-
----
-
-## 6. 下一步：acceptance
-
-```
-触发 acceptance skill，验收 F216-d3。
-验收记录：docs/验收/v2.0-F216-d3-acceptance.md
-```
-
-验收重点：
-- 启动 `pnpm dev`（前端）+ 后端 setup-monitor endpoint
-- 对照 design-spec.md §Widget 5 验证 WS 列视觉：颜色 / 数字 / hover title
-- 选 1-2 个真实 Stage=2 ticker 验证圆点为绿
-- 选 1 个 weeklyStage=null 的 ticker 验证 "—"
+触发 `project-commiter` skill，步骤：
+1. 清理散落未提交项（见 §2）
+2. 运行 consistency-check (mode=strict) 闸门
+3. 更新版本号（v1.x.x → v2.0.0）
+4. 写 changelog（F216 + F213 + F215 等本 release 所有 feature）
+5. `git commit + git tag v2.0.0`
 
 ---
 
-## 7. 后续衔接
+## 4. Phase C/D 规划（下一个 release 范围）
 
-F216-d3 acceptance 通过后：
-- 剩余：F216-e（refresh_job cron 编排，~2 文件，contract_needed）
-- F216-e done → F216 父 feature 升 done → 触发 F216 整体 acceptance
+- F217：Phase C — Capitulation Reversal 重写
+- F218：Phase D — Repricing Trigger
+- 另起 sprint 规划，不在本 release 范围
+
+---
+
+## 5. 恢复指令
+
+新 session 继续 v2.0 release：
+
+> F216 已全部完成（done），下一步执行 v2.0 release。
+> 读取 SESSION-HANDOFF.md，触发 project-commiter skill。
+> 先清理散落未提交项，再打 tag。
