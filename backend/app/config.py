@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     setup_cron_hour: int = 22
     setup_cron_minute: int = 30
 
+    # F216-e weekly stage refresh (weekdays 22:20 UTC, after regime at 22:15, before setup at 22:30)
+    weekly_stage_cron_hour: int = 22
+    weekly_stage_cron_minute: int = 20
+
     # F211-d2 journal monthly review cron (1st of month 06:00 UTC, after universe at 05:00)
     journal_monthly_cron_day: int = 1
     journal_monthly_cron_hour: int = 6

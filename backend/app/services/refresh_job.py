@@ -33,6 +33,7 @@ from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
 from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
+from app.services.cockpit.weekly_stage_service import WeeklyStageService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
 from app.services.market_scanner_service import MarketScannerService
@@ -50,6 +51,7 @@ UNIVERSE_JOB_ID = "ma150_universe_refresh"
 EARNINGS_JOB_ID = "cockpit_earnings_refresh"
 REGIME_JOB_ID = "cockpit_regime_refresh"
 SETUP_JOB_ID = "cockpit_setup_refresh"
+WEEKLY_STAGE_JOB_ID = "cockpit_weekly_stage_refresh"
 PENDING_ORDERS_EXPIRER_CRON = "35 22 * * 1-5"
 PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
 # F205-e: pool cache weekly rebuild — Mon 06:30 UTC
@@ -263,6 +265,19 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
+        # F216-e: weekly stage refresh, weekdays 22:20 UTC (after regime at 22:15, before setup at 22:30)
+        sched.add_job(
+            _weekly_stage_tick,
+            trigger=CronTrigger(
+                day_of_week="mon-fri",
+                hour=settings.weekly_stage_cron_hour,
+                minute=settings.weekly_stage_cron_minute,
+                timezone="UTC",
+            ),
+            id=WEEKLY_STAGE_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         # F202-b: setup snapshot scan, weekdays 22:30 UTC (after regime at 22:15)
         sched.add_job(
             _setup_tick,
@@ -381,6 +396,18 @@ def _regime_tick(
             MarketRegimeService(db).compute_and_store()
     except Exception:  # noqa: BLE001
         logger.error("regime tick failed\n%s", traceback.format_exc())
+
+
+def _weekly_stage_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,
+) -> None:
+    """APScheduler tick for weekly stage refresh (F216-e): weekdays 22:20 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            WeeklyStageService(db).compute_and_store_all()
+    except Exception:  # noqa: BLE001
+        logger.error("weekly stage tick failed\n%s", traceback.format_exc())
 
 
 def _setup_tick(
