@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v1.10",
-    "active_sprint": "F216-d2",
-    "active_sprint_phase": "design_needed"
+    "active_sprint": "F216-d3",
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3950,7 +3950,7 @@
       "user_story": "作为投资者，我需要在做日线买入决策前能看到该标的的周线阶段（Stan Weinstein 模型），避免在 Stage 3 顶部分布或 Stage 4 下跌中触发 BREAKOUT/RECLAIM setup — 因为这两个阶段的胜率系统性偏低。同时 setup_monitor 应该自动屏蔽 Stage 3/4 的 ready_signal，让我专注 Stage 2 的有效信号。",
       "priority": "P1",
       "status": "in_progress",
-      "phase": "design_needed",
+      "phase": "in_progress",
       "sub_sprint_notes": "按 plan B1-B5 拆 5 sub-sprint：F216-a (B1 周线聚合服务，~3 文件)、F216-b (B2 Stage 分类器 + 新表 weekly_stage_snapshots + alembic 019，~6 文件)、F216-c (B3 router + widget，预估 7-8 文件，合约阶段二次拆 c1=后端 c2=前端)、F216-d (B4 setup_service gate + setup_snapshots 加列 + 前端 WS 列，预估 7-9 文件，合约阶段二次拆 d1=DB schema / d2=service gate / d3=前端)、F216-e (B5 scheduler cron，~2 文件)。c/d 二次拆分在各自 Contract 协商时由 feature-dev 6 文件原则触发，先以 a/b/c/d/e 五个 key 注册到 sub_sprints。",
       "sub_sprints": {
         "F216-a": "done",
@@ -3958,8 +3958,8 @@
         "F216-c1": "done",
         "F216-c2": "done",
         "F216-d1": "done",
-        "F216-d2": "needs_review",
-        "F216-d3": "design_needed",
+        "F216-d2": "done",
+        "F216-d3": "needs_review",
         "F216-e": "design_needed"
       },
       "dependencies": [
@@ -4204,6 +4204,20 @@
           "phase": "needs_review",
           "session": "F216-d2 Generator",
           "changes": "F216-d2 实现完成，等待 acceptance：_compute_ready_signal 加第 8 AND 门（weekly_stage==2）+ cockpit_params READY_REQUIRE_STAGE2 flag + compute_and_store_all 批量 join stage_map + _row_to_dict weeklyStage + schema weekly_stage 字段 + 28 测试全绿（T1-T16）+ API-CONTRACT/DATA-MODEL/DECISIONS D093 三文档同步。"
+        },
+        {
+          "sprint": "F216-d2",
+          "status": "done",
+          "completed_at": "2026-05-14",
+          "summary": "8th AND gate (weekly_stage==2) wired into ready_signal; batch stage_map join in compute_and_store_all (no N+1); READY_REQUIRE_STAGE2 flag; SetupItemResponse.weekly_stage + _row_to_dict weeklyStage; 28 tests (T1-T16) all green; full regression 1047 passed; API-CONTRACT / DATA-MODEL / DECISIONS D093 synced; acceptance passed 2026-05-14"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F216-d3",
+          "phase": "needs_review",
+          "session": "F216-d3 Generator + Evaluator",
+          "changes": "F216-d3 前端 WS 列实现完成：新建 weeklyStageTokens.ts（4 const + readStageColor，共享 STAGE_BG_TOKENS）；WeeklyStageChartWidget 删本地 3 const 改 import（行为零变更，9 tests 全绿）；setupMonitorApi SetupItem 加 weeklyStage: number|null；SetupMonitorWidget thead/tbody 加 WS 列（Vol Z 与 Earn 之间，6% 宽度，NP3 列宽均匀微调）+ WeeklyStageCell 函数（圆点 + 数字 + title 全名）；§W W1-W7 7 条测试全绿；全量 vitest 297 passed 无新增失败（15 失败全预先存在）；tsc 零错；lint 无新 warning；design-spec.md §Widget 5 ASCII mock + WS 规则 bullet 同步。commits: 856a2c8 (wip1) + 70bb05f (wip2) + ea65575 (feat)。",
+          "commits": ["856a2c8", "70bb05f", "ea65575"]
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",

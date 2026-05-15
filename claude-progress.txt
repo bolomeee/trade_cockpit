@@ -1,4 +1,32 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] Sprint：F216-d3 SetupMonitor WS 列
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 新建 weeklyStageTokens.ts：STAGE_LABELS / STAGE_BG_TOKENS / STAGE_BG_FALLBACKS / readStageColor（4 常量 + helper，共享模块）
+  - WeeklyStageChartWidget.tsx：删本地 3 const，改 import weeklyStageTokens（行为零变更）
+  - setupMonitorApi.ts：SetupItem 加 weeklyStage: number | null
+  - SetupMonitorWidget.tsx：thead/tbody 加 WS 列（Vol Z 与 Earn 之间，6%），NP3 列宽均匀微调，WeeklyStageCell 函数（彩色圆点 + 数字 + title 全名 hover + null/0 → "—"）
+  - 单元测试：§W W1-W7 7 条全绿（新增）
+  - 回归测试：297 passed，无新增失败（15 pre-existing 不变），WeeklyStageChartWidget 9/9 全绿
+  - tsc 零错；lint 零新 warning；design-spec.md §Widget 5 ASCII mock + WS 规则 bullet 同步
+  - Evaluator 自检：全部通过；consistency-check C1/C4/C5 全清
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新建 frontend/src/cockpit/lib/weeklyStageTokens.ts
+  - 修改 WeeklyStageChartWidget.tsx / setupMonitorApi.ts / SetupMonitorWidget.tsx / SetupMonitorWidget.test.tsx / design-spec.md
+
+📊 功能状态：
+  F216 sub_sprints:
+    a/b/c1/c2/d1/d2：done
+    d3：needs_review ← 本次
+    e：design_needed
+
+[下一个 Session]
+  触发 acceptance skill，验收 F216-d3（docs/验收/v2.0-F216-d3-acceptance.md）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-14 16:40] 验收：F216-b 验收通过
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -608,3 +636,69 @@
 - consistency-check C1/C4/C5/C7/C8 全清
 - phase: contract_agreed → needs_review（等待 acceptance）
 
+
+---
+## F216-d2 acceptance — 2026-05-14
+- 验收通过：用户确认 API weeklyStage 字段 + ready_signal 门禁行为 + 文档三处同步
+- features.json: F216-d2 sub_sprint → done, active_sprint → F216-d3
+- 验收记录：docs/验收/v2.0-F216-d2-acceptance.md
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done
+    ├─ F216-b Stage Classifier + DB:        ✅ done
+    ├─ F216-c1 Router + Stage Payload:      ✅ done
+    ├─ F216-c2 Widget + Registry:           ✅ done
+    ├─ F216-d1 setup_snapshots schema col:  ✅ done
+    ├─ F216-d2 service gate + API:          ✅ done  ← 本次
+    ├─ F216-d3 前端 WS 列:                  ⬜ design_needed
+    └─ F216-e Scheduler cron:               ⬜ design_needed
+
+[下一个 Session]
+  F216-d3：前端 WS 列
+    - setupMonitorApi.ts SetupItem 加 weeklyStage?: number | null
+    - SetupMonitorWidget.tsx 加 "WS" 列（Stage 1-4 标签）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] Sprint Contract 协商：F216-d3 — 前端 WS 列
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F216-d3 Sprint Contract 草案落地 docs/开发/sprint-contracts/F216-d3-contract.md
+  - NP1-NP6 全部按推荐 a/a/a/b/a/a 拍板：
+      NP1 渲染 = 彩色圆点+数字+title 全名
+      NP2 null/0 = "—" 不同 title 区分
+      NP3 列宽 = 均匀微调 Ticker/Setup/Entry/Stop/R:R
+      NP4 常量 = 抽 weeklyStageTokens.ts 共享模块（WeeklyStageChartWidget 改 import）
+      NP5 位置 = Vol Z 与 Earn 之间
+      NP6 AI ranker = 不加 weeklyStage（R6 9 字段断言不变）
+  - features.json sub_sprints["F216-d3"] = contract_agreed
+  - features.json _pipeline_status.active_sprint_phase = contract_agreed
+
+📋 实现范围摘要（6 文件，恰好上限）：
+  1. frontend/src/cockpit/lib/weeklyStageTokens.ts（新建）
+  2. frontend/src/cockpit/widgets/WeeklyStageChartWidget.tsx（删 3 const + 加 import）
+  3. frontend/src/cockpit/lib/api/setupMonitorApi.ts（SetupItem 加 weeklyStage 字段）
+  4. frontend/src/cockpit/widgets/SetupMonitorWidget.tsx（thead/tbody 加 WS 列 + 列宽调整 + WeeklyStageCell 函数）
+  5. frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx（makeItem +weeklyStage:2，§W 7 case）
+  6. docs/设计/design-spec.md §Widget 5（ASCII mock + WS 规则 bullet）
+
+⚠️ 待你决策：
+  - 无（NP1-NP6 已全推荐拍板）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:   ✅ done
+    ├─ F216-b Stage Classifier + DB:        ✅ done
+    ├─ F216-c1 Router + Stage Payload:      ✅ done
+    ├─ F216-c2 Widget + Registry:           ✅ done
+    ├─ F216-d1 setup_snapshots schema col:  ✅ done
+    ├─ F216-d2 service gate + API:          ✅ done
+    ├─ F216-d3 前端 WS 列:                  📝 contract_agreed  ← 本次
+    └─ F216-e Scheduler cron:               ⬜ design_needed
+
+[下一个 Session — 建议 Sonnet]
+  F216-d3 Generator 模式：
+    继续开发 F216-d3，Sprint Contract 已确认。
+    读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-d3-contract.md，
+    进入 Generator 模式，从 §7 开发顺序步骤 1 开始。
