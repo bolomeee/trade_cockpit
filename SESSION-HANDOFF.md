@@ -1,103 +1,117 @@
-# Session 交接文档
+# SESSION-HANDOFF — F217-b1 已完成，等待验收
 
-**生成时间**：2026-05-15
-**当前 Skill**：feature-dev (类型 A 主流程)
-**完成进度**：F217-a 全部步骤完成 → phase=needs_review；待 consistency-check 后用户验收
-**Sprint Contract**：[docs/开发/sprint-contracts/F217-a-contract.md](docs/开发/sprint-contracts/F217-a-contract.md)
-
----
-
-## 项目背景
-
-- **项目**：MA150 Tracker → Workbench → Cockpit
-- **当前迭代**：v2.3（cockpit-vs-srs-framework 改善计划 Phase C：Capitulation Reversal 严格重写）
-- **已发布**：v2.2.0（Phase B / F216 Weekly Stage Layer，2026-05-15 已发版）
-- **本次目标**：F217 Phase C — 把 cockpit setup_service 的 SETUP_PULLBACK 近似（回踩 MA21）替换为 SRS § 五 Setup 4 严格定义的 SETUP_CAPITULATION（投降式抛售反转，7 条 AND 门）
+> 生成：2026-05-15
+> 上一阶段：F217-b1 Generator + Evaluator 完成，consistency-check C4 修复
+> 当前 phase：`needs_review`
+> 下一阶段：用户验收 F217-b1 → 开启 F217-b2 Sprint Contract 协商
 
 ---
 
-## 当前状态：F217-a 已完成 → needs_review
+## 1. 本次完成摘要（F217-b1）
 
-### 完成的文件（6 个，命中 6 文件上限）
+**目标**：为 setup_snapshots 加 `legacy` BOOL 列，把历史 PULLBACK 行软删（不可见），同步给所有读取路径加过滤。
 
-| # | 文件 | 变更 |
-|---|------|------|
-| 1 | `backend/app/services/cockpit/_indicators.py` | 新建；纯函数 `compute_wilder_atr(highs, lows, closes, period) -> list[float]` |
-| 2 | `backend/app/services/cockpit/chart_service.py` | `_compute_atr_series` 委托 `compute_wilder_atr`（行为不变） |
-| 3 | `backend/app/services/cockpit/cockpit_params.py` | 删 4 个 `PULLBACK_*` 字段；新增 10 个 `CAPITULATION_*` 字段；REGIME preferredSetups PULLBACK→CAPITULATION |
-| 4 | `backend/app/services/cockpit/setup_service.py` | 实现 7 AND 门 `_is_capitulation_reversal`；删 `_is_pullback`；优先级 BROKEN→EXTENDED→EARNINGS_DRIFT→CAPITULATION→BREAKOUT→RECLAIM→NONE |
-| 5 | `backend/tests/test_capitulation_reversal.py` | 新建；34 tests（T1-T14 全通过） |
-| 6 | `backend/tests/test_setup_f202a.py` | `test_s4` fixture、`test_s15` 语义修正（PULLBACK→NONE） |
+### 实际修改文件（5 个）
+
+| 文件 | 变更 |
+|------|------|
+| `backend/alembic/versions/021_f217b1_setup_snapshots_legacy.py` | **新建**：upgrade 加列+UPDATE+batch_alter_table 撤 server_default；downgrade drop_column |
+| `backend/app/models/setup_snapshot.py` | `legacy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)` |
+| `backend/app/repositories/setup_snapshot_repository.py` | `purge_legacy_pullback()` 幂等方法 + `get_latest_all_active` 加 `.where(legacy==False)` |
+| `backend/app/services/cockpit/decision_service.py` | L69-74 直接 select 加 `.where(legacy==False)` + inline comment |
+| `backend/tests/test_setup_snapshot_purge.py` | **新建**：T1-T9 共 12 条 integration tests，全通过 |
+
+### 关键技术点
+
+- **alembic SQLite 限制**：`op.alter_column` 在 SQLite 不支持，改用 `op.batch_alter_table` context manager（env.py 已配 `render_as_batch=True`，但仅对 autogenerate 生效）
+- **dev.db 路径**：`backend/dev.db`（不是 `data/*.db`）
+- **upgrade/downgrade 闭环**：已验证；PULLBACK 7 行 legacy=1，其余 legacy=0
 
 ### 测试结果
 
-- `ruff check`：0 errors（5 个目标文件）
-- 全量回归：**1084 passed，7 failed（全部 pre-existing，0 新增）**
-  - pre-existing failures（与 F217-a 无关）：
-    - `test_ai_schemas_f209.py::TestEndpointIntegration::test_D1_market_narrator_success`
-    - `test_ai_schemas_f211a1.py::TestRegistry::test_R5_contradiction_detector_resolves_default`
-    - `test_ai_schemas_f211a1.py::TestRegistry::test_R6_news_summarizer_resolves_default`
-    - `test_fmp_client.py::test_get_screener_universe_merges_three_exchanges_and_dedupes`
-    - `test_regime_f201a.py::test_s14_cockpit_params_import_no_exception`（SHARED.INDEX_ETFS 4 vs 3，F216 引入）
-    - `test_regime_f201b.py::TestRegimeApiEndpoint::test_s4_indices_has_exactly_3_items`（同上）
-    - `test_schema.py::test_all_tables_created`（weekly_stage_snapshots 未加 EXPECTED_TABLES，F216-b 引入）
-
-### 7 AND 门实现
-
-| Gate | 说明 | 参数 |
+| 范围 | 通过 | 失败 |
 |------|------|------|
-| G1 | 5-10 日累计 close 跌幅 ≥ 10% | `CAPITULATION_DROP_LOOKBACK_MIN_DAYS=5`, `_MAX_DAYS=10`, `_DROP_PCT=10.0` |
-| G2 | Volume z-score ≥ 2.5（复用 F215-b `_compute_volume_zscore`） | `CAPITULATION_VOL_Z_MIN=2.5` |
-| G3 | TR ≥ ATR14 × 2.0 | `CAPITULATION_ATR_TR_MULTIPLIER=2.0` |
-| G4 | close 位于当日 high-low 上 1/3（≥ 0.667） | `CAPITULATION_CLOSE_UPPER_BIN=0.333` |
-| G5 | （NP2 设计：lookahead-safe，bar[-1]=今日，始终跳过） | `CAPITULATION_NO_NEW_LOW_LOOKAHEAD_DAYS=2` |
-| G6 | today.low > 30 日内倒数第 2 个 swing low | `CAPITULATION_SWING_LOW_LOOKBACK=30` |
-| G7 | RS line（close/SPY close）过去 5 日未创新低 | `CAPITULATION_RS_NO_NEW_LOW_DAYS=5` |
+| T1-T9 (12 tests) | 12/12 | 0 |
+| F217-a 回归 (34 tests) | 34/34 | 0 |
+| decision_service (28 tests) | 28/28 | 0 |
+| 全量回归 | 1049/1057 | 8（全部预存，stash 证明非 F217-b1 引入） |
+
+### 预存失败清单（非本 sprint 引入）
+
+| 文件 | 原因 |
+|------|------|
+| test_schema.py::test_all_tables_created | EXPECTED_TABLES 缺 `weekly_stage_snapshots`（019 migration 引入） |
+| test_ai_schemas_f209.py::test_D1_market_narrator_success | tier 值不符 |
+| test_ai_schemas_f211a1.py (R5/R6) | registry 解析 |
+| test_decision_f215b.py (AlembicRoundtrip) | 018 migration 测试 |
+| test_fmp_client.py (screener universe) | 去重逻辑 |
+| test_regime_f201a/b.py | INDEX_ETFS 预期 3 实际 4（F217-a 已引入 VXX） |
 
 ---
 
-## 下一步任务
+## 2. Commit 历史（本次 sprint）
 
-### F217-b：DB 枚举迁移（当前 phase=design_needed）
-
-**核心工作**：
-1. `alembic` migration 021：`setup_snapshots.setup_type` 枚举去 `PULLBACK` 加 `CAPITULATION`（前向 + 回滚均可执行）
-2. `SetupSnapshotRepository.purge_legacy_pullback()` 方法：历史 `PULLBACK` 行软删（加 `legacy=True` 标记）或硬删
-3. `SetupSnapshot` model `setup_type` 字段类型与新枚举一致
-4. Integration tests：insert PULLBACK → call purge → assert 行被标记/移除
-5. 预估文件：3-4 个
-
-**依赖**：F217-a（已 done）→ F217-b 现在可进行 Sprint Contract 协商
-
-### F217-c：前端 CAPITULATION badge（当前 phase=design_needed）
-
-**核心工作**：
-1. `cockpitDecisionApi.SetupType` 类型去 `PULLBACK` 加 `CAPITULATION`
-2. `DecisionPanelWidget`：setupType=CAPITULATION 时展示 3 个 chip（Vol z-score / Drop 5d / Reversal day）
-3. `SetupMonitorWidget`：CAPITULATION 紫色 badge（design-spec.md 需补 token #a78bfa）
-
-**依赖**：F217-a + F217-b 完成后方可进行
+```
+69203d2  wip(F217-b1): alembic 021 setup_snapshots.legacy column + PULLBACK soft-delete
+a85f734  wip(F217-b1): SetupSnapshot.legacy field (Boolean, default False)
+5ac20a0  wip(F217-b1): repo purge_legacy_pullback + get_latest legacy filter
+1ade61b  wip(F217-b1): decision_service exclude legacy rows
+a302023  wip(F217-b1): integration tests for legacy column + purge + read filter
+9ff5ac2  feat(F217-b1): setup_snapshots.legacy column + PULLBACK soft-delete (Phase C DB layer)
+e6c9f84  chore(F217-b1): iteration_history needs_review 节点补录 (consistency-check C4)
+```
 
 ---
 
-## 未决事项
+## 3. 项目当前状态快照
 
-- F217-b Sprint Contract 待协商（建议新 session 开始）
-- design-spec.md §Widget 5 紫色 badge token 待 F217-c Sprint Contract 确认
-- F217 parent phase 升级（needs F217-a + F217-b + F217-c 全 done）
+```
+F217 — phase: in_progress (Cockpit Phase C — Capitulation Reversal 严格重写)
+ ├── F217-a   — done ✅ (后端 setup_service 7 AND 门 + 34 pure tests)
+ ├── F217-b1  — needs_review 🔍 ← 等待验收
+ ├── F217-b2  — design_needed (Pydantic Literal 加 CAPITULATION, 6 files)
+ ├── F217-b3  — design_needed (测试 fixture 去 PULLBACK, 6 files)
+ ├── F217-b4  — design_needed (Pydantic Literal 删 PULLBACK 收紧)
+ └── F217-c   — design_needed (前端 chips + 紫色 badge)
+```
+
+`_pipeline_status`: active_sprint=F217-b1, active_sprint_phase=needs_review, development=in_progress
 
 ---
 
-## 恢复指令（下一 session）
+## 4. 下一步任务
 
-**若继续 F217-b Sprint Contract**：
+### 选项 A：验收 F217-b1（触发 acceptance skill）
+- 对照设计意图确认：legacy=true 的 PULLBACK 行在 SetupMonitor 上消失
+- 确认新 CAPITULATION 行（如有触发）正常可见（legacy=false）
+- 验收通过后 F217-b1 → done
+
+### 选项 B：直接开启 F217-b2 Sprint Contract 协商
+- F217-b2：Pydantic Literal 加 CAPITULATION，6 files（含 schemas/cockpit/*.py）
+- 预计文件：cockpit/setup_snapshot.py / decision.py / 其他 schema files（待 Sprint Contract 精确列出）
+
+---
+
+## 5. 风险提示（给下一 session）
+
+1. **test_regime_f201a/b 失败根因**：INDEX_ETFS 含 VXX（4 个），测试预期 3 个 — 这是 F217-a 时引入 VXX 作为 capitulation 信号用途。下一个要动 cockpit_params.py 的 sprint（F217-b2）需要同步修复这两个测试
+2. **test_schema.py 根因**：weekly_stage_snapshots 表在 EXPECTED_TABLES 缺席，需要在任意下一个 schema sprint 补全
+3. **F217-b2 注意**：Pydantic Literal 改动会影响 API 校验层，需要同时确保 `test_setup_f202a.py` 中的 PULLBACK fixture 能过（F217-b3 前，PULLBACK 仍是 valid Literal）
+
+---
+
+## 6. 下一 Session 恢复指令
+
+如需验收 F217-b1：
 ```
-读取 SESSION-HANDOFF.md + docs/需求/features.json（F217 条目）+ docs/系统设计/DATA-MODEL.md（SetupSnapshot 枚举）。
-F217-a 已完成（needs_review），开始 F217-b Sprint Contract 协商。
-参考 API-CONTRACT.md + DECISIONS.md §D095。
+F217-b1 已完成，需要验收。
+读取 SESSION-HANDOFF.md，
+触发 acceptance skill 对 F217-b1 进行验收。
 ```
 
-**若先做 F217-a consistency-check（如尚未完成）**：
+如需直接开 F217-b2：
 ```
-调用 consistency-check skill，mode=interactive，检查 F217-a sub_sprint 一致性。
+F217-b1 已完成等待验收，暂跳，直接开 F217-b2 Sprint Contract 协商。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/（扫描相关合约）。
+进入 feature-dev A-1 模式，准备开发 F217-b2。
 ```
