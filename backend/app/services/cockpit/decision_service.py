@@ -69,6 +69,7 @@ def compute_decision(
     snapshot: SetupSnapshot | None = db.execute(
         select(SetupSnapshot)
         .where(SetupSnapshot.ticker == ticker)
+        .where(SetupSnapshot.legacy == False)  # noqa: E712 — F217-b1: exclude soft-deleted legacy rows
         .order_by(SetupSnapshot.scan_date.desc())
         .limit(1)
     ).scalar_one_or_none()
