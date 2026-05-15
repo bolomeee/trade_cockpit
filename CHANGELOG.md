@@ -4,6 +4,19 @@
 
 ---
 
+## [v2.2.0] - 2026-05-15
+
+### ✨ 新增
+- **F216 Weekly Stage Layer（Stan Weinstein Stage 1-4 周线分层，8 个子 sprint 全部交付）**
+  - **数据层**：WeeklyChartService 从本地 daily_bars 聚合 ISO 周线（OHLCV + Weekly MA 10/30/40），零 FMP 调用；weekly_stage_snapshots 表存储每日快照
+  - **分类引擎**：WeeklyStageService 按 SRS 规则分类 Stage 1–4（Stage 2 = close > 30wMA AND slope_30w > 0 AND ma10w > 30wMA），使用 numpy OLS 斜率计算
+  - **前端 Widget**：WeeklyStageChartWidget 渲染周线 K 线 + 三条 MA + 颜色编码 Stage 标签（绿=Stage 2 / 黄=Stage 1/3 / 红=Stage 4），复用 lightweight-charts
+  - **Setup 门禁**：setup_snapshots 新增 weekly_stage 列；`_evaluate_ready_signal` 强制 Stage 2 作为第 8 条 AND 门（ready_signal=True 标的预计减少 30–50%，为设计意图）
+  - **SetupMonitorWidget WS 列**：setup 列表新增 WS 列展示 Stage 数值，令 ready=False 的原因对用户可见
+  - **Scheduler Cron**：refresh_job 新增 22:20 UTC mon–fri job（`cockpit_weekly_stage_refresh`），保持 regime→weekly_stage→setup 的时间顺序
+
+---
+
 ## [v2.1.0] - 2026-05-07
 
 > ⚠️ consistency-check 违例覆盖：C5 违例 45 项均为 F001～F113 时代历史遗留合约文件，features.json 尚无对应 sub_sprints entry，功能本身均已完成，与本次发版无关。
