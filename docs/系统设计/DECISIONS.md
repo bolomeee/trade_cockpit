@@ -2200,3 +2200,33 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 **放弃**：
 - 端点法 `(ma[-1] / ma[-(N+1)] - 1) * 100` — 只用 2 个点，单周异常值影响大
 - 纯 Python OLS — 功能等价但无法复用，Phase C/D 需另行引入 numpy
+
+---
+
+## D094：F216-e weekly_stage cron 时段选址与 ordering 策略
+
+**日期**：2026-05-15
+**Feature**：F216 Cockpit Phase B — Weekly Stage Scheduler Cron（sub-sprint e）
+
+**决策 1：cron 时段 22:20 UTC**
+
+选定 `weekly_stage_cron_hour=22 / minute=20`（工作日 mon-fri），即 regime ETF refresh（22:15）之后 5 分钟、setup snapshot scan（22:30）之前 10 分钟。
+
+理由：
+- features.json acceptance_criteria L10 明文约定"22:20 UTC, mon-fri"
+- weekly_stage 的 `compute_and_store_all` 是纯本地 DB 查询 + numpy OLS，active_stocks ~25 标的实测 <10s，10 分钟缓冲提供 60x 安全余量
+- setup 在 22:30 起跑时能读到当天最新 weekly_stage_snapshots；即使本日 weekly_stage 超时，`get_latest_for_tickers` 不限 scan_date，setup 读上一个工作日的 stage 值，返回 NULL→ready=False（D093 语义兜底）
+- 备选 22:25（regime+10min）与 acceptance criteria 文字不一致；21:35 过早（daily_bars 21:30 refresh 仍在进行，weekly_chart 依赖 daily_bars）
+
+**决策 2：ordering 策略 — wall-clock 时间间隔，不引入同步链**
+
+选择通过 cron 时间错峰（22:15 / 22:20 / 22:30）达成 regime → weekly_stage → setup 的执行顺序，不引入任何同步依赖或事件链。
+
+理由：
+- 与既有 refresh→regime→setup 链条策略完全一致（21:30 / 22:15 / 22:30），新增 cron 仅插入现有时间轴的空隙，无需修改调度框架
+- APScheduler 3.x 无原生 job dependency API；引入 prefect/dagster 等编排器违反 sprint B5 排除范围，且大幅增加运维复杂度
+- 若 weekly_stage 异常拖延至 22:25+，setup 22:30 读昨日 stage 值，返回 ready=False（D093 保守语义），数据短暂陈旧但系统不崩溃
+
+放弃了：
+- 在 `_weekly_stage_tick` 结尾同步调用 `SetupService.compute_and_store_all()`：强耦合、单一职责破坏、setup_cron 配置失效
+- BlockingScheduler 强制串行：需重写整个 scheduler 模式，超出 sprint scope

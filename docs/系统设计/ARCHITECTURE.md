@@ -322,6 +322,10 @@ REGIME_CRON_MINUTE=30
 SETUP_CRON_HOUR=6                        # 默认 06:45
 SETUP_CRON_MINUTE=45
 
+# F216 Weekly Stage refresh（工作日 22:20 UTC，在 regime 22:15 之后、setup 22:30 之前）
+WEEKLY_STAGE_CRON_HOUR=22
+WEEKLY_STAGE_CRON_MINUTE=20
+
 # F204 Earnings Calendar 每日拉取（FMP /stable/earnings-calendar）
 EARNINGS_CRON_HOUR=5                     # 05:30，早于 REFRESH，作为独立轻量调用
 EARNINGS_CRON_MINUTE=30

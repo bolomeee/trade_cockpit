@@ -702,3 +702,102 @@
     继续开发 F216-d3，Sprint Contract 已确认。
     读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-d3-contract.md，
     进入 Generator 模式，从 §7 开发顺序步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] F216-d3 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F216-d3：SetupMonitorWidget WS 列 → done
+  - weeklyStageTokens.ts 共享常量模块（4 const + readStageColor）
+  - SetupMonitorWidget WS 列（圆点 + 数字 + title，Stage 1-4）
+  - W1-W7 7 条新测试全绿，全量 297 passed
+  - design-spec.md §Widget 5 同步
+
+F216 sub_sprints 进度：
+  a ✅ b ✅ c1 ✅ c2 ✅ d1 ✅ d2 ✅ d3 ✅ e ⬜（design_needed）
+
+[下一个 Session]
+  F216-e Contract 协商（refresh_job cron 编排，~2 文件）
+  F216-e done → F216 父 feature 升 done → v2.0 release 验收
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] Sprint：F216-e Weekly Stage Scheduler Cron — Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 读取 features.json §F216 acceptance L10 / refresh_job.py 既有 cron 模式 / WeeklyStageService.compute_and_store_all 签名
+  - 盘点预计修改文件 = 5 个（未触发 6 文件拆分原则）
+  - 协商 NP1-NP7 全部按推荐方案确认（用户 2026-05-15）：
+      NP1 cron 时段 = 22:20 UTC mon-fri（regime 22:15 / setup 22:30 之间）
+      NP2 settings 键 = weekly_stage_cron_hour / weekly_stage_cron_minute（mirror setup/regime）
+      NP3 JOB_ID 常量 = "cockpit_weekly_stage_refresh"（mirror cockpit_setup_refresh）
+      NP4 tick 形参 = _weekly_stage_tick(session_factory, fmp_factory) 收双参不用 fmp（统一 add_job args）
+      NP5 ordering = wall-clock 时间间隔，不引同步链 / 编排器
+      NP6 测试 = 新建 test_weekly_stage_cron_f216e.py 3 测试（S1 注册 + S2a tick happy + S2b tick swallow）
+      NP7 D094 = 双段（时段选址 + ordering 策略选型）
+  - 已生成 docs/开发/sprint-contracts/F216-e-contract.md（11 完成标准 + 11 开发步骤 + 2 WIP + 1 Final commit）
+  - features.json：
+      F216 sub_sprints["F216-e"] = "contract_agreed"
+      _pipeline_status.active_sprint = "F216-e"
+      _pipeline_status.active_sprint_phase = "contract_agreed"
+      F216.active_sprint_phase = "contract_agreed"
+
+📋 实现范围摘要（5 文件，未拆分）：
+  1. backend/app/config.py（加 2 settings：weekly_stage_cron_hour=22 / weekly_stage_cron_minute=20）
+  2. backend/app/services/refresh_job.py（WEEKLY_STAGE_JOB_ID 常量 + _weekly_stage_tick + start_scheduler 内 add_job 块，位置在 _regime_tick 之后、_setup_tick 之前）
+  3. backend/tests/test_weekly_stage_cron_f216e.py（新建，3 测试 mirror test_setup_f202b.py§TestSetupScheduler/TestSetupTick）
+  4. docs/系统设计/DECISIONS.md（追加 D094：时段选址 22:20 + ordering 策略 wall-clock 间隔）
+  5. docs/系统设计/ARCHITECTURE.md（env 示例段 Cockpit Epic 块加 WEEKLY_STAGE_CRON_HOUR=22 / MINUTE=20 两行）
+
+⚠️ 待你决策：
+  - 无（NP1-NP7 已全推荐拍板）
+
+📊 功能状态：
+  F216 Phase B Weekly Stage Layer：🔄 in_progress
+    ├─ F216-a Weekly Aggregation Service:        ✅ done
+    ├─ F216-b Stage Classifier + DB:             ✅ done
+    ├─ F216-c1 Router + Stage Payload:           ✅ done
+    ├─ F216-c2 Widget + Registry:                ✅ done
+    ├─ F216-d1 setup_snapshots schema col:       ✅ done
+    ├─ F216-d2 service gate + API:               ✅ done
+    ├─ F216-d3 SetupMonitor WS column:           ✅ done
+    └─ F216-e Scheduler cron:                    📝 contract_agreed  ← 本次
+
+[下一个 Session — 建议 Sonnet]
+  F216-e Generator 模式：
+    继续开发 F216-e，Sprint Contract 已确认。
+    读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F216-e-contract.md，
+    进入 Generator 模式，从 §5 开发顺序步骤 1 开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] Sprint：F216-e weekly_stage 22:20 UTC Scheduler Cron
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - backend/app/config.py 加 weekly_stage_cron_hour=22 / minute=20
+  - backend/app/services/refresh_job.py：WEEKLY_STAGE_JOB_ID 常量 + WeeklyStageService import + _weekly_stage_tick + start_scheduler add_job 块（regime→weekly_stage→setup 顺序）
+  - backend/tests/test_weekly_stage_cron_f216e.py：新建 3 测试（S1 注册 / S2a happy / S2b swallow）
+  - docs/系统设计/DECISIONS.md：追加 D094（时段选址 + ordering 策略双段）
+  - docs/系统设计/ARCHITECTURE.md：env 示例段加 WEEKLY_STAGE_CRON_HOUR/MINUTE 两行
+  - 单元/集成测试：3/3 通过
+  - 全量回归：859 passed，0 新增失败（pre-existing failures 均为 alembic MultipleHeads + AI/FMP，与本 sprint 无关）
+  - Evaluator 自检：全部通过（11 条完成标准）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新增 cron：cockpit_weekly_stage_refresh，22:20 UTC mon-fri
+  - D094 决策记录已入库
+
+📊 功能状态：
+  F216-a: ✅ done
+  F216-b: ✅ done
+  F216-c1: ✅ done
+  F216-c2: ✅ done
+  F216-d1: ✅ done
+  F216-d2: ✅ done
+  F216-d3: ✅ done
+  F216-e: 🔍 needs_review（Evaluator 全通过，待 consistency-check C1）
+
+[下一步]
+  调用 consistency-check skill (mode=interactive) 验证 C1 invariant。
+  F216 父 feature 所有 sibling 已 done → 预期 consistency-check 允许 F216 升 done。
+  F216 全 done 后衔接 v2.0 release 流程（project-commiter skill 打 tag）。
