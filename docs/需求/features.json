@@ -12,8 +12,9 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.3",
-    "active_sprint": "F217-a",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint": "F217-b1",
+    "active_sprint_phase": "needs_review",
+    "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
     {
@@ -2791,7 +2792,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。",
+      "notes": "复用 F105/F106 已有服务。RS percentile 计算需新增。Universe 月级刷新沿用 D038。\n[consistency-check] iteration_history 缺失属早期上线前建立，非错误，忽略。",
       "completed_at": "2026-04-28"
     },
     {
@@ -2993,7 +2994,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。",
+      "notes": "规则引擎纯 deterministic（proposal §8.27 的保留/取消/修改三组条件）。AI 增强延到 F210。\n[consistency-check] iteration_history 缺失属早期上线前建立，非错误，忽略。",
       "completed_at": "2026-04-27"
     },
     {
@@ -4257,7 +4258,7 @@
           "generator_completed_at": "2026-05-15"
         }
       ],
-      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已完成）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
       "active_sprint_phase": "contract_agreed",
       "completed_at": "2026-05-15"
     },
@@ -4267,12 +4268,15 @@
       "description": "对照《慢交易系统框架》(SRS) 扫描报告 gap #4：当前 setup_service 用 SETUP_PULLBACK 近似 Capitulation Reversal（仅判定 MA150~MA50 之间回撤），与 SRS § 五 Setup 4 语义完全不同（投降式抛售 = 极端放量 + 大 range + 收盘脱底 + higher low + RS 止跌）。F217 严格按 SRS 重写：(C1) cockpit_params.SETUP.TYPES 移除 PULLBACK 加 CAPITULATION + setup_service 删 _is_pullback 加 _is_capitulation_reversal；(C2) 7 条 AND 门严格判定（5-10日累计跌幅≥10% / Vol z-score≥2.5 / true_range≥2×ATR14 / close 位于当日 high-low 上 1/3 / 次日 1-2 日不创新低 / 当前 low > 30日内倒数第二 swing low / RS line 过去 5 日未新低）+ _detect_swing_lows 辅助；(C3) _classify_setup_type 优先级更新为 BROKEN → EXTENDED → EARNINGS_DRIFT → CAPITULATION → BREAKOUT → RECLAIM → NONE（CAPITULATION 高于 BREAKOUT/RECLAIM 因语义互斥）；(C4) setup_snapshots.setup_type 枚举去 PULLBACK 加 CAPITULATION + alembic 021 + 历史 PULLBACK 行软删（legacy=true 标记或 purge_legacy_pullback）；(C5) 前端 cockpitDecisionApi 类型 + DecisionPanelWidget chips（Vol z-score / Drop 5d / Reversal day）+ SetupMonitorWidget CAPITULATION 紫色 badge。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase C。",
       "user_story": "作为投资者，我需要 cockpit 把 'Capitulation Reversal'（投降式抛售反转）作为独立 setup type 严格识别，而不是用回踩 MA21 的 PULLBACK 近似。SRS § 五 Setup 4 把 Capitulation 定位为'底部反转'机会，胜率与风险特征完全不同于 BREAKOUT/RECLAIM。当前 PULLBACK 既不能告诉我'这是投降底了'，也不能在 DecisionPanel 显示放量/收盘脱底等关键证据，相当于把两种语义混在一起。重写后我能在 SetupMonitor 紫色 badge 识别 CAPITULATION 候选，DecisionPanel 看到 Vol z-score / Drop 5d / Reversal day 三个关键 chip 证据，触发频率会显著稀疏（每月几只）— 这正是 SRS 投降式抛售的统计特征。",
       "priority": "P1",
-      "status": "planned",
-      "phase": "design_needed",
-      "sub_sprint_notes": "按 plan C1-C5 拆 3 sub-sprint（与 F216 同源 sizing 原则）：F217-a (C1+C2+C3 后端 setup_service 重写：移除 _is_pullback / 新增 _is_capitulation_reversal 7 条 AND 门 / _detect_swing_lows 辅助 / _classify_setup_type 优先级升级 / pure tests 全覆盖，预估 5-6 文件)；F217-b (C4 DB 迁移：setup_type 枚举切换 / alembic 021 前向+回滚 / 历史 PULLBACK 行 purge_legacy_pullback / SetupSnapshot model 更新 / SetupSnapshotRepository.purge_legacy_pullback 方法 + integration tests，预估 3-4 文件)；F217-c (C5 前端：cockpitDecisionApi 类型 / DecisionPanelWidget chips Vol z + Drop 5d + Reversal day / SetupMonitorWidget setupType 列加 CAPITULATION 紫色 badge / api types 更新 / widget tests，预估 4-5 文件)。三个 sub-sprint 都在 6 文件原则内，染实清晰隔离（后端逻辑 → DB → 前端展示）。a/b 之间存在依赖（a 改 cockpit_params 枚举后，b 才能做 DB 迁移），c 依赖 a+b 完成（前端类型才有上游 setup_type 来源）。",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "sub_sprint_notes": "按 plan C1-C5 拆分（与 F216 同源 sizing 原则）：F217-a (C1+C2+C3 后端 setup_service 重写：已 done 2026-05-15)；F217-b1 (C4 DB 层：alembic 021 加 legacy bool 列 + UPDATE PULLBACK 行 legacy=true 软删保审计 / setup_snapshot model 加 legacy 字段 / SetupSnapshotRepository.purge_legacy_pullback 幂等方法 + get_latest_* 加 legacy=false 过滤 / test_setup_snapshot_purge integration tests，4 文件)；F217-b2 (Pydantic Literal 扩展：2 cockpit (position/pending_order) + 4 AI schemas (trade_plan/candidate_ranker/contradiction_detector/journal_assistant) 加 CAPITULATION 字面量并暂保留 PULLBACK 向后兼容，6 文件命中上限)；F217-b3 (测试 fixture 批量去 PULLBACK：test_setup_f216d2 / test_pool_service / test_ai_schemas_f211a1 / test_f215a / test_regime_f201b / test_decision_f203b2，6 文件命中上限)；F217-b4 (Pydantic Literal 收紧：6 schemas 删 PULLBACK 字面量，b3 完成后才能跑，向后不兼容窗口结束)；F217-c (C5 前端：cockpitDecisionApi 类型 / DecisionPanelWidget chips Vol z + Drop 5d + Reversal day / SetupMonitorWidget setupType 列加 CAPITULATION 紫色 badge / api types 更新 / widget tests，预估 4-5 文件)。所有 sub-sprint ≤ 6 文件原则。依赖链：a (done) → b1 → b2 → b3 → b4 (严格串行：b2 加 Literal 后 b3 fixture 清理必须紧随，b4 删 Literal 必须 b3 后)；c 依赖 a+b1+b2 完成（前端类型才有上游 setup_type 字面量）。",
       "sub_sprints": {
-        "F217-a": "needs_review",
-        "F217-b": "design_needed",
+        "F217-a": "done",
+        "F217-b1": "needs_review",
+        "F217-b2": "design_needed",
+        "F217-b3": "design_needed",
+        "F217-b4": "design_needed",
         "F217-c": "design_needed"
       },
       "dependencies": [
@@ -4365,9 +4369,44 @@
           "phase": "contract_agreed",
           "session": "feature-dev A-1 Sprint Contract 协商",
           "changes": "F217-a Sprint Contract 已确认（用户 2026-05-15 全部按推荐方案确认 NP1-NP4 + 范围/测试/回滚）：NP1 ATR 算法重构为共享 utility（新建 backend/app/services/cockpit/_indicators.py，chart_service + setup_service 共用）；NP2 信号触发位置 bar[-1] 当日触发，条件 5 次日不创新低数据不足时跳过（lookahead-safe，不引入延后信号）；NP3 CAPITULATION entry/stop = close*(1+tick) / bar[-1].low*(1-1.5%) 默认 CAPITULATION_STOP_BUFFER_PCT；NP4 RS line 序列在 _is_capitulation_reversal 内计算 rs_line[i]=closes[i]/spy_closes[i]，函数签名扩展 spy_closes 参数。范围 6 文件（命中上限）：cockpit_params.py 修改（删 4 PULLBACK_* / 加 10 CAPITULATION_* / 更新 TYPES+REGIME maps）+ setup_service.py 修改（常量 / helpers / classify 优先级 BROKEN→EXTENDED→EARNINGS_DRIFT→CAPITULATION→BREAKOUT→RECLAIM→NONE / compute_and_store_all 签名扩展）+ _indicators.py 新建（compute_wilder_atr 共享 util）+ chart_service.py 重构（_compute_atr_series 调用共享 util，保持输出 schema）+ test_capitulation_reversal.py 新建（14+ pure tests T1-T11 覆盖 7 条 AND 门 happy + 每条单独失败 + 数据不足分支 + 优先级 5 case + helpers sanity）+ test_setup_f202a.py fixture 迁移（test_s4 PULLBACK→BREAKOUT / test_s15 期望 NONE 改名）。排除：Pydantic Literal schemas（6 文件，留 F217-b）/ DB 迁移 / 前端 chips+badge / decision_service capitulationEvidence 填充。Contract: docs/开发/sprint-contracts/F217-a-contract.md (14 完成标准 + 7 步开发顺序 + 6 wip commit + 1 final commit)。下个 session Generator 从 §4 Step 1（_indicators 抽取）开始。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-a",
+          "phase": "in_progress",
+          "session": "feature-dev Generator",
+          "changes": "Generator 模式执行完成：Step1 _indicators.py / Step2 chart_service ATR重构 / Step3 cockpit_params CAPITULATION_* / Step4 setup_service 7 AND门 / Step5 test_capitulation_reversal 34 tests / Step6 test_setup_f202a fixture迁移 / Step7 全量回归 1084 passed 0新增失败。feat(F217-a) final commit: 6febc93。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-a",
+          "phase": "needs_review",
+          "session": "feature-dev Evaluator",
+          "changes": "Evaluator 验证通过：T1-T14 全覆盖，ruff 0 warning，全量回归 0 新增失败。phase → needs_review。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-a",
+          "phase": "done",
+          "session": "acceptance",
+          "changes": "acceptance skill 验收通过（用户确认 2026-05-15）。静态扫描全绿，34 pure tests，ruff 0 warning，全量回归 0 新增失败。验收记录：docs/验收/v2.2.0-F217-a-acceptance.md。phase → done。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-b",
+          "phase": "design_needed",
+          "session": "feature-dev A-1 sizing 协商",
+          "changes": "F217-b 6 文件原则预扫描超限（16 文件：DB 4 + Pydantic Literal 6 + 测试 fixture 6），用户确认拆分为 F217-b1（DB 层 4 files）/ F217-b2（Pydantic Literal 6 files 加 CAPITULATION 暂保留 PULLBACK）/ F217-b3（测试 fixture 6 files 去 PULLBACK）/ F217-b4（Pydantic Literal 删 PULLBACK 收紧）。NP1=A（alembic 021 加 legacy bool 列 + UPDATE 软删，保审计，purge_legacy_pullback 幂等）/ NP2=Y（Literal 暂保留 PULLBACK 向后兼容，b4 在 b3 完成后再删，更安全）。sub_sprints 字段从 {F217-b} 改为 {F217-b1,b2,b3,b4}。consistency-check interactive 已跑（C4/C6/C8 全清）。下一步：协商 F217-b1 Sprint Contract。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-b1",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Sprint Contract 协商",
+          "changes": "F217-b1 Sprint Contract 已确认（用户 2026-05-15 全部同意）。范围 5 文件：alembic 021_f217b1_setup_snapshots_legacy.py 新建（add legacy BOOL 列 + UPDATE PULLBACK 行 legacy=true 软删，server_default 加列后立刻 alter_column 撤销避免与 ORM default 分叉）+ setup_snapshot.py model 加 legacy 字段（default=False）+ setup_snapshot_repository.py 加 purge_legacy_pullback() 幂等方法（where legacy==False 短路第二次调用） + get_latest_all_active 加 .where(legacy==False) 过滤（get_latest_for_tickers 委托覆盖）+ decision_service.py L69-74 直接 select 加 legacy 过滤（repo 外唯一直接查询路径，grep 验证）+ test_setup_snapshot_purge.py 新建（10 tests T1-T10：alembic upgrade/downgrade round-trip / 已有 PULLBACK 行被标 legacy=true / purge 幂等 rowcount=0 / 不误标非 PULLBACK / get_latest 完全过滤不 fallback / decision_service 隔离 / upsert_batch 新行 legacy=False / delete_before 不区分 legacy / 全量回归）。NP1=A 确认 + 新增 NP-b1-1（server_default 立刻撤销）/ NP-b1-2（downgrade 只 drop_column）/ NP-b1-3（3 处直接 .where，不引入 query helper）。排除：Pydantic Literal CAPITULATION（b2/b4）/ 测试 fixture 去 PULLBACK（b3）/ 前端 chips badge（c）/ user_settings preferred_setups JSON 迁移（暂留）/ CAPITULATION_ENABLED flag。Contract: docs/开发/sprint-contracts/F217-b1-contract.md。下个 session Generator 从 §4 Step 1（alembic 021）开始。"
         }
       ],
-      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已 done — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已 done — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。"
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已完成 — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已完成 — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。"
     }
   ]
 }

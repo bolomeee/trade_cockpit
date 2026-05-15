@@ -1,4 +1,77 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15 18:00] Sprint：F217-b1 Generator 完成（Cockpit Phase C DB 层）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - alembic 021：setup_snapshots 加 legacy BOOLEAN NOT NULL 列
+  - 021 upgrade：UPDATE WHERE setup_type='PULLBACK' → legacy=1 软删历史行
+  - 021 batch_alter_table：移除 server_default，ORM default=False 接管
+  - SetupSnapshot model：legacy 字段 (Boolean, nullable=False, default=False)
+  - Repository：purge_legacy_pullback() 幂等方法 + get_latest_all_active legacy 过滤
+  - decision_service：直接 select 加 `.where(legacy == False)` 过滤
+  - 新建 tests/test_setup_snapshot_purge.py：T1-T9 共 12 条测试全通过
+  - 全量回归：1049/1057 通过；8 预存失败（stash 验证均非 F217-b1 引入）
+  - Lint：ruff check 5 文件无新增 warning
+  - phase → needs_review
+
+⚠️ 预存失败（非本 sprint 引入，告知用户）：
+  - test_schema.py::test_all_tables_created（weekly_stage_snapshots 未加入 EXPECTED_TABLES，019 migration 引入）
+  - test_ai_schemas_f209.py::test_D1_market_narrator_success（tier 值不符）
+  - test_ai_schemas_f211a1.py（R5/R6 registry 解析）
+  - test_decision_f215b.py::TestAlembic018RoundTrip（018 migration 测试）
+  - test_fmp_client.py（screener universe 去重）
+  - test_regime_f201a/b.py（INDEX_ETFS 预期 3 实际 4 — F217-a 已引入 VXX）
+
+🔧 系统变更：
+  - 新迁移 alembic/versions/021_f217b1_setup_snapshots_legacy.py
+  - backend/app/models/setup_snapshot.py（+legacy 字段）
+  - backend/app/repositories/setup_snapshot_repository.py（+purge + filter）
+  - backend/app/services/cockpit/decision_service.py（+legacy filter）
+  - backend/tests/test_setup_snapshot_purge.py（新建）
+
+📊 功能状态：
+  F217 — in_progress
+    F217-a：✅ done
+    F217-b1：🔍 needs_review ← 当前
+    F217-b2：⬜ design_needed (Pydantic Literal 加 CAPITULATION)
+    F217-b3：⬜ design_needed (fixture 去 PULLBACK)
+    F217-b4：⬜ design_needed (Pydantic Literal 删 PULLBACK)
+    F217-c：⬜ design_needed (前端 chips + 紫色 badge)
+
+[下一步]
+  运行 consistency-check (mode=interactive) 确认 C1/C4/C5 invariants
+  用户验收 F217-b1 后开启 F217-b2 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] Sprint：F217-b1 Contract 协商完成（拆分后第 1 个 sub-sprint）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - F217-b 预扫描超 6 文件原则（16 文件），拆为 b1/b2/b3/b4 + c 共 5 个 sub-sprint
+  - sub_sprints 字段同步：{F217-b} → {F217-b1, F217-b2, F217-b3, F217-b4}
+  - consistency-check interactive 跑过：C4（iteration_history 缺记录）/ C6（sub_sprint_notes stale）/ C8（active_sprint stale）3 项全清
+  - F217-b1 Sprint Contract 起草并用户全部确认（NP1=A 加 legacy 列保审计 / NP2=Y Literal 暂保留 PULLBACK / NP-b1-1~3 新增 3 项）
+  - sub_sprints.F217-b1 = contract_agreed；_pipeline_status.active_sprint=F217-b1, active_sprint_phase=contract_agreed
+  - 范围 5 文件：alembic 021 + setup_snapshot model + repo (purge + get_latest 过滤) + decision_service (直接 select 过滤) + test_setup_snapshot_purge integration tests
+
+📊 功能状态：
+  F217   — phase: in_progress (Cockpit Phase C)
+   ├── F217-a   — done ✅
+   ├── F217-b1  — contract_agreed 🟡（DB 层，待 Generator）
+   ├── F217-b2  — design_needed (Pydantic Literal 加 CAPITULATION，6 files)
+   ├── F217-b3  — design_needed (测试 fixture 去 PULLBACK，6 files)
+   ├── F217-b4  — design_needed (Pydantic Literal 删 PULLBACK 收紧)
+   └── F217-c   — design_needed (前端 chips + 紫色 badge)
+
+⚠️ 待用户决策：无（Contract 全部 4 项条款已签字）
+
+[下一个 Session]
+  开新 session（建议 Sonnet），粘贴：
+  > 继续开发 F217-b1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b1-contract.md，
+  > 进入 Generator 模式，从 §4 开发顺序 Step 1（alembic 021 迁移）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-15] Pipeline 阶段 0：project-init 迭代登记 F217 (Phase C)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -99,3 +172,26 @@
 
 [下一步]
   F217-b：alembic 021 setup_type 枚举迁移（PULLBACK→CAPITULATION）+ SetupSnapshotRepository.purge_legacy_pullback
+
+[2026-05-15] F217-a 验收通过 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ acceptance skill 验收结果：全部通过
+  - 静态扫描：PULLBACK 零引用，10 CAPITULATION_* 字段，_ACTIONABLE_TYPES 正确
+  - _classify_setup_type 优先级：BROKEN > EXTENDED > EARNINGS_DRIFT > CAPITULATION > BREAKOUT > RECLAIM > NONE
+  - 测试：test_capitulation_reversal.py 34 passed / test_setup_f202a.py 27 passed
+  - 全量回归：1084 passed，7 pre-existing failed，0 新增失败
+  - Ruff lint（F217-a 6 文件）：All checks passed
+
+📋 Consistency drift 已修复：
+  - C7：补写 in_progress/needs_review/done 三条 iteration_history
+  - C8：_pipeline_status.active_sprint_phase → done
+
+📊 功能状态更新：
+  F217   — phase: in_progress (parent)
+   ├── F217-a — done  ← 本次完成
+   ├── F217-b — design_needed（alembic 021 枚举迁移）
+   └── F217-c — design_needed（前端 chips + 紫色 badge）
+
+[下一步]
+  F217-b：Sprint Contract 协商（alembic 021 setup_type 枚举切换 + purge_legacy_pullback）
