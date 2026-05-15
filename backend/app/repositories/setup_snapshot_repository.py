@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,18 @@ class SetupSnapshotRepository:
         self.db.commit()
         return len(rows)
 
+    def purge_legacy_pullback(self) -> int:
+        """Mark all setup_type='PULLBACK' rows as legacy=True. Idempotent — safe to call multiple times."""
+        stmt = (
+            update(SetupSnapshot)
+            .where(SetupSnapshot.setup_type == "PULLBACK")
+            .where(SetupSnapshot.legacy == False)  # noqa: E712 — SQLAlchemy requires == False
+            .values(legacy=True)
+        )
+        result = self.db.execute(stmt)
+        self.db.commit()
+        return int(result.rowcount or 0)
+
     def get_latest_all_active(self, active_tickers: list[str]) -> list[SetupSnapshot]:
         if not active_tickers:
             return []
@@ -46,6 +58,7 @@ class SetupSnapshotRepository:
             row = self.db.execute(
                 select(SetupSnapshot)
                 .where(SetupSnapshot.ticker == ticker)
+                .where(SetupSnapshot.legacy == False)  # noqa: E712
                 .order_by(SetupSnapshot.scan_date.desc())
                 .limit(1)
             ).scalar_one_or_none()
