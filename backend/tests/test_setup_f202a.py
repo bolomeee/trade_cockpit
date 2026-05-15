@@ -168,11 +168,11 @@ def test_s4_upsert_batch_updates_on_conflict(db: Session) -> None:
         "suggested_action": "enter", "scanned_at": datetime.now(timezone.utc),
     }
     repo.upsert_batch([base])
-    updated = {**base, "setup_type": "PULLBACK", "ready_signal": False, "suggested_action": "watch"}
+    updated = {**base, "setup_type": "BREAKOUT", "ready_signal": False, "suggested_action": "watch"}
     repo.upsert_batch([updated])
     rows = db.execute(select(SetupSnapshot).where(SetupSnapshot.ticker == "NVDA")).scalars().all()
     assert len(rows) == 1
-    assert rows[0].setup_type == "PULLBACK"
+    assert rows[0].setup_type == "BREAKOUT"
     assert rows[0].ready_signal is False
 
 
@@ -356,24 +356,21 @@ def test_s14_classify_breakout() -> None:
     assert abs(t2r - (entry + 2 * (entry - stop))) < 0.01
 
 
-def test_s15_classify_pullback() -> None:
-    # Fabricate MAs directly to guarantee pullback zone conditions:
-    # close(194) between MA150(170) and MA50*1.03(198.8), above MA50*0.97(187.2)
-    # pivot20(220) too far above close → BREAKOUT zone NOT triggered
+def test_s15_pullback_zone_now_returns_none() -> None:
+    # D095 / F217-a: SETUP_PULLBACK abolished. Same MA fixtures that formerly returned
+    # PULLBACK now fall through to NONE (RECLAIM also blocked: prev_closes all above MA50).
+    # pivot20(220) far above close → BREAKOUT zone NOT triggered.
+    # No capitulation inputs provided → CAPITULATION not evaluated.
     mas = {10: 200.0, 21: 195.0, 50: 193.0, 150: 170.0, 200: 165.0}
     last_close = 194.0
-    highs = [220.0] * 50   # pivot20=220, close far below → no BREAKOUT
-    prev_closes = [190.0] * 20  # no reclaim scenario
+    highs = [220.0] * 50          # pivot20=220, close far below → no BREAKOUT
+    prev_closes = [196.0] * 20    # all above MA50=193 → no RECLAIM (D095 / F217-a)
     trend_score = 4
 
     st, entry, stop, t2r, t3r = _classify_setup_type(
         last_close, mas, highs, trend_score, False, prev_closes
     )
-    assert st == "PULLBACK"
-    assert entry == mas[21]
-    assert stop is not None
-    expected_stop = round(entry * (1 - 0.03), 4)
-    assert abs(stop - expected_stop) < 0.01
+    assert st == "NONE"   # PULLBACK abolished; RECLAIM blocked; no CAPITULATION inputs
 
 
 # ── S16: compute_and_store_all integration ────────────────────────────────────
