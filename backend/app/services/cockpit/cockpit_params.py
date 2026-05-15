@@ -143,11 +143,6 @@ class CockpitSetupParams(BaseModel):
         description="close within this% below 20d-high → BREAKOUT zone",
         ge=0.5, le=10.0,
     )
-    PULLBACK_ZONE_ABOVE_MA50_PCT: float = Field(
-        default=3.0,
-        description="close <= MA50*(1+this/100) → still in pullback zone (not extended)",
-        ge=0.5, le=10.0,
-    )
     RECLAIM_LOOKBACK_BARS: int = Field(
         default=10,
         description="Look back N bars to find a close < MA50; if found and current close > MA50 → RECLAIM",
