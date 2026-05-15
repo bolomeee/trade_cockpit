@@ -12,6 +12,7 @@ from app.external.fmp_client import FmpClient
 from app.models import DailyBar, Stock
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.stock_repository import StockRepository
+from app.services.cockpit._indicators import compute_wilder_atr
 from app.services.cockpit.cockpit_params import CHART
 from app.services.watchlist_service import APIError
 
@@ -63,34 +64,18 @@ def _compute_ema_series(bars: list[dict[str, Any]], period: int) -> list[dict[st
 def _compute_atr_series(bars: list[dict[str, Any]], period: int) -> list[dict[str, Any]]:
     """Wilder ATR series.
 
-    ATR_seed = SMA(TR, period) for the first period bars.
-    ATR_i = (ATR_{i-1} * (period-1) + TR_i) / period for subsequent bars.
-    Returns [{date, value}] starting after the first `period` bars (index period onward).
+    Delegates ATR computation to compute_wilder_atr; wraps floats into {date, value} dicts.
+    Returns [{date, value}] starting at bars[period] (index period onward).
     """
     n = len(bars)
     if period <= 0 or n < period + 1:
         return []
-
-    trs: list[float] = []
-    for i in range(1, n):
-        high = bars[i]["high"]
-        low = bars[i]["low"]
-        prev_close = bars[i - 1]["close"]
-        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
-        trs.append(tr)
-
-    # trs has n-1 elements; trs[0] corresponds to bars[1]
-    if len(trs) < period:
-        return []
-
-    seed_atr = sum(trs[:period]) / period
-    result = [{"date": bars[period]["date"], "value": seed_atr}]
-
-    current_atr = seed_atr
-    for i in range(period, len(trs)):
-        current_atr = (current_atr * (period - 1) + trs[i]) / period
-        result.append({"date": bars[i + 1]["date"], "value": current_atr})
-    return result
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr_values = compute_wilder_atr(highs, lows, closes, period)
+    # atr_values[0] aligns with bars[period] (same as former seed_atr at bars[period])
+    return [{"date": bars[period + i]["date"], "value": v} for i, v in enumerate(atr_values)]
 
 
 def _compute_avwap_series(bars: list[dict[str, Any]], anchor: date) -> list[dict[str, Any]]:
