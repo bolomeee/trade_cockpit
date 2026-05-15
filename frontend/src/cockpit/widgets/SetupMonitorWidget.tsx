@@ -8,6 +8,7 @@ import {
   type SetupItem,
   type SetupSummary,
 } from '../lib/api/setupMonitorApi'
+import { STAGE_LABELS, readStageColor } from '../lib/weeklyStageTokens'
 import { removeStock } from '@/lib/api/watchlist'
 import { SetupTypeBadge } from '../components/SetupTypeBadge'
 import { SetupQualityBadge } from '../components/SetupQualityBadge'
@@ -185,15 +186,16 @@ export function SetupMonitorWidget() {
                   zIndex: 1,
                 }}
               >
-                <Th width="14%">Ticker</Th>
-                <Th width="16%">Setup</Th>
+                <Th width="13%">Ticker</Th>
+                <Th width="14%">Setup</Th>
                 <Th width="5%">Q</Th>
-                <Th width="11%">Entry</Th>
-                <Th width="11%">Stop</Th>
-                <Th width="8%">R:R</Th>
+                <Th width="10%">Entry</Th>
+                <Th width="10%">Stop</Th>
+                <Th width="7%">R:R</Th>
                 <Th width="9%">Dist</Th>
                 <Th width="5%">RS</Th>
                 <Th width="6%">Vol Z</Th>
+                <Th width="6%" align="center">WS</Th>
                 <Th width="7%" align="center">Earn</Th>
                 <Th width="8%"></Th>
               </tr>
@@ -325,6 +327,9 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
         {fmt2(item.volumeZscore)}
       </td>
       <td style={{ ...tdStyle, textAlign: 'center' }}>
+        <WeeklyStageCell stage={item.weeklyStage} />
+      </td>
+      <td style={{ ...tdStyle, textAlign: 'center' }}>
         <EarningsRiskDot value={item.earningsRisk} />
       </td>
       <td style={{ ...tdStyle, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
@@ -408,4 +413,44 @@ const tdStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
+}
+
+function WeeklyStageCell({ stage }: { stage: number | null }) {
+  if (stage == null || stage === 0) {
+    return (
+      <span
+        title={stage === 0 ? STAGE_LABELS[0] : '无 Weekly Stage 数据'}
+        style={{ color: 'var(--color-text-muted)' }}
+      >
+        —
+      </span>
+    )
+  }
+  const color = readStageColor(stage)
+  const label = STAGE_LABELS[stage] ?? 'Unknown'
+  return (
+    <span
+      data-stage={stage}
+      title={label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        fontFamily: 'var(--font-family-numeric)',
+        color: 'var(--color-text-primary)',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          background: color,
+          display: 'inline-block',
+        }}
+      />
+      {stage}
+    </span>
+  )
 }

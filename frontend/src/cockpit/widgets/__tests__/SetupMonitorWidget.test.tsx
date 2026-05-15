@@ -876,3 +876,97 @@ describe('§V – Vol Z column', () => {
     expect(dashes.length).toBeGreaterThanOrEqual(1)
   })
 })
+
+// ─── §W – WS column ───────────────────────────────────────────────────────────
+
+describe('§W – WS column', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('W1: table header renders "WS" column', async () => {
+    vi.stubGlobal('fetch', makeRoutedFetch({ '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH }))
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.getByText('WS')).toBeInTheDocument()
+  })
+
+  it.each([
+    [1, 'Base'],
+    [2, 'Advancing'],
+    [3, 'Distribution'],
+    [4, 'Declining'],
+  ])('W2-5: stage=%i → 数字 "%i" + title="%s"', async (stage, label) => {
+    const item = makeItem({ ticker: 'AAPL', weeklyStage: stage })
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                data: {
+                  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                  items: [item],
+                },
+              }),
+          } as FetchResponse),
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    const cell = await screen.findByTitle(label)
+    expect(cell).toHaveAttribute('data-stage', String(stage))
+    expect(cell).toHaveTextContent(String(stage))
+  })
+
+  it('W6: stage=0 → "—" + title="Unknown"', async () => {
+    const item = makeItem({ ticker: 'AAPL', weeklyStage: 0 })
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                data: {
+                  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                  items: [item],
+                },
+              }),
+          } as FetchResponse),
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    const cell = await screen.findByTitle('Unknown')
+    expect(cell).toHaveTextContent('—')
+  })
+
+  it('W7: stage=null → "—" + title="无 Weekly Stage 数据"', async () => {
+    const item = makeItem({ ticker: 'AAPL', weeklyStage: null })
+    vi.stubGlobal(
+      'fetch',
+      makeRoutedFetch({
+        '/cockpit/setup-monitor': () =>
+          Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                data: {
+                  summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                  items: [item],
+                },
+              }),
+          } as FetchResponse),
+      }),
+    )
+    renderWidget()
+    await screen.findByText('AAPL')
+    const cell = await screen.findByTitle('无 Weekly Stage 数据')
+    expect(cell).toHaveTextContent('—')
+  })
+})
