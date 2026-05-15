@@ -11,33 +11,10 @@ import {
 } from 'lightweight-charts'
 import { useCockpitStore } from '@/store/cockpitStore'
 import { getCockpitWeeklyChart } from '../lib/api/cockpitWeeklyChartApi'
+import { STAGE_LABELS, STAGE_BG_TOKENS, STAGE_BG_FALLBACKS } from '../lib/weeklyStageTokens'
 
 const WEEKLY_MAS = [10, 30, 40] as const
 const DEFAULT_WEEKS = 50
-
-const STAGE_LABELS: Record<number, string> = {
-  0: 'Unknown',
-  1: 'Base',
-  2: 'Advancing',
-  3: 'Distribution',
-  4: 'Declining',
-}
-
-const STAGE_BG_TOKENS: Record<number, string> = {
-  0: '--color-text-muted',
-  1: '--color-log-warn',
-  2: '--color-change-positive',
-  3: '--color-log-warn',
-  4: '--color-change-negative',
-}
-
-const STAGE_BG_FALLBACKS: Record<number, string> = {
-  0: '#6b7280',
-  1: '#f59e0b',
-  2: '#10b981',
-  3: '#f59e0b',
-  4: '#ef4444',
-}
 
 const MA_TOKENS: Record<string, string> = {
   '10': '--color-log-warn',

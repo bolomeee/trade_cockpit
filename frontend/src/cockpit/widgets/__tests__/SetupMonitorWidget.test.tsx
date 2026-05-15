@@ -67,6 +67,7 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
     volumeZscore: 1.83,
     obvTrend: 'UP',
     upDownVolumeRatio: 1.45,
+    weeklyStage: 2,
     ...overrides,
   }
 }

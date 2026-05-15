@@ -42,6 +42,7 @@ export type SetupItem = {
   volumeZscore: number | null
   obvTrend: ObvTrend
   upDownVolumeRatio: number | null
+  weeklyStage: number | null
 }
 
 export type SetupSummary = {
