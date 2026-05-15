@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v1.10",
     "active_sprint": "F216-e",
-    "active_sprint_phase": "contract_agreed"
+    "active_sprint_phase": "needs_review"
   },
   "_iteration_log": [
     {
@@ -3685,7 +3685,7 @@
       },
       "dependencies": [
         "F208-c",
-        "F211-a2"
+        "F211"
       ],
       "estimated_sessions": 2,
       "estimated_files_changed": [],
