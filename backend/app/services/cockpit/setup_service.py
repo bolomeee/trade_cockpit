@@ -1,4 +1,4 @@
-"""F202-a / F215-b: SetupService — compute and store daily setup snapshots for all watchlist stocks."""
+"""F202-a / F215-b / F217-a: SetupService — compute and store daily setup snapshots for all watchlist stocks."""
 
 from __future__ import annotations
 
@@ -15,20 +15,21 @@ from app.repositories.market_regime_repository import MarketRegimeRepository
 from app.repositories.setup_snapshot_repository import SetupSnapshotRepository
 from app.repositories.stock_repository import StockRepository
 from app.repositories.weekly_stage_repository import WeeklyStageRepository
+from app.services.cockpit._indicators import compute_wilder_atr
 from app.services.cockpit.cockpit_params import SETUP
 from app.services.watchlist_service import APIError
 
 # ── Setup type constants ───────────────────────────────────────────────────────
 
 SETUP_BREAKOUT = "BREAKOUT"
-SETUP_PULLBACK = "PULLBACK"
+SETUP_CAPITULATION = "CAPITULATION"
 SETUP_RECLAIM = "RECLAIM"
 SETUP_EARNINGS_DRIFT = "EARNINGS_DRIFT"
 SETUP_EXTENDED = "EXTENDED"
 SETUP_BROKEN = "BROKEN"
 SETUP_NONE = "NONE"
 
-_ACTIONABLE_TYPES = {SETUP_BREAKOUT, SETUP_PULLBACK, SETUP_RECLAIM, SETUP_EARNINGS_DRIFT}
+_ACTIONABLE_TYPES = {SETUP_BREAKOUT, SETUP_CAPITULATION, SETUP_RECLAIM, SETUP_EARNINGS_DRIFT}
 
 # suggestedAction → summary bucket
 _ACTION_TO_BUCKET = {
@@ -106,14 +107,17 @@ def _classify_setup_type(
     prev_closes: list[float],
     vol_zscore: float | None = None,
     ud_ratio: float | None = None,
+    lows: list[float] | None = None,
+    volumes: list[int] | None = None,
+    spy_closes: list[float] | None = None,
 ) -> tuple[str, float | None, float | None, float | None, float | None]:
     """
     Returns (setup_type, entry_price, stop_price, target_2r, target_3r).
-    Priority: BROKEN > EXTENDED > EARNINGS_DRIFT > BREAKOUT > PULLBACK > RECLAIM > NONE.
+    Priority: BROKEN > EXTENDED > EARNINGS_DRIFT > CAPITULATION > BREAKOUT > RECLAIM > NONE.
     BREAKOUT gate (D088): vol_zscore >= VOL_ACC_BREAKOUT_Z_MIN AND ud_ratio >= VOL_ACC_BREAKOUT_UD_MIN;
     either unmet (incl. None) → direct NONE, no fall-through.
+    CAPITULATION (D095 / F217-a): 7 AND gates evaluated when lows/volumes/spy_closes provided.
     """
-    ma10 = mas.get(10)
     ma21 = mas.get(21)
     ma50 = mas.get(50)
     ma150 = mas.get(150)
@@ -123,6 +127,8 @@ def _classify_setup_type(
         if risk <= 0:
             return entry, entry
         return entry + 2 * risk, entry + 3 * risk
+
+    tick = SETUP.ENTRY_TICK_PCT / 100
 
     # 1. BROKEN
     if ma150 is not None and last_close < ma150:
@@ -135,8 +141,6 @@ def _classify_setup_type(
     if (last_close - ma50) / ma50 * 100 > SETUP.EXTENDED_MA50_PCT:
         return SETUP_EXTENDED, None, None, None, None
 
-    tick = SETUP.ENTRY_TICK_PCT / 100
-
     # 3. EARNINGS_DRIFT
     if had_recent_earnings and ma21 is not None and last_close > ma21:
         entry = round(last_close * (1 + tick), 4)
@@ -144,7 +148,16 @@ def _classify_setup_type(
         t2r, t3r = _targets(entry, stop)
         return SETUP_EARNINGS_DRIFT, entry, stop, round(t2r, 4), round(t3r, 4)
 
-    # 4. BREAKOUT (with volume accumulation gate — D088)
+    # 4. CAPITULATION (D095 / F217-a) — short-circuits before BREAKOUT/RECLAIM
+    if lows is not None and volumes is not None and spy_closes is not None:
+        closes_full = prev_closes + [last_close]
+        if _is_capitulation_reversal(closes_full, highs, lows, volumes, spy_closes):
+            entry = round(last_close * (1 + tick), 4)
+            stop = round(lows[-1] * (1 - SETUP.CAPITULATION_STOP_BUFFER_PCT / 100), 4)
+            t2r, t3r = _targets(entry, stop)
+            return SETUP_CAPITULATION, entry, stop, round(t2r, 4), round(t3r, 4)
+
+    # 5. BREAKOUT (with volume accumulation gate — D088)
     if len(highs) >= SETUP.PIVOT_LOOKBACK_BARS and trend_score >= 3:
         pivot = max(highs[-SETUP.PIVOT_LOOKBACK_BARS:])
         lower_bound = pivot * (1 - SETUP.BREAKOUT_ZONE_PCT / 100)
@@ -157,17 +170,6 @@ def _classify_setup_type(
             stop = round(ma50 * (1 - SETUP.BREAKOUT_STOP_MA50_PCT / 100), 4)
             t2r, t3r = _targets(entry, stop)
             return SETUP_BREAKOUT, entry, stop, round(t2r, 4), round(t3r, 4)
-
-    # 5. PULLBACK
-    if ma21 is not None and trend_score >= 3:
-        lower_support = ma150 if ma150 is not None else ma50 * (1 - SETUP.PULLBACK_FALLBACK_SUPPORT_PCT / 100)
-        upper_ceiling = ma50 * (1 + SETUP.PULLBACK_ZONE_ABOVE_MA50_PCT / 100)
-        pullback_floor = ma50 * (1 - SETUP.PULLBACK_FLOOR_MA50_PCT / 100)
-        if lower_support <= last_close <= upper_ceiling and last_close > pullback_floor:
-            entry = round(ma21, 4)
-            stop = round(ma21 * (1 - SETUP.PULLBACK_STOP_MA21_PCT / 100), 4)
-            t2r, t3r = _targets(entry, stop)
-            return SETUP_PULLBACK, entry, stop, round(t2r, 4), round(t3r, 4)
 
     # 6. RECLAIM
     if trend_score >= 2 and last_close > ma50:
@@ -329,6 +331,127 @@ def _compute_up_down_volume_ratio(
     return round(up_vol / down_vol, 4)
 
 
+# ── Capitulation Reversal helpers (F217-a / D095) ─────────────────────────────
+
+
+def _compute_atr_value(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    period: int,
+) -> float | None:
+    """Latest Wilder ATR scalar; None when insufficient data."""
+    series = compute_wilder_atr(highs, lows, closes, period)
+    return series[-1] if series else None
+
+
+def _detect_swing_lows(lows: list[float], lookback: int) -> list[int]:
+    """Descending list of confirmed swing low indices within the last `lookback` bars.
+
+    Swing low: lows[i] < lows[i-1] and lows[i] < lows[i+1].
+    Excludes the last bar (no i+1 to compare). Most-recent index first.
+    """
+    n = len(lows)
+    start = max(1, n - lookback)
+    result = [i for i in range(start, n - 1) if lows[i] < lows[i - 1] and lows[i] < lows[i + 1]]
+    result.sort(reverse=True)
+    return result
+
+
+def _check_cumulative_drop(
+    closes: list[float],
+    min_days: int,
+    max_days: int,
+    drop_pct: float,
+) -> bool:
+    """True if any sliding window [min_days, max_days] shows cumulative drop >= drop_pct%."""
+    n = len(closes)
+    for w in range(min_days, max_days + 1):
+        if n <= w:
+            continue
+        start = closes[-1 - w]
+        if start <= 0:
+            continue
+        if (start - closes[-1]) / start * 100 >= drop_pct:
+            return True
+    return False
+
+
+def _check_close_in_upper_bin(close: float, high: float, low: float, upper_bin: float) -> bool:
+    """True if close is in the top `upper_bin` fraction of the day's H-L range."""
+    day_range = high - low
+    if day_range <= 0:
+        return False
+    return (close - low) / day_range >= (1.0 - upper_bin)
+
+
+def _is_capitulation_reversal(
+    closes: list[float],
+    highs: list[float],
+    lows: list[float],
+    volumes: list[int],
+    spy_closes: list[float],
+) -> bool:
+    """SRS §5 Setup 4 — 7 AND gates for Capitulation Reversal signal.
+
+    Priority: evaluated at bar[-1] (today). Returns False on any gate failure.
+    Condition 5 (lookahead) is skipped when no future bars exist (NP2 — lookahead-safe).
+    """
+    n = len(closes)
+    # T7: insufficient data guard
+    if n < SETUP.CAPITULATION_SWING_LOW_LOOKBACK + 2:
+        return False
+
+    # Gate 1: cumulative drop in [MIN_DAYS, MAX_DAYS] sliding window
+    if not _check_cumulative_drop(
+        closes,
+        SETUP.CAPITULATION_DROP_LOOKBACK_MIN_DAYS,
+        SETUP.CAPITULATION_DROP_LOOKBACK_MAX_DAYS,
+        SETUP.CAPITULATION_DROP_PCT,
+    ):
+        return False
+
+    # Gate 2: today's volume z-score >= threshold
+    vol_z = _compute_volume_zscore(volumes, SETUP.VOL_ACC_ZSCORE_WINDOW)
+    if vol_z is None or vol_z < SETUP.CAPITULATION_VOL_Z_MIN:
+        return False
+
+    # Gate 3: today's true range >= ATR14 * multiplier
+    if n < 2:
+        return False
+    atr14 = _compute_atr_value(highs, lows, closes, 14)
+    if atr14 is None or atr14 <= 0:
+        return False
+    tr_today = max(highs[-1] - lows[-1], abs(highs[-1] - closes[-2]), abs(lows[-1] - closes[-2]))
+    if tr_today < SETUP.CAPITULATION_ATR_TR_MULTIPLIER * atr14:
+        return False
+
+    # Gate 4: close recovers to upper bin of day's range
+    if not _check_close_in_upper_bin(closes[-1], highs[-1], lows[-1], SETUP.CAPITULATION_CLOSE_UPPER_BIN):
+        return False
+
+    # Gate 5: next days don't create new low — skipped when no future bars (NP2)
+
+    # Gate 6: today's low is higher than the 2nd most-recent confirmed swing low
+    swing_lows = _detect_swing_lows(lows, SETUP.CAPITULATION_SWING_LOW_LOOKBACK)
+    if len(swing_lows) >= 2 and lows[-1] < lows[swing_lows[1]]:
+        return False
+
+    # Gate 7: RS line (close/spy_close) has not made a new low in last RS_NO_NEW_LOW_DAYS
+    rs_days = SETUP.CAPITULATION_RS_NO_NEW_LOW_DAYS
+    if len(closes) >= rs_days + 1 and len(spy_closes) >= rs_days + 1 and spy_closes[-1] != 0:
+        rs_today = closes[-1] / spy_closes[-1]
+        rs_prev = [
+            closes[-(i + 1)] / spy_closes[-(i + 1)]
+            for i in range(1, rs_days + 1)
+            if spy_closes[-(i + 1)] != 0
+        ]
+        if rs_prev and rs_today <= min(rs_prev):
+            return False
+
+    return True
+
+
 # ── SetupService ───────────────────────────────────────────────────────────────
 
 
@@ -430,6 +553,7 @@ class SetupService:
             setup_type, entry, stop, t2r, t3r = _classify_setup_type(
                 closes[-1], mas, highs, trend_score, had_recent_earnings, closes[:-1],
                 vol_zscore=vol_zscore, ud_ratio=ud_ratio,
+                lows=lows, volumes=volumes, spy_closes=spy_closes,
             )
 
             dist = None
