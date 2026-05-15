@@ -33,15 +33,9 @@ from app.services.cockpit.chart_service import _compute_atr_series
 from app.services.cockpit.cockpit_params import SETUP
 from app.services.cockpit.setup_service import (
     SETUP_CAPITULATION,
-    SETUP_EARNINGS_DRIFT,
-    SETUP_NONE,
     SetupService,
     _ACTIONABLE_TYPES,
-    _check_close_in_upper_bin,
-    _check_cumulative_drop,
     _classify_setup_type,
-    _compute_atr_value,
-    _compute_volume_zscore,
     _detect_swing_lows,
     _is_capitulation_reversal,
 )
@@ -90,8 +84,11 @@ def _base_cap_inputs() -> tuple[list[float], list[float], list[float], list[int]
              (75.0,   80.0,  74.0, 470.0),   # swing low
              (112.0, 113.0, 111.0, 475.0),
              (115.0, 116.0, 114.0, 480.0)]
-    for j, (c, h, l, s) in enumerate(_vals):
-        closes[50+j] = c; highs[50+j] = h; lows[50+j] = l; spy[50+j] = s
+    for j, (c, h, lo, s) in enumerate(_vals):
+        closes[50+j] = c
+        highs[50+j] = h
+        lows[50+j] = lo
+        spy[50+j] = s
 
     # Phase 3: recovery 54-59
     for i in range(54, 60):
@@ -105,8 +102,11 @@ def _base_cap_inputs() -> tuple[list[float], list[float], list[float], list[int]
               (90.0,   95.0,  89.0, 510.0),   # swing low
               (160.0, 162.0, 159.0, 520.0),
               (163.0, 165.0, 162.0, 525.0)]
-    for j, (c, h, l, s) in enumerate(_vals2):
-        closes[60+j] = c; highs[60+j] = h; lows[60+j] = l; spy[60+j] = s
+    for j, (c, h, lo, s) in enumerate(_vals2):
+        closes[60+j] = c
+        highs[60+j] = h
+        lows[60+j] = lo
+        spy[60+j] = s
 
     # Phase 5: continued recovery 64-70
     for i in range(64, 71):
@@ -164,9 +164,9 @@ def test_t2_wilder_atr_hand_calc() -> None:
     # TR1=max(2,1,1)=2  TR2=max(5,3,2)=5  TR3=max(2,1,1)=2
     # seed=(2+5)/2=3.5; ATR=(3.5*1+2)/2=2.75
     h = [10.0, 11.0, 13.0, 12.0]
-    l = [8.0,  9.0,  8.0,  10.0]
+    lo = [8.0,  9.0,  8.0,  10.0]
     c = [9.0,  10.0, 11.0, 11.0]
-    r = compute_wilder_atr(h, l, c, 2)
+    r = compute_wilder_atr(h, lo, c, 2)
     assert len(r) == 2
     assert abs(r[0] - 3.5) < 1e-9
     assert abs(r[1] - 2.75) < 1e-9
@@ -180,11 +180,11 @@ def test_t2_insufficient_data_returns_empty() -> None:
 def test_t2_wilder_smoothing_formula() -> None:
     # 5 bars, period=2 → 3 ATR values
     h = [10.0, 11.0, 12.0, 11.5, 10.5]
-    l = [9.0,  9.5,  10.5, 9.5,  9.0]
+    lo = [9.0,  9.5,  10.5, 9.5,  9.0]
     c = [9.5,  10.0, 11.0, 10.0, 9.5]
-    r = compute_wilder_atr(h, l, c, 2)
+    r = compute_wilder_atr(h, lo, c, 2)
     assert len(r) == 3
-    trs = [max(h[i]-l[i], abs(h[i]-c[i-1]), abs(l[i]-c[i-1])) for i in range(1, 5)]
+    trs = [max(h[i]-lo[i], abs(h[i]-c[i-1]), abs(lo[i]-c[i-1])) for i in range(1, 5)]
     seed = (trs[0] + trs[1]) / 2
     a1 = (seed + trs[2]) / 2
     a2 = (a1 + trs[3]) / 2
@@ -316,7 +316,6 @@ def test_t6_gate6_lower_low_vs_second_swing() -> None:
 def test_t6_gate7_rs_line_new_low() -> None:
     """Gate 7: RS today is the lowest in last RS_NO_NEW_LOW_DAYS → False."""
     closes, highs, lows, vols, spy = _base_cap_inputs()
-    rs_days = SETUP.CAPITULATION_RS_NO_NEW_LOW_DAYS
     # Make spy[-1] very high so rs_today is the lowest
     spy[-1] = spy[-1] * 5   # SPY surges → rs_today drops to tiny
     assert _is_capitulation_reversal(closes, highs, lows, vols, spy) is False
@@ -441,7 +440,8 @@ def test_t10_classify_docstring_has_new_priority() -> None:
 
 
 def test_t10_no_active_pullback_star_refs() -> None:
-    import inspect, re
+    import inspect
+    import re
     import app.services.cockpit.setup_service as mod
     src = inspect.getsource(mod)
     # SETUP.PULLBACK_* references must be gone (comments OK but none expected)
@@ -473,7 +473,8 @@ def db():
 
 def _insert_stock(db: Session, ticker: str) -> Stock:
     s = Stock(ticker=ticker, name=f"{ticker} Corp", is_active=True, added_at=datetime.now(timezone.utc))
-    db.add(s); db.flush()
+    db.add(s)
+    db.flush()
     return s
 
 

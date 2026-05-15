@@ -2,18 +2,18 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.1-planning",
-  "last_updated": "2026-05-14",
+  "last_updated": "2026-05-15",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
     "ui_design": "done",
-    "development": "done",
+    "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v1.10",
-    "active_sprint": "",
-    "active_sprint_phase": ""
+    "current_iteration": "v2.3",
+    "active_sprint": "F217-a",
+    "active_sprint_phase": "contract_agreed"
   },
   "_iteration_log": [
     {
@@ -131,6 +131,17 @@
       "iteration": "v1.8-design-bridge",
       "date": "2026-04-24",
       "summary": "Cockpit Epic UI 设计衔接：design-spec 扩 ~520 行覆盖 9 widget + UserSettingsDialog + 5 共享子组件 + 3 栏 RGL 默认布局；component-plan 追加 §Cockpit-1 ~ §Cockpit-7（9 widget + 4 dialog + CockpitPage/Registry/2 store + 边界红线 + react-query 缓存策略 + 渐进实施清单）；data-mapping 追加 §Cockpit-1 ~ §Cockpit-9 + Settings + AI wrapper 共 25+ 字段映射 + Step 7d/7e/7f 一致性验证全部 PASS；tokens.json/css 加 25 个 cockpit token（regime/setup/quality/earnings/action-bg/chart 横线 等）。Layout 决策：D060 修订为 Cockpit 沿用 react-grid-layout（独立 Registry/Store/localStorage key ma150.cockpit.layouts.v1）。_pipeline_status.ui_design = done。"
+    },
+    {
+      "version": "v2.3",
+      "date": "2026-05-15",
+      "added": [
+        "F217"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "Cockpit 改善计划 Phase C — Capitulation Reversal 严格重写。对照 docs/对比/cockpit-vs-srs-framework.md gap #4：当前 SETUP_PULLBACK 是回踩 MA21 而非投降式抛售，与 SRS § 五 Setup 4 语义完全不同。F217 移除 SETUP_PULLBACK 新增 SETUP_CAPITULATION（7 条 AND 门：连续下跌≥10%/Vol z-score≥2.5/range≥2×ATR14/收盘脱底1/3/次日不创新低/higher low/RS 止跌），同时升级 _classify_setup_type 优先级（CAPITULATION 高于 BREAKOUT/RECLAIM）、做 setup_snapshots 枚举迁移、前端加 chips 与紫色 badge。预期效果：CAPITULATION 触发将显著稀疏（每月几只）— 这是 SRS 设计意图。拆 a/b/c 三 sub-sprint。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase C。"
     }
   ],
   "_phase_legend": {
@@ -2345,7 +2356,7 @@
         "e2e": []
       },
       "iteration_history": [],
-      "notes": "依赖 F201-a。market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。Sprint Contract 待 F201-a 验收后协商。"
+      "notes": "market_refresh_service.py 添加 14 ETF symbol 拉取（FMP /stable/historical-price-eod/full），走现有限流器。"
     },
     {
       "id": "F201-c",
@@ -4249,6 +4260,114 @@
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 2 阶段。依赖 F215（Phase A，已 done）—— EMA10/21 + Volume Accumulation 是 weekly_stage 门禁的前置条件。下游：F217 = Phase C (Capitulation Reversal 重写)，F218 = Phase D (Repricing Trigger)。⚠️ B4 (F216-d) 强制门禁会减少 ready_signal=true 标的 30-50%（设计意图）。",
       "active_sprint_phase": "contract_agreed",
       "completed_at": "2026-05-15"
+    },
+    {
+      "id": "F217",
+      "name": "Cockpit Phase C — Capitulation Reversal 严格重写",
+      "description": "对照《慢交易系统框架》(SRS) 扫描报告 gap #4：当前 setup_service 用 SETUP_PULLBACK 近似 Capitulation Reversal（仅判定 MA150~MA50 之间回撤），与 SRS § 五 Setup 4 语义完全不同（投降式抛售 = 极端放量 + 大 range + 收盘脱底 + higher low + RS 止跌）。F217 严格按 SRS 重写：(C1) cockpit_params.SETUP.TYPES 移除 PULLBACK 加 CAPITULATION + setup_service 删 _is_pullback 加 _is_capitulation_reversal；(C2) 7 条 AND 门严格判定（5-10日累计跌幅≥10% / Vol z-score≥2.5 / true_range≥2×ATR14 / close 位于当日 high-low 上 1/3 / 次日 1-2 日不创新低 / 当前 low > 30日内倒数第二 swing low / RS line 过去 5 日未新低）+ _detect_swing_lows 辅助；(C3) _classify_setup_type 优先级更新为 BROKEN → EXTENDED → EARNINGS_DRIFT → CAPITULATION → BREAKOUT → RECLAIM → NONE（CAPITULATION 高于 BREAKOUT/RECLAIM 因语义互斥）；(C4) setup_snapshots.setup_type 枚举去 PULLBACK 加 CAPITULATION + alembic 021 + 历史 PULLBACK 行软删（legacy=true 标记或 purge_legacy_pullback）；(C5) 前端 cockpitDecisionApi 类型 + DecisionPanelWidget chips（Vol z-score / Drop 5d / Reversal day）+ SetupMonitorWidget CAPITULATION 紫色 badge。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase C。",
+      "user_story": "作为投资者，我需要 cockpit 把 'Capitulation Reversal'（投降式抛售反转）作为独立 setup type 严格识别，而不是用回踩 MA21 的 PULLBACK 近似。SRS § 五 Setup 4 把 Capitulation 定位为'底部反转'机会，胜率与风险特征完全不同于 BREAKOUT/RECLAIM。当前 PULLBACK 既不能告诉我'这是投降底了'，也不能在 DecisionPanel 显示放量/收盘脱底等关键证据，相当于把两种语义混在一起。重写后我能在 SetupMonitor 紫色 badge 识别 CAPITULATION 候选，DecisionPanel 看到 Vol z-score / Drop 5d / Reversal day 三个关键 chip 证据，触发频率会显著稀疏（每月几只）— 这正是 SRS 投降式抛售的统计特征。",
+      "priority": "P1",
+      "status": "planned",
+      "phase": "design_needed",
+      "sub_sprint_notes": "按 plan C1-C5 拆 3 sub-sprint（与 F216 同源 sizing 原则）：F217-a (C1+C2+C3 后端 setup_service 重写：移除 _is_pullback / 新增 _is_capitulation_reversal 7 条 AND 门 / _detect_swing_lows 辅助 / _classify_setup_type 优先级升级 / pure tests 全覆盖，预估 5-6 文件)；F217-b (C4 DB 迁移：setup_type 枚举切换 / alembic 021 前向+回滚 / 历史 PULLBACK 行 purge_legacy_pullback / SetupSnapshot model 更新 / SetupSnapshotRepository.purge_legacy_pullback 方法 + integration tests，预估 3-4 文件)；F217-c (C5 前端：cockpitDecisionApi 类型 / DecisionPanelWidget chips Vol z + Drop 5d + Reversal day / SetupMonitorWidget setupType 列加 CAPITULATION 紫色 badge / api types 更新 / widget tests，预估 4-5 文件)。三个 sub-sprint 都在 6 文件原则内，染实清晰隔离（后端逻辑 → DB → 前端展示）。a/b 之间存在依赖（a 改 cockpit_params 枚举后，b 才能做 DB 迁移），c 依赖 a+b 完成（前端类型才有上游 setup_type 来源）。",
+      "sub_sprints": {
+        "F217-a": "needs_review",
+        "F217-b": "design_needed",
+        "F217-c": "design_needed"
+      },
+      "dependencies": [
+        "F215",
+        "F216"
+      ],
+      "estimated_sessions": 3,
+      "estimated_files_changed": [
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/setup_service.py",
+        "backend/app/services/cockpit/tests/test_capitulation_reversal.py",
+        "backend/alembic/versions/021_f217b_setup_type_capitulation.py",
+        "backend/app/models/setup_snapshot.py",
+        "backend/app/repositories/setup_snapshot_repository.py",
+        "backend/app/services/cockpit/tests/test_setup_snapshot_purge.py",
+        "frontend/src/cockpit/lib/api/cockpitDecisionApi.ts",
+        "frontend/src/cockpit/lib/api/setupMonitorApi.ts",
+        "frontend/src/cockpit/widgets/DecisionPanelWidget.tsx",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.capitulation.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/setup (响应 setupType 枚举去 PULLBACK 加 CAPITULATION)",
+          "GET /api/cockpit/decision/{ticker} (响应 setupType + 新增 capitulation evidence chips: vol_zscore / drop_5d_pct / reversal_day)"
+        ],
+        "db_tables": [
+          "setup_snapshots (setup_type 枚举切换 PULLBACK→CAPITULATION，alembic 021，历史行软删)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §Cockpit Setup Monitor (GET /api/cockpit/setup-monitor) — setupType 枚举去 PULLBACK 加 CAPITULATION + BREAKOUT 降级 fall-through 文字同步（已落地 2026-05-15）",
+          "API-CONTRACT.md §Cockpit Decision (GET /api/cockpit/decision/{ticker}) — 响应追加可选 capitulationEvidence 对象 (volZscore / drop5dPct / reversalDay)，仅 setupType=CAPITULATION 非 null（已落地 2026-05-15）",
+          "API-CONTRACT.md §Cockpit Market Regime — user_settings.preferredSetups 默认值 PULLBACK → CAPITULATION（已落地 2026-05-15）"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §SetupSnapshot — setup_type 枚举值更新 + 历史 PULLBACK 软删说明 + _classify_setup_type 优先级业务规则（已落地 2026-05-15）",
+          "DATA-MODEL.md §Position / §PendingOrder — setup_type 字段引用 SetupSnapshot 枚举（动态跟随，无需独立改动）"
+        ],
+        "decision_refs": [
+          "对照《慢交易系统框架》(SRS) 扫描报告 docs/对比/cockpit-vs-srs-framework.md §3.C row 4 + §4 Gap #4",
+          "完整计划文档 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase C",
+          "DECISIONS.md §D095 — Capitulation 替换 PULLBACK + 7 条 AND 门阈值依据 + 6 子决策（已落地 2026-05-15）"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "F217-a: cockpit_params.SETUP.TYPES 不再包含 PULLBACK，新增 CAPITULATION 取值",
+        "F217-a: setup_service._is_capitulation_reversal(bars, rs_line) 实现 SRS 7 条 AND 门：(1) 过去 5-10 日 close 累计跌幅 ≥ 10% (2) Vol z-score ≥ 2.5（复用 F215-b _compute_volume_zscore）(3) true_range ≥ 2 × ATR14 (4) close 位于当日 high-low 上 1/3 (5) 当日之后 1-2 日 low > 当日 low（如尾部数据不足允许 None 跳过）(6) 当前 low > 过去 30 日内倒数第二个 swing low（_detect_swing_lows 辅助）(7) RS line 过去 5 日未创新低",
+        "F217-a: setup_service._classify_setup_type 新优先级 BROKEN → EXTENDED → EARNINGS_DRIFT → CAPITULATION → BREAKOUT → RECLAIM → NONE；CAPITULATION 与 BREAKOUT/RECLAIM 互斥",
+        "F217-a: 删除 _is_pullback 函数及所有 PULLBACK 引用，pure tests 覆盖 7 条 AND 门的 happy + 每条单独失败 + 优先级覆盖共 ≥ 10 条测试，全部通过",
+        "F217-b: alembic 021 将 setup_snapshots.setup_type 枚举去 PULLBACK 加 CAPITULATION，前向 + 回滚均可执行；历史 PULLBACK 行通过 purge_legacy_pullback 软删或硬删（plan §C4 软删优先 — 加 legacy 列保留审计）",
+        "F217-b: SetupSnapshotRepository.purge_legacy_pullback() 实现并在 integration tests 验证（插入 PULLBACK 行 → 调用 → 行被标记/移除）",
+        "F217-b: SetupSnapshot model setup_type 字段类型与新枚举一致；alembic upgrade/downgrade 测试通过",
+        "F217-c: cockpitDecisionApi SetupType 类型去 PULLBACK 加 CAPITULATION；DecisionResponse 含 capitulationEvidence 可选字段（volZscore / drop5dPct / reversalDay）",
+        "F217-c: DecisionPanelWidget 在 setupType=CAPITULATION 时展示三个 chip：'Vol z-score: 2.7' / 'Drop 5d: -12%' / 'Reversal day'，颜色复用现有 chip token",
+        "F217-c: SetupMonitorWidget 列表 setup_type 列在 CAPITULATION 时显示紫色 badge（design-spec.md 同步紫色 token #a78bfa 或类似），其他 setup type 颜色不变",
+        "F217-c: setupMonitorApi.SetupItem.setupType 联合类型同步更新；widget 单元测试覆盖 CAPITULATION 渲染分支",
+        "system-design 文档先行更新：DATA-MODEL.md SetupSnapshot.setup_type 枚举 + API-CONTRACT.md setup/decision 端点响应 + DECISIONS.md D095",
+        "全量后端 pytest 与前端 vitest 回归通过，无新增失败；CAPITULATION 触发频率符合 SRS 设计意图（pure test 用合成 bars 验证 happy path，prod 数据预期每月几只）"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-05-15",
+          "subtask": "F217",
+          "phase": "design_needed",
+          "session": "project-init 迭代登记",
+          "changes": "F217 作为 cockpit-vs-srs-framework 改善计划 Phase C 注册。按 plan §Phase C 拆 3 sub-sprints (a/b/c)：F217-a 后端 setup_service 重写 (C1+C2+C3) / F217-b DB 迁移 alembic 021 (C4) / F217-c 前端 chips+badge (C5)。依赖 F215 (Volume z-score 用于 C2 条件 2) + F216 (协同 ready_signal 8 门，本次不动 gate)。下一步：system-design 变更协议更新 DATA-MODEL setup_type 枚举 + API-CONTRACT setup/decision 端点 + DECISIONS D095，再进 feature-dev 协商 F217-a Sprint Contract。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217",
+          "phase": "design_needed",
+          "session": "system-design 变更协议",
+          "changes": "system-design 变更协议执行完成（用户 2026-05-15 确认 needs_update → confirmed）。DATA-MODEL.md §SetupSnapshot setup_type 枚举去 PULLBACK 加 CAPITULATION + 历史软删说明 + _classify_setup_type 优先级业务规则；API-CONTRACT.md setupType 枚举说明 + BREAKOUT 降级 fall-through 同步 + GET /api/cockpit/decision/{ticker} 追加可选 capitulationEvidence (volZscore/drop5dPct/reversalDay) + user_settings.preferredSetups 默认值 PULLBACK→CAPITULATION；DECISIONS.md 新增 D095（6 子决策：枚举替换/7 条 AND 门阈值依据/分类器优先级/历史行软删/API 字段可选/preferredSetups 迁移）。三份文档 frontmatter status=confirmed, confirmed_at=2026-05-15。_pipeline_status.system_design=done。下一步：进入 feature-dev 协商 F217-a Sprint Contract（后端 setup_service 重写）。design-spec.md 紫色 badge token 与 chips 视觉规格可在 F217-c Sprint Contract 协商时由 feature-dev 同步更新（参考 F216-d3 模式），无需独立走 design-bridge。"
+        },
+        {
+          "date": "2026-05-15",
+          "subtask": "F217-a",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Sprint Contract 协商",
+          "changes": "F217-a Sprint Contract 已确认（用户 2026-05-15 全部按推荐方案确认 NP1-NP4 + 范围/测试/回滚）：NP1 ATR 算法重构为共享 utility（新建 backend/app/services/cockpit/_indicators.py，chart_service + setup_service 共用）；NP2 信号触发位置 bar[-1] 当日触发，条件 5 次日不创新低数据不足时跳过（lookahead-safe，不引入延后信号）；NP3 CAPITULATION entry/stop = close*(1+tick) / bar[-1].low*(1-1.5%) 默认 CAPITULATION_STOP_BUFFER_PCT；NP4 RS line 序列在 _is_capitulation_reversal 内计算 rs_line[i]=closes[i]/spy_closes[i]，函数签名扩展 spy_closes 参数。范围 6 文件（命中上限）：cockpit_params.py 修改（删 4 PULLBACK_* / 加 10 CAPITULATION_* / 更新 TYPES+REGIME maps）+ setup_service.py 修改（常量 / helpers / classify 优先级 BROKEN→EXTENDED→EARNINGS_DRIFT→CAPITULATION→BREAKOUT→RECLAIM→NONE / compute_and_store_all 签名扩展）+ _indicators.py 新建（compute_wilder_atr 共享 util）+ chart_service.py 重构（_compute_atr_series 调用共享 util，保持输出 schema）+ test_capitulation_reversal.py 新建（14+ pure tests T1-T11 覆盖 7 条 AND 门 happy + 每条单独失败 + 数据不足分支 + 优先级 5 case + helpers sanity）+ test_setup_f202a.py fixture 迁移（test_s4 PULLBACK→BREAKOUT / test_s15 期望 NONE 改名）。排除：Pydantic Literal schemas（6 文件，留 F217-b）/ DB 迁移 / 前端 chips+badge / decision_service capitulationEvidence 填充。Contract: docs/开发/sprint-contracts/F217-a-contract.md (14 完成标准 + 7 步开发顺序 + 6 wip commit + 1 final commit)。下个 session Generator 从 §4 Step 1（_indicators 抽取）开始。"
+        }
+      ],
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已 done — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已 done — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。"
     }
   ]
 }

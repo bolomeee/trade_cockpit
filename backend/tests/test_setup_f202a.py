@@ -1,7 +1,6 @@
 """F202-a Setup Monitor data layer tests — Sprint Contract S1–S17."""
 from __future__ import annotations
 
-import tempfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -13,13 +12,11 @@ from sqlalchemy.orm import Session
 
 from app.models import Base
 from app.models.daily_bar import DailyBar
-from app.models.earnings_event import EarningsEvent
 from app.models.market_index import MarketIndex
 from app.models.market_regime_snapshot import MarketRegimeSnapshot
 from app.models.setup_snapshot import SetupSnapshot
 from app.models.stock import Stock
 from app.repositories.setup_snapshot_repository import SetupSnapshotRepository
-from app.services.cockpit.cockpit_params import SETUP
 from app.services.cockpit.setup_service import (
     SetupService,
     _classify_setup_type,
@@ -27,8 +24,6 @@ from app.services.cockpit.setup_service import (
     _compute_mas,
     _compute_ready_signal,
     _compute_trend_score,
-    _compute_volume_status,
-    _percentile_rank,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -404,7 +399,7 @@ def test_s16_compute_and_store_all(db: Session) -> None:
 # ── S17: cockpit_params import check ─────────────────────────────────────────
 
 def test_s17_cockpit_params_import_and_validation() -> None:
-    from app.services.cockpit.cockpit_params import SETUP, SHARED, REGIME
+    from app.services.cockpit.cockpit_params import SETUP
     # Pydantic frozen model: all fields accessible
     assert SETUP.MA_PERIODS == [10, 21, 50, 150, 200]
     assert SETUP.EARNINGS_DANGER_DAYS < SETUP.EARNINGS_CAUTION_DAYS

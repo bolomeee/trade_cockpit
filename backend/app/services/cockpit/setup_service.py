@@ -17,7 +17,6 @@ from app.repositories.stock_repository import StockRepository
 from app.repositories.weekly_stage_repository import WeeklyStageRepository
 from app.services.cockpit._indicators import compute_wilder_atr
 from app.services.cockpit.cockpit_params import SETUP
-from app.services.watchlist_service import APIError
 
 # ── Setup type constants ───────────────────────────────────────────────────────
 
