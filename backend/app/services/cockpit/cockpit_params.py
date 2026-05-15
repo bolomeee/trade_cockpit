@@ -92,9 +92,9 @@ class CockpitRegimeParams(BaseModel):
     # ── Setup recommendations by regime ──────────────────────────────────────
     PREFERRED_SETUPS: dict[str, list[str]] = Field(
         default={
-            "RISK_ON": ["BREAKOUT", "PULLBACK", "RECLAIM"],
-            "CONSTRUCTIVE": ["BREAKOUT", "PULLBACK"],
-            "NEUTRAL": ["PULLBACK", "RECLAIM"],
+            "RISK_ON": ["BREAKOUT", "CAPITULATION", "RECLAIM"],
+            "CONSTRUCTIVE": ["BREAKOUT", "CAPITULATION"],
+            "NEUTRAL": ["CAPITULATION", "RECLAIM"],
             "DEFENSIVE": ["RECLAIM"],
             "RISK_OFF": [],
         },
@@ -105,8 +105,8 @@ class CockpitRegimeParams(BaseModel):
             "RISK_ON": [],
             "CONSTRUCTIVE": ["EXTENDED"],
             "NEUTRAL": ["BREAKOUT", "EXTENDED"],
-            "DEFENSIVE": ["BREAKOUT", "PULLBACK", "EXTENDED"],
-            "RISK_OFF": ["BREAKOUT", "PULLBACK", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED"],
+            "DEFENSIVE": ["BREAKOUT", "CAPITULATION", "EXTENDED"],
+            "RISK_OFF": ["BREAKOUT", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED"],
         },
         description="Setup types to avoid for each regime",
     )
@@ -203,11 +203,50 @@ class CockpitSetupParams(BaseModel):
     ENTRY_TICK_PCT: float = Field(default=0.1, description="Tick above entry level (%); entry = level*(1+this/100)", ge=0.01, le=1.0)
     PIVOT_LOOKBACK_BARS: int = Field(default=20, description="Bars to look back for 20-day pivot high (BREAKOUT detection)", ge=5, le=60)
     BREAKOUT_STOP_MA50_PCT: float = Field(default=2.0, description="Stop = MA50*(1-this/100) for BREAKOUT setups", ge=0.5, le=10.0)
-    PULLBACK_STOP_MA21_PCT: float = Field(default=3.0, description="Stop = MA21*(1-this/100) for PULLBACK setups", ge=0.5, le=10.0)
-    PULLBACK_FLOOR_MA50_PCT: float = Field(default=3.0, description="Pullback floor = MA50*(1-this/100); close must be above this", ge=0.5, le=10.0)
-    PULLBACK_FALLBACK_SUPPORT_PCT: float = Field(default=10.0, description="When MA150 is None, fallback lower support = MA50*(1-this/100)", ge=1.0, le=20.0)
     RECLAIM_STOP_MA50_PCT: float = Field(default=2.0, description="Stop = MA50*(1-this/100) for RECLAIM setups", ge=0.5, le=10.0)
     EARNINGS_DRIFT_STOP_MA21_PCT: float = Field(default=2.0, description="Stop = MA21*(1-this/100) for EARNINGS_DRIFT setups", ge=0.5, le=10.0)
+
+    # ── CAPITULATION_REVERSAL 7 条 AND 门参数（F217-a / D095）────────────────
+    CAPITULATION_DROP_LOOKBACK_MIN_DAYS: int = Field(
+        default=5, ge=3, le=15,
+        description="条件1：累计跌幅滑动窗最小天数",
+    )
+    CAPITULATION_DROP_LOOKBACK_MAX_DAYS: int = Field(
+        default=10, ge=5, le=20,
+        description="条件1：累计跌幅滑动窗最大天数",
+    )
+    CAPITULATION_DROP_PCT: float = Field(
+        default=10.0, ge=5.0, le=30.0,
+        description="条件1：累计跌幅阈值（绝对值百分比）",
+    )
+    CAPITULATION_VOL_Z_MIN: float = Field(
+        default=2.5, ge=1.5, le=5.0,
+        description="条件2：当日 volume z-score 下限",
+    )
+    CAPITULATION_ATR_TR_MULTIPLIER: float = Field(
+        default=2.0, ge=1.5, le=4.0,
+        description="条件3：当日 true_range / ATR14 倍数下限",
+    )
+    CAPITULATION_CLOSE_UPPER_BIN: float = Field(
+        default=0.333, ge=0.1, le=0.5,
+        description="条件4：close 在当日 (high-low) 区间内，上方 X 分位起算",
+    )
+    CAPITULATION_NO_NEW_LOW_LOOKAHEAD_DAYS: int = Field(
+        default=2, ge=1, le=5,
+        description="条件5：次日不创新低观察窗",
+    )
+    CAPITULATION_SWING_LOW_LOOKBACK: int = Field(
+        default=30, ge=10, le=60,
+        description="条件6：swing low 检测窗（bars）",
+    )
+    CAPITULATION_RS_NO_NEW_LOW_DAYS: int = Field(
+        default=5, ge=3, le=15,
+        description="条件7：RS line 未创新低观察窗",
+    )
+    CAPITULATION_STOP_BUFFER_PCT: float = Field(
+        default=1.5, ge=0.5, le=5.0,
+        description="stop 在当日 low 下方的安全垫（NP3）",
+    )
 
     # ── 数据保留 ──────────────────────────────────────────────────────────
     SETUP_RETENTION_DAYS: int = Field(default=60, description="Days to retain setup snapshots (D062)", ge=7, le=365)
