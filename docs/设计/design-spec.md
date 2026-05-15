@@ -967,11 +967,11 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 ├──────────────────────────────────────────────────────────────┤
 │  Filter Tabs：[All 32] [Ready 3] [Near 7] [Extended 4] [Broken 2] │ ← summary.*
 │  ┌──────────────────────────────────────────────────────────┐│
-│  │ Ticker Setup     Q  Entry  Stop  R:R  Dist   RS  Earn   ││
-│  │ NVDA   BREAKOUT  A  850.0  820.0 2.0  +1.25% 88  SAFE ●││ ← items[]
-│  │ CRWD   PULLBACK  A  342.5  323.2 2.6  +0.80% 84  SAFE ●││
-│  │ AMD    BREAKOUT  B  180.0  173.0 2.0  +1.98% 72  SAFE ●││
-│  │ MSFT   EARN_DRFT B  410.0  395.0 2.5  +0.50% 65  DANG ●││ ← earnings 红点
+│  │ Ticker Setup     Q  Entry  Stop  R:R  Dist   RS  VolZ  WS  Earn   ││
+│  │ NVDA   BREAKOUT  A  850.0  820.0 2.0  +1.25% 88  1.83  ●2  SAFE ●││ ← items[]
+│  │ CRWD   PULLBACK  A  342.5  323.2 2.6  +0.80% 84  0.72  ●1  SAFE ●││
+│  │ AMD    BREAKOUT  B  180.0  173.0 2.0  +1.98% 72  —     —   SAFE ●││ ← weeklyStage=null→ "—"
+│  │ MSFT   EARN_DRFT B  410.0  395.0 2.5  +0.50% 65  —     ●4  DANG ●││ ← stage 4 红点
 │  │ ...                                                      ││
 │  └──────────────────────────────────────────────────────────┘│
 │  排序默认：suggestedAction enter > watch > wait > null > reduce > exit │
@@ -987,6 +987,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - v2.0 增强：每行 `[?]` 图标 hover 触发 `POST /api/ai/setup_explainer`（缓存 24h），气泡弹出 1 句解释
   > **实现偏离（F209-c）**：触发方式由 hover 改为**点击**，与 features.json acceptance_criteria 保持一致（acceptance_criteria 优先于 design-spec）。点击 `?` 按钮调用 `POST /api/ai/setup_explainer`，渲染 label / quality / whyWatch / mainRisks；仅 BREAKOUT / PULLBACK / RECLAIM 三种 setup 显示按钮。
 - v2.0 增强（F210-b）：Filter Tabs 行右侧提供 **[AI 排序]** 按钮（regime 未就绪或 items 为空时 disabled），点击调用 `POST /api/ai/candidate_ranker`，将当前过滤 items 前 20 条送 AI 综合评分，结果区行内插入 Filter Tabs 与 Table 之间，展示 top 3（rank / ticker / action badge [enter·watch·wait 三色] / reason 文本），结果可 ✕ 关闭；缓存 24h，同 (regime, items 集合) 复点 0 网络请求。
+- **WS 列（F216-d3）**：展示 weekly_stage 数值（1-4）+ 同色小圆点，title 显示全名（Base / Advancing / Distribution / Declining）。stage=0（UNKNOWN）或 null（cron 未跑）→ "—" 灰色。颜色映射：Stage 2 绿 / Stage 1 & 3 黄 / Stage 4 红 / 0 & null 灰，与 WeeklyStageChartWidget 共用 `STAGE_BG_TOKENS`（`frontend/src/cockpit/lib/weeklyStageTokens.ts`）。设计意图：让用户在表格中看到"为何 ready=false"，与 d2 的 readySignal 第 8 条 AND 门视觉对齐。
 
 ---
 
