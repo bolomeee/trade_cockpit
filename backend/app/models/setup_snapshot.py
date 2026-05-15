@@ -36,6 +36,7 @@ class SetupSnapshot(Base):
     obv_trend: Mapped[str | None] = mapped_column(String(4), nullable=True)
     up_down_volume_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
     weekly_stage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    legacy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     scanned_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
