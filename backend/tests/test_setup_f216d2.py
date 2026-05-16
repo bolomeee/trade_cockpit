@@ -192,7 +192,7 @@ def _insert_regime(db: Session) -> None:
         volatility_stress_score=5,
         allowed_exposure_pct=70.0,
         single_trade_risk_pct=1.0,
-        preferred_setups=json.dumps(["BREAKOUT", "PULLBACK"]),
+        preferred_setups=json.dumps(["BREAKOUT", "CAPITULATION"]),
         avoid_setups=json.dumps(["EXTENDED"]),
         computed_at=datetime.now(timezone.utc),
     ))
