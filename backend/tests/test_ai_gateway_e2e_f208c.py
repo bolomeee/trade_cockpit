@@ -455,7 +455,7 @@ _CR_INPUT = {
         },
         {
             "ticker": "MSFT",
-            "setupType": "PULLBACK",
+            "setupType": "CAPITULATION",
             "setupQuality": "B",
             "trendScore": 3,
             "rsPercentile": 70.0,
