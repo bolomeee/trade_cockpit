@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 _VALID_SETUP_TYPES = Literal[
-    "BREAKOUT", "PULLBACK", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"
+    "BREAKOUT", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"
 ]
 
 _VALID_NEXT_ACTIONS = Literal["hold", "raise_stop", "reduce", "exit"]
