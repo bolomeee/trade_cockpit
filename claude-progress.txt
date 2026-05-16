@@ -1,4 +1,37 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-16] Sprint：F217-b3 Generator 完成（测试 fixture 批量 PULLBACK→CAPITULATION）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - test_setup_f216d2.py L195: preferred_setups PULLBACK→CAPITULATION
+  - test_pool_service.py L393: for loop signal_type PULLBACK→CAPITULATION
+  - test_ai_schemas_f211a1.py L350+L371: setupType PULLBACK→CAPITULATION；L373: keyLessons 字符串同步
+  - test_regime_f201b.py L54(fixture)+L87(assert): 双改对称 PULLBACK→CAPITULATION
+  - test_f215a.py L244: preferred_setups PULLBACK→CAPITULATION
+  - test_decision_f203b2.py L81: preferred_setups PULLBACK→CAPITULATION
+  - test_ai_gateway_e2e_f208c.py L458: _CR_INPUT.candidates[1].setupType PULLBACK→CAPITULATION（NP-b3-1=A 纳入，unblock b4）
+  - T1 grep 7 文件 PULLBACK 全空（无遗留）+ T2 CAPITULATION 全存在 + T3-T8 单文件全通过
+  - T9 全量回归：1095 passed / 8 预存失败 / 0 新增失败（= b2 基线完全吻合）
+  - 排除清单（guard tests + 图表 pullback + market scanner）均未动（git diff 验证）
+  - backend/app/ 零改动
+  - 7 WIP commits 颗粒度保留（不 squash）
+  - phase → needs_review
+
+⚠️ 预存失败（非本 sprint 引入，基线 8 条不变）：
+  - test_ai_schemas_f209 D1 / test_ai_schemas_f211a1 R5/R6 / test_regime_f201b S4 / test_decision_f215b AlembicRoundtrip / test_fmp_client / test_regime_f201a S14 / test_schema
+
+🔧 系统变更（7 文件全部修改无新建）：
+  - backend/tests/test_setup_f216d2.py
+  - backend/tests/test_pool_service.py
+  - backend/tests/test_ai_schemas_f211a1.py
+  - backend/tests/test_regime_f201b.py
+  - backend/tests/test_f215a.py
+  - backend/tests/test_decision_f203b2.py
+  - backend/tests/test_ai_gateway_e2e_f208c.py
+
+🔜 下一步：用户验收（acceptance skill）→ done → 协商 F217-b4 Sprint Contract（Pydantic Literal 删 PULLBACK 收紧，向后不兼容窗口结束）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-16] Sprint：F217-b2 Generator + Evaluator 完成（Pydantic Literal +CAPITULATION）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -275,3 +308,89 @@
   > 继续开发 F217-b2，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b2-contract.md，
   > 进入 Generator 模式，从 §4 Step 1+2（cockpit schemas）开始。
+
+════════════════════════════════════════════════════════
+[2026-05-16] F217-b2 验收通过
+════════════════════════════════════════════════════════
+
+✅ F217-b2：Pydantic Literal +CAPITULATION（向后兼容窗口）
+
+验收结果：
+  - T1-T7 全通过
+  - 6 schema 文件 CAPITULATION Literal 插入确认
+  - PULLBACK 向后兼容 18 tests pass
+  - 全量回归 1095 passed，8 预存，0 新增失败
+  - SYSTEM_PROMPT 未变更（NP-b2-4=A）
+
+  features.json 变更：
+  - sub_sprints.F217-b2: needs_review → done
+  - active_sprint: F217-b2 → F217-b3
+
+📊 F217 当前状态：
+  ├── F217-a — done ✅
+  ├── F217-b1 — done ✅
+  ├── F217-b2 — done ✅  ← 本次
+  ├── F217-b3 — design_needed（测试 fixture 批量去 PULLBACK，6 文件）
+  ├── F217-b4 — design_needed（Literal 删 PULLBACK 收紧，b3 后才能跑）
+  └── F217-c — design_needed（前端 chips + 紫色 badge）
+
+[下一步]
+  协商 F217-b3 Sprint Contract（测试 fixture 批量去 PULLBACK）：
+  > 准备开发 F217-b3
+
+════════════════════════════════════════════════════════
+[2026-05-16] F217-b3 Sprint Contract 已确认
+════════════════════════════════════════════════════════
+
+✅ F217-b3 Contract 协商完成（用户全部按推荐确认）
+
+协商结论：
+  - NP-b3-1=A 突破 6 文件上限 → 7 文件（用户明确授权）
+    理由：父 F217-b 规划遗漏 test_ai_gateway_e2e_f208c.py L458
+    setupType='PULLBACK' 走 candidate_ranker Literal 校验，
+    若不在 b3 迁移会直接破坏 b4 Literal 收紧
+  - NP-b3-2=A test_setup_f202a.py preferred_setups PULLBACK 不动
+    （list[str] 非 Literal，b4 不破）
+  - NP-b3-3=A test_ai_schemas_f209.py 小写 pullback 不动
+    （setup_explainer 独立 schema，F217 全系列不触）
+
+范围（7 文件 / 10 行 s/PULLBACK/CAPITULATION/ 字面量替换，无逻辑改动）：
+  1. test_setup_f216d2.py L195                                  (1)
+  2. test_pool_service.py L393                                  (1)
+  3. test_ai_schemas_f211a1.py L350/L371/L373                   (3)
+  4. test_regime_f201b.py L54+L87 (fixture+assert 双改)         (2)
+  5. test_f215a.py L244                                         (1)
+  6. test_decision_f203b2.py L81                                (1)
+  7. test_ai_gateway_e2e_f208c.py L458 (NP-b3-1=A 纳入)         (1)
+
+测试矩阵：T1 grep 无 PULLBACK / T2 grep 含 CAPITULATION /
+         T3-T8 单文件 pytest 全过 / T9 全量回归 1095+8 基线 0 新增
+
+排除清单（绝不能动）：
+  - test_capitulation_reversal.py / test_setup_snapshot_purge.py
+    （F217-a/b1 guard tests）
+  - test_signal_*.py / test_market_*.py / test_stock_detail.py
+    （图表 pullback marker + b2_ma_pullback signal 与 cockpit
+     setup_type 完全独立）
+  - 测试函数名含 pullback 保留（git blame 连续性）
+
+features.json 变更：
+  - _pipeline_status.active_sprint_phase: design_needed → contract_agreed
+  - sub_sprints.F217-b3: design_needed → contract_agreed
+  - iteration_history 追加 contract_agreed 节点
+
+Contract: docs/开发/sprint-contracts/F217-b3-contract.md
+
+📊 F217 当前状态：
+  ├── F217-a — done ✅
+  ├── F217-b1 — done ✅
+  ├── F217-b2 — done ✅
+  ├── F217-b3 — contract_agreed 🔄 ← 本次（待 Generator）
+  ├── F217-b4 — design_needed（Literal 删 PULLBACK 收紧，b3 后才能跑）
+  └── F217-c — design_needed（前端 chips + 紫色 badge）
+
+[下一步]
+  开新 session（建议 Sonnet）进 Generator 模式：
+  > 继续开发 F217-b3，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b3-contract.md，
+  > 进入 Generator 模式，从 §4 Step 1（test_setup_f216d2.py）开始。
