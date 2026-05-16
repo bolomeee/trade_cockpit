@@ -49,7 +49,7 @@ BANNED_PHRASES: tuple[str, ...] = (
     "ignore stop",
 )
 
-_SETUP_TYPE = Literal["BREAKOUT", "PULLBACK", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
+_SETUP_TYPE = Literal["BREAKOUT", "PULLBACK", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
 
 
 # ─── Sub-payloads: input ─────────────────────────────────────────────────────
