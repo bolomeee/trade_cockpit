@@ -78,7 +78,7 @@ def _seed_regime(
         volatility_stress_score=8,
         allowed_exposure_pct=70.0,
         single_trade_risk_pct=cap,
-        preferred_setups='["BREAKOUT","PULLBACK"]',
+        preferred_setups='["BREAKOUT","CAPITULATION"]',
         avoid_setups='["EXTENDED"]',
         computed_at=datetime.now(timezone.utc),
     )
