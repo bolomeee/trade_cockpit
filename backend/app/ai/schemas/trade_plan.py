@@ -42,7 +42,7 @@ BANNED_PHRASES: tuple[str, ...] = (
 
 class TradePlanInput(BaseModel):
     ticker: str = Field(min_length=1, max_length=10, pattern=r"^[A-Z][A-Z0-9.\-]*$")
-    setupType: Literal["BREAKOUT", "PULLBACK", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
+    setupType: Literal["BREAKOUT", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
     setupQuality: Literal["A", "B", "C"] | None = None
     entry: float = Field(gt=0)
     stop: float = Field(gt=0)
