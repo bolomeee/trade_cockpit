@@ -51,7 +51,7 @@ def _seed_snapshot(db_session, regime: str = "CONSTRUCTIVE") -> MarketRegimeSnap
         volatility_stress_score=6,
         allowed_exposure_pct=70.0,
         single_trade_risk_pct=1.0,
-        preferred_setups=json.dumps(["BREAKOUT", "PULLBACK"]),
+        preferred_setups=json.dumps(["BREAKOUT", "CAPITULATION"]),
         avoid_setups=json.dumps(["EXTENDED"]),
         computed_at=datetime(2026, 4, 24, 22, 5, 0, tzinfo=timezone.utc),
     )
@@ -84,7 +84,7 @@ class TestRegimeApiEndpoint:
         assert data["marketScore"] == 68
         assert data["allowedExposurePct"] == pytest.approx(70.0)
         assert data["singleTradeRiskPct"] == pytest.approx(1.0)
-        assert data["preferredSetups"] == ["BREAKOUT", "PULLBACK"]
+        assert data["preferredSetups"] == ["BREAKOUT", "CAPITULATION"]
         assert data["avoidSetups"] == ["EXTENDED"]
         assert "computedAt" in data
         assert "subscores" in data
