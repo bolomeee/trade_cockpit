@@ -347,7 +347,7 @@ _MONTHLY_PAYLOAD = {
     "month": "2026-03",
     "closedTrades": [
         {"ticker": "AAPL", "setupType": "BREAKOUT", "rMultiple": 1.7, "holdingDays": 14, "closedOn": "2026-03-15"},
-        {"ticker": "MSFT", "setupType": "PULLBACK", "rMultiple": -1.0, "holdingDays": 5, "closedOn": "2026-03-20"},
+        {"ticker": "MSFT", "setupType": "CAPITULATION", "rMultiple": -1.0, "holdingDays": 5, "closedOn": "2026-03-20"},
     ],
 }
 
@@ -368,9 +368,9 @@ _MONTHLY_OUTPUT = {
     "ruleAdherence": 8,
     "setupPerformance": [
         {"setupType": "BREAKOUT", "tradeCount": 1, "winRate": 1.0, "avgRMultiple": 1.7},
-        {"setupType": "PULLBACK", "tradeCount": 1, "winRate": 0.0, "avgRMultiple": -1.0},
+        {"setupType": "CAPITULATION", "tradeCount": 1, "winRate": 0.0, "avgRMultiple": -1.0},
     ],
-    "keyLessons": ["Continue to cut losses quickly on PULLBACK setups."],
+    "keyLessons": ["Continue to cut losses quickly on CAPITULATION setups."],
 }
 
 _JA_OUTPUT_TRADE = {"mode": "trade", "trade": _TRADE_OUTPUT, "monthly": None}
