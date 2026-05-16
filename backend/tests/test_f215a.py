@@ -241,7 +241,7 @@ class TestRegimeRouterRiskOnField:
             volatility_stress_score=6,
             allowed_exposure_pct=90.0,
             single_trade_risk_pct=1.25,
-            preferred_setups=json.dumps(["BREAKOUT", "PULLBACK", "RECLAIM"]),
+            preferred_setups=json.dumps(["BREAKOUT", "CAPITULATION", "RECLAIM"]),
             avoid_setups=json.dumps([]),
             computed_at=datetime(2026, 5, 12, 22, 0, 0, tzinfo=timezone.utc),
         )
