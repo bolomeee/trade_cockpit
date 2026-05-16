@@ -390,7 +390,7 @@ def test_pool_cache_rebuild_deduplicates_tickers(db: Session, fmp: FmpClient):
     """rebuild_dedup: same ticker appears twice in snapshot (two signal_types) → 1 cache row."""
     scan_date = date(2026, 4, 27)
     now = datetime.now(timezone.utc)
-    for signal_type in ("BREAKOUT", "PULLBACK"):
+    for signal_type in ("BREAKOUT", "CAPITULATION"):
         db.add(MarketBreakoutScan(
             scan_date=scan_date, ticker="DUP", company_name="DUP Corp",
             signal_type=signal_type, close_price=50.0, ma150_value=45.0,
