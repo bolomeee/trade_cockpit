@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.3",
-    "active_sprint": "F217-b3",
+    "active_sprint": "F217-b4",
     "active_sprint_phase": "needs_review",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
@@ -4275,8 +4275,8 @@
         "F217-a": "done",
         "F217-b1": "done",
         "F217-b2": "done",
-        "F217-b3": "needs_review",
-        "F217-b4": "design_needed",
+        "F217-b3": "done",
+        "F217-b4": "needs_review",
         "F217-c": "design_needed"
       },
       "dependencies": [
@@ -4453,6 +4453,27 @@
           "phase": "needs_review",
           "session": "feature-dev",
           "changes": "Generator 完成。7 文件 10 行 PULLBACK→CAPITULATION 字面量替换全部执行：test_setup_f216d2.py L195 + test_pool_service.py L393 + test_ai_schemas_f211a1.py L350/L371/L373(含keyLessons) + test_regime_f201b.py L54+L87(fixture+assert双改) + test_f215a.py L244 + test_decision_f203b2.py L81 + test_ai_gateway_e2e_f208c.py L458。T1 PULLBACK grep 空（7文件无遗留）+ T2 CAPITULATION grep 全存在 + T3-T8 单文件全通过 + T9 全量回归 1095 passed 8预存失败 0新增失败 = b2基线完全吻合。排除清单 test_capitulation_reversal/test_setup_snapshot_purge/test_signal_*/test_market_*/test_ai_schemas_f209 等均未动（git diff --stat 验证）。backend/app/ 零改动。7 WIP commits 颗粒度保留（不squash）。F217-b3 → needs_review。下一步：用户验收 → done → 协商 F217-b4 Sprint Contract（Pydantic Literal 删 PULLBACK 收紧）。"
+        },
+        {
+          "date": "2026-05-16",
+          "subtask": "F217-b3",
+          "phase": "done",
+          "session": "acceptance",
+          "changes": "acceptance skill 验收通过（用户确认 2026-05-16）。7 文件 10 行 PULLBACK→CAPITULATION fixture 替换全验证：T1 grep 7 文件 PULLBACK 全空 / T2 CAPITULATION 全存在 / T3-T8 单文件全通过 / T9 全量回归 1095 passed 8 预存失败 0 新增失败。排除清单（test_capitulation_reversal / test_setup_snapshot_purge / test_setup_f202a / test_ai_schemas_f209 / signal_* / market_* / test_stock_detail）完全未动。backend/app/ 零改动。L485 reason 自由文本未改（NP-b3-3 确认）。b4 依赖链已解锁：7 文件无 PULLBACK 字面量，b4 删 Pydantic Literal PULLBACK 不再破坏任何测试。验收记录：docs/验收/v2.2.0-F217-b3-acceptance.md。phase → done。"
+        },
+        {
+          "date": "2026-05-16",
+          "subtask": "F217-b4",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Sprint Contract 协商",
+          "changes": "F217-b4 Sprint Contract 已确认（用户 2026-05-16 全部按推荐方案确认 NP-b4-1=A + NP-b4-2=A + NP-b4-3=A）。范围 6 文件命中上限无 buffer，全部修改无新建：position.py L12 + pending_order.py L11 + trade_plan.py L45 + candidate_ranker.py L42 + contradiction_detector.py L41 + journal_assistant.py L52，每处单行 Literal 元组删除 \"PULLBACK\", （字面量+逗号+空格），与 b2 加 CAPITULATION 形成镜像 diff。NP-b4-1=A 不新建负断言测试文件（T1 grep PULLBACK=空 + T3 REPL ValidationError 矩阵足够），NP-b4-2=A 单行删字面量保 diff 对称（不跨行重排），NP-b4-3=A 不追加 DECISIONS 记录（D095 已覆盖替换语义，b 系列时序在 sub_sprint_notes 可追溯）。保留 3 处不动：setup_snapshot_repository.py:42-45 purge_legacy_pullback DB 字符串查询 / test_ai_gateway_e2e_f208c.py:485 \"Solid pullback to support.\" 自由文本 reason / test_setup_f202a.py:104 preferred_setups JSON list[str] 非 Literal。排除：前端 cockpitDecisionApi 类型 chips badge（F217-c）/ decision_service capitulationEvidence 填充（F217-c）/ user_settings.preferred_setups JSON 运行时迁移 / CAPITULATION_ENABLED flag / purge_legacy_pullback 调用编排到 startup-cron / 抽共享 Literal 别名模块。测试 T1-T7：T1 grep 6 文件 PULLBACK 空 / T2 grep 6 文件 CAPITULATION 全在 / T3 REPL 6 schema 构造 PULLBACK 抛 ValidationError / T4 REPL 6 schema 构造 CAPITULATION 通过 / T5 test_setup_snapshot_purge 12 tests 全过 / T6 test_setup_f202a 全过（验证 JSON list[str] 不受 Literal 影响）/ T7 全量回归对齐 b3 done 基线 1095 passed 8 预存失败 0 新增失败。Contract: docs/开发/sprint-contracts/F217-b4-contract.md (7 测试 + 7 步开发顺序 + 5 wip commit + 1 final commit)。下个 session Generator 从 §4 Step 1+2 (cockpit schemas) 开始。"
+        },
+        {
+          "date": "2026-05-16",
+          "subtask": "F217-b4",
+          "phase": "needs_review",
+          "session": "feature-dev Generator + Evaluator",
+          "changes": "Generator 完成。6 文件 6 行 PULLBACK Literal 删除：position.py L12 + pending_order.py L11 + trade_plan.py L45 + candidate_ranker.py L42 + contradiction_detector.py L41 + journal_assistant.py L52。每处单行 -\"PULLBACK\", 形成与 b2 镜像 diff，diff 对称性已 git diff 验证（6 文件各 1 增 1 删）。Evaluator T1 grep 6 文件 PULLBACK 全空（exit 1）/ T2 CAPITULATION 6 文件各 1 行命中 / T3 REPL 6 schema 构造 PULLBACK 抛 ValidationError（literal_error 全 6）/ T4 REPL 6 schema 构造 CAPITULATION 成功 / T5 test_setup_snapshot_purge 12/12 / T6 test_setup_f202a 27/27（含 test_s15_pullback_zone_now_returns_none）/ T7 全量回归 1095 passed 8 预存失败 0 新增失败 = b3 done 基线完全对齐。Lint ruff 仅预存 position.py F401 unused import（b2 期间遗留，非本 sprint 引入）。purge_legacy_pullback 字节级别不动（git diff 验证零变更）。6 wip commits + 1 pending feat() commit。F217-b4 → needs_review。下一步：用户验收 → done → 协商 F217-c Sprint Contract。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已完成 — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已完成 — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。"

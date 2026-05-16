@@ -1,5 +1,36 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[2026-05-16] Sprint：F217-b3 Generator 完成（测试 fixture 批量 PULLBACK→CAPITULATION）
+[2026-05-16] Sprint：F217-b4 Generator + Evaluator 完成（Pydantic schemas Literal -PULLBACK）→ phase: needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - position.py L12 _VALID_SETUP_TYPES: -"PULLBACK",
+  - pending_order.py L11 _VALID_SETUP_TYPES: -"PULLBACK",
+  - trade_plan.py L45 TradePlanInput.setupType inline Literal: -"PULLBACK",
+  - candidate_ranker.py L42 CandidateInput.setupType inline Literal: -"PULLBACK",
+  - contradiction_detector.py L41 _SETUP_TYPE: -"PULLBACK",
+  - journal_assistant.py L52 _SETUP_TYPE: -"PULLBACK",
+  - T1 grep 6 文件 PULLBACK 全空 / T2 CAPITULATION 6 文件各 1 命中
+  - T3 REPL 6 schema PULLBACK → ValidationError(literal_error) / T4 CAPITULATION 全接受
+  - T5 test_setup_snapshot_purge 12/12 / T6 test_setup_f202a 27/27
+  - T7 全量回归：1095 passed / 8 预存失败 / 0 新增失败（= b3 基线完全对齐）
+  - diff 对称性：6 文件各 1 行 -"PULLBACK", 无多余改动
+  - purge_legacy_pullback 不动（git diff 零变更）
+  - Lint: 仅 position.py F401 预存 warning（b2 遗留，非本 sprint 引入）
+  - 6 wip commits 颗粒度保留（不 squash）
+
+⚠️ 预存失败（非本 sprint 引入，基线 8 条不变）：
+  - test_ai_schemas_f209 D1 / test_ai_schemas_f211a1 R5/R6 / test_regime_f201b S4 / test_decision_f215b AlembicRoundtrip / test_fmp_client / test_regime_f201a S14 / test_schema
+
+🔧 系统变更（6 文件全部修改无新建）：
+  - backend/app/schemas/cockpit/position.py
+  - backend/app/schemas/cockpit/pending_order.py
+  - backend/app/ai/schemas/trade_plan.py
+  - backend/app/ai/schemas/candidate_ranker.py
+  - backend/app/ai/schemas/contradiction_detector.py
+  - backend/app/ai/schemas/journal_assistant.py
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-16] Sprint：F217-b3 验收通过（测试 fixture 批量 PULLBACK→CAPITULATION）→ phase: done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ✅ 完成内容：
@@ -394,3 +425,62 @@ Contract: docs/开发/sprint-contracts/F217-b3-contract.md
   > 继续开发 F217-b3，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b3-contract.md，
   > 进入 Generator 模式，从 §4 Step 1（test_setup_f216d2.py）开始。
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-16] Sprint：F217-b4 Pydantic Literal 收紧（删 PULLBACK）— Sprint Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F217-b4 Sprint Contract 草案已落 docs/开发/sprint-contracts/F217-b4-contract.md
+  - 用户 2026-05-16 全部按推荐方案确认 NP-b4-1=A + NP-b4-2=A + NP-b4-3=A
+  - 范围 6 文件命中上限无 buffer，全部修改无新建：
+      • backend/app/schemas/cockpit/position.py:12          (_VALID_SETUP_TYPES)
+      • backend/app/schemas/cockpit/pending_order.py:11     (_VALID_SETUP_TYPES)
+      • backend/app/ai/schemas/trade_plan.py:45             (TradePlanInput.setupType 内联)
+      • backend/app/ai/schemas/candidate_ranker.py:42       (CandidateInput.setupType 内联)
+      • backend/app/ai/schemas/contradiction_detector.py:41 (_SETUP_TYPE 别名)
+      • backend/app/ai/schemas/journal_assistant.py:52      (_SETUP_TYPE 别名)
+    每处单行 Literal 元组删除 "PULLBACK", （字面量+逗号+空格），与 b2 加 CAPITULATION 形成镜像 diff
+  - 协商决策：
+      NP-b4-1=A 不新建负断言测试（T1 grep + T3 REPL ValidationError 矩阵足够，避免破 6 文件上限）
+      NP-b4-2=A 单行删字面量保 diff 对称（不跨行重排，保 git blame 干净）
+      NP-b4-3=A 不追加 DECISIONS 记录（D095 已覆盖替换语义，b 系列时序在 sub_sprint_notes 可追溯）
+  - 保留 3 处不动（防误伤）：
+      • setup_snapshot_repository.py:42-45 purge_legacy_pullback — DB 行字符串查询
+      • test_ai_gateway_e2e_f208c.py:485 "Solid pullback to support." — 自由文本 reason
+      • test_setup_f202a.py:104 preferred_setups=json.dumps(["BREAKOUT", "PULLBACK"]) — list[str] 非 Literal
+  - 测试 T1-T7：
+      T1 grep 6 文件 "PULLBACK" 输出空
+      T2 grep 6 文件 "CAPITULATION" 全存在
+      T3 REPL 6 schema 构造 setupType='PULLBACK' 全抛 ValidationError（入 Evaluator 报告）
+      T4 REPL 6 schema 构造 setupType='CAPITULATION' 全通过（入 Evaluator 报告）
+      T5 test_setup_snapshot_purge.py 12 tests 全过（验证 purge_legacy_pullback DB 查询不受影响）
+      T6 test_setup_f202a.py 全过（验证 user_settings JSON list[str] 不受 Literal 收紧影响）
+      T7 全量回归对齐 b3 done 基线 1095 passed 8 预存失败 0 新增失败
+  - 开发顺序 7 步：Step1+2 cockpit schemas 1 wip / Step3-6 各 AI schema 独立 wip / Step7 final feat commit
+  - features.json 变更：
+      sub_sprints.F217-b4: design_needed → contract_agreed
+      _pipeline_status.active_sprint / active_sprint_phase 更新
+      iteration_history 追加 contract_agreed 节点
+
+⚠️ 待你决策：
+  - 无（NP 全 A，contract 已签字）
+
+🔧 系统变更：
+  - 新建 docs/开发/sprint-contracts/F217-b4-contract.md
+  - features.json 同步
+
+📊 F217 当前状态：
+  ├── F217-a  — done ✅
+  ├── F217-b1 — done ✅
+  ├── F217-b2 — done ✅
+  ├── F217-b3 — done ✅
+  ├── F217-b4 — contract_agreed 🔄 ← 本次（待 Generator）
+  └── F217-c  — design_needed（前端 chips + 紫色 badge，b4 完成后启动）
+
+[下一步]
+  开新 session（建议 Sonnet）进 Generator 模式：
+  > 继续开发 F217-b4，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b4-contract.md，
+  > 进入 Generator 模式，从 §4 Step 1+2（cockpit schemas）开始。
