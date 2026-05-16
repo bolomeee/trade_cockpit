@@ -1,4 +1,32 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-16] Sprint：F217-b2 Generator + Evaluator 完成（Pydantic Literal +CAPITULATION）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - cockpit/position.py _VALID_SETUP_TYPES：插入 "CAPITULATION"（紧邻 PULLBACK 之后）
+  - cockpit/pending_order.py _VALID_SETUP_TYPES：同上
+  - ai/schemas/trade_plan.py TradePlanInput.setupType 内联 Literal：同上
+  - ai/schemas/candidate_ranker.py CandidateInput.setupType 内联 Literal：同上
+  - ai/schemas/contradiction_detector.py _SETUP_TYPE 别名：同上
+  - ai/schemas/journal_assistant.py _SETUP_TYPE 别名：同上
+  - T1-T7 全通过：import OK / PULLBACK 向后兼容 18 tests pass / REPL T3 4 cockpit classes / REPL T4 5 AI schema inputs / grep 6 处 CAPITULATION / grep 6 处 PULLBACK / 全量回归 1095 passed 0 新增失败
+  - ruff 0 新增 warning（position.py 预存 F401 非本 sprint 引入）
+  - phase → needs_review
+
+⚠️ 预存失败（非本 sprint 引入，基线 8 条不变）：
+  - test_regime_f201a/b / test_schema / test_ai_schemas_f209 / test_ai_schemas_f211a1 R5/R6 / test_decision_f215b AlembicRoundtrip / test_fmp_client
+
+🔧 系统变更（6 文件全部修改无新建）：
+  - backend/app/schemas/cockpit/position.py
+  - backend/app/schemas/cockpit/pending_order.py
+  - backend/app/ai/schemas/trade_plan.py
+  - backend/app/ai/schemas/candidate_ranker.py
+  - backend/app/ai/schemas/contradiction_detector.py
+  - backend/app/ai/schemas/journal_assistant.py
+
+📌 T5 注意：Contract grep `Literal[.*CAPITULATION` wc -l 输出 4（非 6），原因：cockpit schemas 用多行 Literal，单行 regex 漏匹配；grep -n "CAPITULATION" 确认 6 文件全部命中，内容正确。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-15 18:00] Sprint：F217-b1 Generator 完成（Cockpit Phase C DB 层）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -195,3 +223,55 @@
 
 [下一步]
   F217-b：Sprint Contract 协商（alembic 021 setup_type 枚举切换 + purge_legacy_pullback）
+
+[2026-05-15] F217-b1 验收通过
+  ✅ acceptance skill 验收合格
+  - alembic 021 upgrade/downgrade/upgrade 闭环
+  - 12 integration tests 全通过（T1-T9 含 5 扩展条）
+  - 全量回归 1095 passed，0 新增失败
+  - legacy 过滤路径：2 repo + 1 decision_service
+  - 验收记录：docs/验收/v2.2.0-F217-b1-acceptance.md
+  - features.json: F217-b1 → done，active_sprint → F217-b2
+
+[下一步]
+  F217-b2：Sprint Contract 协商（Pydantic Literal 扩展 — 6 schemas 加 CAPITULATION，暂保留 PULLBACK）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-15] F217-b2 Sprint Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 协商结论（用户全部按推荐 A 确认）：
+  - NP-b2-1=A 不新建测试文件（守 6 文件上限）
+  - NP-b2-2=A CAPITULATION 紧邻 PULLBACK 之后（最小 diff）
+  - NP-b2-3=A 不抽共享 Literal 别名（YAGNI）
+  - NP-b2-4=A 不动 AI SYSTEM_PROMPT（prompt 合约属 F217-c）
+
+📝 范围（6 文件全修改，无新建）：
+  1. backend/app/schemas/cockpit/position.py L11-13
+  2. backend/app/schemas/cockpit/pending_order.py L10-12
+  3. backend/app/ai/schemas/trade_plan.py L45
+  4. backend/app/ai/schemas/candidate_ranker.py L42
+  5. backend/app/ai/schemas/contradiction_detector.py L41
+  6. backend/app/ai/schemas/journal_assistant.py L52
+
+🔧 系统变更：
+  - features.json: sub_sprints.F217-b2 design_needed → contract_agreed
+  - features.json: _pipeline_status.active_sprint_phase → contract_agreed
+  - features.json: F217.iteration_history 追加 contract_agreed 节点
+  - 新建 Sprint Contract: docs/开发/sprint-contracts/F217-b2-contract.md
+  - SESSION-HANDOFF.md 更新（F217-b2 contract_agreed → 待 Generator）
+
+📊 功能状态：
+  F217   — phase: in_progress (parent)
+   ├── F217-a — done
+   ├── F217-b1 — done
+   ├── F217-b2 — contract_agreed  ← 本次协商完成
+   ├── F217-b3 — design_needed
+   ├── F217-b4 — design_needed
+   └── F217-c — design_needed
+
+[下一步]
+  开新 session（Sonnet）继续 F217-b2 Generator 模式：
+  > 继续开发 F217-b2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b2-contract.md，
+  > 进入 Generator 模式，从 §4 Step 1+2（cockpit schemas）开始。
