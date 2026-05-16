@@ -1,120 +1,103 @@
-# SESSION-HANDOFF — F217-b2 needs_review，等待验收
+# SESSION HANDOFF — F217-b4 needs_review，待用户验收
 
 > 生成：2026-05-16
-> 上一阶段：F217-b2 Generator + Evaluator 完成 @ 2026-05-16
-> 当前 phase：`needs_review`
-> 下一阶段：acceptance skill 验收 F217-b2，通过后进 F217-b3 Sprint Contract 协商
+> 项目：MA150 Tracker → Workbench → Cockpit
+> 当前 Sprint：F217-b4（Cockpit Phase C Pydantic Literal 收紧 — 删 PULLBACK）
+> phase：`needs_review` ← Generator + Evaluator 全部完成，等用户验收
 
 ---
 
-## 1. F217-b2 Sprint Contract 摘要
+## 1. F217-b4 已完成（Generator + Evaluator）
 
-**目标**：在 6 个 Pydantic schema 的 setup_type Literal 中**插入 `"CAPITULATION"`**，**保留 `"PULLBACK"`**（向后兼容窗口，b4 才删）。纯加性、纯类型层、无 DB 改动、无运行时风险。
+### 实现内容
 
-**完整 Contract**：[docs/开发/sprint-contracts/F217-b2-contract.md](docs/开发/sprint-contracts/F217-b2-contract.md)
+6 个 Pydantic schema 的 `setup_type` / `setupType` Literal 元组删除 `"PULLBACK"` 字面量：
 
-### 实现范围（6 文件，全部修改无新建）
+| # | 文件 | 行号 | 改动 |
+|---|------|------|------|
+| 1 | `backend/app/schemas/cockpit/position.py` | L12 | `_VALID_SETUP_TYPES` −`"PULLBACK", ` |
+| 2 | `backend/app/schemas/cockpit/pending_order.py` | L11 | `_VALID_SETUP_TYPES` −`"PULLBACK", ` |
+| 3 | `backend/app/ai/schemas/trade_plan.py` | L45 | `TradePlanInput.setupType` −`"PULLBACK", ` |
+| 4 | `backend/app/ai/schemas/candidate_ranker.py` | L42 | `CandidateInput.setupType` −`"PULLBACK", ` |
+| 5 | `backend/app/ai/schemas/contradiction_detector.py` | L41 | `_SETUP_TYPE` −`"PULLBACK", ` |
+| 6 | `backend/app/ai/schemas/journal_assistant.py` | L52 | `_SETUP_TYPE` −`"PULLBACK", ` |
 
-| # | 文件 | Literal 形式 | 修改位置 |
-|---|------|-------------|---------|
-| 1 | `backend/app/schemas/cockpit/position.py` | 模块别名 `_VALID_SETUP_TYPES` | L11-13 |
-| 2 | `backend/app/schemas/cockpit/pending_order.py` | 模块别名 `_VALID_SETUP_TYPES` | L10-12 |
-| 3 | `backend/app/ai/schemas/trade_plan.py` | 内联 Literal（`TradePlanInput.setupType`） | L45 |
-| 4 | `backend/app/ai/schemas/candidate_ranker.py` | 内联 Literal（`CandidateInput.setupType`） | L42 |
-| 5 | `backend/app/ai/schemas/contradiction_detector.py` | 模块别名 `_SETUP_TYPE` | L41 |
-| 6 | `backend/app/ai/schemas/journal_assistant.py` | 模块别名 `_SETUP_TYPE` | L52 |
+diff 对称性：每文件 1 行 `−"PULLBACK", `，与 b2 加 CAPITULATION 形成镜像。
 
-每个 Literal 元组形如：
-```python
-Literal["BREAKOUT", "PULLBACK", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
-```
-即在 `"PULLBACK"` 后**紧邻插入** `"CAPITULATION"`（NP-b2-2=A 一致性约束）。
+### Evaluator 验收结果
 
-### 协商点（用户确认）
-
-| # | 议题 | 决议 |
+| # | 测试 | 结果 |
 |---|------|------|
-| NP-b2-1 | 是否新建专属测试文件 | **A**：不新建（守 6 文件上限；b3 fixture 迁移自然覆盖；T3/T4 用 REPL 入 Evaluator 报告） |
-| NP-b2-2 | CAPITULATION 在 Literal 中的位置 | **A**：紧邻 PULLBACK 之后（最小 diff，b4 删 PULLBACK 同位对齐） |
-| NP-b2-3 | 是否抽共享 Literal 别名模块 | **A**：保留现状重复（YAGNI，跨包依赖代价） |
-| NP-b2-4 | 是否同步更新 4 个 AI SYSTEM_PROMPT | **A**：不动（prompt 行为合约属 F217-c 范畴） |
+| T1 | grep 6 文件 `"PULLBACK"` = 空（exit 1） | ✅ |
+| T2 | grep 6 文件 `"CAPITULATION"` 各 ≥1 | ✅ 6 文件各 1 命中 |
+| T3 | REPL 6 schema 构造 PULLBACK 抛 ValidationError | ✅ 全 6 `literal_error` |
+| T4 | REPL 6 schema 构造 CAPITULATION 通过 | ✅ 全 6 接受 |
+| T5 | `test_setup_snapshot_purge.py` | ✅ 12/12 |
+| T6 | `test_setup_f202a.py`（含 test_s15_pullback_zone_now_returns_none） | ✅ 27/27 |
+| T7 | 全量回归 | ✅ 1095 passed / 8 预存失败 / **0 新增失败** |
 
-### 排除（不在本 sprint）
+预存 8 失败（非本 sprint 引入，与 b3 基线完全一致）：
+`test_ai_schemas_f209 D1 / test_ai_schemas_f211a1 R5/R6 / test_regime_f201b S4 / test_decision_f215b AlembicRoundtrip / test_fmp_client / test_regime_f201a S14 / test_schema`
 
-- ❌ 测试 fixture 批量去 PULLBACK → F217-b3
-- ❌ 从 Literal 删 PULLBACK 字面量收紧 → F217-b4（必须 b3 完成后）
-- ❌ 前端 chips / 紫色 badge / decision_service capitulationEvidence 填充 → F217-c
-- ❌ user_settings.preferred_setups JSON 默认值迁移 → F217-c 或独立微 sprint
-- ❌ CAPITULATION_ENABLED feature flag → 不引入
+### Commits
 
----
-
-## 2. 开发顺序（Generator 模式逐步执行）
-
-> ⚠️ 禁用 `git add -A`。每步显式列文件名。
-
-| Step | 文件 | wip commit message |
-|------|------|---------------------|
-| 1+2 合并 | cockpit/position.py + cockpit/pending_order.py | `wip(F217-b2): cockpit schemas Literal +CAPITULATION (keep PULLBACK)` |
-| 3 | ai/trade_plan.py | `wip(F217-b2): trade_plan Literal +CAPITULATION` |
-| 4 | ai/candidate_ranker.py | `wip(F217-b2): candidate_ranker Literal +CAPITULATION` |
-| 5 | ai/contradiction_detector.py | `wip(F217-b2): contradiction_detector Literal +CAPITULATION` |
-| 6 | ai/journal_assistant.py | `wip(F217-b2): journal_assistant Literal +CAPITULATION` |
-| 7 | 全量回归 + final | `feat(F217-b2): Pydantic schemas Literal +CAPITULATION (PULLBACK kept for b3 window)` |
-
-每 step 最小验证（详见 Contract §4）：`python -c "from … import …; print(get_args(...))"` 应含 `'CAPITULATION'` 与 `'PULLBACK'`。
+| Commit | 内容 |
+|--------|------|
+| `f8c1ada` | wip(F217-b4): cockpit schemas Literal -PULLBACK |
+| `242c4b7` | wip(F217-b4): trade_plan Literal -PULLBACK |
+| `909052a` | wip(F217-b4): candidate_ranker Literal -PULLBACK |
+| `6486372` | wip(F217-b4): contradiction_detector Literal -PULLBACK |
+| `18264fe` | wip(F217-b4): journal_assistant Literal -PULLBACK |
+| `8f98db4` | feat(F217-b4): Pydantic schemas Literal -PULLBACK (backward-compat window closed) |
 
 ---
 
-## 3. Evaluator 测试矩阵（T1-T7）
+## 2. 下一步：用户验收
 
-| # | 描述 | 类型 |
-|---|------|------|
-| T1 | 6 文件 import 不报错 | 静态 |
-| T2 | 现有 PULLBACK 字面量仍接受（向后兼容窗口未关） | 集成（pytest -k "PULLBACK or pullback"） |
-| T3 | cockpit schemas (4 类) 接受 setup_type='CAPITULATION' | REPL → Evaluator 报告 |
-| T4 | 4 个 AI schema input 接受 setupType='CAPITULATION' | REPL → Evaluator 报告 |
-| T5 | grep 验证 6 处 `Literal[…CAPITULATION…]` 存在 | 静态（grep \| wc -l = 6） |
-| T6 | grep 验证 6 处仍含 `"PULLBACK"` 字面量 | 静态 |
-| T7 | 全量回归 0 新增失败 | 集成（pytest backend/tests/ -x） |
+验收时需确认以下内容（与 T1-T7 对应）：
 
-自检清单详见 Contract §3。
+1. `git diff HEAD~6..HEAD` 查看 6 文件的 diff — 每文件仅 1 行 `−"PULLBACK", `
+2. `grep -rn '"PULLBACK"' backend/app/schemas/` — 应无命中
+3. T7 全量回归结果：1095 passed 8 预存失败 0 新增
+4. `purge_legacy_pullback` 不动（`git diff` 验证 `setup_snapshot_repository.py` 零变更）
+
+验收通过后：
+- features.json `F217-b4` → `"done"`
+- features.json `active_sprint` → `"F217-c"`（或先 design_needed）
+- 生成 `docs/验收/v2.2.0-F217-b4-acceptance.md`
 
 ---
 
-## 4. 项目当前状态快照
+## 3. F217 整体状态
+
+| Sub-sprint | 状态 | 备注 |
+|-----------|------|------|
+| F217-a | done ✅ | setup_service 重写 + 34 pure tests |
+| F217-b1 | done ✅ | DB legacy 列 + purge_legacy_pullback |
+| F217-b2 | done ✅ | 6 schema Literal +CAPITULATION |
+| F217-b3 | done ✅ | 7 测试 fixture PULLBACK→CAPITULATION |
+| **F217-b4** | **needs_review 🔄** | **本 sprint，等用户验收** |
+| F217-c | design_needed | 前端 chips + 紫色 badge（b4 done 后启动） |
+
+b 系列全部完成（b4 done 后）→ F217-c 可启动：前端 `SetupType` 类型 + chips + 紫色 badge。
+
+---
+
+## 4. 下个 Session 恢复指令（验收后）
+
+用户验收通过后，开新 session 粘贴：
 
 ```
-F217 — phase: in_progress (Cockpit Phase C — Capitulation Reversal 严格重写)
- ├── F217-a   — done ✅ (后端 setup_service 7 AND 门 + 34 pure tests)
- ├── F217-b1  — done ✅ (DB 层 legacy 列 + PULLBACK 软删)
- ├── F217-b2  — contract_agreed 📝 ← 本次协商完成，等待 Generator
- ├── F217-b3  — design_needed (测试 fixture 去 PULLBACK, 6 files)
- ├── F217-b4  — design_needed (Pydantic Literal 删 PULLBACK 收紧)
- └── F217-c   — design_needed (前端 chips + 紫色 badge)
+F217-b4 验收通过，请将 features.json F217-b4 → done，并生成
+docs/验收/v2.2.0-F217-b4-acceptance.md，
+然后协商 F217-c Sprint Contract（前端 SetupType/chips/紫色 badge）。
 ```
-
-`_pipeline_status`: active_sprint=F217-b2, active_sprint_phase=contract_agreed, development=in_progress
 
 ---
 
-## 5. 风险提示（给下一 session）
+## 5. 未决事项
 
-1. **6 文件命中上限，无 buffer**：如 Generator 期间发现 Contract §2 之外的遗漏 Literal 定义点，**停下来二次协商**，不得自行扩张到第 7 文件
-2. **Literal 顺序一致性**：6 处必须全部按 NP-b2-2=A 顺序（紧邻 PULLBACK 之后），便于 b4 删 PULLBACK 时 diff 对齐
-3. **不动 SYSTEM_PROMPT / guardrail / BANNED_PHRASES**：本 sprint 严格只动 Literal 元组本身，其它字符不变
-4. **预存失败基线**：F217-b1 评估期已记录 8 条预存失败（test_regime_f201a/b、test_schema、test_ai_schemas_f209、test_ai_schemas_f211a1 R5/R6、test_decision_f215b AlembicRoundtrip、test_fmp_client）— b2 Evaluator T7 回归对比这条基线，0 新增失败即过
-5. **PULLBACK 暂保留**：本 sprint 完成后 PULLBACK 仍是 valid Literal — 所有现存 PULLBACK fixture 继续通过，b3 才迁移、b4 才删
-6. **CAPITULATION 写入路径**：F217-a 后 setup_service 已能写 setup_snapshots.setup_type='CAPITULATION'，b1 DB 层已支持。本 sprint 只是让"Pydantic 校验路径接收 CAPITULATION 不被拒"
-
----
-
-## 6. 下一 Session 恢复指令
-
-```
-继续开发 F217-b2，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b2-contract.md，
-进入 Generator 模式，从 §4 开发顺序 Step 1+2（cockpit schemas）开始。
-```
-
-建议用 **Sonnet** 开新 session（Literal 扩展是机械改动，不需要 Opus 推理深度）。
+- [ ] 用户验收 F217-b4（T1-T7 全过，diff 对称性确认）
+- [ ] F217-c Sprint Contract 协商（前端类型 SetupType + chips + CAPITULATION 紫色 badge）
+- [ ] `user_settings.preferred_setups` JSON 默认值运行时迁移（排除在 b 系列外，F217-c 或独立微 sprint）
+- [ ] Lint F401 position.py `import pydantic` unused import（b2 遗留，非 F217 范围，可独立 chore 清理）
