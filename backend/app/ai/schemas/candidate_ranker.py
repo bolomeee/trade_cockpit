@@ -39,7 +39,7 @@ class CandidateInput(BaseModel):
     """Single candidate (from SetupSnapshot projection + DecisionData derivation)."""
 
     ticker: str = Field(min_length=1, max_length=10, pattern=r"^[A-Z][A-Z0-9.\-]*$")
-    setupType: Literal["BREAKOUT", "PULLBACK", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
+    setupType: Literal["BREAKOUT", "PULLBACK", "CAPITULATION", "RECLAIM", "EARNINGS_DRIFT", "EXTENDED", "BROKEN", "NONE"]
     setupQuality: Literal["A", "B", "C"] | None = None
     trendScore: int = Field(ge=0, le=5)
     rsPercentile: float = Field(ge=0, le=100)
