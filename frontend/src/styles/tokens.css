@@ -87,6 +87,7 @@
   --color-setup-earnings: #ec4899;
   --color-setup-extended: var(--color-text-muted);
   --color-setup-broken: var(--color-change-negative);
+  --color-setup-capitulation: #8b5cf6;
   /* NONE 不渲染 Badge，无需 token */
 
   /* ---------- 颜色 · Cockpit Earnings Risk（对齐 SetupSnapshot.earnings_risk） ---------- */
