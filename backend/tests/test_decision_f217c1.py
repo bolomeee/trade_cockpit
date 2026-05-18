@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-import pytest
-
 from app.models.daily_bar import DailyBar
 from app.models.market_regime_snapshot import MarketRegimeSnapshot
 from app.models.setup_snapshot import SetupSnapshot
@@ -208,8 +206,8 @@ def _seed_6_bars(db, stock_id: int, ticker: str = "CAPT") -> None:
         # Last bar: close=105, H=110, L=90 → (105-90)/20=0.75 → reversal_day=True
         (date(2026, 5, 18), 92.0,  110.0,  90.0, 105.0, 3_500_000),
     ]
-    for (d, o, h, l, c, v) in bars_data:
-        db.add(DailyBar(stock_id=stock_id, date=d, open=o, high=h, low=l, close=c, volume=v))
+    for (d, o, h, lo, c, v) in bars_data:
+        db.add(DailyBar(stock_id=stock_id, date=d, open=o, high=h, low=lo, close=c, volume=v))
     db.flush()
 
 
@@ -295,8 +293,8 @@ def _seed_full(db, ticker: str = "CAPT", setup_type: str = "CAPITULATION",
             (date(2026, 5, 17), 102.0, 105.0, 101.0, 103.0, 1_300_000),
             (date(2026, 5, 18),  92.0, 110.0,  90.0, 105.0, 3_500_000),
         ][:n_bars]
-        for d, o, h, l, c, v in bars_data:
-            db.add(DailyBar(stock_id=stock.id, date=d, open=o, high=h, low=l, close=c, volume=v))
+        for d, o, h, lo, c, v in bars_data:
+            db.add(DailyBar(stock_id=stock.id, date=d, open=o, high=h, low=lo, close=c, volume=v))
         db.flush()
     _seed_snapshot(db, ticker, setup_type=setup_type, volume_zscore=volume_zscore)
     _seed_regime(db)
