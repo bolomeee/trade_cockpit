@@ -1,103 +1,111 @@
-# SESSION HANDOFF — F217-b4 needs_review，待用户验收
+# SESSION-HANDOFF.md — F217-c1 needs_review，待 acceptance
 
-> 生成：2026-05-16
-> 项目：MA150 Tracker → Workbench → Cockpit
-> 当前 Sprint：F217-b4（Cockpit Phase C Pydantic Literal 收紧 — 删 PULLBACK）
-> phase：`needs_review` ← Generator + Evaluator 全部完成，等用户验收
-
----
-
-## 1. F217-b4 已完成（Generator + Evaluator）
-
-### 实现内容
-
-6 个 Pydantic schema 的 `setup_type` / `setupType` Literal 元组删除 `"PULLBACK"` 字面量：
-
-| # | 文件 | 行号 | 改动 |
-|---|------|------|------|
-| 1 | `backend/app/schemas/cockpit/position.py` | L12 | `_VALID_SETUP_TYPES` −`"PULLBACK", ` |
-| 2 | `backend/app/schemas/cockpit/pending_order.py` | L11 | `_VALID_SETUP_TYPES` −`"PULLBACK", ` |
-| 3 | `backend/app/ai/schemas/trade_plan.py` | L45 | `TradePlanInput.setupType` −`"PULLBACK", ` |
-| 4 | `backend/app/ai/schemas/candidate_ranker.py` | L42 | `CandidateInput.setupType` −`"PULLBACK", ` |
-| 5 | `backend/app/ai/schemas/contradiction_detector.py` | L41 | `_SETUP_TYPE` −`"PULLBACK", ` |
-| 6 | `backend/app/ai/schemas/journal_assistant.py` | L52 | `_SETUP_TYPE` −`"PULLBACK", ` |
-
-diff 对称性：每文件 1 行 `−"PULLBACK", `，与 b2 加 CAPITULATION 形成镜像。
-
-### Evaluator 验收结果
-
-| # | 测试 | 结果 |
-|---|------|------|
-| T1 | grep 6 文件 `"PULLBACK"` = 空（exit 1） | ✅ |
-| T2 | grep 6 文件 `"CAPITULATION"` 各 ≥1 | ✅ 6 文件各 1 命中 |
-| T3 | REPL 6 schema 构造 PULLBACK 抛 ValidationError | ✅ 全 6 `literal_error` |
-| T4 | REPL 6 schema 构造 CAPITULATION 通过 | ✅ 全 6 接受 |
-| T5 | `test_setup_snapshot_purge.py` | ✅ 12/12 |
-| T6 | `test_setup_f202a.py`（含 test_s15_pullback_zone_now_returns_none） | ✅ 27/27 |
-| T7 | 全量回归 | ✅ 1095 passed / 8 预存失败 / **0 新增失败** |
-
-预存 8 失败（非本 sprint 引入，与 b3 基线完全一致）：
-`test_ai_schemas_f209 D1 / test_ai_schemas_f211a1 R5/R6 / test_regime_f201b S4 / test_decision_f215b AlembicRoundtrip / test_fmp_client / test_regime_f201a S14 / test_schema`
-
-### Commits
-
-| Commit | 内容 |
-|--------|------|
-| `f8c1ada` | wip(F217-b4): cockpit schemas Literal -PULLBACK |
-| `242c4b7` | wip(F217-b4): trade_plan Literal -PULLBACK |
-| `909052a` | wip(F217-b4): candidate_ranker Literal -PULLBACK |
-| `6486372` | wip(F217-b4): contradiction_detector Literal -PULLBACK |
-| `18264fe` | wip(F217-b4): journal_assistant Literal -PULLBACK |
-| `8f98db4` | feat(F217-b4): Pydantic schemas Literal -PULLBACK (backward-compat window closed) |
+> 生成：2026-05-18
+> 当前 Skill：feature-dev（Generator + Evaluator 完成）
+> 当前 Feature：F217 — Cockpit Phase C Capitulation Reversal 严格重写
+> 当前 Sub-sprint：**F217-c1**（C5-back 后端 capitulationEvidence 接口实装）→ **needs_review**
 
 ---
 
-## 2. 下一步：用户验收
+## 完成的内容
 
-验收时需确认以下内容（与 T1-T7 对应）：
+✅ **F217-c1 Generator 模式执行完成**（2026-05-18）
 
-1. `git diff HEAD~6..HEAD` 查看 6 文件的 diff — 每文件仅 1 行 `−"PULLBACK", `
-2. `grep -rn '"PULLBACK"' backend/app/schemas/` — 应无命中
-3. T7 全量回归结果：1095 passed 8 预存失败 0 新增
-4. `purge_legacy_pullback` 不动（`git diff` 验证 `setup_snapshot_repository.py` 零变更）
+### Step 1：decision schema
+- `backend/app/schemas/cockpit/decision.py` 新增 `CapitulationEvidence(_CamelModel)` 3 字段
+- `drop_5d_pct` 显式 `Field(alias="drop5dPct")`（修复 `to_camel` 产 `drop5DPct` 大写 D 问题）
+- `DecisionData.capitulation_evidence: CapitulationEvidence | None = None`
 
-验收通过后：
-- features.json `F217-b4` → `"done"`
-- features.json `active_sprint` → `"F217-c"`（或先 design_needed）
-- 生成 `docs/验收/v2.2.0-F217-b4-acceptance.md`
+### Step 2：setup_service helper
+- `backend/app/services/cockpit/setup_service.py` 新增 module-level `compute_capitulation_evidence(closes, highs, lows) -> dict | None`
+- 复用 `_check_close_in_upper_bin` + `SETUP.CAPITULATION_CLOSE_UPPER_BIN`
+- 3 个防御边界：bars<6 / closes[-6]=0 / 空列表 → 全返回 None
+- `_is_capitulation_reversal` 函数体**未动**
+
+### Step 3：T1-T4 pure tests
+- `backend/tests/test_decision_f217c1.py` 新建，14 pure tests，0 失败
+
+### Step 4：decision_service wiring
+- `backend/app/services/cockpit/decision_service.py` 在 `setup_type=="CAPITULATION"` 时：
+  - inline select DailyBar JOIN Stock，拉最近 6 行（`.desc().limit(6)` 后 reversed 转升序）
+  - 调 `compute_capitulation_evidence`，配合 `snapshot.volume_zscore` 组 `CapitulationEvidence`
+  - 任一前置失败（volume_zscore=None / bars<6 / helper=None）→ `capitulation_evidence=None`
+- `test_decision_f203b2.py` 28/28 兼容性验证通过
+
+### Step 5：T5-T8 集成测试
+- 补充 T5-T8（6 tests），集成 db_session 真实 SQLite 测试
+- 20/20 全部通过
+
+### Step 6：Evaluator 自检 + T9 全量回归
+- ruff：0 新增 warning（修复 F401 + E741×2）
+- 全量回归：1115 passed / 8 预存失败 / 0 新增失败
+
+### Step 7：Final commit
+- `feat(F217-c1): backend capitulationEvidence wiring`（commit dcadcf6）
 
 ---
 
-## 3. F217 整体状态
+## 中断位置
 
-| Sub-sprint | 状态 | 备注 |
-|-----------|------|------|
-| F217-a | done ✅ | setup_service 重写 + 34 pure tests |
-| F217-b1 | done ✅ | DB legacy 列 + purge_legacy_pullback |
-| F217-b2 | done ✅ | 6 schema Literal +CAPITULATION |
-| F217-b3 | done ✅ | 7 测试 fixture PULLBACK→CAPITULATION |
-| **F217-b4** | **needs_review 🔄** | **本 sprint，等用户验收** |
-| F217-c | design_needed | 前端 chips + 紫色 badge（b4 done 后启动） |
+**F217-c1 开发完毕，phase = needs_review**。
 
-b 系列全部完成（b4 done 后）→ F217-c 可启动：前端 `SetupType` 类型 + chips + 紫色 badge。
+可直接运行 acceptance skill 进行验收，或先进入 F217-c2 Sprint Contract 协商（前端 chips+badge+token+design-spec）。
 
 ---
 
-## 4. 下个 Session 恢复指令（验收后）
+## Sprint Contract 执行状态
 
-用户验收通过后，开新 session 粘贴：
+| 开发步骤 | 状态 |
+|---------|------|
+| DATA-MODEL 确认 | ✅（无改动） |
+| API-CONTRACT 确认 | ✅（L1396-1424 已定义） |
+| 数据库迁移 | ✅（不需要） |
+| Step 1: decision.py schema CapitulationEvidence | ✅ |
+| Step 2: setup_service.py compute_capitulation_evidence helper | ✅ |
+| Step 3: test_decision_f217c1.py T1-T4 pure tests | ✅ |
+| Step 4: decision_service.py evidence wiring | ✅ |
+| Step 5: test_decision_f217c1.py T5-T8 集成 tests | ✅ |
+| Step 6: Evaluator 自检 + 全量回归 T9 + ruff | ✅ |
+| Step 7: Final feat commit | ✅ |
+
+---
+
+## 已创建/修改的文件（本 sprint）
+
+| 文件 | 状态 |
+|------|------|
+| `backend/app/schemas/cockpit/decision.py` | 修改（CapitulationEvidence + capitulation_evidence 字段） |
+| `backend/app/services/cockpit/setup_service.py` | 修改（compute_capitulation_evidence helper 新增） |
+| `backend/app/services/cockpit/decision_service.py` | 修改（evidence wiring 分支） |
+| `backend/tests/test_decision_f217c1.py` | 新建（T1-T8 20 tests） |
+
+---
+
+## 遗留决策
+
+无。F217-c2 设计决策将在下一次 Sprint Contract 协商时处理。
+
+---
+
+## 关键约束提醒（F217-c2 参考）
+
+- frontend `cockpitDecisionApi.ts` 类型需新增 `CapitulationEvidence` + `DecisionResponse.capitulationEvidence?: ...`
+- 5 个测试 fixture（PULLBACK → CAPITULATION）在 c2 内联修复
+- SetupTypeBadge.tsx 需新增 CAPITULATION 紫色 badge
+- DecisionPanelWidget.tsx 在 setupType=CAPITULATION 时渲染 3 chips
+- tokens.css 需重命名 `--color-setup-pullback` → `--color-setup-capitulation`
+- design-spec.md setup color 表 + chips 视觉规格在 c2 同步更新
+
+---
+
+## 下一个 Session 继续的指令
 
 ```
-F217-b4 验收通过，请将 features.json F217-b4 → done，并生成
-docs/验收/v2.2.0-F217-b4-acceptance.md，
-然后协商 F217-c Sprint Contract（前端 SetupType/chips/紫色 badge）。
+# 选项 A：验收 F217-c1
+触发 acceptance skill，验收 F217-c1。
+
+# 选项 B：直接进入 F217-c2 Sprint Contract 协商
+准备开发 F217-c2（前端 chips+badge+token+design-spec）。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-c1-contract.md，
+进入 feature-dev Sprint Contract 协商，预扫描文件数（9-11 文件需评估是否拆 c2a/c2b）。
 ```
-
----
-
-## 5. 未决事项
-
-- [ ] 用户验收 F217-b4（T1-T7 全过，diff 对称性确认）
-- [ ] F217-c Sprint Contract 协商（前端类型 SetupType + chips + CAPITULATION 紫色 badge）
-- [ ] `user_settings.preferred_setups` JSON 默认值运行时迁移（排除在 b 系列外，F217-c 或独立微 sprint）
-- [ ] Lint F401 position.py `import pydantic` unused import（b2 遗留，非 F217 范围，可独立 chore 清理）

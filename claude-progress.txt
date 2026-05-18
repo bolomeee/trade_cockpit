@@ -1,4 +1,30 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c1 Generator + Evaluator 完成（backend capitulationEvidence wiring）→ phase: needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - decision.py: CapitulationEvidence(_CamelModel) 新增（vol_zscore / drop_5d_pct / reversalDay）+ DecisionData.capitulation_evidence: CapitulationEvidence | None = None
+  - drop_5d_pct 显式 alias="drop5dPct"（修复 to_camel 产 drop5DPct 的 D-大写问题）
+  - setup_service.py: module-level compute_capitulation_evidence helper（保 _is_capitulation_reversal 不动）
+  - decision_service.py: compute_decision 在 setup_type=CAPITULATION 时 inline select DailyBar join Stock 拉 6 行，调 helper，组 CapitulationEvidence；3 个防御边界全 evidence=None
+  - test_decision_f217c1.py: T1-T8 共 20 tests（14 pure + 6 integration），0 失败
+  - ruff: 0 新增 warning（修复 F401 unused import + E741 ambiguous var）
+  - 全量回归: 1115 passed / 8 预存失败 / 0 新增失败
+
+🔧 系统变更：
+  - 新建：backend/tests/test_decision_f217c1.py
+  - 修改：backend/app/schemas/cockpit/decision.py
+  - 修改：backend/app/services/cockpit/setup_service.py
+  - 修改：backend/app/services/cockpit/decision_service.py
+
+📊 功能状态：
+  F217-c1：🔍 needs_review → 待 acceptance
+  F217-c2：⬜ design_needed（frontend chips+badge，下一 sprint）
+
+[下一个 Session]
+  acceptance skill 验收 F217-c1，或直接进入 F217-c2 Sprint Contract 协商。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-16] Sprint：F217-b4 Generator + Evaluator 完成（Pydantic schemas Literal -PULLBACK）→ phase: needs_review
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -484,3 +510,89 @@ Contract: docs/开发/sprint-contracts/F217-b3-contract.md
   > 继续开发 F217-b4，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-b4-contract.md，
   > 进入 Generator 模式，从 §4 Step 1+2（cockpit schemas）开始。
+
+---
+## [2026-05-16] F217-b4 验收通过 ✅
+
+**F217-b4 — Pydantic Literal 收紧（删 PULLBACK）**
+验收结论：✅ 通过（用户确认）
+
+T1 grep PULLBACK 全空 / T2 CAPITULATION 6/6 / T3 Literal PULLBACK=NO（6 schema）/
+T4 CAPITULATION=YES / T5 purge_legacy_pullback 12/12 / T6 test_setup_f202a 27/27 /
+T7 全量回归 1095 passed 8 预存失败 0 新增失败
+
+验收记录：docs/验收/v2.2.0-F217-b4-acceptance.md
+
+📊 F217 当前状态：
+  ├── F217-a  — done ✅
+  ├── F217-b1 — done ✅
+  ├── F217-b2 — done ✅
+  ├── F217-b3 — done ✅
+  ├── F217-b4 — done ✅ ← 本次验收
+  └── F217-c  — design_needed（前端 chips + 紫色 badge，b 系列全部完成，可启动）
+
+[下一步]
+  协商 F217-c Sprint Contract（前端 cockpitDecisionApi 类型 + chips + 紫色 badge）
+  建议开新 session 进入 feature-dev。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c 拆分 c1+c2 + F217-c1 Sprint Contract 协商 → phase: contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+
+  1. F217-c 6 文件原则预扫描超限（10-12 文件），用户确认拆分：
+     - F217-c1（C5-back，backend evidence 接口实装，4 文件）
+     - F217-c2（C5-front，frontend + tokens + design-spec，预估 9-11 文件）
+
+  2. 关键发现：API-CONTRACT.md L1396-1424 已定义 capitulationEvidence
+     但 backend decision_service / DecisionData schema 未实装。c1 负责补齐。
+
+  3. NP-c 系列决策全部按推荐确认：
+     NP-c-1=A  evidence 实时算（无 DB 迁移），vol_z 读 snapshot 已有列
+     NP-c-2=A  c2 范围：--color-setup-pullback 重命名为 --color-setup-capitulation
+     NP-c-3=A  c2 范围：SetupTypeBadge union 直接替换不留 deprecated
+     NP-c-4=A  c2 范围：design-spec 在 c2 sprint 同步更新（参考 F216-d3 模式）
+     NP-c-5=A  volume_zscore 直接读 setup_snapshot 已有列
+
+  4. NP-c1 细化决策：
+     NP-c1-1=A  helper 返回 dict 不返 Pydantic（解耦 setup_service ↔ cockpit schema）
+     NP-c1-3=A  vol_z None / helper None / bars 不足 → evidence=None（防御 chip 不渲染）
+     NP-c1-4=A  decision_service inline select DailyBar（与 _earnings_risk_and_date 风格一致）
+     NP-c1-5=A  测试新文件 test_decision_f217c1.py（沿用 sprint 命名约定）
+
+  5. F217-c1 Sprint Contract 已确认：
+     - 范围 4 文件（6 上限内 2 文件 buffer）
+     - 9 测试 T1-T9（4 pure helper/schema 单元 + 4 集成 setup_type 矩阵 + 全量回归）
+     - 7 步开发顺序（6 wip commit + 1 final feat commit，禁用 git add -A）
+     - 回滚 0 DB 改动
+
+  6. consistency-check interactive 已跑：0 严重 / 0 中等 / 2 🟢 轻
+     C4 + C5 两项 drift 在 c1 contract_agreed iteration_history entry 落地后自动消除
+
+  7. features.json 同步：
+     - sub_sprints: {F217-c} → {F217-c1: contract_agreed, F217-c2: design_needed}
+     - active_sprint: F217-c → F217-c1
+     - active_sprint_phase: design_needed → contract_agreed
+     - sub_sprint_notes 更新拆分说明
+     - iteration_history 追加 2 条（拆分决策 + c1 contract_agreed）
+
+⚠️ 待你决策：无
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F217-c1-contract.md 新建（contract 草案 → 已确认）
+  - docs/需求/features.json 更新（sub_sprints / active_sprint / iteration_history）
+
+📊 F217 当前状态：
+  ├── F217-a  — done ✅
+  ├── F217-b1 — done ✅
+  ├── F217-b2 — done ✅
+  ├── F217-b3 — done ✅
+  ├── F217-b4 — done ✅
+  ├── F217-c1 — contract_agreed ← 本次协商完成
+  └── F217-c2 — design_needed（等 c1 done 后协商）
+
+[下一步]
+  开 Sonnet 新 session 进入 Generator 模式，从 §4 Step 1 开始：
+  backend/app/schemas/cockpit/decision.py 新增 CapitulationEvidence 模型 + 字段。
+  恢复指令见 SESSION-HANDOFF.md。
