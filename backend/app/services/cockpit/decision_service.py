@@ -9,12 +9,15 @@ from math import floor
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.daily_bar import DailyBar
 from app.models.earnings_event import EarningsEvent
 from app.models.market_regime_snapshot import MarketRegimeSnapshot
 from app.models.setup_snapshot import SetupSnapshot
+from app.models.stock import Stock
 from app.repositories.user_settings_repository import UserSettingsRepository
-from app.schemas.cockpit.decision import DecisionData
+from app.schemas.cockpit.decision import CapitulationEvidence, DecisionData
 from app.services.cockpit.cockpit_params import DECISION, REGIME, SETUP
+from app.services.cockpit.setup_service import compute_capitulation_evidence
 
 
 def _earnings_risk_and_date(db: Session, ticker: str) -> tuple[str | None, date | None]:
@@ -140,6 +143,29 @@ def compute_decision(
     earnings_risk, earnings_date = _earnings_risk_and_date(db, ticker)
     deterministic_hash = _compute_hash(ticker, entry, stop, effective_risk_pct, snapshot_date)
 
+    # Capitulation evidence — only populated when setup_type is CAPITULATION
+    capitulation_evidence: CapitulationEvidence | None = None
+    if setup_type == "CAPITULATION" and snapshot is not None and snapshot.volume_zscore is not None:
+        bars = db.execute(
+            select(DailyBar)
+            .join(Stock, DailyBar.stock_id == Stock.id)
+            .where(Stock.ticker == ticker)
+            .order_by(DailyBar.date.desc())
+            .limit(6)
+        ).scalars().all()
+        if bars:
+            bars_asc = list(reversed(bars))
+            closes = [float(b.close) for b in bars_asc]
+            highs  = [float(b.high)  for b in bars_asc]
+            lows   = [float(b.low)   for b in bars_asc]
+            ev_dict = compute_capitulation_evidence(closes, highs, lows)
+            if ev_dict is not None:
+                capitulation_evidence = CapitulationEvidence(
+                    vol_zscore=float(snapshot.volume_zscore),
+                    drop_5d_pct=ev_dict["drop_5d_pct"],
+                    reversal_day=ev_dict["reversal_day"],
+                )
+
     return DecisionData(
         ticker=ticker,
         setup_type=setup_type,
@@ -159,4 +185,5 @@ def compute_decision(
         earnings_risk=earnings_risk,
         earnings_date=earnings_date,
         deterministic_hash=deterministic_hash,
+        capitulation_evidence=capitulation_evidence,
     )
