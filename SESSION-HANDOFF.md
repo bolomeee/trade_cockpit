@@ -1,99 +1,106 @@
-# SESSION-HANDOFF — F217-c2c needs_review → acceptance 集中验收
+# SESSION-HANDOFF — F218-d2 Contract 協商準備
 
-> 更新：2026-05-18 | 触发方：feature-dev Evaluator 模式完成
-> 前一节：F217-c2c Generator 模式（3 commits 落地）
-> 本节产出：F217-c2c Evaluator 通过 → needs_review
-> 下一节：开 Sonnet 新 session，运行 acceptance skill 集中验收 c2a / c2b / c2c
+> 生成：2026-05-18 (Sonnet 4.6) | 用途：下一 session 接入 F218-d2 contract 協商
+> Skill 链：feature-dev A-2 Generator (F218-d1) → Evaluator → **本 handoff** → feature-dev A-3 (F218-d2 contract)
 
 ---
 
-## 1. 本 session 输出
+## 1. 本次 session 完成内容
 
-- **3 commits 落地**：
-  - `4e050ee` `refactor(F217-c2c): remove PULLBACK from frontend SetupType unions`（6 文件）
-  - `fd0615e` `chore(F217-c2c): remove --color-setup-pullback token`（1 文件）
-  - `8e14086` `docs(F217-c2c): update design-spec for PULLBACK → CAPITULATION`（2 文件）
-- **features.json 更新**：
-  - `_pipeline_status.active_sprint_phase`：contract_agreed → **needs_review**
-  - `F217.sub_sprints.F217-c2c`：contract_agreed → **needs_review**
-  - iteration_history 追加 c2c needs_review 条目
-- claude-progress.txt 追加 2026-05-18 c2c done 条目
-- SESSION-HANDOFF.md 本文
+### 1.1 F218-d1 Generator 6 步全部完成
+
+| # | 文件 | 改动 |
+|---|------|------|
+| 1 | `backend/app/models/repricing_trigger.py` | 新增 ORM model（8 字段 + UQ + 3 index） |
+| 2 | `backend/app/models/__init__.py` | +1 行 import RepricingTrigger |
+| 3 | `backend/alembic/versions/022_f218_repricing_triggers.py` | 新增 migration（upgrade/downgrade 双向跑通） |
+| 4 | `backend/app/repositories/repricing_trigger_repository.py` | 新增 Repository（upsert/soft_expire/get_active_for_ticker/get_all_active/delete_expired_inactive） |
+| 5 | `backend/app/services/cockpit/repricing_trigger_service.py` | 新增 Service skeleton（5 占位 detector + compute_and_store_all_triggers + DetectorResult dataclass + TRIGGER_TYPES 常量） |
+| 6 | `backend/tests/test_repricing_trigger_skeleton.py` | 新增 14 测试（4 class：Repo/Service/Migration/Constants 全绿） |
+
+### 1.2 偏差记录
+
+| 偏差 | 原因 | 处理 |
+|------|------|------|
+| `StockRepository.get_active_tickers()` 不存在 | 该方法从未被创建 | 改用 `[s.ticker for s in self._stocks.list_active()]`，意图一致（复用 StockRepo），6 文件上限不变 |
+| `upsert()` 需加 `expire_all()` | `ON CONFLICT UPDATE` 绕过 ORM identity map，session 缓存旧值 | `self.db.expire_all()` 在 commit 后、re-select 前强制刷新，2 个测试（R2/R8）因此修复 |
+
+### 1.3 Evaluator 自检全部通过
+
+- 14 测试全绿；全量回归 9 失败全为 pre-existing，无新增失败
+- alembic 022 upgrade/downgrade/re-upgrade 三向跑通
+- model 字段、UQ name、TRIGGER_TYPES 字面与 DATA-MODEL.md 完全对齐
+- 5 个 `_detect_*` 签名一致；soft_expire 边界正确；错误隔离正确；import 边界符合 ARCHITECTURE
+
+### 1.4 consistency-check (mode=interactive) 全清
+
+- C1–C3、C7、C8：0 违例
+- C4：1 项已修（F218-d1 needs_review + history 条目）；9 项 design_needed 预期 pending
+- C5：9 项 design_needed 无合约，预期 pending
+- C6：notes "done" 描述依赖状态，可忽略
+
+### 1.5 features.json 更新
+
+- `F218.sub_sprints.F218-d1`: `contract_agreed` → `needs_review`
+- `F218.iteration_history`: 追加 needs_review 条目（2026-05-18）
+- `_pipeline_status.active_sprint`: 仍为 `F218-d1`（等用户验收后升 done 再改 d2）
 
 ---
 
 ## 2. 当前状态
 
-| 资产 | 状态 |
-|------|------|
-| `_pipeline_status.active_sprint` | **F217-c2c** |
-| `_pipeline_status.active_sprint_phase` | **needs_review** |
-| `F217.sub_sprints.F217-c2a` | needs_review（待 acceptance）|
-| `F217.sub_sprints.F217-c2b` | needs_review（待 acceptance）|
-| `F217.sub_sprints.F217-c2c` | **needs_review** ← 本次输出 |
-| F217 父 feature | in_progress（C1 invariant：c2a/c2b/c2c 全 done 才升）|
-| SetupType union | **已不含 PULLBACK** — TS 编译期禁止 PULLBACK 字面量 |
-| `--color-setup-pullback` token | **已删除** |
-| design-spec.md | **已更新至最终态**（color 表 / ASCII mockup / popover / v2.2.0 偏离说明）|
-
----
-
-## 3. Evaluator 自检结果
-
-| 检查 | 结果 |
-|------|------|
-| T1 `pnpm tsc --noEmit` | ✅ 0 错误 |
-| T2 src PULLBACK 字面量 | ✅ 0 命中 |
-| T3 cockpit PULLBACK/pullback | ✅ 唯一命中 = L17 backend schema（合同明确不动）|
-| T4 `setup-pullback` | ✅ 0 命中 |
-| T5 design-spec PULLBACK | ⚠️ 3 命中（均在 v2.2.0 偏离说明历史文字，合同 §1.8 要求，非活跃枚举）|
-| T6 capitulation test | ✅ 7/7（含 'UNKNOWN' fallback test）|
-| T8 全量回归 | ✅ 22/28 suites = c2b 基线，0 新增失败 |
-| T10 CAPITULATION in schemas | ✅ _pendingOrderFormSchemas L6 命中 |
-| T12 backend 0 commits | ✅ HEAD~3 HEAD 无 backend 变更 |
-| T13 `__tests__` 仅 1 文件 | ✅ capitulation.test.tsx |
-| T14 3 commits 落地 | ✅ refactor + chore + docs |
-
-**T5 说明**：design-spec.md 中 3 处 PULLBACK 命中全在新增的 v2.2.0 偏离说明块（合同 §1.8 明确要求追加），是历史对比记录而非活跃枚举用法。合同 §3 T5 与 §1.8 存在细微矛盾，接受现状。
-
----
-
-## 4. 下一步任务（开 Sonnet 新 session）
-
-### 4.1 恢复指令
-
 ```
-F217-c2c Evaluator 已通过，phase = needs_review。
-读取 SESSION-HANDOFF.md，
-运行 acceptance skill 集中验收 F217 c2a / c2b / c2c 三 sub-sprint。
+F218 phase: in_progress
+F218-d1: needs_review  ← 等用户验收
+F218-d2 ~ d7b: design_needed（下一批 contract 协商等待 d1 验收通过）
+_pipeline_status.active_sprint: F218-d1
 ```
 
-### 4.2 acceptance 流程
+---
 
-触发 `acceptance` skill，范围：F217 c2a / c2b / c2c 三 sub-sprint。
+## 3. 下一步任务
 
-acceptance 通过后：
-- sub_sprints.F217-c2a/c2b/c2c 升 `done`
-- F217 父 feature 升 `done`（C1 invariant 满足）
-- features.json `_pipeline_status.active_sprint` 清空或推进至下一 feature
-- 生成 `docs/验收/v2.2.0-F217-c2c-acceptance.md`
-- iteration_history 追加 acceptance 条目
+### 3.1 用户验收 F218-d1（本 session 结束前或下个 session 开始）
+
+用户验收路径：
+1. 确认 `uv run pytest tests/test_repricing_trigger_skeleton.py -v` 全绿
+2. 确认代码符合 DATA-MODEL.md 设计意图
+3. 通过后：F218-d1 → `done`，features.json `_pipeline_status.active_sprint` → `F218-d2`
+
+### 3.2 F218-d2 Contract 协商（d1 验收通过后触发）
+
+**F218-d2 scope**（来自 sizing 协商记录）：
+- T1 Earnings Acceleration detector 实装
+- 3 个文件预估（`repricing_trigger_service.py` 改动 + `test_repricing_trigger_earnings_accel.py` 新增 + 可能 `earnings_event_repository.py` 轻改）
+- 依赖：`EarningsEventRepository.get_recent_for_ticker()` 等既有方法（F204 成果）
+- 逻辑：连续 3 季度 EPS YoY 加速（Q-3→Q-2→Q-1 增长率递增），confidence 按加速幅度打分
+
+**下一 session 恢复指令**：
+
+```
+F218-d1 用户验收完成，进入 F218-d2。
+读取 SESSION-HANDOFF.md，确认 F218-d1 已 done 后，
+进入 feature-dev A-3 模式，起草 F218-d2 Sprint Contract。
+参考：docs/开发/sprint-contracts/F218-d1-contract.md（同形态参考）
+     docs/系统设计/ARCHITECTURE.md §Cockpit Repricing Trigger Service（T1 detector 说明）
+     docs/系统设计/DATA-MODEL.md §RepricingTrigger（evidence_json T1 schema）
+```
 
 ---
 
-## 5. 遗留注意事项
+## 4. 未决事项
 
-- **AiSetupExplainerPopover L17 `setup: 'pullback' | 'breakout' | ...`** 保留：backend `setup_explainer` AI task input schema（F211 归口），c2c 不动。前端 setupType union 已无 PULLBACK，mapping 中 'pullback' 分支不再可达，是"前端无法传入但 backend 仍可接受"的安全过渡态。后续清理开 F217-c3 / F221。
-
-- **SetupMonitorWidget §S pre-existing test 失败**（SetupMonitorWidget.test.tsx 15 失败，含 S1/S2/S3/S7-S11/R11）：根因是 SetupMonitorWidget.tsx import AiSetupExplainerPopover 但全文 0 个 `<AiSetupExplainerPopover>` JSX 命中，widget 未渲染该 popover。NP-c2c-7=A：独立 sprint 处理（候选 F217-c3 或 F218）。
-
-- **三处 inline SetupType union 复本**（cockpitPoolApi.ts L32 / _pendingOrderRow.tsx L60 / SetupTypeBadge.tsx union）：c2c 后三处内容一致（7 枚举 + null），下次有 setup_type 变更时手工同步 3 处。建议在 DECISIONS.md 追加 D097 说明。
+| 事项 | 优先级 | 负责 sprint |
+|------|-------|------------|
+| `StockRepository.get_active_tickers()` 方法未创建（目前 service 用 `list_active()`） | 低 | 可选：任意 sprint 中顺手加，不阻塞 |
+| T3 New Product D4b NLP 升级 | 低 | 独立 issue，F218 范围外 |
+| `test_schema.py::test_all_tables_created` EXPECTED_TABLES 未含 `weekly_stage_snapshots`/`repricing_triggers` | 低 | 建议在 F218-d7a（最后后端 sprint）一起修 |
 
 ---
 
-## 6. 引用文档
+## 5. 关键引用
 
-- Sprint Contract c2c: [docs/开发/sprint-contracts/F217-c2c-contract.md](docs/开发/sprint-contracts/F217-c2c-contract.md)
-- Feature 节点: [docs/需求/features.json](docs/需求/features.json) `F217.sub_sprints`
-- 进度日志: [claude-progress.txt](claude-progress.txt)
-- 设计规格（已更新）: [docs/设计/design-spec.md](docs/设计/design-spec.md)
+- F218-d1 合约：[docs/开发/sprint-contracts/F218-d1-contract.md](docs/开发/sprint-contracts/F218-d1-contract.md)
+- DATA-MODEL §RepricingTrigger：[docs/系统设计/DATA-MODEL.md](docs/系统设计/DATA-MODEL.md)
+- ARCHITECTURE §Cockpit Repricing Trigger Service：[docs/系统设计/ARCHITECTURE.md](docs/系统设计/ARCHITECTURE.md)
+- 进度日志：[claude-progress.txt](claude-progress.txt)
