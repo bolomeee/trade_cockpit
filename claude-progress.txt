@@ -87,3 +87,55 @@
   > 继续开发 F218-d1，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d1-contract.md，
   > 进入 Generator 模式，从开发步骤 1 (model 文件) 开始。
+
+
+────────────────────────────────────────────────────────────────────
+[2026-05-18 ⑤] feature-dev A-3 Contract 协商：F218-d2 T1 Earnings Acceleration（前置：F218-d1 ✅ done）
+────────────────────────────────────────────────────────────────────
+
+✅ 本 session 完成：
+  - F218-d2 Sprint Contract 起草并确认：docs/开发/sprint-contracts/F218-d2-contract.md (status=confirmed)
+  - 范围 = T1 EARNINGS_ACCEL detector 实装（d1 skeleton 留下的第 1 个占位 → 真实业务逻辑）
+  - 3 文件 / 10 测试 / 不动 API / 不动前端 / 不动 cron / 不动 alembic
+    1) backend/app/repositories/earnings_event_repository.py — +1 read 方法 get_recent_completed_for_ticker(ticker, limit=8)
+    2) backend/app/services/cockpit/repricing_trigger_service.py — _detect_earnings_acceleration 占位 → 实装 + EarningsEventRepository 注入 + 5 个 T1_* 常量 + 模块级 _quarter_label helper
+    3) backend/tests/test_repricing_trigger_earnings_accel.py — 10 测试 / 3 class（repo 2 + detector 7 + 端到端 1）
+  - 核心业务逻辑：取最近 6 季 actual EPS 配对上年同期 → 3 个 EPS YoY → 严格单调递增 (yoy[0]<yoy[1]<yoy[2]) 触发；confidence 最近一季 yoy ≥ 30% 升 0.8 否则 0.5（DATA-MODEL.md §RepricingTrigger 业务规则原文）；revenue YoY 同步入 evidence 但缺失/负基准不阻断 EPS 判定
+  - NP-d2-1~7 关键决策全部按推荐：
+    (1) 严格单调（非允许持平 / 非每步最小增量）
+    (2) EPS 单独判定（revenue 仅作 evidence 副产物）
+    (3) 6 季全齐才判定（不插值不均值）
+    (4) confidence 阈值仅看最近一季（DATA-MODEL.md 原文一致）
+    (5) quarter label 用 earnings_date 日历季度 YYYYQN（不加 alembic 023 fiscal_quarter 列）
+    (6) repo 新方法叫 get_recent_completed_for_ticker（与既有 get_next_earnings 对称）
+    (7) 负基准（上年同期 EPS ≤ 0）整体返 None 不做负基准除法
+  - features.json 更新：F218-d2 design_needed → contract_agreed；_pipeline_status.active_sprint 保持 F218-d2；iteration_history 追加 F218-d2 contract_agreed 条目
+
+⚠️ 待用户决策：
+  - 无（NP-d2-1~7 全部已确认）
+
+🔧 系统变更（即将由 Generator 阶段落地）：
+  - backend/app/repositories/earnings_event_repository.py +1 方法（既有 3 方法签名不变）
+  - backend/app/services/cockpit/repricing_trigger_service.py：占位换实装 + import EarningsEventRepository + 5 T1 常量 + _quarter_label 模块 helper
+  - backend/tests/test_repricing_trigger_earnings_accel.py（10 测试）
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：🔄 in_progress
+    F218-d1：✅ done
+    F218-d2：📋 contract_agreed → 即将 Generator
+    F218-d3a/d3b/d4/d5/d6a/d6b/d7a/d7b：⬜ design_needed（排队）
+
+[下一步]
+  feature-dev 铁律：A-3 后必须开新 session 进入 Generator。
+  在 Sonnet 新 session 中执行：
+
+  > 继续开发 F218-d2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d2-contract.md，
+  > 进入 Generator 模式，按 3 步开发顺序推进：
+  >   1) repo +方法 get_recent_completed_for_ticker（+pytest 单测验证最小通过）
+  >   2) service detector 实装（import / 5 常量 / _detect_earnings_acceleration 主体 / _quarter_label helper）
+  >   3) 10 测试落地 + 全量回归
+  > 每步通过最小验证后 wip commit。
