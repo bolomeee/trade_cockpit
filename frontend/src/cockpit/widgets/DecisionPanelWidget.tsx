@@ -91,6 +91,22 @@ function DecisionCard({ data }: { data: CockpitDecisionData }) {
           </span>
         </div>
       )}
+      {data.setupType === 'CAPITULATION' && data.capitulationEvidence && (
+        <>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Vol z-score</span>
+            <span style={valueStyle}>{data.capitulationEvidence.volZscore.toFixed(2)}</span>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Drop 5d</span>
+            <span style={valueStyle}>{data.capitulationEvidence.drop5dPct.toFixed(1)}%</span>
+          </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>Reversal day</span>
+            <span style={valueStyle}>{data.capitulationEvidence.reversalDay ? '是' : '否'}</span>
+          </div>
+        </>
+      )}
       <div
         style={{
           ...rowStyle,
