@@ -451,6 +451,35 @@ def _is_capitulation_reversal(
     return True
 
 
+# ── Capitulation Evidence helper (F217-c1) ────────────────────────────────────
+
+
+def compute_capitulation_evidence(
+    closes: list[float],
+    highs: list[float],
+    lows: list[float],
+) -> dict | None:
+    """Return {drop_5d_pct, reversal_day} for the last bar, or None when data is insufficient.
+
+    drop_5d_pct: 5-day return = (closes[-1] - closes[-6]) / closes[-6] * 100, 1 decimal place.
+    reversal_day: True when last bar's close is in the upper CAPITULATION_CLOSE_UPPER_BIN fraction
+                  of its H-L range (same check as Gate 4 in _is_capitulation_reversal).
+
+    Returns None when: len(closes) < 6, or closes[-6] == 0.
+    Does NOT raise — callers treat None as "evidence unavailable".
+
+    # 5-day window is fixed at closes[-6] per API-CONTRACT §capitulationEvidence L1424.
+    """
+    if len(closes) < 6 or len(highs) < 1 or len(lows) < 1:
+        return None
+    base = closes[-6]
+    if base == 0:
+        return None
+    drop_5d_pct = round((closes[-1] - base) / base * 100, 1)
+    reversal_day = _check_close_in_upper_bin(closes[-1], highs[-1], lows[-1], SETUP.CAPITULATION_CLOSE_UPPER_BIN)
+    return {"drop_5d_pct": drop_5d_pct, "reversal_day": reversal_day}
+
+
 # ── SetupService ───────────────────────────────────────────────────────────────
 
 
