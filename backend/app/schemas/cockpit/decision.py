@@ -14,6 +14,13 @@ class _CamelModel(BaseModel):
     )
 
 
+class CapitulationEvidence(_CamelModel):
+    vol_zscore: float
+    # to_camel yields "drop5DPct" for "drop_5d_pct" — explicit alias to match API-CONTRACT
+    drop_5d_pct: float = Field(alias="drop5dPct")
+    reversal_day: bool
+
+
 class DecisionData(_CamelModel):
     ticker: str
     setup_type: str | None
@@ -34,6 +41,7 @@ class DecisionData(_CamelModel):
     earnings_risk: str | None
     earnings_date: date | None
     deterministic_hash: str
+    capitulation_evidence: CapitulationEvidence | None = None
 
 
 class DecisionResponse(BaseModel):
