@@ -1,9 +1,10 @@
 ---
 feature_id: F000-c
 name: Docker Compose + Polygon Client
-status: contract_agreed
+status: done
 drafted_at: 2026-04-17
 confirmed_at: 2026-04-17
+completed_at: 2026-04-17
 scaffolding_exempt: true  # D010 脚手架 6 文件豁免
 ---
 

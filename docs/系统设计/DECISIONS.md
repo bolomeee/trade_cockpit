@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-22
-last_modified_by: feature-dev F111-a on-demand 当日缓存 (D055)
+confirmed_at: 2026-05-15
+last_modified_by: system-design (F217 Phase C — 追加 D095: Capitulation 替换 PULLBACK + 7 条 AND 门阈值依据 + 6 子决策)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -2230,3 +2230,85 @@ SPY trend(25) + QQQ trend(20) + IWM breadth(15) + Sector participation(20) + Ris
 放弃了：
 - 在 `_weekly_stage_tick` 结尾同步调用 `SetupService.compute_and_store_all()`：强耦合、单一职责破坏、setup_cron 配置失效
 - BlockingScheduler 强制串行：需重写整个 scheduler 模式，超出 sprint scope
+
+---
+
+## D095：F217 Phase C — Capitulation 替换 PULLBACK + 分类器优先级升级
+
+**日期**：2026-05-15
+**Feature**：F217 Cockpit Phase C — Capitulation Reversal 严格重写
+
+### 决策 1：从 `SetupSnapshot.setup_type` 枚举完全移除 `PULLBACK`，引入 `CAPITULATION`
+
+**当前实现的问题**（语义错位证据）：
+
+- 旧 `SETUP_PULLBACK` 判定逻辑（v2.2 前 `setup_service._is_pullback`）：`MA150 < close < MA50` 且 `close ≈ MA21`（回踩短均线）
+- SRS § 五 Setup 4 "Capitulation Reversal" 语义：**投降式抛售反转** — 连续下跌中出现极端放量 + 大 range + 收盘脱离最低 + 次日不创新低 + higher low + RS 止跌
+- 两者描述的**不是同一现象**：PULLBACK 是上升趋势中的低风险 entry，CAPITULATION 是下跌末端的反转 entry，对应的胜率分布、止损位置、目标空间、持仓节奏完全不同
+- 把它们共用一个 `setup_type` 字段，会导致 AI ranker / journal / 持仓后复盘统计的语义被污染（一个标的两个语义混淆），且 DecisionPanel 无法展示 CAPITULATION 特有的 evidence chips
+
+### 决策 2：7 条 AND 门严格判定（取阈值的依据）
+
+`setup_service._is_capitulation_reversal(bars, rs_line)` 要求同时满足：
+
+| # | 条件 | 阈值 | 依据 |
+|---|------|------|------|
+| 1 | 连续下跌 | 过去 5–10 日 close 累计跌幅 ≥ **10%** | SRS § 五 Setup 4 直接引用；和 EXTENDED（过度延伸）门槛 ±5–7% 拉开档次 |
+| 2 | 极端放量 | Vol z-score ≥ **2.5** | 复用 F215-b `_compute_volume_zscore`（50 日窗）；2.5 σ 对应 ~99 百分位单日放量，区别于 BREAKOUT 的 1.5 σ 吸筹门槛（D088） |
+| 3 | 大 range | `true_range ≥ 2 × ATR14` | 复用 chart_service.py:43-73 `_compute_atr`；2× ATR 反映极端波动日 |
+| 4 | 收盘脱底 | `close` 位于当日 high-low 区间的 **上 1/3** | SRS"收盘脱离最低"白话翻译；阈值 1/3 是常见技术分析 reversal day 边界 |
+| 5 | 次日不创新低 | 当日之后 1–2 日 `low > 当日 low` | 投降日 + 后续不破底确认；尾部数据不足时允许 None 跳过此条（不视为失败） |
+| 6 | higher low | 当前 low > 过去 30 日内倒数第二个 swing low | 新增辅助函数 `_detect_swing_lows(bars, lookback=30)` 找局部低点；higher low 是结构反转的最小证据 |
+| 7 | RS 止跌 | RS line 在过去 5 日**未创新低** | 复用 `_compute_rs_line` 或 setup_service.py:286-329 RS 计算；CAPITULATION 不要求 RS 转强，只要求停止恶化 |
+
+### 决策 3：`_classify_setup_type` 优先级 — CAPITULATION 高于 BREAKOUT/RECLAIM
+
+新优先级：`BROKEN → EXTENDED → EARNINGS_DRIFT → CAPITULATION → BREAKOUT → RECLAIM → NONE`
+
+**理由**：CAPITULATION 的核心前提是"连续下跌 ≥ 10%"，与 BREAKOUT（已突破 pivot）和 RECLAIM（重夺 50MA）的"价格在 MA 之上"状态互斥；若同一日同标的同时被两个分支命中（理论上罕见，但浮点边界可能发生），应优先识别为 CAPITULATION，因为它的语义更具底部反转的特殊性，hard-coded 顺序避免歧义。
+
+### 决策 4：历史 `setup_snapshots.setup_type=PULLBACK` 行**软删而非硬删**
+
+F217-b alembic 021 不 `DELETE FROM setup_snapshots WHERE setup_type='PULLBACK'`。
+
+**两种软删方案二选一**（在 F217-b Sprint Contract 拍板）：
+
+- 方案 A（推荐）：新增 `legacy: Boolean default=false`列，把历史 PULLBACK 行 `UPDATE SET legacy=true`，setup_service 查询时 `WHERE legacy=false`
+- 方案 B：保留 `purge_legacy_pullback()` repository 方法，定时归档到 `setup_snapshots_archive` 表
+
+**理由**：历史快照是回测 / 复盘 / Journal 关联 的数据来源，删除会破坏可追溯性；同时枚举 CHECK 约束（如 SQLite TEXT/PostgreSQL ENUM）会因历史值不合法而 migration 失败 — 软删通过保留行 + flag 字段绕开。
+
+### 决策 5：API 兼容 — `capitulationEvidence` 字段**可选**而非必填
+
+`GET /api/cockpit/decision/{ticker}` 响应在所有 setupType 下都返回 `capitulationEvidence` 字段，但**仅当 `setupType=CAPITULATION` 时为非 null 对象**（含 `volZscore`/`drop5dPct`/`reversalDay`），其它 setupType 一律 `null`。
+
+**理由**：保持响应 schema 稳定（前端 TS 类型可写成 `capitulationEvidence: {...} | null`，不需要做 optional key 处理），同时避免在 BREAKOUT/RECLAIM 等正向 setup 上误展示 chips。
+
+### 决策 6：`user_settings.preferred_setups` 默认值 `["BREAKOUT", "PULLBACK"]` → `["BREAKOUT", "CAPITULATION"]`
+
+F217-b alembic 021 还需 `UPDATE user_settings SET preferred_setups = ...` 把现有行 JSON 数组中的 `"PULLBACK"` 字符串替换为 `"CAPITULATION"`（如果存在）。新建用户的默认值同步改为 `["BREAKOUT", "CAPITULATION"]`。
+
+**理由**：avoid 出现"用户偏好里有 PULLBACK 但 setup_type 已无此值"的 dangling reference；用 CAPITULATION 作为替换默认值符合"用户偏好底部反转 setup"的合理预设。
+
+### 放弃了什么
+
+- **保留 PULLBACK 枚举，新增 CAPITULATION 并行**：会引入"两个 setup 都命中怎么办"的歧义，且 PULLBACK 当前判定逻辑已被证明与 SRS 错位，没有保留价值（用户已确认 2026-05-15）
+- **硬删 setup_snapshots 历史 PULLBACK 行**：丢失审计 + 回测数据；与项目"快照表保留 60 天"的策略冲突
+- **CAPITULATION 优先级低于 BREAKOUT/RECLAIM**：会导致罕见边界情况（同时命中）的语义歧义，hard-coded 优先级更清晰
+- **`capitulationEvidence` 在所有 setup 都返回真实数据**：会导致 BREAKOUT/RECLAIM 上展示 chips 误导用户；统一返回 null 更安全
+- **把 `_is_capitulation_reversal` 7 条门做成 score（M/N 阈值）**：失去 SRS 设计的"严格底部反转"语义；用户已明确要稀疏触发（每月几只）作为设计意图
+
+### 影响
+
+- **DATA-MODEL.md** §SetupSnapshot：setup_type 枚举表更新、`_classify_setup_type` 优先级业务规则新增、BREAKOUT 降级 fall-through 文字同步
+- **API-CONTRACT.md**：`setupType` 枚举说明更新、BREAKOUT 降级文字同步、`GET /api/cockpit/decision/{ticker}` 响应追加 `capitulationEvidence`、`user_settings.preferredSetups` 默认值更新
+- **F217-b alembic 021** 实施职责：(a) setup_snapshots 历史 PULLBACK 行软删 (b) user_settings JSON 字段值迁移 (c) 视 DB 是否启用 ENUM/CHECK 决定迁移策略（SQLite 无原生 ENUM，PostgreSQL 需 `ALTER TYPE`）
+- **F215-b D088** 文字依赖：BREAKOUT 降级 fall-through 描述同步（不改语义）
+- **F216-d2 D093**（ready_signal 8 门）**不受影响**：weekly_stage gate 与 setup_type 解耦，CAPITULATION 也会经过同样的 ready_signal 评估（CAPITULATION 在 Stage 4 触发的概率最高，符合 SRS 投降底特征 — Stage 2 要求让大部分 CAPITULATION 在 ready_signal 上是 false，这是设计意图）
+- **F202/F203 已完成 feature**：无代码改动，但 setupType 枚举切换会影响其前端 TypeScript 类型联合（F217-c sub-sprint 同步更新）
+
+### 回滚方式
+
+- 文档层：DATA-MODEL/API-CONTRACT/DECISIONS 经 git revert 回滚
+- 代码层：F217-a Generator 阶段未触发任何 DB schema 改动，可直接 revert commit；alembic 021（F217-b）有 downgrade 路径（恢复 legacy 字段、把 setup_type 行 legacy=false 还原，但**新写入的 CAPITULATION 行无法自动转回 PULLBACK** — 因为它们语义不同；回滚需手动处理或接受数据丢失）
+- 配置层：无 env flag 控制 CAPITULATION 启停；若需临时禁用，可在 `cockpit_params.SETUP.CAPITULATION_ENABLED=False` 让 `_classify_setup_type` 跳过该分支（如未实现此 flag，则纯代码 revert）

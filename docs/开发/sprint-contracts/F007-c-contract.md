@@ -1,8 +1,9 @@
 ---
 feature_id: F007-c
 feature_name: 交易日志 Journal — 新建/编辑 Dialog
-status: confirmed
+status: done
 created_at: 2026-04-17
+completed_at: 2026-04-17
 ---
 
 # Sprint Contract：F007-c

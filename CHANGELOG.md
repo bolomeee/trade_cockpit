@@ -4,6 +4,23 @@
 
 ---
 
+## [v2.3.0] - 2026-05-18
+
+### ✨ 新增
+- **F217 Capitulation Reversal（投降式抛售反转）— Cockpit Phase C 严格重写**
+  - **判定引擎**：`_is_capitulation_reversal` 实现 7 条 AND 门严格判定（5-10日累计跌幅≥10% / Vol z-score≥2.5 / true_range≥2×ATR14 / 收盘位于当日上1/3 / 次日不创新低 / swing low 确认 / RS line 过去5日未新低）；触发频率极稀疏（每月数只），符合 SRS § 五 Setup 4 语义
+  - **前端 badge**：SetupMonitorWidget 紫色 `CAP_REV` badge（`--color-setup-capitulation: #8b5cf6`）
+  - **决策证据**：DecisionPanelWidget 在 CAPITULATION 标的展示 3 个关键 chip（Vol z-score / Drop 5d / Reversal day）
+  - **Pending Order**：表单 setup_type 下拉新增 `CAP_REV` 选项
+
+### 🔨 重构 / 清理
+- 移除 PULLBACK setup type：backend Pydantic schemas Literal 收紧、frontend `SetupType` union 删除、`tokens.css` 旧色标退场（`--color-setup-pullback` 删除）
+- `setup_snapshots` 表新增 `legacy` 列，存量 PULLBACK 行软删除保留审计记录（alembic 021）
+- setup_type 分类优先级更新：CAPITULATION 高于 BREAKOUT/RECLAIM（语义互斥）
+- `design-spec.md` 同步最终态（setup color 表 / ASCII mockup / popover 偏离说明 / v2.2.0 偏离记录）
+
+---
+
 ## [v2.2.0] - 2026-05-15
 
 ### ✨ 新增

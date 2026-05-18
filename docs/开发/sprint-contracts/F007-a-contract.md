@@ -1,8 +1,9 @@
 ---
 feature_id: F007-a
 feature_name: 交易日志 Journal — 后端 API
-status: draft
+status: done
 created_at: 2026-04-17
+completed_at: 2026-04-17
 ---
 
 # Sprint Contract：F007-a

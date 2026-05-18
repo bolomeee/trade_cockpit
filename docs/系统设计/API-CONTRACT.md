@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-24
-last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/cockpit/* 18 个 endpoint + /api/ai/{task_type} 统一入口)
+confirmed_at: 2026-05-15
+last_modified_by: system-design (F217 Phase C — setupType 枚举更新 + decision 端点追加 capitulationEvidence + preferredSetups 默认值)
 ---
 
 # API-CONTRACT.md
@@ -1092,7 +1092,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
     },
     "allowedExposurePct": 70.0,
     "singleTradeRiskPct": 1.0,
-    "preferredSetups": ["BREAKOUT", "PULLBACK"],
+    "preferredSetups": ["BREAKOUT", "CAPITULATION"],
     "avoidSetups": ["EXTENDED"],
     "indices": [
       { "symbol": "SPY", "close": 520.50, "changePct": 0.43, "aboveMa50": true, "aboveMa200": true, "rsTrend": "up", "state": "Bullish" },
@@ -1181,7 +1181,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 ```
 
 **字段说明**：
-- `setupType` 枚举：`BREAKOUT` / `PULLBACK` / `RECLAIM` / `EARNINGS_DRIFT` / `EXTENDED` / `BROKEN` / `NONE`
+- `setupType` 枚举：`BREAKOUT` / `CAPITULATION` / `RECLAIM` / `EARNINGS_DRIFT` / `EXTENDED` / `BROKEN` / `NONE`（F217 / D095：移除历史 `PULLBACK`，新增 `CAPITULATION` 严格按 SRS § 五 Setup 4）
 - `setupQuality` 枚举：`A` / `B` / `C` / `null`（NONE 时 null）
 - `volumeStatus` 枚举：`HIGH` / `NORMAL` / `LOW` / `null`
 - `earningsRisk` 枚举：`SAFE`（>10 天）/ `CAUTION`（4–10 天）/ `DANGER`（≤3 天）
@@ -1195,7 +1195,7 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 
 **BREAKOUT 吸筹门槛（F215-b / D088）**：
 - `setupType=BREAKOUT` 的候选在写入快照前需额外满足 `volumeZscore ≥ 1.5` AND `upDownVolumeRatio ≥ 1.2`。
-- 任一不达标（含 `volumeZscore=null` 短历史），`setupType` **直接降级为 `NONE`**，不 fall-through 至 PULLBACK / RECLAIM。
+- 任一不达标（含 `volumeZscore=null` 短历史），`setupType` **直接降级为 `NONE`**，不 fall-through 至 CAPITULATION / RECLAIM。
 - 此门槛有意使 BREAKOUT 数量下降（预期行为）；前端展示无需感知降级过程，读取快照时 `setupType` 已是最终值。
 
 **错误响应**：
@@ -1386,7 +1386,28 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
     "userSettingCap": 1.0,
     "earningsRisk": "SAFE",
     "earningsDate": "2026-05-22",
-    "deterministicHash": "7f2a9b..."
+    "deterministicHash": "7f2a9b...",
+    "capitulationEvidence": null
+  },
+  "message": "success"
+}
+```
+
+**setupType=CAPITULATION 时的响应示例**（F217 / D095）：
+```json
+{
+  "data": {
+    "ticker": "ABC",
+    "setupType": "CAPITULATION",
+    "setupQuality": "B",
+    "entryPrice": 42.50,
+    "stopPrice": 39.80,
+    "...": "(其余字段同上)",
+    "capitulationEvidence": {
+      "volZscore": 2.71,
+      "drop5dPct": -12.4,
+      "reversalDay": true
+    }
   },
   "message": "success"
 }
@@ -1396,6 +1417,11 @@ last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 /api/coc
 - `effectiveRiskPct`：实际应用的 risk%（= min(regimeCap, userSettingCap, override)）
 - `deterministicHash`：SHA-256(ticker + entryPrice + stopPrice + riskPct + date)；**F210 AI trade_plan guardrail 的校验锚点**（D068）—— AI 输出的 entry/stop/size 必须复现同一 hash，否则抛 `AiGuardrailViolation`
 - `earningsDate`: 从 `earnings_events` 取 ticker 未来最近一次，无 → null
+- `capitulationEvidence`（F217 / D095）：可选对象，**仅当 `setupType=CAPITULATION` 时为非 null**，其它 setupType 一律返回 `null`。三个证据字段直接驱动前端 DecisionPanelWidget 的 chips 展示：
+  - `volZscore`: number — 当日 volume z-score（必 ≥ 2.5，因为是 CAPITULATION 触发的前置条件之一），保留 2 位小数
+  - `drop5dPct`: number — 过去 5 日 close 累计跌幅百分比（负数，例如 -12.4 表示跌 12.4%），保留 1 位小数
+  - `reversalDay`: boolean — 当日 close 是否位于 high-low 区间的上 1/3（投降日"收盘脱离最低"判定的布尔结果）
+  > 注：drop5dPct 取的是 "5 日窗口"代表值；CAPITULATION 严格判定用 5-10 日范围内任一窗口累计跌幅 ≥10% 即可（详见 D095 / setup_service `_is_capitulation_reversal`）。chip 展示固定取 5 日值以保持稳定可读性。
 
 **错误响应**：
 

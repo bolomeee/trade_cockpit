@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.3",
-    "active_sprint": "F217-c2c",
-    "active_sprint_phase": "needs_review",
+    "active_sprint": "",
+    "active_sprint_phase": "",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4268,8 +4268,8 @@
       "description": "对照《慢交易系统框架》(SRS) 扫描报告 gap #4：当前 setup_service 用 SETUP_PULLBACK 近似 Capitulation Reversal（仅判定 MA150~MA50 之间回撤），与 SRS § 五 Setup 4 语义完全不同（投降式抛售 = 极端放量 + 大 range + 收盘脱底 + higher low + RS 止跌）。F217 严格按 SRS 重写：(C1) cockpit_params.SETUP.TYPES 移除 PULLBACK 加 CAPITULATION + setup_service 删 _is_pullback 加 _is_capitulation_reversal；(C2) 7 条 AND 门严格判定（5-10日累计跌幅≥10% / Vol z-score≥2.5 / true_range≥2×ATR14 / close 位于当日 high-low 上 1/3 / 次日 1-2 日不创新低 / 当前 low > 30日内倒数第二 swing low / RS line 过去 5 日未新低）+ _detect_swing_lows 辅助；(C3) _classify_setup_type 优先级更新为 BROKEN → EXTENDED → EARNINGS_DRIFT → CAPITULATION → BREAKOUT → RECLAIM → NONE（CAPITULATION 高于 BREAKOUT/RECLAIM 因语义互斥）；(C4) setup_snapshots.setup_type 枚举去 PULLBACK 加 CAPITULATION + alembic 021 + 历史 PULLBACK 行软删（legacy=true 标记或 purge_legacy_pullback）；(C5) 前端 cockpitDecisionApi 类型 + DecisionPanelWidget chips（Vol z-score / Drop 5d / Reversal day）+ SetupMonitorWidget CAPITULATION 紫色 badge。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase C。",
       "user_story": "作为投资者，我需要 cockpit 把 'Capitulation Reversal'（投降式抛售反转）作为独立 setup type 严格识别，而不是用回踩 MA21 的 PULLBACK 近似。SRS § 五 Setup 4 把 Capitulation 定位为'底部反转'机会，胜率与风险特征完全不同于 BREAKOUT/RECLAIM。当前 PULLBACK 既不能告诉我'这是投降底了'，也不能在 DecisionPanel 显示放量/收盘脱底等关键证据，相当于把两种语义混在一起。重写后我能在 SetupMonitor 紫色 badge 识别 CAPITULATION 候选，DecisionPanel 看到 Vol z-score / Drop 5d / Reversal day 三个关键 chip 证据，触发频率会显著稀疏（每月几只）— 这正是 SRS 投降式抛售的统计特征。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "in_progress",
+      "status": "done",
+      "phase": "done",
       "sub_sprint_notes": "按 plan C1-C5 拆分（与 F216 同源 sizing 原则）：F217-a (C1+C2+C3 后端 setup_service 重写：已 done 2026-05-15)；F217-b1 (C4 DB 层：alembic 021 加 legacy bool 列 + UPDATE PULLBACK 行 legacy=true 软删保审计 / setup_snapshot model 加 legacy 字段 / SetupSnapshotRepository.purge_legacy_pullback 幂等方法 + get_latest_* 加 legacy=false 过滤 / test_setup_snapshot_purge integration tests，4 文件)；F217-b2 (Pydantic Literal 扩展：2 cockpit (position/pending_order) + 4 AI schemas (trade_plan/candidate_ranker/contradiction_detector/journal_assistant) 加 CAPITULATION 字面量并暂保留 PULLBACK 向后兼容，6 文件命中上限)；F217-b3 (测试 fixture 批量去 PULLBACK：test_setup_f216d2 / test_pool_service / test_ai_schemas_f211a1 / test_f215a / test_regime_f201b / test_decision_f203b2，6 文件命中上限)；F217-b4 (Pydantic Literal 收紧：6 schemas 删 PULLBACK 字面量，b3 完成后才能跑，向后不兼容窗口结束)；F217-c (原 4-5 文件估计在 2026-05-18 协商时发现低估，拆为 c1+c2)：F217-c1 (C5-back 后端 evidence 接口实装：API-CONTRACT 已定义 capitulationEvidence 但 backend 未实装；decision schema CapitulationEvidence 新增 + setup_service compute_capitulation_evidence 模块级 helper 抽取 + decision_service 在 setup_type=CAPITULATION 时查 DailyBar 调 helper 填充 + test_decision_capitulation_evidence 4 类断言，4 文件 backend-only 可独立验证)；F217-c2 (2026-05-18 协商时预扫描 16 文件远超 6 上限，二次拆为 c2a/c2b/c2c 镜像 backend b2/b3/b4)：F217-c2a (additive CAPITULATION 渲染，6 文件：cockpitDecisionApi 新增 CapitulationEvidence 类型 / setupMonitorApi SetupType +CAPITULATION 保 PULLBACK / SetupTypeBadge +CAPITULATION case 保 PULLBACK 引用新 token / DecisionPanelWidget setupType=CAPITULATION 时 inline 3 chips Vol z-score+Drop 5d+Reversal day / tokens.css 新增 --color-setup-capitulation: #8b5cf6 保 pullback / 新建 DecisionPanelWidget.capitulation.test.tsx)；F217-c2b (5 测试 fixture PULLBACK→CAPITULATION 迁移，与 backend b3 同形态，union 保留 PULLBACK 不破坏：__tests__/SetupMonitorWidget.test / MarketRegimeWidget.test / DecisionPanelWidget.test / cockpitApis.test / cockpitPoolApi.test)；F217-c2c (union 收紧 + 清理 + design-spec，8 文件用户授权超 6 同 b3 NP-b3-1=A 模式：setupMonitorApi -PULLBACK / SetupTypeBadge -PULLBACK case 引用切 capitulation token / cockpitPoolApi inline -PULLBACK / _pendingOrderRow inline -PULLBACK / _pendingOrderFormSchemas dropdown -PULLBACK / AiSetupExplainerPopover Props -PULLBACK + mapping CAPITULATION→'reversal' / tokens.css 删 --color-setup-pullback / docs/设计/design-spec.md setup color 表 + chips 视觉规格)。NP-c2 系列决策（用户 2026-05-18 全部按推荐确认）：NP-c2-1=A 3-way 拆分 / NP-c2-2=A design-spec 放 c2c / NP-c2-3=A AiSetupExplainerPopover mapping CAPITULATION→'reversal'（与 reversal 语义吻合，不动 setup_explainer 枚举）/ NP-c2-4=A tokens.css c2a 新增 + c2c 删 / NP-c2-5=A chips 复用 DecisionPanelWidget 现有 inline span 样式 / NP-c2-6=A c2c 8 文件用户授权超 6。依赖链：c2a → c2b → c2c (c2a 加 CAPITULATION 保 PULLBACK / c2b 迁移 fixture 不破 / c2c 收紧 union 删 PULLBACK)。原 F217-c2 单 sprint 描述已废止。",
       "sub_sprints": {
         "F217-a": "done",
@@ -4278,9 +4278,9 @@
         "F217-b3": "done",
         "F217-b4": "done",
         "F217-c1": "done",
-        "F217-c2a": "needs_review",
-        "F217-c2b": "needs_review",
-        "F217-c2c": "needs_review"
+        "F217-c2a": "done",
+        "F217-c2b": "done",
+        "F217-c2c": "done"
       },
       "dependencies": [
         "F215",
@@ -4552,10 +4552,32 @@
           "date": "2026-05-18",
           "session": "feature-dev Generator + Evaluator 完成",
           "changes": "F217-c2c 9 文件 PULLBACK 退场完成（3 commits：4e050ee refactor + fd0615e chore + 8e14086 docs）。Step 0 grep 验证 100% 覆盖 9 文件命中点；Step 1 改文件 1-6（SetupType union -PULLBACK 6 处，AiSetupExplainerPopover Props/mapping 更新）→ tsc 0 错误；Step 2 tokens.css 删 --color-setup-pullback；Step 3 design-spec.md 7 处全更新（color 表 PULLBACK→CAPITULATION / L767 枚举文字 / L906/L972/L1088 ASCII mockup / L988 popover 偏离 / 追加 v2.2.0 偏离说明）+ capitulation.test.tsx fallback fixture PULLBACK→UNKNOWN。T1 tsc 0 错误；T2/T3 cockpit src PULLBACK 0 命中（AiSetupExplainerPopover L17 backend schema 保留属已知例外）；T4 setup-pullback 0 命中；T5 design-spec PULLBACK 命中仅在 v2.2.0 偏离说明历史文字（§1.8 明确要求，非活跃枚举）；T6 capitulation 7/7；T8 22/28 suites = c2b 基线，0 新增失败；T12 backend 0 commits；T13 __tests__ 仅 capitulation.test.tsx。SetupType union 不再含 PULLBACK，TS 编译期强制。"
+        },
+        {
+          "sprint": "F217-c2a",
+          "phase": "done",
+          "date": "2026-05-18",
+          "session": "acceptance 验收通过",
+          "changes": "F217-c2a acceptance 通过：SetupTypeBadge CAPITULATION 紫色 badge + DecisionPanelWidget 3 chips 单元测试 7/7 覆盖；TSC 0 错误。"
+        },
+        {
+          "sprint": "F217-c2b",
+          "phase": "done",
+          "date": "2026-05-18",
+          "session": "acceptance 验收通过",
+          "changes": "F217-c2b acceptance 通过：5 个 test fixture PULLBACK→CAPITULATION 迁移，全量测试 22/28 suites 基线一致。"
+        },
+        {
+          "sprint": "F217-c2c",
+          "phase": "done",
+          "date": "2026-05-18",
+          "session": "acceptance 验收通过",
+          "changes": "F217-c2c acceptance 通过：SetupType union 无 PULLBACK（TSC 验证），Pending Order 下拉 CAP_REV 出现无 PULLBACK（截图确认），console 无 error，22/28 suites = 基线。F217 全部 sub_sprints done，父 feature 升 done。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已完成 — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已完成 — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。",
-      "last_updated": "2026-05-18"
+      "last_updated": "2026-05-18",
+      "completed_at": "2026-05-18"
     }
   ]
 }

@@ -290,3 +290,45 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 2. system-design 完成后触发 `design-bridge` 设计 Cockpit 页面 Figma。
 3. design-bridge 完成后进入 `feature-dev` 循环，从 F200 开始。
 
+---
+
+### v2.3 迭代 — 2026-05-15（Cockpit 改善计划 Phase C：Capitulation Reversal 严格重写）
+
+**变更原因**：对照 `docs/对比/cockpit-vs-srs-framework.md` 扫描报告 §3.C row 4 + §4 Gap #4：当前 setup_service 用 `SETUP_PULLBACK`（仅判定 MA150~MA50 之间回踩 MA21）近似 SRS § 五 Setup 4 "Capitulation Reversal"（投降式抛售反转），**两者语义完全不同**。Phase A (F215) / Phase B (F216) 已落地，本 Phase C 把核心 setup 之一从近似实现升级为 SRS 严格定义。Phase D (F218 Repricing Trigger) 是下游待规划阶段。
+
+**新增 feature**：
+
+- **F217**：Cockpit Phase C — Capitulation Reversal 严格重写。按 SRS § 五 Setup 4 实现 7 条 AND 门：(1) 过去 5-10 日 close 累计跌幅 ≥ 10%；(2) 当日 Vol z-score ≥ 2.5（复用 F215-b `_compute_volume_zscore`）；(3) true_range ≥ 2 × ATR14；(4) close 位于当日 high-low 上 1/3；(5) 当日之后 1-2 日 low > 当日 low（不创新低）；(6) 当前 low > 过去 30 日内倒数第二个 swing low（`_detect_swing_lows` 辅助）；(7) RS line 过去 5 日未创新低。同时移除 `SETUP_PULLBACK` 全部引用、升级 `_classify_setup_type` 优先级为 BROKEN → EXTENDED → EARNINGS_DRIFT → **CAPITULATION** → BREAKOUT → RECLAIM → NONE、DB 迁移 + 历史 PULLBACK 软删、前端 DecisionPanel chips（Vol z / Drop 5d / Reversal day）+ SetupMonitor 紫色 badge。拆 F217-a / F217-b / F217-c 三 sub-sprint。
+
+**修改 feature**：无。
+
+**废弃 feature**：无（PULLBACK 仅是 setup_type 枚举值，不是独立 feature，所以不走 deprecated 流程；通过 setup_snapshots 历史行软删保留审计）。
+
+**对下游文档的影响**：
+
+- **DATA-MODEL.md**：`SetupSnapshot.setup_type` 枚举去 `PULLBACK` 加 `CAPITULATION`；alembic 021 迁移脚本同步描述；可选新增 `legacy` 列保留历史 PULLBACK 行审计（plan §C4 软删方案）。
+- **API-CONTRACT.md**：`GET /api/cockpit/setup` 响应 `setupType` 字段枚举更新；`GET /api/cockpit/decision/{ticker}` 响应追加可选 `capitulationEvidence` 对象（`volZscore` / `drop5dPct` / `reversalDay`）。
+- **DECISIONS.md**：新增 D095 "Capitulation 替换 PULLBACK"，记录 (a) PULLBACK 与 SRS Setup 4 语义错位的判定证据 (b) 7 条 AND 门取阈值的依据 (c) 历史数据软删而非硬删的理由 (d) `_classify_setup_type` 优先级升级理由（CAPITULATION 与 BREAKOUT/RECLAIM 互斥）。
+- **design-spec.md**：Widget 5 (SetupMonitor) 追加 CAPITULATION 紫色 badge 规则（token 例：`#a78bfa`）；新增 DecisionPanel CAPITULATION 状态下 3 chip 规格（Vol z-score / Drop 5d / Reversal day）。
+- **data-mapping.md**：`setupType` / `capitulationEvidence` 字段映射追加。
+- **ARCHITECTURE.md**：无影响（无新模块、无新依赖）。
+
+**预期影响**：
+
+- CAPITULATION 严格判定（7 条 AND）触发非常稀疏，历史上每月可能只有几只标的命中 — **这是 SRS 设计意图，不是 bug**。
+- 现有 `SETUP_PULLBACK` 当前在 setup_monitor 上显示部分标的，切换后这些行会落到 NONE，进一步缩减 `ready_signal=true` 候选（继 F216-d 30-50% reduction 之后）。
+- F215（Volume z-score）+ F216（Weekly Stage）无代码改动，仅作为 C2 / ready_signal 协同复用。
+
+**明确不做**：
+
+- ❌ 不动 F216-d 的 ready_signal 8 门 gate 逻辑（CAPITULATION 与 ready_signal 解耦，由 F218 评估是否需要进一步集成）。
+- ❌ 不删除 setup_snapshots 历史 PULLBACK 行（软删保留审计，plan §C4 明确）。
+- ❌ 不在本 Phase C 处理 SRS § 十一 Repricing Trigger（属 Phase D / F218）。
+
+**下一步**：
+
+1. 触发 `system-design` skill 走变更协议，更新 DATA-MODEL.md SetupSnapshot 枚举 + API-CONTRACT.md setup/decision 端点 + DECISIONS.md D095。
+2. system-design 完成后进入 `feature-dev`，从 F217-a 开始协商 Sprint Contract（后端 setup_service 重写 + pure tests）。
+3. F217-a Evaluator 通过后顺序进入 F217-b（DB 迁移）→ F217-c（前端 chips + badge）。
+4. F217 整体 acceptance 通过后规划 F218 (Phase D: Repricing Trigger 5 类完整框架)。
+
