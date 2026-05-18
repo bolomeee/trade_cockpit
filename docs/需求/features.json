@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.3",
-    "active_sprint": "F217-c2a",
+    "active_sprint": "F217-c2c",
     "active_sprint_phase": "needs_review",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
@@ -4279,8 +4279,8 @@
         "F217-b4": "done",
         "F217-c1": "done",
         "F217-c2a": "needs_review",
-        "F217-c2b": "design_needed",
-        "F217-c2c": "design_needed"
+        "F217-c2b": "needs_review",
+        "F217-c2c": "needs_review"
       },
       "dependencies": [
         "F215",
@@ -4526,9 +4526,36 @@
           "phase": "needs_review",
           "session": "feature-dev Generator + Evaluator 完成",
           "changes": "F217-c2a Generator 全部 6 步完成（6 wip commits + 1 feat commit + 1 chore commit）。Evaluator 自检全过：T1 CapitulationEvidence 类型可 import camelCase 字段；T2-T5 5 render tests 全过（CAPITULATION 渲染 3 chips / 非 CAPITULATION 不渲染 / null evidence 不渲染 / reversalDay=false 渲染否）；T6 SetupTypeBadge CAPITULATION+PULLBACK 双 case 正确（CAP_REV label + var(--color-setup-capitulation) / PULLBACK label + var(--color-setup-pullback) 向后兼容）；T7 tokens.css --color-setup-capitulation: #8b5cf6 line 90 grep 命中；T8 DecisionPanelWidget.test.tsx 全量回归 28/29 通过（S4 为 pre-existing failure /Decision · NVDA/ 非本 sprint 引入）；T9 pnpm tsc --noEmit 0 错误；PULLBACK 在 setupMonitorApi.ts + SetupTypeBadge.tsx 三 entry 全保留；--color-setup-pullback line 85 保留；design-spec.md 字节未变；无 backend 改动；无硬编码 #8b5cf6 在组件文件；无 console/debugger；6 文件精确命中无 buffer。chips 渲染位置：Earnings 区块后 deterministicHash 前，inline span 复用现有 rowStyle/labelStyle/valueStyle，无新样式抽象。下游：F217-c2b（5 测试 fixture PULLBACK→CAPITULATION）待协商 Sprint Contract。"
+        },
+        {
+          "sprint": "F217-c2b",
+          "phase": "contract_agreed",
+          "date": "2026-05-18",
+          "notes": "5 test fixture PULLBACK → CAPITULATION 迁移 contract 确认；NP-c2b-1=A / NP-c2b-6=B"
+        },
+        {
+          "sprint": "F217-c2b",
+          "phase": "needs_review",
+          "date": "2026-05-18",
+          "session": "feature-dev Generator + Evaluator 完成",
+          "changes": "F217-c2b 5 文件 fixture 迁移完成（1 final commit 22c8aab）。Step 0 grep 验证 100% 覆盖；Step 1 改 5 文件 10 处字面量；Step 2/3 tsc 0 错误；全量回归 22/28 suites = c2a 基线一致（0 新增失败，stash 双向验证）；所有 17 个 pre-existing failures 均来自 c2a 基线（§S Setup Explainer Popover / S14.4 / R11 / S4）。Evaluator T1-T8 全过：capitulation.test.tsx L169/171 PULLBACK 保留（NP-c2b-2=A Badge fallback test）；SetupType union PULLBACK 保留；tokens.css --color-setup-pullback 保留；design-spec.md 未动；backend 0 改动。下游：F217-c2c（union 收紧 + 8 文件清理 + design-spec，用户已授权超 6）。"
+        },
+        {
+          "sprint": "F217-c2c",
+          "phase": "contract_agreed",
+          "date": "2026-05-18",
+          "notes": "Union 收紧 -PULLBACK + 8 文件清理 + design-spec 更新 contract 确认（用户全部按各自推荐确认 NP-c2c-1 ~ NP-c2c-8）。范围 9 文件（含 capitulation.test.tsx fallback fixture 改 'UNKNOWN'，NP-c2c-8=B 推荐外推 +1 文件），仍在用户授权超 6 区间内。3 commits 分层：refactor(src 6 文件 SetupType union -PULLBACK) / chore(tokens.css -pullback token) / docs(design-spec.md 全更新含 ASCII mockup + capitulation.test.tsx fallback fixture)。NP 决策：c2c-1=A _pendingOrderFormSchemas 删 PULLBACK 同步加 CAPITULATION option / c2c-2=A AiSetupExplainerPopover Props union 加 CAPITULATION 同步 mapping CAPITULATION→'reversal' / c2c-3=A 保持 3 处 inline SetupType union 不重构 / c2c-4=C design-spec 全更新（color 表 + L767 文字 + L988 popover 偏离 + L906/L972/L1088 ASCII mockup + v2.2.0 偏离说明追加）/ c2c-5=A --color-setup-capitulation 保 #8b5cf6 不调色 / c2c-6=A 3 个语义层 commits / c2c-7=A 不顺带修复 §S 11 pre-existing 失败（根因 SetupMonitorWidget 未渲染 popover，独立 sprint）/ c2c-8=B capitulation.test.tsx L169/L171 PULLBACK → 'UNKNOWN' 保留 fallback test 语义。完成后 SetupType union 不再含 PULLBACK，TS 编译期禁止 PULLBACK 字面量；旧 --color-setup-pullback token 退场；design-spec.md 完整描述最终态。下游：c2c needs_review 后触发 acceptance 集中验收 c2a/c2b/c2c 三 sub-sprint。Contract: docs/开发/sprint-contracts/F217-c2c-contract.md。下个 session Generator 从 §4 Step 0 grep 验证开始。"
+        },
+        {
+          "sprint": "F217-c2c",
+          "phase": "needs_review",
+          "date": "2026-05-18",
+          "session": "feature-dev Generator + Evaluator 完成",
+          "changes": "F217-c2c 9 文件 PULLBACK 退场完成（3 commits：4e050ee refactor + fd0615e chore + 8e14086 docs）。Step 0 grep 验证 100% 覆盖 9 文件命中点；Step 1 改文件 1-6（SetupType union -PULLBACK 6 处，AiSetupExplainerPopover Props/mapping 更新）→ tsc 0 错误；Step 2 tokens.css 删 --color-setup-pullback；Step 3 design-spec.md 7 处全更新（color 表 PULLBACK→CAPITULATION / L767 枚举文字 / L906/L972/L1088 ASCII mockup / L988 popover 偏离 / 追加 v2.2.0 偏离说明）+ capitulation.test.tsx fallback fixture PULLBACK→UNKNOWN。T1 tsc 0 错误；T2/T3 cockpit src PULLBACK 0 命中（AiSetupExplainerPopover L17 backend schema 保留属已知例外）；T4 setup-pullback 0 命中；T5 design-spec PULLBACK 命中仅在 v2.2.0 偏离说明历史文字（§1.8 明确要求，非活跃枚举）；T6 capitulation 7/7；T8 22/28 suites = c2b 基线，0 新增失败；T12 backend 0 commits；T13 __tests__ 仅 capitulation.test.tsx。SetupType union 不再含 PULLBACK，TS 编译期强制。"
         }
       ],
-      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已完成 — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已完成 — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。"
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 3 阶段（Phase C）。依赖 F215（Phase A，已完成 — Volume z-score 复用为 C2 第 2 条门）+ F216（Phase B，已完成 — ready_signal 8 门已稳，本次不动 gate 逻辑）。下游：F218 = Phase D (Repricing Trigger 完整框架 5 类)。⚠️ Capitulation 严格判定（7 条 AND 门）会非常稀疏，历史上每月可能只有几只标的触发 — 这是 SRS 设计意图，不是 bug。⚠️ 现有 setup_snapshots 表中已有 PULLBACK 行需软删（plan §C4 明确：legacy=true 列或 purge_legacy_pullback），不删除以保留审计。⚠️ SETUP_PULLBACK 当前在 setup_monitor 上展示部分标的，切换后这些会落到 NONE，会进一步缩减 ready_signal=true 候选（继 F216-d 30-50% reduction 之后）。",
+      "last_updated": "2026-05-18"
     }
   ]
 }

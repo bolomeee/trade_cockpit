@@ -1,4 +1,54 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c2c done → phase: needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 9 文件 PULLBACK 退场（3 commits: refactor / chore / docs）
+  - 文件 1-6 src SetupType union -PULLBACK（setupMonitorApi / SetupTypeBadge / cockpitPoolApi / _pendingOrderRow / _pendingOrderFormSchemas -PULLBACK +CAPITULATION / AiSetupExplainerPopover Props+mapping）
+  - tokens.css 删 --color-setup-pullback token
+  - design-spec.md 7 处全更新（color 表 / L767 枚举 / L906/L972/L1088 ASCII mockup / L988 popover / v2.2.0 偏离说明）
+  - capitulation.test.tsx fallback fixture PULLBACK → 'UNKNOWN'（NP-c2c-8=B）
+  - Evaluator T1-T8 全过；tsc 0 错误；22/28 suites = c2b 基线（0 新增失败）
+  - SetupType union 不再含 PULLBACK，TS 编译期强制
+
+⏭️ 下一步：
+  - acceptance skill 集中验收 c2a / c2b / c2c 三 sub-sprint（同一 release F217）
+  - acceptance 通过后：c2a/c2b/c2c 升 done，F217 父 feature 升 done
+
+⚠️ 注意事项（继承自 c2c 合同）：
+  - AiSetupExplainerPopover L17 backend schema 'pullback' 保留（F211 归口，c2c 不动 backend）
+  - SetupMonitorWidget §S 11+ pre-existing test 失败保留（NP-c2c-7=A）
+  - T5 design-spec grep: 3 命中来自 v2.2.0 偏离说明历史文字（§1.8 要求，可接受）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c2b done → phase: needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 5 文件 test fixture PULLBACK → CAPITULATION 迁移（单 commit 22c8aab）
+  - Step 0 grep 验证 100% 覆盖（5 quoted + 2 embedded + 3 S2 text），capitulation.test.tsx L169/171 PULLBACK 保留（NP-c2b-2=A）
+  - 10 处字面量：SetupMonitorWidget 5 处 / MarketRegimeWidget 1 处 / DecisionPanelWidget 1 处 / cockpitApis 1 处 / cockpitPoolApi 2 处
+  - Evaluator T1-T8 全过；全量 22/28 suites = c2a 基线（stash 双向验证，0 新增失败）
+  - SetupType union PULLBACK / tokens.css --color-setup-pullback / design-spec.md 全部保留（c2c 才删）
+
+🔧 系统变更：
+  - 修改：frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx（5 处）
+  - 修改：frontend/src/cockpit/widgets/__tests__/MarketRegimeWidget.test.tsx（1 处 + as const 保留）
+  - 修改：frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx（1 处）
+  - 修改：frontend/src/cockpit/lib/api/__tests__/cockpitApis.test.ts（1 处）
+  - 修改：frontend/src/cockpit/lib/api/__tests__/cockpitPoolApi.test.ts（2 处）
+
+📊 功能状态：
+  F217-c1：✅ done
+  F217-c2a：✅ needs_review
+  F217-c2b：✅ needs_review（commit 22c8aab）
+  F217-c2c：⬜ design_needed（union 收紧 + 8 文件清理 + design-spec）
+
+⚠️ 已知 pre-existing failures（c2a 基线已存在，c2b 不新增）：
+  - §S Setup Explainer Popover S1-S11（11 tests）：c2c 清理 AiSetupExplainerPopover 时顺带修
+  - S14.4 / R11 / S4 / AiNewsSummaryBar C1-C8 / TopNav S12/S13
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-18] Sprint：F217-c2a done → phase: needs_review
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -21,13 +71,14 @@
 📊 功能状态：
   F217-c1：✅ done
   F217-c2a：✅ needs_review（6 文件 additive CAPITULATION 渲染）
-  F217-c2b：⬜ design_needed（5 测试 fixture PULLBACK→CAPITULATION）
+  F217-c2b：✅ needs_review（5 测试 fixture PULLBACK→CAPITULATION，commit 22c8aab）
   F217-c2c：⬜ design_needed（union 收紧 + 清理 + design-spec，8 文件已授权）
 
 [下一个 Session]
   开 Sonnet 新 session 粘贴：
-  > 继续开发 F217-c2b，从 Sprint Contract 协商开始。
-  > 读取 SESSION-HANDOFF.md，进入 feature-dev skill，协商 F217-c2b Sprint Contract。
+  > F217-c2b 已 needs_review，现在开始 F217-c2c Sprint Contract 协商。
+  > 读取 SESSION-HANDOFF.md + docs/需求/features.json F217 sub_sprints，
+  > 进入 feature-dev Sprint Contract 协商模式，草拟 F217-c2c contract。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-18] Sprint：F217-c2a Sprint Contract 协商完成 → phase: contract_agreed
@@ -674,4 +725,112 @@ T7 全量回归 1095 passed 8 预存失败 0 新增失败
 [下一步]
   开 Sonnet 新 session 进入 Generator 模式，从 §4 Step 1 开始：
   backend/app/schemas/cockpit/decision.py 新增 CapitulationEvidence 模型 + 字段。
+  恢复指令见 SESSION-HANDOFF.md。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18 18:00] Sprint：F217-c2b Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F217-c2b Sprint Contract 草案落地并经用户确认
+  - 范围：5 个 test 文件 PULLBACK → CAPITULATION 字面量迁移（与 backend b3 同形态）
+  - 文件清单（5 个，未到 6 上限）：
+      1. SetupMonitorWidget.test.tsx（5 处：L78 fixture + L173 preferredSetups + S2 改名 3 处）
+      2. MarketRegimeWidget.test.tsx（1 处：L88 preferredSetups as const）
+      3. DecisionPanelWidget.test.tsx（1 处：L722 preferredSetups）
+      4. cockpitApis.test.ts（1 处：L128 preferredSetups）
+      5. cockpitPoolApi.test.ts（2 处：L40 入参 + L47 URL %2C 断言）
+  - 决策点确认：
+      NP-c2b-1=A：S2 test case 完整改名（it + button name 同步）
+      NP-c2b-6=B：单 commit "fix(F217-c2b): test fixture PULLBACK → CAPITULATION"，不分 wip
+  - Contract status: drafted → confirmed
+  - features.json 更新：
+      sub_sprints.F217-c2b: design_needed → contract_agreed
+      _pipeline_status.active_sprint: F217-c2a → F217-c2b
+      _pipeline_status.active_sprint_phase: needs_review → contract_agreed
+      iteration_history 追加 1 条
+      last_updated: 2026-05-18
+
+⚠️ 待你决策：无
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F217-c2b-contract.md 新建（草案 → confirmed）
+  - docs/需求/features.json 更新
+
+📊 F217 当前状态：
+  ├── F217-a   — done ✅
+  ├── F217-b1  — done ✅
+  ├── F217-b2  — done ✅
+  ├── F217-b3  — done ✅
+  ├── F217-b4  — done ✅
+  ├── F217-c1  — done ✅
+  ├── F217-c2a — needs_review 🔍
+  ├── F217-c2b — contract_agreed ← 本次协商完成
+  └── F217-c2c — design_needed
+
+[下一步]
+  开 Sonnet 新 session 进入 Generator 模式，从 §4 Step 0 开始：
+  grep -rn "'PULLBACK'\\|\"PULLBACK\"" frontend/src/cockpit/{widgets,lib}/__tests__/
+  对照 contract §1 5 文件清单 100% 覆盖后进 Step 1 字面量替换。
+  恢复指令见 SESSION-HANDOFF.md。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18 22:00] Sprint：F217-c2c Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F217-c2c Sprint Contract 草案落地并经用户确认
+  - 范围：8 文件 PULLBACK 清理（用户授权超 6）+ 1 文件 fallback fixture 调整 = 9 文件
+  - 文件清单（9 个，含 NP-c2c-8=B 推荐外推 +1）：
+      1. setupMonitorApi.ts（L5 -PULLBACK union）
+      2. SetupTypeBadge.tsx（L3 union / L14 TYPE_COLORS / L24 TYPE_LABELS 三处删 PULLBACK）
+      3. cockpitPoolApi.ts（L32 inline union -PULLBACK）
+      4. _pendingOrderRow.tsx（L60 inline union -PULLBACK）
+      5. _pendingOrderFormSchemas.ts（L6 -PULLBACK option + 同步加 CAPITULATION option）
+      6. AiSetupExplainerPopover.tsx（L32 Props union -PULLBACK +CAPITULATION / L42 局部 union -'pullback' / L44 mapping -PULLBACK +CAPITULATION→'reversal'）
+      7. tokens.css（L85 -- --color-setup-pullback token）
+      8. design-spec.md（color 表 PULLBACK→CAPITULATION 行 / L767 文字 / L988 popover 偏离 / L906/L972/L1088 ASCII mockup / 追加 v2.2.0 偏离说明，共 7 处）
+      9. DecisionPanelWidget.capitulation.test.tsx（L169/L171 PULLBACK → 'UNKNOWN' fallback fixture）
+  - 决策点确认（用户全部按各自推荐）：
+      NP-c2c-1=A：_pendingOrderFormSchemas 删 PULLBACK 同步加 CAPITULATION option（紧邻 BREAKOUT 后，label 'CAP_REV'）
+      NP-c2c-2=A：AiSetupExplainerPopover Props union 加 CAPITULATION（与 mapping 同步）
+      NP-c2c-3=A：保持 cockpitPoolApi / _pendingOrderRow / SetupTypeBadge 三处 inline SetupType union，不重构为 import 全局
+      NP-c2c-4=C：design-spec 全更新（含 ASCII mockup 与 popover 偏离说明 + 追加 v2.2.0 偏离说明）
+      NP-c2c-5=A：--color-setup-capitulation 保 #8b5cf6 不调色
+      NP-c2c-6=A：3 commits（refactor/chore/docs）分层
+      NP-c2c-7=A：不顺带修复 §S Setup Explainer Popover 11 pre-existing 失败（根因 SetupMonitorWidget 未渲染 popover，独立 sprint）
+      NP-c2c-8=B：capitulation.test.tsx L169/L171 PULLBACK → 'UNKNOWN' 字面量（保留 fallback test 语义，无 `as any` 逃逸）
+  - 3 commits 分层：
+      refactor(F217-c2c): remove PULLBACK from frontend SetupType unions（文件 1-6）
+      chore(F217-c2c): remove --color-setup-pullback token（文件 7）
+      docs(F217-c2c): update design-spec for PULLBACK → CAPITULATION（文件 8+9）
+  - Contract status: drafted → confirmed
+  - features.json 更新：
+      sub_sprints.F217-c2c: design_needed → contract_agreed
+      _pipeline_status.active_sprint: F217-c2b → F217-c2c
+      _pipeline_status.active_sprint_phase: needs_review → contract_agreed
+      iteration_history 追加 1 条
+      last_updated: 2026-05-18
+
+⚠️ 待你决策：无
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F217-c2c-contract.md 新建（草案 → confirmed）
+  - docs/需求/features.json 更新
+
+📊 F217 当前状态：
+  ├── F217-a   — done ✅
+  ├── F217-b1  — done ✅
+  ├── F217-b2  — done ✅
+  ├── F217-b3  — done ✅
+  ├── F217-b4  — done ✅
+  ├── F217-c1  — done ✅
+  ├── F217-c2a — needs_review 🔍
+  ├── F217-c2b — needs_review 🔍
+  └── F217-c2c — contract_agreed ← 本次协商完成
+
+[下一步]
+  开 Sonnet 新 session 进入 Generator 模式，从 §4 Step 0 开始：
+  grep -rn "'PULLBACK'\\|\"PULLBACK\"" frontend/src/cockpit/
+  对照 contract §1 / §2 表 9 文件清单 100% 覆盖后进 Step 1 src 重构。
   恢复指令见 SESSION-HANDOFF.md。
