@@ -6,6 +6,7 @@ type SetupType =
   | 'EXTENDED'
   | 'BROKEN'
   | 'NONE'
+  | 'CAPITULATION'
   | null
 
 const TYPE_COLORS: Record<string, string> = {
@@ -15,6 +16,7 @@ const TYPE_COLORS: Record<string, string> = {
   EARNINGS_DRIFT: 'var(--color-setup-earnings)',
   EXTENDED: 'var(--color-setup-extended)',
   BROKEN: 'var(--color-setup-broken)',
+  CAPITULATION: 'var(--color-setup-capitulation)',
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -24,6 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
   EARNINGS_DRIFT: 'EARN_DRFT',
   EXTENDED: 'EXTENDED',
   BROKEN: 'BROKEN',
+  CAPITULATION: 'CAP_REV',
 }
 
 type Props = { value: SetupType }
