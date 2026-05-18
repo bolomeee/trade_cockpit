@@ -3,7 +3,7 @@ import { z } from 'zod'
 // TODO: extract to shared constant when more consumers exist (v1.9+)
 export const setupTypeOptions = [
   { value: 'BREAKOUT', label: 'BREAKOUT' },
-  { value: 'PULLBACK', label: 'PULLBACK' },
+  { value: 'CAPITULATION', label: 'CAP_REV' },
   { value: 'RECLAIM', label: 'RECLAIM' },
   { value: 'EARNINGS_DRIFT', label: 'EARN_DRFT' },
   { value: 'EXTENDED', label: 'EXTENDED' },

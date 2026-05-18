@@ -29,7 +29,7 @@ export type PoolItem = {
   price: number
   trendScore: number | null
   rsPercentile: number
-  setupType: 'BREAKOUT' | 'PULLBACK' | 'RECLAIM' | 'EARNINGS_DRIFT' | 'EXTENDED' | 'BROKEN' | 'NONE' | null
+  setupType: 'BREAKOUT' | 'RECLAIM' | 'EARNINGS_DRIFT' | 'EXTENDED' | 'BROKEN' | 'NONE' | null
   distanceToPivotPct: number | null
   distanceTo50maPct: number | null
   earningsDate: string | null

@@ -29,7 +29,7 @@ export type SetupExplainerOutput = {
 
 type Props = {
   ticker: string
-  setupType: 'BREAKOUT' | 'PULLBACK' | 'RECLAIM'
+  setupType: 'BREAKOUT' | 'RECLAIM' | 'CAPITULATION'
   trendScore: number
   rsPercentile: number
   entryPrice: number
@@ -39,9 +39,9 @@ type Props = {
 // ── Input builder ─────────────────────────────────────────────────────────────
 
 function buildSetupExplainerInput(p: Props): SetupExplainerInput {
-  const setup: 'breakout' | 'pullback' | 'reversal' = (
+  const setup: 'breakout' | 'reversal' = (
     p.setupType === 'BREAKOUT' ? 'breakout' :
-    p.setupType === 'PULLBACK' ? 'pullback' :
+    p.setupType === 'CAPITULATION' ? 'reversal' :
     'reversal'
   )
   // trend_score is a 0-5 MA-alignment ladder (backend setup_service._compute_trend_score):

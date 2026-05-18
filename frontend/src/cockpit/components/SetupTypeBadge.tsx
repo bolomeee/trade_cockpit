@@ -1,6 +1,5 @@
 type SetupType =
   | 'BREAKOUT'
-  | 'PULLBACK'
   | 'RECLAIM'
   | 'EARNINGS_DRIFT'
   | 'EXTENDED'
@@ -11,7 +10,6 @@ type SetupType =
 
 const TYPE_COLORS: Record<string, string> = {
   BREAKOUT: 'var(--color-setup-breakout)',
-  PULLBACK: 'var(--color-setup-pullback)',
   RECLAIM: 'var(--color-setup-reclaim)',
   EARNINGS_DRIFT: 'var(--color-setup-earnings)',
   EXTENDED: 'var(--color-setup-extended)',
@@ -21,7 +19,6 @@ const TYPE_COLORS: Record<string, string> = {
 
 const TYPE_LABELS: Record<string, string> = {
   BREAKOUT: 'BREAKOUT',
-  PULLBACK: 'PULLBACK',
   RECLAIM: 'RECLAIM',
   EARNINGS_DRIFT: 'EARN_DRFT',
   EXTENDED: 'EXTENDED',

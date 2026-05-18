@@ -57,7 +57,7 @@ const btnStyle: React.CSSProperties = {
 
 // ── PendingOrderRow ───────────────────────────────────────────────────────────
 
-type SetupType = 'BREAKOUT' | 'PULLBACK' | 'RECLAIM' | 'EARNINGS_DRIFT' | 'EXTENDED' | 'BROKEN' | 'NONE' | null
+type SetupType = 'BREAKOUT' | 'RECLAIM' | 'EARNINGS_DRIFT' | 'EXTENDED' | 'BROKEN' | 'NONE' | null
 
 type Props = {
   order: PendingOrder

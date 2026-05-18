@@ -2,7 +2,6 @@ import { apiFetch } from '@/lib/api/client'
 
 export type SetupType =
   | 'BREAKOUT'
-  | 'PULLBACK'
   | 'RECLAIM'
   | 'EARNINGS_DRIFT'
   | 'EXTENDED'
