@@ -31,6 +31,9 @@ class RepricingTriggerRepository:
         )
         self.db.execute(stmt)
         self.db.commit()
+        # expire_all forces a fresh DB read — ON CONFLICT UPDATE bypasses the ORM
+        # identity map, so the cached instance would otherwise return stale values.
+        self.db.expire_all()
         return self.db.execute(
             select(RepricingTrigger).where(
                 RepricingTrigger.ticker == data["ticker"],
