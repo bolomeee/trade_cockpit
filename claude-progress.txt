@@ -1,4 +1,83 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c2a done → phase: needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 6 文件 frontend additive CAPITULATION 渲染（tokens.css / cockpitDecisionApi.ts / setupMonitorApi.ts / SetupTypeBadge.tsx / DecisionPanelWidget.tsx / DecisionPanelWidget.capitulation.test.tsx）
+  - CapitulationEvidence 类型 + CockpitDecisionData.capitulationEvidence? 字段（camelCase 与 c1 backend 对齐）
+  - SetupType union += 'CAPITULATION'（PULLBACK 保留向后兼容）
+  - SetupTypeBadge 三处追加 CAPITULATION（union / TYPE_COLORS var(--color-setup-capitulation) / TYPE_LABELS 'CAP_REV'）
+  - DecisionPanelWidget Earnings 区块后 3 chip 行（Vol z-score / Drop 5d / Reversal day）inline span 复用现有 rowStyle
+  - T1-T6 8 tests all pass；T7 token grep；T8 全量回归 28/29（S4 pre-existing）；T9 tsc 0 errors
+
+🔧 系统变更：
+  - 修改：frontend/src/styles/tokens.css（+1 token）
+  - 修改：frontend/src/cockpit/lib/api/cockpitDecisionApi.ts（+CapitulationEvidence type + field）
+  - 修改：frontend/src/cockpit/lib/api/setupMonitorApi.ts（+CAPITULATION to SetupType）
+  - 修改：frontend/src/cockpit/components/SetupTypeBadge.tsx（+CAPITULATION 3 entries）
+  - 修改：frontend/src/cockpit/widgets/DecisionPanelWidget.tsx（+3 chip rows）
+  - 新建：frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.capitulation.test.tsx（8 tests）
+
+📊 功能状态：
+  F217-c1：✅ done
+  F217-c2a：✅ needs_review（6 文件 additive CAPITULATION 渲染）
+  F217-c2b：⬜ design_needed（5 测试 fixture PULLBACK→CAPITULATION）
+  F217-c2c：⬜ design_needed（union 收紧 + 清理 + design-spec，8 文件已授权）
+
+[下一个 Session]
+  开 Sonnet 新 session 粘贴：
+  > 继续开发 F217-c2b，从 Sprint Contract 协商开始。
+  > 读取 SESSION-HANDOFF.md，进入 feature-dev skill，协商 F217-c2b Sprint Contract。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F217-c2a Sprint Contract 协商完成 → phase: contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 原 F217-c2（前端 chips+badge+token+design-spec）预扫描 16 文件远超 6 上限
+  - 二次拆分为 c2a/c2b/c2c（镜像 backend b2/b3/b4 模式），用户全部按推荐确认 NP-c2-1 ~ NP-c2-6
+  - sub_sprints 字段从 {F217-c2: design_needed} 改为 {F217-c2a/c2b/c2c: design_needed}
+  - consistency-check (mode=interactive) 0 🔴/0 🟡/0 🟢 全清
+  - F217-c2a Sprint Contract 已协商确认（6 文件命中上限，additive CAPITULATION 渲染保 PULLBACK 向后兼容）
+  - NP-c2a-1 ~ NP-c2a-5 全部按推荐确认（drop_5d_pct inline .toFixed(1)% / label 'CAP_REV' / chip 插 Earnings 后 / 渲染 是|否 / 类型 nullable+undefined）
+
+🔧 系统变更：
+  - 新建：docs/开发/sprint-contracts/F217-c2a-contract.md（status=drafted）
+  - 修改：docs/需求/features.json
+    · _pipeline_status.active_sprint=F217-c2a / active_sprint_phase=contract_agreed
+    · F217.sub_sprints: c2 → {c2a/c2b/c2c}，c2a=contract_agreed
+    · F217.sub_sprint_notes 重写描述 c2a/c2b/c2c 范围 + NP-c2 决策
+    · F217.iteration_history 追加 2 条（c2 二次拆分协商 + c2a contract_agreed）
+
+📊 功能状态：
+  F217-c1：✅ done
+  F217-c2a：📋 contract_agreed（6 文件 additive CAPITULATION 渲染）
+  F217-c2b：⬜ design_needed（5 测试 fixture PULLBACK→CAPITULATION）
+  F217-c2c：⬜ design_needed（union 收紧 + 清理 + design-spec，8 文件已授权）
+
+[下一个 Session]
+  开 Sonnet 新 session 粘贴：
+  > 继续开发 F217-c2a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F217-c2a-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（tokens.css 新增 --color-setup-capitulation）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] F217-c1 验收通过 → phase: done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ acceptance 确认：
+  - 20 tests T1-T8 全通过（14 pure + 6 integration）
+  - 全量回归：1115 passed / 8 预存失败 / 0 新增失败
+  - 验收记录：docs/验收/v2.2.0-F217-c1-acceptance.md
+
+📊 功能状态：
+  F217-c1：✅ done
+  F217-c2：⬜ design_needed（frontend chips+badge+token+design-spec）
+
+[下一个 Session]
+  F217-c2 Sprint Contract 协商（前端 chips+badge+token+design-spec，预估 9-11 文件）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-18] Sprint：F217-c1 Generator + Evaluator 完成（backend capitulationEvidence wiring）→ phase: needs_review
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
