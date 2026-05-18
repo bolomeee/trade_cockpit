@@ -139,3 +139,58 @@
   >   2) service detector 实装（import / 5 常量 / _detect_earnings_acceleration 主体 / _quarter_label helper）
   >   3) 10 测试落地 + 全量回归
   > 每步通过最小验证后 wip commit。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F218-d2 T1 EARNINGS_ACCEL detector
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - EarningsEventRepository.get_recent_completed_for_ticker(ticker, limit=8)
+    （过滤 eps_actual IS NOT NULL，ORDER BY earnings_date DESC，limit 截断）
+  - RepricingTriggerService._detect_earnings_acceleration 占位 → 真实实装
+    （5 T1_* 常量 / EarningsEventRepository 注入 / 严格单调 YoY 判定 / confidence 阈值 / revenue evidence）
+  - 模块级 _quarter_label(d: date) -> str helper（YYYYQN 格式）
+  - 新测试文件 tests/test_repricing_trigger_earnings_accel.py：3 class / 14 test case（10 logical cases，参数化展开）
+  - 单元测试：14/14 通过
+  - d1 回归：14/14 通过
+  - 全量后端回归：1142 pass，9 失败全部为预先存在（stash 验证）
+  - Evaluator 自检：通过（1 项：函数 62 行 >50 行上限，已向用户报告）
+  - phase → needs_review
+
+⚠️ 待用户决策：
+  - _detect_earnings_acceleration 函数 62 行（含 8 行 docstring + 7 行注释），超出 50 行上限须报告。
+    建议：保留现状（docstring 承载 NP-d2-1~7 决策说明，逻辑清晰）；
+    或：修剪 inline 注释和 docstring 至 ≤ 50 行。
+
+🔧 系统变更：
+  - backend/app/repositories/earnings_event_repository.py：+1 方法
+  - backend/app/services/cockpit/repricing_trigger_service.py：+import / +init / +5 常量 / detector 实装 / _quarter_label
+  - backend/tests/test_repricing_trigger_earnings_accel.py：新建
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: done ✅
+  F218-d2: needs_review 🔍
+  F218-d3a ~ d7b: design_needed ⬜
+
+[下一步]
+  验收 F218-d2 → acceptance skill
+  或开始 F218-d3a (T2 FMP 接入) Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] 验收：F218-d2 T1 EARNINGS_ACCEL detector
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户亲确认 10 条业务逻辑 + 3 项边缘决策）
+   F218-d2 phase: needs_review → done
+   父 F218 phase: 保持 in_progress（d3a~d7b 尚未开始）
+   consistency-check: 0 严重违例，acceptance gate 通过
+   验收记录: docs/验收/v2.4-F218-d2-acceptance.md
+
+📊 F218 子 Sprint 状态：
+  F218-d1 ✅ done
+  F218-d2 ✅ done
+  F218-d3a ~ d7b ⬜ design_needed（8 个待开发）
+
+[下一步]
+  F218-d3a：T2 MARGIN_EXPANSION，需接入 FMP key-metrics，Sprint Contract 协商
