@@ -729,7 +729,7 @@ MSFT,"Microsoft Corporation"
 | Setup Quality B | `--color-setup-quality-b` | `#0891b2`（青蓝） | 同上 |
 | Setup Quality C | `--color-setup-quality-c` | `var(--color-text-secondary)` (#717182) | 同上 |
 | Setup: BREAKOUT | `--color-setup-breakout` | `var(--color-signal-breakout)` | `SetupSnapshot.setup_type` |
-| Setup: PULLBACK | `--color-setup-pullback` | `#8b5cf6`（紫，复用 MA20 色） | 同上 |
+| Setup: CAPITULATION | `--color-setup-capitulation` | `#8b5cf6`（紫） | 同上 |
 | Setup: RECLAIM | `--color-setup-reclaim` | `#f59e0b`（橙，复用 MA5 色） | 同上 |
 | Setup: EARNINGS_DRIFT | `--color-setup-earnings` | `#ec4899`（粉） | 同上 |
 | Setup: EXTENDED | `--color-setup-extended` | `var(--color-text-muted)` | 同上 |
@@ -764,7 +764,13 @@ MSFT,"Microsoft Corporation"
 
 ### SetupTypeBadge
 
-7 枚举 → 配色：`BREAKOUT/PULLBACK/RECLAIM/EARNINGS_DRIFT/EXTENDED/BROKEN/NONE`，token 同上表。`NONE` 显示为短横线 `—`（不渲染 Badge）。
+7 枚举 → 配色：`BREAKOUT/CAPITULATION/RECLAIM/EARNINGS_DRIFT/EXTENDED/BROKEN/NONE`，token 同上表。`NONE` 显示为短横线 `—`（不渲染 Badge）。
+
+> ⚠️ v2.2.0 F217 PULLBACK → CAPITULATION 替换（2026-05-18 完成）
+> 原始 Setup 枚举含 PULLBACK（MA21 回踩近似）；
+> 实际实现：SRS § 五 Setup 4 严格 Capitulation Reversal（7 条 AND 门），
+> token 与 label 同步替换：--color-setup-pullback / 'PULLBACK' label → --color-setup-capitulation / 'CAP_REV' label。
+> 见 DECISIONS.md §D095。
 
 ### SetupQualityBadge
 
@@ -903,7 +909,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 │  候选表（默认 22 行，分页）                      │
 │  Ticker  Sector  Price   Trend  RS   Setup    Dist  Earn  Action  ＋ │
 │  NVDA    XLK     $850    5      88   BREAKOUT 1.25%  D-28  enter  [+]│
-│  CRWD    XLK     $342    5      84   PULLBACK 0.80%  D-15  watch  [+]│
+│  CRWD    XLK     $342    5      84   CAP_REV  0.80%  D-15  watch  [+]│
 │  ...                                                                │
 └──────────────────────────────────────────────────┘
 ```
@@ -969,7 +975,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 │  ┌──────────────────────────────────────────────────────────┐│
 │  │ Ticker Setup     Q  Entry  Stop  R:R  Dist   RS  VolZ  WS  Earn   ││
 │  │ NVDA   BREAKOUT  A  850.0  820.0 2.0  +1.25% 88  1.83  ●2  SAFE ●││ ← items[]
-│  │ CRWD   PULLBACK  A  342.5  323.2 2.6  +0.80% 84  0.72  ●1  SAFE ●││
+│  │ CRWD   CAP_REV   A  342.5  323.2 2.6  +0.80% 84  0.72  ●1  SAFE ●││
 │  │ AMD    BREAKOUT  B  180.0  173.0 2.0  +1.98% 72  —     —   SAFE ●││ ← weeklyStage=null→ "—"
 │  │ MSFT   EARN_DRFT B  410.0  395.0 2.5  +0.50% 65  —     ●4  DANG ●││ ← stage 4 红点
 │  │ ...                                                      ││
@@ -985,7 +991,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - Tab 切换 → 改 `?filter=ready,near,...` 重发请求
 - 行点击 → setSelectedTicker(ticker) → CockpitChart / DecisionPanel / Earnings 全部联动
 - v2.0 增强：每行 `[?]` 图标 hover 触发 `POST /api/ai/setup_explainer`（缓存 24h），气泡弹出 1 句解释
-  > **实现偏离（F209-c）**：触发方式由 hover 改为**点击**，与 features.json acceptance_criteria 保持一致（acceptance_criteria 优先于 design-spec）。点击 `?` 按钮调用 `POST /api/ai/setup_explainer`，渲染 label / quality / whyWatch / mainRisks；仅 BREAKOUT / PULLBACK / RECLAIM 三种 setup 显示按钮。
+  > **实现偏离（F209-c）**：触发方式由 hover 改为**点击**，与 features.json acceptance_criteria 保持一致（acceptance_criteria 优先于 design-spec）。点击 `?` 按钮调用 `POST /api/ai/setup_explainer`，渲染 label / quality / whyWatch / mainRisks；仅 BREAKOUT / CAPITULATION / RECLAIM 三种 setup 显示按钮。
 - v2.0 增强（F210-b）：Filter Tabs 行右侧提供 **[AI 排序]** 按钮（regime 未就绪或 items 为空时 disabled），点击调用 `POST /api/ai/candidate_ranker`，将当前过滤 items 前 20 条送 AI 综合评分，结果区行内插入 Filter Tabs 与 Table 之间，展示 top 3（rank / ticker / action badge [enter·watch·wait 三色] / reason 文本），结果可 ✕ 关闭；缓存 24h，同 (regime, items 集合) 复点 0 网络请求。
 - **WS 列（F216-d3）**：展示 weekly_stage 数值（1-4）+ 同色小圆点，title 显示全名（Base / Advancing / Distribution / Declining）。stage=0（UNKNOWN）或 null（cron 未跑）→ "—" 灰色。颜色映射：Stage 2 绿 / Stage 1 & 3 黄 / Stage 4 红 / 0 & null 灰，与 WeeklyStageChartWidget 共用 `STAGE_BG_TOKENS`（`frontend/src/cockpit/lib/weeklyStageTokens.ts`）。设计意图：让用户在表格中看到"为何 ready=false"，与 d2 的 readySignal 第 8 条 AND 门视觉对齐。
 
@@ -1085,7 +1091,7 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 ├──────────────────────────────────────────────────────────────┤
 │  Ticker  Setup     Entry   Stop    Last   Dist   Risk%  Exp  │
 │  AMD     BREAKOUT  180.00  173.00  176.50 +1.98% 0.70%  05-15│
-│  CRWD    PULLBACK  342.50  323.20  338.10 +1.30% 0.50%  —    │
+│  CRWD    CAP_REV   342.50  323.20  338.10 +1.30% 0.50%  —    │
 │  ...                                                          │
 │                                                              │
 │  行右侧：[Triggered] [Cancel] 两个按钮                        │

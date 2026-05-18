@@ -155,9 +155,9 @@ describe('T5 – CAPITULATION reversalDay=false: Reversal day chip shows "否"',
   })
 })
 
-// ── T6: SetupTypeBadge CAPITULATION + PULLBACK backward compat ────────────────
+// ── T6: SetupTypeBadge CAPITULATION + unknown fallback ────────────────────────
 
-describe('T6 – SetupTypeBadge CAPITULATION and PULLBACK render correctly', () => {
+describe('T6 – SetupTypeBadge CAPITULATION + unknown fallback render correctly', () => {
   it('CAPITULATION renders CAP_REV label with var(--color-setup-capitulation)', () => {
     const { container } = render(<SetupTypeBadge value="CAPITULATION" />)
     const span = container.querySelector('span')!
@@ -165,10 +165,10 @@ describe('T6 – SetupTypeBadge CAPITULATION and PULLBACK render correctly', () 
     expect(span.style.color).toBe('var(--color-setup-capitulation)')
   })
 
-  it('PULLBACK still renders with var(--color-setup-pullback) (backward compat)', () => {
-    const { container } = render(<SetupTypeBadge value="PULLBACK" />)
+  it('unknown value renders as fallback via TYPE_LABELS[value] ?? value', () => {
+    const { container } = render(<SetupTypeBadge value={'UNKNOWN' as SetupType} />)
     const span = container.querySelector('span')!
-    expect(span.textContent).toBe('PULLBACK')
-    expect(span.style.color).toBe('var(--color-setup-pullback)')
+    expect(span.textContent).toBe('UNKNOWN')
+    expect(span.style.color).toBe('var(--color-text-secondary)')
   })
 })
