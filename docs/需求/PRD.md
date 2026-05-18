@@ -332,3 +332,63 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 3. F217-a Evaluator 通过后顺序进入 F217-b（DB 迁移）→ F217-c（前端 chips + badge）。
 4. F217 整体 acceptance 通过后规划 F218 (Phase D: Repricing Trigger 5 类完整框架)。
 
+---
+
+### v2.4 迭代 — 2026-05-18（Cockpit 改善计划 Phase D：Repricing Trigger 完整框架 5 类）
+
+**变更原因**：cockpit-vs-srs-framework 改善计划的 4 阶段收官阶段（Phase D）。Phase A (F215 Volume z-score) / Phase B (F216 Weekly Stage) / Phase C (F217 Capitulation Reversal) 已全部落地，cockpit 已具备 setup-level 信号能力。Phase D 对照 SRS § 十一 Repricing Trigger 完整框架，新增独立信号层 —— 识别『让市场重新定价此公司』的基本面/产业/资产负债端事件，与价格 setup 解耦但在慢交易框架中决定持仓周期与仓位规模。完成后 cockpit 4 个支柱齐全。
+
+**新增 feature**：
+
+- **F218**：Cockpit Phase D — Repricing Trigger 完整框架（5 类）。新建独立 `RepricingTriggerService` 与 `repricing_triggers` 表，串行调度 5 个 detector：
+  - **T1 EARNINGS_ACCEL**：复用 `EarningsEventRepository`，连续 2 季 EPS+revenue YoY 加速 AND q0 yoy ≥ 20%
+  - **T2 MARGIN_EXPANSION**：新接 FMP `key-metrics-ttm` + `ratios?period=quarter`，新表 `stock_key_metrics_quarterly`，毛利率扩张 ≥ 200bp 或 FCF margin 扩张 ≥ 300bp
+  - **T3 NEW_PRODUCT (D4a)**：扫描 `news_cache` 过去 30 日 headlines，关键词集合 {launch, unveil, introduce, release, AI, platform, new product} ≥ 2 次命中（D4b NLP 升级留后续 issue）
+  - **T4 SECTOR_CYCLE**：复用 `SECTOR_ETFS` + `_compute_rs_percentile`，sector ETF RS percentile <40 → >60 且 sector ETF > SMA200
+  - **T5 BALANCE_INFLECTION**：新接 FMP `balance-sheet-statement` + `cash-flow-statement`，新表 `stock_fundamentals_quarterly`，净负债连降或 FCF 转正
+  - `refresh_job.py` 新增 cron 周一—周五 22:40 UTC（setup_tick 之后）调度。前端新增独立 `RepricingTriggerWidget`（全市场 active triggers 表格）+ `DecisionPanelWidget` 顶部 trigger badge 区。Sub-sprint 拆分留给 feature-dev sizing（预期 D1 框架 / D2-D6 五 detector / D7 调度+前端，约 7-9 sub-sprint）。
+
+**修改 feature**：无。
+
+**废弃 feature**：无。
+
+**对下游文档的影响**：
+
+- **DATA-MODEL.md**：新增 3 张表 —
+  - `repricing_triggers`（id / ticker / trigger_type / detected_date / confidence / evidence_json / active；trigger_type ∈ {EARNINGS_ACCEL, MARGIN_EXPANSION, NEW_PRODUCT, SECTOR_CYCLE, BALANCE_INFLECTION}）
+  - `stock_key_metrics_quarterly`（quarter / gross_margin / op_margin / net_margin / fcf_margin / roic，去重键 ticker+quarter）
+  - `stock_fundamentals_quarterly`（quarter / net_debt / fcf / total_debt / cash，去重键 ticker+quarter）
+- **API-CONTRACT.md**：新增 2 个 endpoint —
+  - `GET /api/cockpit/repricing-triggers/{ticker}`：返回该标的所有 active triggers
+  - `GET /api/cockpit/repricing-triggers`：返回全市场 active triggers，按 `detected_date` 倒序，支持可选 `trigger_type` 过滤
+  - 响应中 `evidence` 对象按 `trigger_type` 区分形态（5 套 schema）
+- **DECISIONS.md**：预期新增至少 3 条 —
+  - **D096**：5 类 Repricing Trigger 框架与表设计（evidence_json 用 JSON 列 vs 分表的取舍）
+  - **D097**：FMP 新增 4 个 endpoint 接入（`key-metrics-ttm` / `ratios?period=quarter` / `balance-sheet-statement` / `cash-flow-statement`），quota 占用与缓存策略（quarterly 粒度 + weekly pool rebuild 时刷新）
+  - **D098**：T3 New Product 采用 D4a 关键词扫描而非 NLP 的取舍（D4b 升级路径与独立 issue 划界）
+- **ARCHITECTURE.md**：新增模块 `backend/app/services/cockpit/repricing_trigger_service.py` + 2 个 repository（`KeyMetricsRepository` / `FundamentalsRepository`）+ cron 调度新增 22:40 UTC 时间窗
+- **design-spec.md**：新增 `RepricingTriggerWidget` 视觉规格（表格列、5 类 trigger 颜色 token、行内 evidence 简写）+ DecisionPanel 顶部 trigger badge 区规格（持仓 ticker 有 active trigger 时渲染，无则不留空白）
+- **component-plan.md**：`RepricingTriggerWidget` 注册到 Cockpit Registry；DecisionPanel 边界更新（新增 trigger badge 区，独立于现有 setup chip 区）
+- **data-mapping.md**：新字段映射（5 trigger types / 各 evidence shape / activeTriggers 数组）
+- **tokens.css**：新增 5 个 trigger 类型颜色 token
+
+**预期影响**：
+
+- 触发频率预期合理（每日全市场 5 类合计数十至百量级），单 ticker 同时持有 2+ trigger 属高 conviction 信号
+- T3 关键词扫描的 precision 偏低（高 recall），用户在 widget 中需配合 evidence 中的 `news_links` 人工判读 — 这是 D4a 的设计取舍，D4b NLP 升级后会改善
+- FMP 新增 4 endpoint 接入会增加 API 调用，缓存策略（quarterly 粒度 + weekly 刷新）确保 quota 占用可控
+- F215 / F216 / F217 代码零改动，仅 DecisionPanel 集成 trigger badge 区为 additive 改动
+
+**明确不做**：
+
+- ❌ T3 D4b NLP 升级（嵌入相似度 + LLM 标签）— 留作独立 issue
+- ❌ Trigger 信号纳入 AI prompt 上下文（F209/F210/F211）— 留待 F218 验收后单独决策
+- ❌ Trigger 与 `ready_signal` 8 门 gate 集成 — 保持解耦，trigger 只是参考信号
+- ❌ Intraday trigger 检测 — 维持 EOD only（与 cockpit 全局约束一致）
+
+**下一步**：
+
+1. 触发 `system-design` skill 走变更协议，更新 DATA-MODEL.md（3 新表）+ API-CONTRACT.md（2 endpoint）+ DECISIONS.md（D096/D097/D098）+ ARCHITECTURE.md（新模块 + cron）。
+2. system-design 完成后进入 `feature-dev` A-1 sizing 协商，按 plan D1 / D2-D6 / D7 自然拆 sub-sprints（预期 7-9 个）。design-spec.md / tokens.css / data-mapping.md / component-plan.md 由前端 sub-sprint 内联模式更新（参考 F216-d3 / F217-c2c 经验，无需独立 design-bridge）。
+3. F218 整体 acceptance 通过后，cockpit-vs-srs-framework 改善计划 4 阶段（A/B/C/D）全部收官，可衔接 v3.0 发版规划。
+

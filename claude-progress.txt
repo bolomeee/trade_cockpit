@@ -1,1 +1,34 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] project-init 迭代登记：F218 (v2.4)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+✅ 完成内容：
+  - features.json _iteration_log：v2.3 收口 (status=done, released_at=2026-05-18, released_tag=v2.3.0) + 追加 v2.4 entry
+  - features.json _pipeline_status：current_iteration=v2.4, system_design=needs_update, ui_design=needs_update, development=planned
+  - features.json 新增 F218 entry (Cockpit Phase D — Repricing Trigger 完整框架 5 类)，phase=design_needed
+  - PRD.md 追加 v2.4 迭代记录章节（变更原因 / 新增 feature / 下游影响 / 预期影响 / 明确不做 / 下一步）
+  - features.json 写入前已备份到 docs/需求/.features.json.bak
+  - JSON 合法性验证通过（features count=59, F218 已登记）
+
+⚠️ 待用户决策（写入前已确认 4 项）：
+  - NP-init-1=v2.4 迭代版本（按推荐确认）
+  - NP-init-2=A 不预拆 sub_sprints（按推荐确认，留给 feature-dev sizing）
+  - NP-init-3=A 走完整 system-design 变更协议 4 文档同步（按推荐确认）
+  - NP-init-4=A design-spec 内联模式参考 F216-d3 / F217-c2c（按推荐确认）
+
+🔧 系统变更（即将由 system-design 落地）：
+  - DATA-MODEL.md 新增 3 张表：repricing_triggers / stock_key_metrics_quarterly / stock_fundamentals_quarterly
+  - API-CONTRACT.md 新增 2 个 endpoint：GET /api/cockpit/repricing-triggers/{ticker} + GET /api/cockpit/repricing-triggers
+  - DECISIONS.md 预期新增 D096 (5 类 trigger 框架与 evidence_json 取舍) / D097 (FMP 4 endpoint 接入 quota+缓存) / D098 (D4a 关键词 vs NLP)
+  - ARCHITECTURE.md 新模块 repricing_trigger_service.py + 2 新 repository + cron 周一-周五 22:40 UTC
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：⬜ design_needed (v2.4 新增)
+
+[下一步]
+  在新 session 中触发 system-design skill 走变更协议：
+  > 触发 system-design 变更协议，为 F218 (Phase D Repricing Trigger) 新增 3 张表 + 2 endpoint + D096/D097/D098 + ARCHITECTURE 新模块说明。
+  完整范围见 PRD.md v2.4 迭代记录与 features.json F218 entry。
