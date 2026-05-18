@@ -8,6 +8,7 @@ export type SetupType =
   | 'EXTENDED'
   | 'BROKEN'
   | 'NONE'
+  | 'CAPITULATION'
 
 export type SetupQuality = 'A' | 'B' | 'C' | null
 
