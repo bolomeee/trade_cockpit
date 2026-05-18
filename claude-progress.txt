@@ -1,4 +1,20 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] F218-d1 验收通过 ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d1 — Repricing Trigger Framework (skeleton)
+  - 6 文件：ORM model + alembic 022 + repository + service skeleton + tests
+  - 14 测试全绿（Repo R1-R8 / Service S9-S12 / Migration M13 / Constants C14）
+  - alembic 022 upgrade/downgrade 双向跑通
+  - TRIGGER_TYPES 5 枚举与 DATA-MODEL.md 字面一致
+  - soft_expire / 错误隔离 / DetectorResult 全部验证
+  - 全量回归 1128 passed，无新增失败
+  - 验收记录：docs/验收/v2.4-F218-d1-acceptance.md
+
+📊 F218 进度：F218-d1 ✅ done | d2~d7b ⬜ design_needed
+🔜 下一步：F218-d2 Sprint Contract 协商（T1 Earnings Acceleration detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-18] project-init 迭代登记：F218 (v2.4)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -32,3 +48,42 @@
   在新 session 中触发 system-design skill 走变更协议：
   > 触发 system-design 变更协议，为 F218 (Phase D Repricing Trigger) 新增 3 张表 + 2 endpoint + D096/D097/D098 + ARCHITECTURE 新模块说明。
   完整范围见 PRD.md v2.4 迭代记录与 features.json F218 entry。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18 15:30] Sprint：F218-d1 — Framework: model + alembic 022 + repository + service skeleton
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（Contract 协商阶段）：
+  - F218 system-design 变更协议落地：DATA-MODEL.md 新增 §RepricingTrigger / §StockKeyMetricsQuarterly / §StockFundamentalsQuarterly + API-CONTRACT.md 新增 §Cockpit Repricing Triggers (2 endpoint) + DECISIONS.md 追加 D096/D097/D098 + ARCHITECTURE.md 新增 §Cockpit Repricing Trigger Service 模块 + FMP 4 endpoint 映射。4 文档 confirmed @ 2026-05-18。
+  - feature-dev A-1 sizing 协商完成：F218 拆 10 个 sub-sprint（d1/d2/d3a/d3b/d4/d5/d6a/d6b/d7a/d7b），开发顺序 d1 → d2 → d4 → d5 → d3a → d3b → d6a → d6b → d7a → d7b。NP-size-1/2/3/4/5=A/6 全部按推荐确认。
+  - features.json F218 sub_sprints 字段写入 10 个 key（全 design_needed），sub_sprint_notes 追加 A-1 协商结果。
+  - consistency-check (mode=interactive) 全清：10 个 sub-sprint 缺合约文件属预期 pending（design_needed）；C5/C4 计划随各 sub-sprint 推进自然清零。
+  - F218-d1 Sprint Contract 起草并确认：docs/开发/sprint-contracts/F218-d1-contract.md (status=confirmed)。范围 6 文件 / 14 测试 / 不动 API/前端/cron。NP-d1-1~5 全部按推荐。
+  - phase 转换：F218 design_needed → in_progress / F218-d1 design_needed → contract_agreed / _pipeline_status.active_sprint=F218-d1 / development planned → in_progress / iteration_history 追加 F218-d1 contract_agreed 条目。
+
+⚠️ 待用户决策：
+  - 无（NP-init / NP-size / NP-d1 全部已确认）
+
+🔧 系统变更（即将由 Generator 阶段落地）：
+  - 新表 repricing_triggers（id / ticker / trigger_type / detected_date / confidence / evidence_json / active），UQ(ticker,trigger_type,detected_date) + 3 索引
+  - alembic 022_f218_repricing_triggers.py
+  - backend/app/models/repricing_trigger.py
+  - backend/app/repositories/repricing_trigger_repository.py（upsert / soft_expire / get_active_for_ticker / get_all_active / delete_expired_inactive）
+  - backend/app/services/cockpit/repricing_trigger_service.py skeleton（DetectorResult dataclass + compute_and_store_all_triggers + 5 _detect_* 占位返 None + soft expire 调度内同循环触发）
+  - backend/tests/test_repricing_trigger_skeleton.py（14 测试 4 class 分组）
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：🔄 in_progress
+    F218-d1：📋 contract_agreed → 即将 Generator
+    F218-d2/d3a/d3b/d4/d5/d6a/d6b/d7a/d7b：⬜ design_needed（排队）
+
+[下一步]
+  feature-dev 铁律：A-1 后必须开新 session 进入 Generator。
+  在 Sonnet 新 session 中执行：
+
+  > 继续开发 F218-d1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 (model 文件) 开始。

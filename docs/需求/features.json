@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d1",
+    "active_sprint": "F218-d2",
     "active_sprint_phase": "",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
@@ -4602,7 +4602,7 @@
       "phase": "in_progress",
       "sub_sprint_notes": "Sub-sprint 拆分留给 feature-dev A-1 sizing 协商（NP-init-2=A 不预拆）。预期结构：D1 框架（service skeleton + repricing_triggers 表 + repository，约 5-6 文件）/ D2-D6 五个 detector（T1 复用 / T2 新 FMP 接入 / T3 关键词扫描 / T4 sector RS 复用 / T5 新 FMP 接入，预估每个 detector 2-5 文件取决于是否新接 FMP）/ D7 调度（refresh_job cron + router 路由，2-3 文件）+ 前端（API client + RepricingTriggerWidget 注册 + DecisionPanel badge 区，预期 3-4 文件）。总预估 7-9 sub-sprints。NP-init-1=v2.4（迭代版本递增）/ NP-init-2=A 不预拆 sub_sprints（避免 sizing 误判后二次拆分）/ NP-init-3=A 走完整 system-design 变更协议（4 文档同步，因新增 3 张表 + 2 endpoint + FMP 4 endpoint + cron + service 模块）/ NP-init-4=A design-spec 内联模式（参考 F216-d3 / F217-c2c，design-spec.md 由前端 sub-sprint 同步更新，无需独立 design-bridge skill 调用）。A-1 sizing 协商 2026-05-18 完成（用户全部按推荐确认 NP-size-1/2/3/4/5=A/6）：拆 10 个 sub-sprint（vs 原预估 7-9，因 6 文件原则触发 D3/D6/D7 二次拆 a/b）。F218-d1 框架（6 文件，含 model + alembic 022 + repo + service skeleton）/ F218-d2 T1 Earnings（3 文件，复用 EarningsEventRepository）/ F218-d3a FMP key-metrics+ratios + 表 + pool_cache 集成（6 文件）/ F218-d3b T2 Margin Expansion detector（2-3 文件）/ F218-d4 T3 News 关键词扫描 detector（2-3 文件）/ F218-d5 T4 Sector RS detector（2-3 文件）/ F218-d6a FMP balance-sheet+cash-flow + 表 + pool_cache 集成（6 文件）/ F218-d6b T5 Balance Inflection detector（2-3 文件）/ F218-d7a 后端 cron + router + 2 endpoint（4-5 文件）/ F218-d7b 前端 widget + DecisionPanel badge + 内联 design-spec 4 文档（NP-size-5=A 9 文件超 6 申请用户授权同 F217-c2c 模式，到时再协商）。开发顺序：d1 → d2 → d4 → d5 → d3a → d3b → d6a → d6b → d7a → d7b（先轻量 detector 验证 service 调度链，后 FMP 重头戏，最后调度+前端）。F218-d1 Contract 协商 2026-05-18 完成（用户全部按推荐确认 NP-d1-1/2/3/4/5）：6 文件 / 14 测试 / 关键策略 soft expire 在 detector 调度内同循环触发 / DetectorResult dataclass 在 service 顶部 / 5 占位返 None 端到端跑通 / 测试合并 1 文件 / active tickers 复用 StockRepository.get_active_tickers()。",
       "sub_sprints": {
-        "F218-d1": "needs_review",
+        "F218-d1": "done",
         "F218-d2": "design_needed",
         "F218-d3a": "design_needed",
         "F218-d3b": "design_needed",
@@ -4698,6 +4698,13 @@
           "phase": "needs_review",
           "session": "feature-dev A-2 Generator 完成（F218-d1 skeleton）",
           "changes": "完成 F218-d1 全部 6 个开发步骤：(1) RepricingTrigger ORM model（backend/app/models/repricing_trigger.py）+ UQ uq_repricing_trigger_ticker_type_date + 3 index；(2) models/__init__.py 注册；(3) alembic/versions/022_f218_repricing_triggers.py（upgrade/downgrade 双向验证）；(4) RepricingTriggerRepository（upsert/soft_expire/get_active_for_ticker/get_all_active/delete_expired_inactive）；(5) RepricingTriggerService skeleton（5 占位 detector 返 None + compute_and_store_all_triggers 主入口 + DetectorResult dataclass + TRIGGER_TYPES 常量）；(6) test_repricing_trigger_skeleton.py（14 测试 4 class 全绿 + 全量回归无新增失败）。偏差记录：StockRepository.get_active_tickers() 不存在，service 内改用 [s.ticker for s in self._stocks.list_active()]，意图一致（复用 StockRepo 不引 PoolCache），6 文件上限不变。upsert 返回后需 expire_all() 防 identity map 缓存旧值（ON CONFLICT UPDATE 绕过 ORM identity map）。"
+        },
+        {
+          "date": "2026-05-18",
+          "subtask": "F218-d1",
+          "phase": "done",
+          "session": "acceptance F218-d1",
+          "changes": "验收通过。14 测试全绿，alembic 022 双向跑通，model 字段 / TRIGGER_TYPES / service skeleton 全部与 DATA-MODEL.md 对齐，错误隔离和 soft expire 边界逻辑正确，全量回归无新增失败。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部 done）+ F216（Phase B Weekly Stage，全部 done）+ F217（Phase C Capitulation Reversal，全部 done）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 4 endpoint（key-metrics-ttm / ratios?period=quarter / balance-sheet-statement / cash-flow-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
