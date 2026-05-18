@@ -103,3 +103,23 @@ class EarningsEventRepository:
         self._db.commit()
         logger.info("earnings_events cleanup: deleted %d rows before %s", deleted, cutoff)
         return deleted
+
+    def get_recent_completed_for_ticker(
+        self, ticker: str, limit: int = 8,
+    ) -> list[EarningsEvent]:
+        """Return the most recent `limit` earnings_events for `ticker` where eps_actual IS NOT NULL,
+        ordered by earnings_date DESC. Used by T1 EARNINGS_ACCEL detector for YoY computation.
+
+        eps_actual NULL 行（未发布 / FMP 尚未回填）被过滤；revenue_actual 不参与过滤
+        （允许部分 ticker 仅有 EPS 触发 T1，revenue 缺失时 revenue_yoy_growth 列以 None 填充）。
+        """
+        return (
+            self._db.query(EarningsEvent)
+            .filter(
+                EarningsEvent.ticker == ticker,
+                EarningsEvent.eps_actual.isnot(None),
+            )
+            .order_by(EarningsEvent.earnings_date.desc())
+            .limit(limit)
+            .all()
+        )
