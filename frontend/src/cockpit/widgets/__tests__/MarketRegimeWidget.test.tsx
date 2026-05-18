@@ -85,7 +85,7 @@ const REGIME_OK = {
   },
   allowedExposurePct: 70.0,
   singleTradeRiskPct: 1.0,
-  preferredSetups: ['BREAKOUT', 'PULLBACK'] as const,
+  preferredSetups: ['BREAKOUT', 'CAPITULATION'] as const,
   avoidSetups: ['EXTENDED'] as const,
   indices: [
     { symbol: 'SPY', close: 520.5, changePct: 0.43, aboveMa50: true, aboveMa200: true, rsTrend: 'up' as const, state: 'Bullish' as const },

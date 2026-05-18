@@ -75,7 +75,7 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
 // 7 items covering all setupType branches
 const ITEMS_ALL_TYPES: SetupItem[] = [
   makeItem({ ticker: 'AAPL', setupType: 'BREAKOUT', trendScore: 4, rsPercentile: 85 }),
-  makeItem({ ticker: 'MSFT', setupType: 'PULLBACK', trendScore: 2, rsPercentile: 75 }),
+  makeItem({ ticker: 'MSFT', setupType: 'CAPITULATION', trendScore: 2, rsPercentile: 75 }),
   makeItem({ ticker: 'GOOGL', setupType: 'RECLAIM', trendScore: 1, rsPercentile: 60 }),
   makeItem({ ticker: 'AMZN', setupType: 'EARNINGS_DRIFT', entryPrice: 0, stopPrice: 0 }),
   makeItem({ ticker: 'META', setupType: 'EXTENDED' }),
@@ -170,7 +170,7 @@ const REGIME_DATA = {
   },
   allowedExposurePct: 80,
   singleTradeRiskPct: 1,
-  preferredSetups: ['BREAKOUT', 'PULLBACK'],
+  preferredSetups: ['BREAKOUT', 'CAPITULATION'],
   avoidSetups: ['BROKEN'],
   indices: [],
   sectors: [],
@@ -586,13 +586,13 @@ describe('§S – Setup Explainer Popover', () => {
     ).toBeInTheDocument()
   })
 
-  // ── S2: PULLBACK row renders ? button ──────────────────────────────────────
-  it('S2: PULLBACK row renders ? button', async () => {
+  // ── S2: CAPITULATION row renders ? button ──────────────────────────────────────
+  it('S2: CAPITULATION row renders ? button', async () => {
     vi.stubGlobal('fetch', makeRoutedFetch({ '/cockpit/setup-monitor': SETUP_MONITOR_OK_FETCH }))
     renderWidget()
     await screen.findByText('MSFT')
     expect(
-      screen.getByRole('button', { name: 'Explain MSFT PULLBACK setup' }),
+      screen.getByRole('button', { name: 'Explain MSFT CAPITULATION setup' }),
     ).toBeInTheDocument()
   })
 

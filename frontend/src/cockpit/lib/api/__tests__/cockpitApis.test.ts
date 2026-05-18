@@ -125,7 +125,7 @@ const regimeOkResponse = {
         },
         allowedExposurePct: 70.0,
         singleTradeRiskPct: 1.0,
-        preferredSetups: ['BREAKOUT', 'PULLBACK'],
+        preferredSetups: ['BREAKOUT', 'CAPITULATION'],
         avoidSetups: ['EXTENDED'],
         indices: [
           { symbol: 'SPY', close: 520.5, changePct: 0.43, aboveMa50: true, aboveMa200: true, rsTrend: 'up', state: 'Bullish' },

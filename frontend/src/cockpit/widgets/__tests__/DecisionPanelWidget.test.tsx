@@ -719,7 +719,7 @@ const mockRegimeData: CockpitRegimeData = {
   },
   allowedExposurePct: 80,
   singleTradeRiskPct: 1.0,
-  preferredSetups: ['BREAKOUT', 'PULLBACK'],
+  preferredSetups: ['BREAKOUT', 'CAPITULATION'],
   avoidSetups: ['EXTENDED'],
   indices: [],
   sectors: [],

@@ -37,14 +37,14 @@ describe('S2 – multiple filters with sectors comma-separated', () => {
       trendScoreMin: 4,
       rsPercentileMin: 80,
       sectors: 'XLK,XLV',
-      setupTypes: 'BREAKOUT,PULLBACK',
+      setupTypes: 'BREAKOUT,CAPITULATION',
       limit: 25,
     })
     const [url] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(url).toContain('trendScoreMin=4')
     expect(url).toContain('rsPercentileMin=80')
     expect(url).toContain('sectors=XLK%2CXLV')
-    expect(url).toContain('setupTypes=BREAKOUT%2CPULLBACK')
+    expect(url).toContain('setupTypes=BREAKOUT%2CCAPITULATION')
     expect(url).toContain('limit=25')
   })
 })
