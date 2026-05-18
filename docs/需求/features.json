@@ -7,12 +7,12 @@
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
     "requirements": "done",
-    "system_design": "needs_update",
+    "system_design": "done",
     "ui_design": "needs_update",
-    "development": "planned",
+    "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "",
+    "active_sprint": "F218-d1",
     "active_sprint_phase": "",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
@@ -4599,8 +4599,20 @@
       "user_story": "作为投资者，我需要 cockpit 在 setup 信号（Phase C Capitulation 等）与 ready_signal 8 门（Phase B）之外，独立识别『让市场重新定价此公司』的基本面/产业/资产负债端事件，这些信号与价格 setup 解耦但在慢交易框架中决定持仓周期与仓位规模。SRS § 十一 把 Repricing Trigger 定位为『核心 thesis 健康度仪表盘』。当前 cockpit 完全缺失这层信号 — 我看到 setup signal 但不知道这只标的的基本面是否在加速、毛利率是否在扩张、是否有产品周期、所属 sector 是否在轮动到位、资产负债表是否在改善。F218 实装后，我能在 RepricingTriggerWidget 看到当前全市场所有触发的 trigger（每日 22:40 UTC 后刷新），在 DecisionPanel 看到持仓 ticker 当前有哪些 active triggers（5 类颜色 chip 区分），NVDA / TSLA 等近年明显 repricing 案例历史回测应能识别 ≥ 2 类 trigger（验证语义对齐 SRS）。触发频率预期合理（每日全市场 5 类合计数十至百量级，单 ticker 同时持有 2+ trigger 属高 conviction 信号）。",
       "priority": "P1",
       "status": "planned",
-      "phase": "design_needed",
-      "sub_sprint_notes": "Sub-sprint 拆分留给 feature-dev A-1 sizing 协商（NP-init-2=A 不预拆）。预期结构：D1 框架（service skeleton + repricing_triggers 表 + repository，约 5-6 文件）/ D2-D6 五个 detector（T1 复用 / T2 新 FMP 接入 / T3 关键词扫描 / T4 sector RS 复用 / T5 新 FMP 接入，预估每个 detector 2-5 文件取决于是否新接 FMP）/ D7 调度（refresh_job cron + router 路由，2-3 文件）+ 前端（API client + RepricingTriggerWidget 注册 + DecisionPanel badge 区，预期 3-4 文件）。总预估 7-9 sub-sprints。NP-init-1=v2.4（迭代版本递增）/ NP-init-2=A 不预拆 sub_sprints（避免 sizing 误判后二次拆分）/ NP-init-3=A 走完整 system-design 变更协议（4 文档同步，因新增 3 张表 + 2 endpoint + FMP 4 endpoint + cron + service 模块）/ NP-init-4=A design-spec 内联模式（参考 F216-d3 / F217-c2c，design-spec.md 由前端 sub-sprint 同步更新，无需独立 design-bridge skill 调用）。",
+      "phase": "in_progress",
+      "sub_sprint_notes": "Sub-sprint 拆分留给 feature-dev A-1 sizing 协商（NP-init-2=A 不预拆）。预期结构：D1 框架（service skeleton + repricing_triggers 表 + repository，约 5-6 文件）/ D2-D6 五个 detector（T1 复用 / T2 新 FMP 接入 / T3 关键词扫描 / T4 sector RS 复用 / T5 新 FMP 接入，预估每个 detector 2-5 文件取决于是否新接 FMP）/ D7 调度（refresh_job cron + router 路由，2-3 文件）+ 前端（API client + RepricingTriggerWidget 注册 + DecisionPanel badge 区，预期 3-4 文件）。总预估 7-9 sub-sprints。NP-init-1=v2.4（迭代版本递增）/ NP-init-2=A 不预拆 sub_sprints（避免 sizing 误判后二次拆分）/ NP-init-3=A 走完整 system-design 变更协议（4 文档同步，因新增 3 张表 + 2 endpoint + FMP 4 endpoint + cron + service 模块）/ NP-init-4=A design-spec 内联模式（参考 F216-d3 / F217-c2c，design-spec.md 由前端 sub-sprint 同步更新，无需独立 design-bridge skill 调用）。A-1 sizing 协商 2026-05-18 完成（用户全部按推荐确认 NP-size-1/2/3/4/5=A/6）：拆 10 个 sub-sprint（vs 原预估 7-9，因 6 文件原则触发 D3/D6/D7 二次拆 a/b）。F218-d1 框架（6 文件，含 model + alembic 022 + repo + service skeleton）/ F218-d2 T1 Earnings（3 文件，复用 EarningsEventRepository）/ F218-d3a FMP key-metrics+ratios + 表 + pool_cache 集成（6 文件）/ F218-d3b T2 Margin Expansion detector（2-3 文件）/ F218-d4 T3 News 关键词扫描 detector（2-3 文件）/ F218-d5 T4 Sector RS detector（2-3 文件）/ F218-d6a FMP balance-sheet+cash-flow + 表 + pool_cache 集成（6 文件）/ F218-d6b T5 Balance Inflection detector（2-3 文件）/ F218-d7a 后端 cron + router + 2 endpoint（4-5 文件）/ F218-d7b 前端 widget + DecisionPanel badge + 内联 design-spec 4 文档（NP-size-5=A 9 文件超 6 申请用户授权同 F217-c2c 模式，到时再协商）。开发顺序：d1 → d2 → d4 → d5 → d3a → d3b → d6a → d6b → d7a → d7b（先轻量 detector 验证 service 调度链，后 FMP 重头戏，最后调度+前端）。F218-d1 Contract 协商 2026-05-18 完成（用户全部按推荐确认 NP-d1-1/2/3/4/5）：6 文件 / 14 测试 / 关键策略 soft expire 在 detector 调度内同循环触发 / DetectorResult dataclass 在 service 顶部 / 5 占位返 None 端到端跑通 / 测试合并 1 文件 / active tickers 复用 StockRepository.get_active_tickers()。",
+      "sub_sprints": {
+        "F218-d1": "needs_review",
+        "F218-d2": "design_needed",
+        "F218-d3a": "design_needed",
+        "F218-d3b": "design_needed",
+        "F218-d4": "design_needed",
+        "F218-d5": "design_needed",
+        "F218-d6a": "design_needed",
+        "F218-d6b": "design_needed",
+        "F218-d7a": "design_needed",
+        "F218-d7b": "design_needed"
+      },
       "dependencies": [
         "F215",
         "F216",
@@ -4625,19 +4637,20 @@
       },
       "contract": {
         "api_refs": [
-          "API-CONTRACT.md §Cockpit Repricing Triggers — 待 system-design 变更协议新增（GET /api/cockpit/repricing-triggers/{ticker} + GET /api/cockpit/repricing-triggers，trigger_type 枚举 EARNINGS_ACCEL/MARGIN_EXPANSION/NEW_PRODUCT/SECTOR_CYCLE/BALANCE_INFLECTION，evidence 对象按 trigger_type 区分形态）"
+          "API-CONTRACT.md §Cockpit Repricing Triggers (GET /api/cockpit/repricing-triggers/{ticker} + GET /api/cockpit/repricing-triggers，trigger_type 枚举 EARNINGS_ACCEL/MARGIN_EXPANSION/NEW_PRODUCT/SECTOR_CYCLE/BALANCE_INFLECTION，evidence 对象按 trigger_type 区分形态，Namespace 汇总表 cockpit 总数 20)"
         ],
         "data_model_refs": [
-          "DATA-MODEL.md §RepricingTrigger — 待 system-design 变更协议新增（id / ticker / trigger_type / detected_date / confidence / evidence_json / active）",
-          "DATA-MODEL.md §StockKeyMetricsQuarterly — 待新增（quarter / gross_margin / op_margin / net_margin / fcf_margin / roic，去重键 ticker+quarter）",
-          "DATA-MODEL.md §StockFundamentalsQuarterly — 待新增（quarter / net_debt / fcf / total_debt / cash，去重键 ticker+quarter）"
+          "DATA-MODEL.md §RepricingTrigger (id / ticker / trigger_type / detected_date / confidence / evidence_json / active；UQ ticker+trigger_type+detected_date；soft expire 模型；evidence_json schema 按 trigger_type 5 类区分)",
+          "DATA-MODEL.md §StockKeyMetricsQuarterly (fiscal_quarter / period_end_date / gross_margin / op_margin / net_margin / fcf_margin / roic；UQ ticker+fiscal_quarter；weekly pool rebuild 抓取)",
+          "DATA-MODEL.md §StockFundamentalsQuarterly (fiscal_quarter / period_end_date / total_debt / cash / net_debt / fcf；UQ ticker+fiscal_quarter；net_debt service 层计算)"
         ],
         "decision_refs": [
           "对照《慢交易系统框架》(SRS) § 十一 Repricing Trigger 完整框架",
           "完整计划文档 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase D",
-          "DECISIONS.md §D096 — Repricing Trigger 5 类框架与表设计（evidence_json vs 分表取舍）— 待 system-design 新增",
-          "DECISIONS.md §D097 — FMP 新增 4 endpoint 接入（key-metrics-ttm / ratios?period=quarter / balance-sheet-statement / cash-flow-statement）quota 与缓存策略 — 待 system-design 新增",
-          "DECISIONS.md §D098 — T3 New Product D4a 关键词扫描 vs NLP 取舍（D4b 升级路径）— 待 system-design 新增"
+          "DECISIONS.md §D096 — Repricing Trigger 5 类框架 + evidence_json 单列设计（vs 5 张子表 / 定长字段 / 并发 detector / 硬删过期 — 全部放弃，附原因）",
+          "DECISIONS.md §D097 — FMP 4 endpoint 接入 + weekly pool rebuild 复用调度 + (ticker, fiscal_quarter) 去重键 + null 不擦除 upsert + net_debt service 层计算（quota ~200 calls/week）",
+          "DECISIONS.md §D098 — T3 D4a 关键词扫描 vs NLP 取舍（7 关键词集合：launch/unveil/introduce/release/AI/platform/new product，命中 ≥ 2 次触发，明确 D4b NLP 升级不在 F218 范围）",
+          "ARCHITECTURE.md §Cockpit Repricing Trigger Service（模块位置 + 5 detector 串行调度 + cron 22:40 UTC + FMP 数据获取边界 + 模块 import 边界）"
         ],
         "acceptance_type": "functional"
       },
@@ -4671,6 +4684,20 @@
           "phase": "design_needed",
           "session": "project-init 迭代登记",
           "changes": "F218 作为 cockpit-vs-srs-framework 改善计划 Phase D（第 4 阶段 / 最后阶段）注册。范围对照 plan §Phase D：D1 框架（repricing_triggers 表 + service skeleton）/ D2 T1 Earnings Acceleration（复用 EarningsEventRepository）/ D3 T2 Margin Expansion（新 FMP key-metrics-ttm + ratios + stock_key_metrics_quarterly 表）/ D4a T3 New Product 关键词扫描（复用 news_cache）/ D5 T4 Sector Cycle Reversal（复用 SECTOR_ETFS + RS）/ D6 T5 Balance Sheet Inflection（新 FMP balance-sheet + cash-flow + stock_fundamentals_quarterly 表）/ D7 调度（cron 22:40 UTC）+ 前端（RepricingTriggerWidget + DecisionPanel badge 区）。依赖 F215+F216+F217（全部 done）。NP-init 系列决策（用户 2026-05-18 全部按推荐确认）：NP-init-1=v2.4 迭代版本递增 / NP-init-2=A 不预拆 sub_sprints 留给 feature-dev sizing / NP-init-3=A 走完整 system-design 变更协议（4 文档同步）/ NP-init-4=A design-spec 内联模式（参考 F216-d3 / F217-c2c）。下一步：触发 system-design 变更协议更新 DATA-MODEL（3 新表）+ API-CONTRACT（2 新 endpoint）+ DECISIONS（D096/D097/D098）+ ARCHITECTURE（新 service 模块 + cron），完成后进入 feature-dev A-1 sizing 协商，按 plan D1 / D2-D6 / D7 自然拆 sub-sprints（预估 7-9 个）。"
+        },
+        {
+          "date": "2026-05-18",
+          "subtask": "F218-d1",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Contract 协商（F218 sizing + d1 合约）",
+          "changes": "F218 system-design 变更协议完成（4 文档 confirmed @ 2026-05-18，DATA-MODEL 新增 3 表 + API-CONTRACT 新增 2 endpoint + DECISIONS D096/D097/D098 + ARCHITECTURE 新模块 + cron 22:40 UTC + FMP 4 endpoint 映射）。feature-dev A-1 sizing 协商完成：F218 拆 10 个 sub-sprint（vs 原预估 7-9），开发顺序 d1 → d2 → d4 → d5 → d3a → d3b → d6a → d6b → d7a → d7b。F218-d1 Sprint Contract 起草并确认：范围 = 框架层（model + alembic 022 + repository + service skeleton 含 5 占位 detector），6 文件命中上限 / 14 测试合并 1 文件 / 不动 API / 不动前端 / 不动 cron。关键决策 NP-d1-1~5 全部按推荐：(1) soft_expire 在 detector 调度内同循环触发 / (2) DetectorResult dataclass 在 service 顶部 / (3) 5 占位返 None 端到端跑通（vs NotImplementedError）/ (4) 测试合并 1 文件 14 测试按 4 class 分组 / (5) active tickers 复用 StockRepository.get_active_tickers()。consistency-check (mode=interactive) 全清（10 个 sub-sprint design_needed 缺 contract 文件属 A-1 预期 pending，将随各 sub-sprint 推进自然清零）。features.json 更新：F218 phase design_needed → in_progress / F218-d1 contract_agreed / _pipeline_status.active_sprint=F218-d1 / _pipeline_status.development planned → in_progress。下一步：feature-dev A-2 Generator 模式，按 d1 6 步开发顺序（model → __init__.py → migration → repo → service skeleton → tests）逐步推进，每步通过最小验证后 wip commit。"
+        },
+        {
+          "date": "2026-05-18",
+          "subtask": "F218-d1",
+          "phase": "needs_review",
+          "session": "feature-dev A-2 Generator 完成（F218-d1 skeleton）",
+          "changes": "完成 F218-d1 全部 6 个开发步骤：(1) RepricingTrigger ORM model（backend/app/models/repricing_trigger.py）+ UQ uq_repricing_trigger_ticker_type_date + 3 index；(2) models/__init__.py 注册；(3) alembic/versions/022_f218_repricing_triggers.py（upgrade/downgrade 双向验证）；(4) RepricingTriggerRepository（upsert/soft_expire/get_active_for_ticker/get_all_active/delete_expired_inactive）；(5) RepricingTriggerService skeleton（5 占位 detector 返 None + compute_and_store_all_triggers 主入口 + DetectorResult dataclass + TRIGGER_TYPES 常量）；(6) test_repricing_trigger_skeleton.py（14 测试 4 class 全绿 + 全量回归无新增失败）。偏差记录：StockRepository.get_active_tickers() 不存在，service 内改用 [s.ticker for s in self._stocks.list_active()]，意图一致（复用 StockRepo 不引 PoolCache），6 文件上限不变。upsert 返回后需 expire_all() 防 identity map 缓存旧值（ON CONFLICT UPDATE 绕过 ORM identity map）。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部 done）+ F216（Phase B Weekly Stage，全部 done）+ F217（Phase C Capitulation Reversal，全部 done）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 4 endpoint（key-metrics-ttm / ratios?period=quarter / balance-sheet-statement / cash-flow-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
