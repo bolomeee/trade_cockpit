@@ -1,6 +1,12 @@
 import { apiFetch } from '@/lib/api/client'
 import type { SetupType, SetupQuality, EarningsRisk } from './setupMonitorApi'
 
+export type CapitulationEvidence = {
+  volZscore: number
+  drop5dPct: number
+  reversalDay: boolean
+}
+
 export type CockpitDecisionData = {
   ticker: string
   setupType: SetupType
@@ -20,6 +26,7 @@ export type CockpitDecisionData = {
   earningsRisk: EarningsRisk | null
   earningsDate: string | null
   deterministicHash: string
+  capitulationEvidence?: CapitulationEvidence | null
 }
 
 export type GetCockpitDecisionOverrides = {
