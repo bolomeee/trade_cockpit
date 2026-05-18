@@ -21,6 +21,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.repricing_trigger_repository import RepricingTriggerRepository
 from app.repositories.stock_repository import StockRepository
 
@@ -35,6 +36,13 @@ TRIGGER_TYPES = (
     "BALANCE_INFLECTION",
 )
 
+# T1 EARNINGS_ACCEL detector 参数
+T1_LOOKBACK_QUARTERS = 6        # 需 Q-3..Q-1 + 上年同期 = 6 季
+T1_REQUIRED_QUARTERS = 3        # 检查 YoY 加速的最近季度数
+T1_HIGH_CONFIDENCE_YOY = 0.30   # 最近一季 EPS YoY ≥ 30% → confidence=0.8
+T1_HIGH_CONFIDENCE_SCORE = 0.8
+T1_DEFAULT_CONFIDENCE = 0.5
+
 
 @dataclass
 class DetectorResult:
@@ -48,6 +56,7 @@ class RepricingTriggerService:
         self.db = db
         self._repo = RepricingTriggerRepository(db)
         self._stocks = StockRepository(db)
+        self._earnings = EarningsEventRepository(db)
 
     # ── Public ────────────────────────────────────────────────────────────────
 
@@ -93,8 +102,65 @@ class RepricingTriggerService:
     def _detect_earnings_acceleration(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T1 — F218-d2 实装。当前返回 None（不命中）。"""
-        return None
+        """T1: 最近 3 季度 EPS YoY 增长率严格单调递增 → 触发。
+
+        需要 6 季 actual EPS（最近 3 季 + 上年同期 3 季）；任一季缺失 → return None。
+        上年同期 EPS ≤ 0 → 该季 YoY 视为不可计算 → return None（避免负基准除法噪声）。
+        revenue_yoy_growth 同步计算用于 evidence；revenue_actual 缺失时该位为 None
+        （不影响 EPS 触发判定）。
+        """
+        rows = self._earnings.get_recent_completed_for_ticker(
+            ticker, limit=T1_LOOKBACK_QUARTERS,
+        )
+        if len(rows) < T1_LOOKBACK_QUARTERS:
+            return None
+
+        # rows 按 earnings_date DESC：rows[0] = 最新，rows[5] = 最早
+        # 计算最近 3 季 YoY：(Q-1, Q-2, Q-3) 与 (Q-1y, Q-2y, Q-3y) 配对
+        recent = rows[:T1_REQUIRED_QUARTERS]    # 索引 0,1,2 = Q-1, Q-2, Q-3
+        prior  = rows[T1_REQUIRED_QUARTERS:]    # 索引 3,4,5 = Q-1y, Q-2y, Q-3y
+
+        eps_yoy: list[float] = []
+        revenue_yoy: list[float | None] = []
+        for cur, prv in zip(recent, prior):
+            if prv.eps_actual is None or prv.eps_actual <= 0:
+                return None  # 负基准 / 缺数据
+            eps_yoy.append(cur.eps_actual / prv.eps_actual - 1.0)
+
+            if (cur.revenue_actual is None or prv.revenue_actual is None
+                    or prv.revenue_actual <= 0):
+                revenue_yoy.append(None)
+            else:
+                revenue_yoy.append(cur.revenue_actual / prv.revenue_actual - 1.0)
+
+        # eps_yoy 当前为 [Q-1, Q-2, Q-3]（最新在前）；反转为时间顺序 [Q-3, Q-2, Q-1]
+        eps_yoy.reverse()
+        revenue_yoy.reverse()
+
+        # 严格单调递增：eps_yoy[0] < eps_yoy[1] < eps_yoy[2]
+        if not (eps_yoy[0] < eps_yoy[1] < eps_yoy[2]):
+            return None
+
+        # confidence: 最近一季 EPS YoY ≥ 30% → 0.8；否则 0.5
+        confidence = (
+            T1_HIGH_CONFIDENCE_SCORE
+            if eps_yoy[-1] >= T1_HIGH_CONFIDENCE_YOY
+            else T1_DEFAULT_CONFIDENCE
+        )
+
+        # quarter label 按 earnings_date 派生日历季度 "YYYYQN"；时间顺序 [Q-3, Q-2, Q-1]
+        quarters = [_quarter_label(r.earnings_date) for r in reversed(recent)]
+
+        return DetectorResult(
+            confidence=confidence,
+            evidence={
+                "eps_yoy_growth": [round(v, 4) for v in eps_yoy],
+                "revenue_yoy_growth": [
+                    round(v, 4) if v is not None else None for v in revenue_yoy
+                ],
+                "quarters": quarters,
+            },
+        )
 
     def _detect_margin_expansion(
         self, ticker: str, scan_date: date,
@@ -131,3 +197,8 @@ class RepricingTriggerService:
             "SECTOR_CYCLE":       self._detect_sector_cycle,
             "BALANCE_INFLECTION": self._detect_balance_inflection,
         }
+
+
+def _quarter_label(d: date) -> str:
+    """Map a date to calendar-quarter label, e.g. 2026-02-15 → "2026Q1"."""
+    return f"{d.year}Q{(d.month - 1) // 3 + 1}"
