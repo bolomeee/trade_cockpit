@@ -279,3 +279,52 @@
   读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3a-contract.md，
   进入 Generator 模式，从开发步骤 1 (FMP client 方法) 开始。
   ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] Sprint：F218-d3b Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 草拟 F218-d3b Sprint Contract（T2 MARGIN_EXPANSION detector 实装）
+  - 用户全盘按推荐确认 8 项关键决策 + evidence_json schema
+  - Contract status: draft → confirmed @ 2026-05-19
+  - 预计修改文件 2 个（远低于 6 上限）：
+      1. backend/app/services/cockpit/repricing_trigger_service.py
+         （+import KeyMetricsRepository / __init__ 注入 / +T2 常量段 / 替换 _detect_margin_expansion / +2 模块级 helpers）
+      2. backend/tests/test_repricing_trigger_margin_expansion.py
+         （新建：10 测试 / 3 class）
+  - 关键决策 NP-d3b-1~8 全部按推荐：
+      (1) "最近 2 季同比扩张" → 双 YoY 都过阈值（严格对齐 T1）
+      (2) FCF 臂 fail-soft 跳过（d6a 上线后零修改激活）
+      (3) 两臂同命中 → trigger_metric=gross_margin（D096 偏好）
+      (4) confidence 阈值取触发臂 Q0 YoY（≥400bp → 0.8）
+      (5) evidence_json `quarters` 用 YYYYQN（与 T1 一致，period_end_date 派生）
+      (6) trend 3 个值 = [Q-2, Q-1, Q0] 连续 3 季（DATA-MODEL §1098 example 对齐）
+      (7) helpers 留 repricing_trigger_service.py 模块级（YAGNI，不预抽 helpers 文件）
+      (8) 不动 d3a delete_for_tickers_not_in（trigger 行 TTL 由 365 天 retention 管）
+
+🔧 系统变更：
+  - features.json：F218.sub_sprints.F218-d3b → contract_agreed
+  - features.json：F218.iteration_history 追加 contract_agreed 条目（2026-05-19）
+  - _pipeline_status.active_sprint: F218-d3a → F218-d3b
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - SESSION-HANDOFF.md 改写为 F218-d3b Generator 启动版
+
+⚠️ 待你决策：
+  无未决事项
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: 🟡 contract_agreed
+  F218-d4 ~ F218-d7b: ⬜ design_needed (6 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d3b，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3b-contract.md，
+  进入 Generator 模式，从开发步骤 1（T2 常量段 + helpers + KeyMetricsRepo 注入）开始。
+  ──────────────────────────────────────────

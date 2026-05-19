@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.4",
     "active_sprint": "F218-d3b",
-    "active_sprint_phase": "design_needed",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4605,7 +4605,7 @@
         "F218-d1": "done",
         "F218-d2": "done",
         "F218-d3a": "done",
-        "F218-d3b": "design_needed",
+        "F218-d3b": "contract_agreed",
         "F218-d4": "design_needed",
         "F218-d5": "design_needed",
         "F218-d6a": "design_needed",
@@ -4752,6 +4752,12 @@
           "phase": "done",
           "session": "acceptance skill — F218-d3a 验收通过",
           "changes": "F218-d3a 验收通过。consistency-check severe=0 medium=0 通过入口闸。纯后端 sprint，无视觉验收项。10 项 Contract AC 全部确认：AC1-2 FMP client fail-open 策略 / AC3-5 margin 计算语义（浮点不 round / 7 keys 不含 fcf_margin+roic / null 安全）/ AC6-8 KeyMetricsRepository null-not-erase 语义 / AC9-10 pool_cache 集成端到端。设计边界全部确认：d3b 实装 detector / fcf_margin+roic 保持 NULL 等 d6a / delete_for_tickers_not_in 实装不挂。F218-d3a → done。active_sprint → F218-d3b（design_needed）。"
+        },
+        {
+          "date": "2026-05-19",
+          "subtask": "F218-d3b",
+          "event": "contract_agreed",
+          "note": "T2 MARGIN_EXPANSION detector 实装 contract 确认；2 文件 / 10 测试 / 8 决策按推荐"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部 done）+ F216（Phase B Weekly Stage，全部 done）+ F217（Phase C Capitulation Reversal，全部 done）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
