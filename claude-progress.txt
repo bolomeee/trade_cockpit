@@ -1,4 +1,27 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d3a Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d3a — T2 数据层（income-statement → key_metrics 表 + pool_cache 集成）
+  - 7 文件（超额授权 Path A，同 F217-c2c 模式）
+  - fmp_client: FMP_EP_INCOME_STATEMENT 常量 + get_income_statement_quarterly(symbol, limit=8) fail-open
+  - StockKeyMetricsQuarterly ORM（9 列，DATA-MODEL.md §1163-1183 1:1）+ __init__ 注册
+  - alembic 023（revision=f218_d3a_key_metrics_quarterly）upgrade/downgrade round-trip 通过
+  - KeyMetricsRepository: upsert null-not-erase（SELECT-then-INSERT-OR-REPLACE）+ get_recent_for_ticker + delete_for_tickers_not_in
+  - compute_key_metrics_row_from_income_statement 纯函数（pool_helpers.py），7 keys 输出，不含 fcf_margin/roic
+  - PoolCacheService: _fetch_income_statement_concurrent（6 worker）+ _rebuild_key_metrics + rebuild() 末尾追加 + 双 system_log
+  - 12 测试全绿（10 方法 / 4 class；parametrize 展开 12 case）
+  - 全量回归 9 failures 均为 pre-existing（d2 baseline 相同），无新增
+  - fcf_margin / roic 列保持 NULL 等待 d6a 补齐（null-not-erase 保证不回退）
+
+📊 F218 进度：d1 ✅ done | d2 ✅ done | d3a 🟡 needs_review | d3b~d7b ⬜ design_needed
+🔜 下一步：F218-d3a 验收（acceptance skill）→ done → F218-d3b Sprint Contract（T2 Margin Expansion detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] feature-dev A-1 Contract 协商：F218-d3a 段
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-18] F218-d1 验收通过 ✅
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -194,3 +217,53 @@
 
 [下一步]
   F218-d3a：T2 MARGIN_EXPANSION，需接入 FMP key-metrics，Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] feature-dev A-1 Contract 协商：F218-d3a
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F218-d3a Sprint Contract 起草并确认（status=confirmed @ docs/开发/sprint-contracts/F218-d3a-contract.md）
+  - 范围：T2 Margin Expansion 数据层 plumbing（不含 detector，detector 留 d3b）
+  - 7 文件预算（超 6 上限 1 / NP-d3a-1 Path A 同 F217-c2c 模式授权）：
+      1. backend/app/external/fmp_client.py（+endpoint 常量 + get_income_statement_quarterly 方法）
+      2. backend/app/models/stock_key_metrics_quarterly.py（新建 ORM model）+ models/__init__.py（注册，合并算 1 logical change）
+      3. backend/alembic/versions/023_f218_d3a_stock_key_metrics_quarterly.py（新建迁移）
+      4. backend/app/repositories/key_metrics_repository.py（新建：upsert / get_recent_for_ticker / delete_for_tickers_not_in）
+      5. backend/app/services/cockpit/pool_cache_service.py（+_rebuild_key_metrics 集成）
+      6. backend/app/services/cockpit/pool_helpers.py（+compute_key_metrics_row_from_income_statement 纯函数）
+      7. backend/tests/test_f218_d3a_key_metrics.py（新建：10 测试 / 4 class）
+  - 关键决策 NP-d3a-1~8 全部按推荐：
+      (1) Path A 申请超额授权 7 文件
+      (2) FMP fail-open 返 [] 与 D079 一致
+      (3) KeyMetricsRepository.upsert SELECT-then-INSERT-OR-REPLACE 显式 null-not-erase
+      (4) margin 计算 helper 放 pool_helpers.py 末尾不新建文件
+      (5) delete_for_tickers_not_in 实装方法但不挂调用点
+      (6) fcf_margin + roic 列 d3a 期间保持 NULL（d6a null-not-erase upsert 补齐）
+      (7) _rebuild_key_metrics 复用 ThreadPoolExecutor(_FMP_MAX_WORKERS=6)
+      (8) FMP limit=8（DATA-MODEL.md 硬编码）
+
+🔧 系统变更：
+  - features.json：F218.sub_sprints.F218-d3a → contract_agreed
+  - features.json：F218.iteration_history 追加 contract_agreed 条目（2026-05-19）
+  - _pipeline_status.active_sprint: F218-d2 → F218-d3a
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - SESSION-HANDOFF.md 改写为 F218-d3a Generator 启动版
+
+⚠️ 待你决策：
+  无未决事项
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: 🟡 contract_agreed
+  F218-d3b ~ d7b: ⬜ design_needed (7 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session：
+  ──────────────────────────────────────────
+  继续开发 F218-d3a，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3a-contract.md，
+  进入 Generator 模式，从开发步骤 1 (FMP client 方法) 开始。
+  ──────────────────────────────────────────

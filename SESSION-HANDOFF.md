@@ -1,148 +1,109 @@
-# SESSION-HANDOFF — F218-d2 Generator 启动
+# SESSION-HANDOFF — F218-d3a needs_review → 等待验收
 
-> 生成：2026-05-18 (Opus 4.7) | 用途：下一 session 接入 F218-d2 Generator
-> Skill 链：feature-dev A-3 Contract（F218-d2 ✅ confirmed @ 本 session） → **本 handoff** → feature-dev A-2 Generator（Sonnet 新 session 执行）
+> 生成：2026-05-19 (Sonnet 4.6) | 用途：下一 session 验收 F218-d3a 后进入 F218-d3b Generator
+> Skill 链：feature-dev A-2 Generator（F218-d3a ✅ 本 session 完成） → **本 handoff** → acceptance skill（d3a 验收）→ feature-dev A-1 Contract（F218-d3b）
 
 ---
 
 ## 1. 本次 session 完成内容
 
-### 1.1 F218-d2 Sprint Contract 起草并确认
+### 1.1 F218-d3a Generator 全部 7 步完成
 
-- 文件：[docs/开发/sprint-contracts/F218-d2-contract.md](docs/开发/sprint-contracts/F218-d2-contract.md) (status=confirmed)
-- 范围：T1 EARNINGS_ACCEL detector 实装（d1 skeleton 留下的第 1 个占位 `_detect_earnings_acceleration` → 真实业务逻辑）
-- 3 文件 / 10 测试 / 不动 API / 不动前端 / 不动 cron / 不动 alembic
+| # | 步骤 | 文件 | 状态 |
+|---|------|------|------|
+| 1 | FMP client 方法 | `backend/app/external/fmp_client.py` | ✅ commit e8aecb0 |
+| 2 | ORM model + __init__ 注册 | `backend/app/models/stock_key_metrics_quarterly.py` + `backend/app/models/__init__.py` | ✅ commit c4b346a |
+| 3 | Alembic 023 迁移 | `backend/alembic/versions/023_f218_d3a_stock_key_metrics_quarterly.py` | ✅ commit 7906b23 |
+| 4 | KeyMetricsRepository | `backend/app/repositories/key_metrics_repository.py` | ✅ commit db8b2d7 |
+| 5 | margin 计算 helper | `backend/app/services/cockpit/pool_helpers.py` | ✅ commit 7e45bae |
+| 6 | PoolCacheService 集成 | `backend/app/services/cockpit/pool_cache_service.py` | ✅ commit 1d06dac |
+| 7 | 全测试 + 全量回归 | `backend/tests/test_f218_d3a_key_metrics.py` | ✅ 12 passed |
 
-### 1.2 NP-d2-1 ~ NP-d2-7 关键决策（全部按推荐）
+### 1.2 Evaluator 自检全部通过
 
-| # | 议题 | 确认结论 |
-|---|------|---------|
-| NP-d2-1 | 加速判定 | 严格单调递增 `yoy[0] < yoy[1] < yoy[2]`（非允许持平 / 非每步最小增量） |
-| NP-d2-2 | 触发依据 | EPS 单独判定（revenue 仅作 evidence 副产物，缺失不阻断） |
-| NP-d2-3 | 数据完整性 | 6 季 actual EPS 全齐才判定；任一缺失返 None（不插值不均值） |
-| NP-d2-4 | confidence 阈值 | 仅看最近一季：`yoy[-1] ≥ 0.30 → 0.8`，否则 0.5（DATA-MODEL.md 业务规则原文） |
-| NP-d2-5 | quarter label | earnings_date 日历季度 `"YYYYQN"`（不加 alembic 023 fiscal_quarter 列） |
-| NP-d2-6 | repo 新方法名 | `get_recent_completed_for_ticker(ticker, limit=8)`（与既有 `get_next_earnings` 对称） |
-| NP-d2-7 | 负基准 | 上年同期 EPS ≤ 0 → 整体返 None（不做负基准除法） |
+- 12 d3a 测试全绿（10 方法 / 4 class / parametrize 展开 12 case）
+- d1+d2 既有 28 测试全绿
+- 全量回归 9 failures = pre-existing (d2 baseline 相同)，无新增
+- alembic 023 upgrade/downgrade 双向验证通过
+- `StockKeyMetricsQuarterly.__tablename__` = `"stock_key_metrics_quarterly"` 验证通过
+- `get_income_statement_quarterly` 签名正确，`compute_key_metrics_row_from_income_statement` 为模块级纯函数
 
 ### 1.3 features.json 更新
 
-- `F218.sub_sprints.F218-d2`: `design_needed` → `contract_agreed`
-- `F218.iteration_history`: 追加 contract_agreed 条目（2026-05-18，subtask=F218-d2）
-- `_pipeline_status.active_sprint`: 保持 `F218-d2`
-
-### 1.4 progress 日志更新
-
-- `claude-progress.txt` 追加 [2026-05-18 ⑤] feature-dev A-3 Contract 协商：F218-d2 段
+- `F218.sub_sprints.F218-d3a`: `contract_agreed` → `needs_review`
+- `F218.iteration_history`: 追加 `needs_review` 条目（2026-05-19，subtask=F218-d3a，Generator 完成摘要）
+- `_pipeline_status.active_sprint_phase`: `contract_agreed` → `needs_review`
+- `F218.last_updated`: `2026-05-18` → `2026-05-19`
 
 ---
 
 ## 2. 当前状态
 
+| 维度 | 状态 |
+|------|------|
+| 项目 phase | development in_progress |
+| Active iteration | v2.4 |
+| Active sprint | **F218-d3a** (needs_review) |
+| F218 sub_sprints | d1 ✅ done / d2 ✅ done / **d3a 🟡 needs_review** / d3b ~ d7b ⬜ design_needed |
+| 全量回归 | 9 failures（pre-existing，d2 baseline 相同） |
+
+---
+
+## 3. F218-d3a 实现摘要（验收参考）
+
 ```
-F218 phase: in_progress
-F218-d1: done
-F218-d2: contract_agreed  ← Generator 模式即将启动
-F218-d3a ~ d7b: design_needed（排队，本次范围外）
-_pipeline_status.active_sprint: F218-d2
+FMP /income-statement?period=quarter
+        ↓
+  fmp_client.get_income_statement_quarterly(symbol, limit=8) → list[dict]  (fail-open 返 [])
+        ↓
+  compute_key_metrics_row_from_income_statement(payload) → dict | None  (pool_helpers.py 纯函数)
+        ↓
+  KeyMetricsRepository.upsert(row)   (null-not-erase: SELECT + INSERT OR REPLACE)
+        ↓
+  stock_key_metrics_quarterly 表  (gross/op/net margin 入表；fcf_margin/roic 保持 NULL)
+        ↑
+  PoolCacheService._rebuild_key_metrics(tickers)  (并发 6 worker，挂 rebuild() 末尾)
+```
+
+**关键不变量**：
+- fcf_margin + roic = NULL（d6a 通过 null-not-erase upsert 补齐）
+- pool_cache 既有 cockpit_pool_cache 写入路径完全不动
+- FMP rate limiter 复用既有 token bucket，不引入第二个 limiter
+
+---
+
+## 4. 下一 session 操作指令
+
+### Option A: 直接验收 d3a（推荐）
+
+```
+继续 F218 开发，F218-d3a 已完成 Generator，请验收。
+读取 SESSION-HANDOFF.md，运行 acceptance skill 对 F218-d3a 验收。
+```
+
+### Option B: 跳过正式验收，直接进 d3b Contract
+
+```
+继续开发 F218-d3b。
+读取 SESSION-HANDOFF.md，F218-d3a 标记 done，进入 F218-d3b Sprint Contract 协商（T2 Margin Expansion detector）。
 ```
 
 ---
 
-## 3. 下一步任务（Sonnet 新 session 执行）
+## 5. F218-d3b 预告（仅供上下文，不在 d3a 范围）
 
-### 3.1 恢复指令
-
-```
-继续开发 F218-d2，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d2-contract.md，
-进入 Generator 模式，按 3 步开发顺序推进：
-  1) repo +方法 get_recent_completed_for_ticker（+ 最小 pytest 单测验证通过）
-  2) service detector 实装：
-     - import EarningsEventRepository
-     - __init__ 内 self._earnings = EarningsEventRepository(db)
-     - 5 个模块级常量 T1_LOOKBACK_QUARTERS=6 / T1_REQUIRED_QUARTERS=3 / T1_HIGH_CONFIDENCE_YOY=0.30 / T1_HIGH_CONFIDENCE_SCORE=0.8 / T1_DEFAULT_CONFIDENCE=0.5
-     - _detect_earnings_acceleration 占位 → 真实主体（参考 contract §1.2 完整伪代码）
-     - 模块级 helper _quarter_label(d: date) -> str
-  3) 新文件 backend/tests/test_repricing_trigger_earnings_accel.py，10 测试 / 3 class（repo 2 + detector 7 + 端到端 1），按 contract §3 测试用例表逐条实现
-每步通过最小验证后 wip commit。
-完成后 Evaluator 模式按 contract §4 自检清单逐条检查；全部通过后 phase → needs_review，提示用户验收。
-```
-
-### 3.2 3 步开发顺序（细节）
-
-**Step 1 — EarningsEventRepository 新方法**
-- 文件：`backend/app/repositories/earnings_event_repository.py`
-- 在既有 3 方法（upsert_batch / get_next_earnings / delete_before）之后追加 `get_recent_completed_for_ticker(ticker, limit=8) -> list[EarningsEvent]`
-- 过滤：`eps_actual IS NOT NULL`；排序：`earnings_date DESC`；limit 截断
-- wip commit：`wip(F218-d2): EarningsEventRepository.get_recent_completed_for_ticker`
-
-**Step 2 — RepricingTriggerService T1 实装**
-- 文件：`backend/app/services/cockpit/repricing_trigger_service.py`
-- 改动：import EarningsEventRepository / __init__ 注入 / 5 T1_* 模块常量 / _detect_earnings_acceleration 占位换实装 / 文件底部追加 `_quarter_label` 模块函数
-- 关键算法（见 contract §1.2 完整伪代码）：
-  ```
-  rows = self._earnings.get_recent_completed_for_ticker(ticker, limit=6)
-  if len(rows) < 6: return None
-  recent = rows[:3]  # [Q-1, Q-2, Q-3] (DESC 顺序)
-  prior  = rows[3:]  # [Q-1y, Q-2y, Q-3y]
-  for cur, prv in zip(recent, prior):
-      if prv.eps_actual is None or prv.eps_actual <= 0: return None  # NP-d2-7
-      eps_yoy.append(cur.eps_actual / prv.eps_actual - 1.0)
-      # revenue_yoy 同步计算（缺失/负基准 → None，不阻断）
-  eps_yoy.reverse()  # 时间正向 [Q-3, Q-2, Q-1]
-  if not (eps_yoy[0] < eps_yoy[1] < eps_yoy[2]): return None  # NP-d2-1 严格单调
-  confidence = 0.8 if eps_yoy[-1] >= 0.30 else 0.5  # NP-d2-4
-  quarters = [_quarter_label(r.earnings_date) for r in reversed(recent)]
-  return DetectorResult(confidence, {eps_yoy_growth, revenue_yoy_growth, quarters})
-  ```
-- wip commit：`wip(F218-d2): _detect_earnings_acceleration T1 implementation`
-
-**Step 3 — 10 测试**
-- 文件（新）：`backend/tests/test_repricing_trigger_earnings_accel.py`
-- 3 class 分组：
-  - `TestEarningsEventRepoRecentCompleted` — 测试 1, 2
-  - `TestDetectEarningsAcceleration` — 测试 3, 4, 5 (3 case 参数化), 6, 7, 8, 9 (3 case 参数化)
-  - `TestEarningsAccelEndToEnd` — 测试 10
-- 沿用 conftest.py `db_session` fixture
-- 端到端测试需借 `compute_and_store_all_triggers` 验证 d1 主入口与 d2 detector 协同（hit → upsert / re-scan miss → soft expire）
-- wip commit：`wip(F218-d2): T1 earnings acceleration tests (10 cases)`
-
-### 3.3 Evaluator 自检
-
-按 [contract §4](docs/开发/sprint-contracts/F218-d2-contract.md) 逐条检查；重点：
-- 10 新测试全绿 + d1 既有 14 测试不回归 + 全量回归无新增失败
-- EARNINGS_ACCEL evidence_json schema 严格对齐 DATA-MODEL.md（3 字段 / 列长 3）
-- F204 既有 test_earnings_f204a/b 不回归（repo 只加方法，不改既有签名）
-
-通过后：
-1. F218-d2 phase → `needs_review`
-2. iteration_history 追加 needs_review 条目
-3. 提示用户验收
+**T2 Margin Expansion detector 实装**（`_detect_margin_expansion` 占位 → 真实逻辑）：
+- 读 `KeyMetricsRepository.get_recent_for_ticker(ticker, limit=4)` 取最近 4 季数据
+- 配对最近 2 季 vs 上年同期 2 季 → 计算 gross_margin YoY 差值
+- 条件：gross_margin 扩张 ≥ 200bp（0.02）OR fcf_margin 扩张 ≥ 300bp（0.03，fcf_margin 暂 NULL 直到 d6a）
+- confidence 公式：同 d2 T1 的阈值区间（见 DATA-MODEL.md RepricingTrigger.confidence 规则）
+- 预估 2-3 文件（repricing_trigger_service.py + key_metrics_repository 已存在 + test）
 
 ---
 
-## 4. 未决事项
+## 6. 未决事项
 
-| 事项 | 优先级 | 负责 sprint |
-|------|-------|------------|
-| `StockRepository.get_active_tickers()` 方法仍未创建（service 用 `list_active()` 列表推导） | 低 | 可选：任意 sprint 中顺手加，不阻塞 |
-| `test_schema.py::test_all_tables_created` EXPECTED_TABLES 未含 `weekly_stage_snapshots` / `repricing_triggers` | 低 | 建议 F218-d7a 一并修 |
-| T3 D4b NLP 升级 | 低 | 独立 issue，F218 范围外 |
-
----
-
-## 5. 关键引用
-
-- F218-d2 合约：[docs/开发/sprint-contracts/F218-d2-contract.md](docs/开发/sprint-contracts/F218-d2-contract.md)
-- F218-d1 合约（同形态参考）：[docs/开发/sprint-contracts/F218-d1-contract.md](docs/开发/sprint-contracts/F218-d1-contract.md)
-- DATA-MODEL §RepricingTrigger（EARNINGS_ACCEL evidence_json schema + 业务规则）：[docs/系统设计/DATA-MODEL.md](docs/系统设计/DATA-MODEL.md)
-- ARCHITECTURE §Cockpit Repricing Trigger Service（T1 模块边界）：[docs/系统设计/ARCHITECTURE.md](docs/系统设计/ARCHITECTURE.md)
-- d1 skeleton 文件：
-  - [backend/app/services/cockpit/repricing_trigger_service.py](backend/app/services/cockpit/repricing_trigger_service.py)
-  - [backend/app/repositories/repricing_trigger_repository.py](backend/app/repositories/repricing_trigger_repository.py)
-  - [backend/app/models/repricing_trigger.py](backend/app/models/repricing_trigger.py)
-- T1 数据源（既有 F204 成果）：
-  - [backend/app/repositories/earnings_event_repository.py](backend/app/repositories/earnings_event_repository.py)
-  - [backend/app/models/earnings_event.py](backend/app/models/earnings_event.py)
-- 进度日志：[claude-progress.txt](claude-progress.txt)
+| 事项 | 状态 |
+|------|------|
+| fcf_margin / roic 列 NULL | 已知，d6a 补齐，d3b detector 需处理 None 的 fcf_margin |
+| test_all_tables_created pre-existing failure | 需在项目收官前更新 test_schema.py EXPECTED_TABLES 列表（非 d3a 范围） |
