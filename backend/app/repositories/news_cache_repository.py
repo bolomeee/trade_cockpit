@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -110,3 +110,37 @@ def _row_to_article(row: NewsArticleCache) -> NewsArticle:
         author=data.get("author"),
         site=data.get("site"),
     )
+
+
+def get_recent_for_ticker(
+    db: Session,
+    ticker: str,
+    *,
+    scan_date: date,
+    lookback_days: int,
+    limit: int = 200,
+) -> list[NewsArticle]:
+    """Return articles in [scan_date - lookback_days, scan_date] whose symbols list contains ticker.
+
+    Filters by as_of_date window at SQL level, then deserializes payload_json and
+    filters by ticker in symbols in Python (symbols is JSON inside payload_json, no
+    portable SQL filter). Ordered by published_at DESC. limit caps DB-level rows
+    fetched before Python filtering.
+    """
+    start = scan_date - timedelta(days=lookback_days)
+    rows = (
+        db.query(NewsArticleCache)
+        .filter(NewsArticleCache.as_of_date >= start)
+        .filter(NewsArticleCache.as_of_date <= scan_date)
+        .order_by(NewsArticleCache.published_at.desc())
+        .limit(limit)
+        .all()
+    )
+    upper = ticker.upper()
+    matched: list[NewsArticle] = []
+    for r in rows:
+        article = _row_to_article(r)
+        symbols = [s.upper() for s in (article.symbols or [])]
+        if upper in symbols:
+            matched.append(article)
+    return matched
