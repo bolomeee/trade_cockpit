@@ -39,6 +39,7 @@ FMP_EP_SHARES_FLOAT = "/shares-float"  # F107-b1 shares_float source (D051 rev)
 FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
 FMP_EP_EARNINGS_CALENDAR = "/earnings-calendar"  # F204-a earnings events
 FMP_EP_FINANCIAL_GROWTH = "/financial-growth"  # F205-b D079 revenue growth YoY
+FMP_EP_INCOME_STATEMENT = "/income-statement"  # F218 D3 T2 Margin Expansion (D097 修正 2026-05-18)
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -507,6 +508,30 @@ class FmpClient:
             return results[0]
         except (httpx.HTTPStatusError, httpx.RequestError):
             return None
+
+    def get_income_statement_quarterly(
+        self, symbol: str, limit: int = 8,
+    ) -> list[dict[str, Any]]:
+        """FMP /stable/income-statement?period=quarter (F218 D3 T2 Margin Expansion).
+
+        Returns the most recent `limit` quarterly income-statement records for `symbol`,
+        raw FMP JSON list. Field normalization (period_end_date / margin compute) is
+        done in the service layer (D097 §5: margins computed service-side, not FMP-native).
+
+        Expected fields per record: symbol, date (period end), period (Q1/Q2/Q3/Q4),
+        fiscalYear, revenue, grossProfit, operatingIncome, netIncome.
+
+        Returns [] on empty response / HTTP error / network error so pool rebuild
+        callers can fail-open per ticker (consistent with get_financial_growth).
+        """
+        try:
+            body = self._request(
+                FMP_EP_INCOME_STATEMENT,
+                {"symbol": symbol, "period": "quarter", "limit": limit},
+            )
+            return list(body or [])
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return []
 
 
 def _fmt_date(d: str | date) -> str:
