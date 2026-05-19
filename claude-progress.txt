@@ -328,3 +328,22 @@
   读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3b-contract.md，
   进入 Generator 模式，从开发步骤 1（T2 常量段 + helpers + KeyMetricsRepo 注入）开始。
   ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d3b Generator + Evaluator 完成 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d3b — T2 MARGIN_EXPANSION detector 実装（detector 実装）
+  - 2 文件（Contract §2 上限 6 内）
+  - repricing_trigger_service.py：KeyMetricsRepository 注入 / T2_* 定数 6 行 / _detect_margin_expansion 実装(~30行) / _eval_margin_arm + _round_or_none モジュールレベル helpers
+  - T2 ロジック：gross 臂（200bp）/ FCF 臂（300bp）双 YoY 判定；両臂命中 → gross 優先（D096）；confidence 400bp threshold
+  - evidence_json: {gross_margin_trend, fcf_margin_trend, quarters, trigger_metric, expansion_bp} 5-key schema（DATA-MODEL §1098 1:1）
+  - d6a 前は FCF 臂は全 NULL → 永不命中；d6a 後はゼロ修改で自動激活
+  - テスト 15 pass（M1-M3/M4-M9/M10、M3+M9 parametrize 展開）
+  - 単体：M1 happy / M2 単 YoY 不過 / M3×4 None / M4 低置信+M11 schema / M5 高置信 / M6 FCF 単臂 / M7 両臂 gross 優先 / M8 単季不過 / M9×3 return None
+  - 統合：M10 upsert + soft_expire（scan_date +1日）
+  - 全量回帰 9 failures = pre-existing（d2 baseline 同）、新規追加なし
+  - Evaluator 自検全通過；F218 親 in_progress 維持（C1 invariant；sibling d4-d7b 未 done）
+
+📊 F218 進度：d1 ✅ | d2 ✅ | d3a ✅ | d3b ✅ | d4~d7b ⬜ design_needed
+🔜 次のステップ：F218-d4（T3 NEW_PRODUCT detector）Sprint Contract 協商

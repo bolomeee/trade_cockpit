@@ -4605,7 +4605,7 @@
         "F218-d1": "done",
         "F218-d2": "done",
         "F218-d3a": "done",
-        "F218-d3b": "in_progress",
+        "F218-d3b": "done",
         "F218-d4": "design_needed",
         "F218-d5": "design_needed",
         "F218-d6a": "design_needed",
@@ -4758,6 +4758,12 @@
           "subtask": "F218-d3b",
           "event": "contract_agreed",
           "note": "T2 MARGIN_EXPANSION detector 实装 contract 确认；2 文件 / 10 测试 / 8 决策按推荐"
+        },
+        {
+          "subtask": "F218-d3b",
+          "date": "2026-05-19",
+          "status": "done",
+          "note": "T2 MARGIN_EXPANSION detector implemented: _detect_margin_expansion + _eval_margin_arm + _round_or_none + 10 tests (15 pass with parametrize)"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部 done）+ F216（Phase B Weekly Stage，全部 done）+ F217（Phase C Capitulation Reversal，全部 done）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
