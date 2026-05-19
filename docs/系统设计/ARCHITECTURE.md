@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-04-24
-last_modified_by: system-design (v1.8/v1.9/v2.0 Cockpit Epic — 新增 cockpit/ 目录层 + ai/ 模块 + 7 个 cockpit 新表 + litellm 依赖 + AI env 五项 + FMP earnings-calendar 端点映射)
+confirmed_at: 2026-05-18
+last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 live probe — Starter 不支持 key-metrics+ratios quarterly，改 income-statement；T2/T5 共享 cash-flow，FMP 端点表与常量段从 4 endpoint 收敛到 3 endpoint；roic 改 service 层近似公式)
 ---
 
 # ARCHITECTURE.md
@@ -419,6 +419,9 @@ type WidgetManifest = {
 | MA150 时间序列（F105 每日扫描主路径） | `/stable/technical-indicators/sma` | `symbol=AAPL`, `periodLength=150`, `timeframe=1day`, `from`/`to` 取最近 25 交易日窗口, `apikey` | 无；D039 fallback 方案 Y 改走 `/stable/historical-price-eod/full` 本地算 MA150 |
 | ETF 日线（F201 SPY/QQQ/IWM + 11 sector ETF） | `/stable/historical-price-eod/full` | `symbol={SPY\|QQQ\|IWM\|XLK\|...}`, `apikey` | 无（v1.8 新增） |
 | 财报日历（F204 earnings_events） | `/stable/earnings-calendar` | `from=today-7`, `to=today+30`, `apikey` | 无（v1.8 新增，D065） |
+| 季度利润表（F218 T2 Margin Expansion） | `/stable/income-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097 修正 2026-05-18：原计划 key-metrics+ratios quarterly Starter 不支持） |
+| 季度资产负债表（F218 T5 Balance Sheet Inflection + T2 roic 近似公式） | `/stable/balance-sheet-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097） |
+| 季度现金流（F218 T2 fcf_margin + T5 balance sheet inflection，T2/T5 共享） | `/stable/cash-flow-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097 修正：T2/T5 共享同一 endpoint，pool rebuild 单次抓取） |
 
 > DB 层 `market_indices.symbol` 保留 `SPX/NDX/TNX` 三个原 symbol + v1.8 新增 14 个 ETF symbol（SPY/QQQ/IWM + 11 sector ETF），FMP 的 `^GSPC / ^NDX` 在 service/repo 边界做映射，ETF symbol 直接等于 FMP symbol；数据库字段命名不变。
 
@@ -450,6 +453,10 @@ FMP_EP_QUOTE = "/quote"
 FMP_EP_SCREENER = "/company-screener"          # F105 universe
 FMP_EP_SMA = "/technical-indicators/sma"       # F105 每日扫描
 FMP_EP_EARNINGS_CAL = "/earnings-calendar"     # F204 earnings_events（v1.8 新增）
+FMP_EP_KEY_METRICS_TTM = "/key-metrics-ttm"    # F104 / D035 估值 TTM（marketCap/ROCE/FCF yield），与 F218 无关
+FMP_EP_INCOME_STATEMENT = "/income-statement"  # F218 T2 Margin Expansion，period=quarter（v2.4 新增，D097 修正 2026-05-18 取代原 key-metrics+ratios quarterly）
+FMP_EP_BALANCE_SHEET = "/balance-sheet-statement"  # F218 T5 Balance Sheet Inflection + T2 roic 近似公式分母（v2.4 新增，D097）
+FMP_EP_CASH_FLOW = "/cash-flow-statement"      # F218 T2 fcf_margin + T5 balance sheet inflection（T2/T5 共享，v2.4 新增，D097）
 ```
 未来 FMP 若改路径，只改一处。
 
@@ -520,3 +527,67 @@ AiGateway.run("trade_plan", input):
   8. memo_repo.write(task_type, input_hash, output, cost, tokens, ...)
   9. 返回 { output, meta }
 ```
+
+---
+
+## Cockpit Repricing Trigger Service（v2.4 新增，D096/D097/D098）
+
+cockpit 慢交易框架第 4 支柱（与 Phase A Volume z-score / Phase B Weekly Stage / Phase C Capitulation Reversal 协同），识别"让市场重新定价此公司"的基本面 / 产业 / 资产负债事件。与价格 setup 完全解耦但在 DecisionPanel 同屏展示。
+
+### 模块位置
+
+```
+backend/app/services/cockpit/repricing_trigger_service.py   # 主入口 + 5 detector
+backend/app/repositories/repricing_trigger_repository.py    # repricing_triggers 表 CRUD
+backend/app/repositories/key_metrics_repository.py          # stock_key_metrics_quarterly 表 CRUD（F218 D3 新增）
+backend/app/repositories/fundamentals_repository.py         # stock_fundamentals_quarterly 表 CRUD（F218 D6 新增）
+backend/app/routers/cockpit/repricing_triggers_router.py    # 2 endpoint
+```
+
+### 5 类 detector 串行调度
+
+```
+RepricingTriggerService.compute_and_store_all_triggers(date):
+  1. _detect_earnings_acceleration(ticker)   # T1，复用 EarningsEventRepository
+  2. _detect_margin_expansion(ticker)        # T2，读 stock_key_metrics_quarterly
+  3. _detect_new_product(ticker)             # T3 D4a，扫描 news_cache headlines + 关键词集合
+  4. _detect_sector_cycle(ticker)            # T4，复用 SECTOR_ETFS + market_regime_service._compute_rs_percentile
+  5. _detect_balance_inflection(ticker)      # T5，读 stock_fundamentals_quarterly
+  每个 detector 命中 → upsert repricing_triggers (UQ: ticker+trigger_type+detected_date)
+  未命中 + 存在 active 既有行 → soft expire (active=true → false)
+```
+
+**串行非并发**：5 detector 总耗时预估 < 10s（pure DB 查询为主），串行便于错误隔离与日志归因（D096）。
+
+### 调度时段
+
+```
+APScheduler cron 周一-周五 22:40 UTC（refresh_job.py）：
+  → RepricingTriggerService.compute_and_store_all_triggers(today)
+
+完整 cockpit 每日调度链（UTC）：
+  05:30 earnings-calendar 增量（F204）
+  06:30 weekly pool rebuild（仅周一，含 F218 D3/D6 FMP 3 endpoint 抓取 — income-statement / balance-sheet / cash-flow，cash-flow 由 T2/T5 共享 — 后 upsert 2 缓存表）
+  22:05 market regime（F201）
+  22:10 setup snapshots（F202/F203/F217）
+  22:20 weekly stage（F216-e，仅周五）
+  22:40 repricing triggers（F218，本次新增）
+```
+
+### FMP 数据获取（D097 决策）
+
+- T2/T5 季度数据由 **weekly pool rebuild cron（周一 06:30 UTC）** 同步抓取，cockpit pool 内 ~50 ticker × 3 endpoint × 周 1 次 ≈ 150 calls/week（D097 修正 2026-05-18：原计划 4 endpoint 含 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement；T2/T5 共享 cash-flow，自然收敛到 3 endpoint）
+- T2 margin / fcf_margin / roic 字段在 service 层从原始财务数字计算（详见 DATA-MODEL §StockKeyMetricsQuarterly 公式段）
+- FMP Starter 限频 300 req/min 充裕（详见上文 Rate Limit 策略）
+- T1（earnings）/T3（news）/T4（sector）detector 不需要新 FMP 调用（复用既有数据源）
+
+### 模块边界
+
+- `services/cockpit/repricing_trigger_service.py` 可 import：
+  - `repositories/earnings_event_repository.py`（T1 复用）
+  - `repositories/news_cache_repository.py`（T3 复用）
+  - `repositories/key_metrics_repository.py` / `fundamentals_repository.py`（T2/T5 新建）
+  - `services/cockpit/market_regime_service._compute_rs_percentile`（T4 函数级复用）
+  - `services/cockpit/cockpit_params.SECTOR_ETFS`（T4 配置复用）
+- **禁止 import**：`journal_service` / `watchlist_service` / `signal_engine`（除既有纯函数 utility 外）
+- 前端 `frontend/src/cockpit/lib/api/cockpitRepricingApi.ts` 消费 2 endpoint；`RepricingTriggerWidget.tsx` 注册到 Cockpit Registry；`DecisionPanelWidget` 顶部 trigger badge 区按 `/repricing-triggers/{ticker}` 渲染（5 类颜色 chip 区分）

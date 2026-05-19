@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-15
-last_modified_by: system-design (F217 Phase C — setup_type 枚举去 PULLBACK 加 CAPITULATION + 分类器优先级 D095)
+confirmed_at: 2026-05-18
+last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 live probe — D097 endpoint key-metrics+ratios quarterly Starter 不支持，改 income-statement；T2/T5 共享 cash-flow，4 endpoint → 3 endpoint；roic 改 service 层近似公式)
 ---
 
 # DATA-MODEL.md
@@ -1063,6 +1063,172 @@ class WeeklyStageSnapshot(Base):
     weekly_ma_40 = Column(Float, nullable=True)
     slope_30w   = Column(Float, nullable=True)               # %/周，OLS 归一化（NP2）
     computed_at = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```
+
+
+## RepricingTrigger（F218 Phase D — 重定价触发信号）
+
+> 对应数据库表：`repricing_triggers`
+> Feature：F218 Cockpit Phase D — Repricing Trigger 完整框架（5 类）
+> 决策依据：D096（5 类框架 + evidence_json 单列设计）
+
+Cockpit 专属。识别"让市场重新定价此公司"的基本面/产业/资产负债事件，与价格 setup 解耦但在慢交易框架（4 支柱第 4 个）中决定持仓周期与仓位规模。串行调度 5 个 detector，每日 22:40 UTC 后写入；`active` 标记长期保留 + soft expire（非物理删）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| trigger_type | String(24) | ✅ | 枚举 5 选 1：`EARNINGS_ACCEL` / `MARGIN_EXPANSION` / `NEW_PRODUCT` / `SECTOR_CYCLE` / `BALANCE_INFLECTION` |
+| detected_date | Date | ✅ | trigger 触发日（= compute_and_store_all_triggers 调度日），有独立 index |
+| confidence | Float | ✅ | 0.0-1.0 置信度，由各 detector 按命中条件强度打分（详见 detector 规则） |
+| evidence_json | Text | ✅ | 证据 JSON 字符串，按 trigger_type 区分 schema（见下）；service 内 dataclass 反序列化 |
+| active | Boolean | ✅ | true=当前 active；false=已 expire（detector 在后续日 re-scan 时未再命中即 soft expire） |
+| computed_at | DateTime | ✅ | UTC 计算时间戳 |
+
+**唯一约束**：`uq_repricing_trigger_ticker_type_date (ticker, trigger_type, detected_date)` — 同一标的同一 trigger 类型每日至多一条；同类型多次触发用 detected_date 区分。
+
+**evidence_json schema（按 trigger_type 区分）**：
+
+| trigger_type | evidence_json 字段示例 |
+|-------------|----------------------|
+| `EARNINGS_ACCEL` | `{"eps_yoy_growth": [0.18, 0.24, 0.32], "revenue_yoy_growth": [0.12, 0.15, 0.22], "quarters": ["2025Q3", "2025Q4", "2026Q1"]}` |
+| `MARGIN_EXPANSION` | `{"gross_margin_trend": [0.42, 0.44, 0.46], "fcf_margin_trend": [0.18, 0.22, 0.25], "quarters": [...], "trigger_metric": "gross_margin", "expansion_bp": 400}` |
+| `NEW_PRODUCT` | `{"keyword_hits": [{"keyword": "AI", "count": 3}, {"keyword": "launch", "count": 2}], "news_links": ["url1", "url2"], "scan_window_days": 30}` |
+| `SECTOR_CYCLE` | `{"sector": "XLK", "rs_history": [{"date": "2026-03-01", "percentile": 35}, {"date": "2026-05-01", "percentile": 65}], "price_vs_200d": 1.08}` |
+| `BALANCE_INFLECTION` | `{"net_debt_trend": [120000000, 105000000, 95000000], "fcf_trend": [-15000000, 8000000, 22000000], "quarters": [...], "trigger_metric": "net_debt"}` |
+
+**业务规则**：
+- 每日 22:40 UTC（refresh_job cron，setup_tick 之后）调用 `RepricingTriggerService.compute_and_store_all_triggers(date)`，串行调用 5 个 `_detect_*` 函数
+- 同一 (ticker, trigger_type) 已存在 active 行 + 当日 re-detect 仍命中 → 不写新行，更新 evidence/confidence/computed_at（detector 内部判断幂等）
+- soft expire：detector re-scan 未命中（如 EARNINGS_ACCEL 在下次财报后判定条件失效）→ 将既有 active=true 行改 active=false（保留审计）
+- `confidence` 默认值 0.5；EARNINGS_ACCEL 若 yoy ≥ 30% confidence=0.8；MARGIN_EXPANSION 若 expansion ≥ 400bp confidence=0.8；其余维持 0.5（D096 简化策略，可在 D4b NLP 升级时细化）
+- **消费边界**：仅 `backend/app/services/cockpit/*` 与 `backend/app/routers/cockpit/*` 读写；前端通过 `/api/cockpit/repricing-triggers*` 消费
+- **保留策略**：`REPRICING_TRIGGER_RETENTION_DAYS = 365`（与年度复盘窗口对齐），由 F218 cron 在 active=false 行上做硬删；active=true 行不删
+
+```python
+class RepricingTrigger(Base):
+    __tablename__ = "repricing_triggers"
+    __table_args__ = (
+        UniqueConstraint("ticker", "trigger_type", "detected_date", name="uq_repricing_trigger_ticker_type_date"),
+    )
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    ticker        = Column(String(10), nullable=False, index=True)
+    trigger_type  = Column(String(24), nullable=False)      # 5 类枚举
+    detected_date = Column(Date, nullable=False, index=True)
+    confidence    = Column(Float, nullable=False, default=0.5)
+    evidence_json = Column(Text, nullable=False)             # JSON 字符串，service 内反序列化
+    active        = Column(Boolean, nullable=False, default=True, index=True)
+    computed_at   = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```
+
+
+## StockKeyMetricsQuarterly（F218 Phase D — T2 Margin Expansion 缓存）
+
+> 对应数据库表：`stock_key_metrics_quarterly`
+> Feature：F218 D3 T2 Margin Expansion
+> 决策依据：D097（FMP 3 endpoint 接入 — income-statement / balance-sheet / cash-flow，后 2 个 T2/T5 共享 + weekly cron 复用；修正 2026-05-18）
+
+T2 Margin Expansion detector 的季度财务比率缓存表。数据源 FMP `/stable/income-statement?period=quarter` + `/stable/cash-flow-statement?period=quarter`（与 T5 共享）+ `/stable/balance-sheet-statement?period=quarter`（与 T5 共享，roic 近似公式用）。所有 margin 字段在 service 层从原始财务数字计算（D097 修正 2026-05-18：live probe 发现 FMP Starter 不支持 `/key-metrics?period=quarter` 与 `/ratios?period=quarter`，均返 402 Premium）。按 `(ticker, fiscal_quarter)` 唯一（fiscal_quarter 拼接为 FMP `period` + " " + `fiscalYear`，如 "Q2 2026"），weekly pool rebuild（周一 06:30 UTC）同步刷新 cockpit pool 内 ~50 ticker 的最近 8 季数据。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| fiscal_quarter | String(12) | ✅ | FMP `period` + " " + `fiscalYear` 拼接（如 "Q2 2026"），业务主键 |
+| period_end_date | Date | ✅ | 财季结束日（FMP `date` 字段），用于排序 |
+| gross_margin | Float | ❌ | 毛利率 = grossProfit / revenue（income-statement），0-1 区间；revenue=0 或任一 null → null |
+| op_margin | Float | ❌ | 营业利润率 = operatingIncome / revenue（income-statement），0-1 区间 |
+| net_margin | Float | ❌ | 净利率 = netIncome / revenue（income-statement），0-1 区间 |
+| fcf_margin | Float | ❌ | FCF / revenue 比率，0-1 区间；FCF = netCashProvidedByOperatingActivities + investmentsInPropertyPlantAndEquipment（cash-flow，capex 已为负值故加号） |
+| roic | Float | ❌ | ROIC **近似公式**（D097 修正 2026-05-18）：`netIncome / (totalStockholdersEquity + totalDebt - cashAndShortTermInvestments)`；非标准 ROIC（不扣 NOPAT 税务调整、不剔除现金等价物）但有方向性信号；任一输入 null 或分母 ≤ 0 → null |
+| fetched_at | DateTime | ✅ | 最近一次从 FMP upsert 的 UTC 时间 |
+
+**唯一约束**：`uq_key_metrics_ticker_quarter (ticker, fiscal_quarter)`（NP-sd-2 决策）
+
+**业务规则**：
+- weekly pool rebuild 触发：对 cockpit pool 中每个 ticker，调用 FMP `/income-statement?symbol={ticker}&period=quarter&limit=8` 一次（T2 专属）+ `/cash-flow-statement?...` 一次（T2/T5 共享）+ `/balance-sheet-statement?...` 一次（T5 主用，T2 roic 近似公式复用）。共 3 endpoint 串行；T2 + T5 合计 quota 估算：~50 ticker × 3 endpoint × 周 1 次 ≈ 150 calls/week（D097 修正 2026-05-18：原 4 endpoint 含 key-metrics-ttm + ratios 不可用，且 cash-flow 由 T2/T5 共享，收敛到 3 endpoint）
+- upsert 策略：按 `(ticker, fiscal_quarter)` 覆盖；FMP 返回 null 字段不擦除既有值（避免 FMP 暂时缺数据时数据丢失）
+- service 层职责：从 income-statement 的 revenue/grossProfit/operatingIncome/netIncome 计算 gross/op/net margin；从 cash-flow 的 OCF + capex 计算 fcf 与 fcf_margin；从 balance-sheet 的 totalStockholdersEquity/totalDebt/cashAndShortTermInvestments + netIncome 计算 roic 近似值；任一原始字段 null 或分母 ≤ 0 → 对应 margin/roic 字段 null（不抛错，保留行）
+- T2 detector 读取：取最近 2 季同比 → 毛利率扩张 ≥ 200bp 或 FCF margin 扩张 ≥ 300bp 触发
+- **消费边界**：仅 `backend/app/services/cockpit/repricing_trigger_service.py` 与对应 repository 读写
+- **保留策略**：保留全量历史季度（FMP 已限 limit=8，单 ticker 最多 8 行），月度 universe refresh 时清理 ticker 已退出 pool 的行
+
+```python
+class StockKeyMetricsQuarterly(Base):
+    __tablename__ = "stock_key_metrics_quarterly"
+    __table_args__ = (
+        UniqueConstraint("ticker", "fiscal_quarter", name="uq_key_metrics_ticker_quarter"),
+    )
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    ticker          = Column(String(10), nullable=False, index=True)
+    fiscal_quarter  = Column(String(12), nullable=False)      # 如 "Q1 2026"
+    period_end_date = Column(Date, nullable=False)
+    gross_margin    = Column(Float, nullable=True)
+    op_margin       = Column(Float, nullable=True)
+    net_margin      = Column(Float, nullable=True)
+    fcf_margin      = Column(Float, nullable=True)
+    roic            = Column(Float, nullable=True)
+    fetched_at      = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```
+
+
+## StockFundamentalsQuarterly（F218 Phase D — T5 Balance Sheet Inflection 缓存）
+
+> 对应数据库表：`stock_fundamentals_quarterly`
+> Feature：F218 D6 T5 Balance Sheet Inflection
+> 决策依据：D097（FMP 3 endpoint 接入 — income-statement / balance-sheet / cash-flow，后 2 个 T2/T5 共享 + weekly cron 复用；修正 2026-05-18）
+
+T5 Balance Sheet Inflection detector 的季度资产负债 + 现金流缓存表。数据源 FMP `/stable/balance-sheet-statement?period=quarter` + `/stable/cash-flow-statement?period=quarter`（**与 T2 共享，d3a 已抓取 cash-flow 与 balance-sheet 时 d6a 在同次 pool rebuild 内复用而非重复 fetch**，D097 修正 2026-05-18）。按 `(ticker, fiscal_quarter)` 唯一（fiscal_quarter 拼接为 FMP `period` + " " + `fiscalYear`，如 "Q2 2026"），weekly pool rebuild 同步刷新。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| fiscal_quarter | String(12) | ✅ | FMP `period` + " " + `fiscalYear` 拼接（如 "Q2 2026"），业务主键 |
+| period_end_date | Date | ✅ | 财季结束日（FMP `date` 字段），用于排序 |
+| total_debt | BigInteger | ❌ | 总债务（美元）；FMP 缺值时 null |
+| cash | BigInteger | ❌ | 现金及等价物（美元） |
+| net_debt | BigInteger | ❌ | 净债务 = total_debt - cash；service 层计算后持久化（FMP 不直接返回） |
+| fcf | BigInteger | ❌ | 自由现金流（美元），FMP `freeCashFlow` 字段 |
+| fetched_at | DateTime | ✅ | 最近一次从 FMP upsert 的 UTC 时间 |
+
+**唯一约束**：`uq_fundamentals_ticker_quarter (ticker, fiscal_quarter)`（NP-sd-2 决策）
+
+**业务规则**：
+- weekly pool rebuild 触发：对 cockpit pool 中每个 ticker，FMP `/balance-sheet-statement?period=quarter&limit=8` + `/cash-flow-statement?period=quarter&limit=8` 各一次 — **与 T2 共享**，d3a 抓取一次后 d6a 在同次 pool rebuild 内复用结果，不重复 fetch（D097 quota 估算 2026-05-18 修正：T2 income-statement + T2/T5 共享 cash-flow + balance-sheet，合计 ~50 ticker × 3 endpoint × 周 1 次 ≈ 150 calls/week，FMP Starter 300 req/min 充裕）
+- `net_debt` 在 service 层计算（`total_debt - cash`），FMP 任一字段 null → net_debt = null
+- upsert 策略：按 `(ticker, fiscal_quarter)` 覆盖；FMP null 字段不擦除既有值
+- T5 detector 读取：净负债连续 2 季环比下降 ≥ 5% OR FCF 从负值切为连续 2 季正 → 触发
+- **消费边界**：同 StockKeyMetricsQuarterly
+- **保留策略**：同 StockKeyMetricsQuarterly（limit=8，月度清理已退出 pool 的 ticker）
+
+```python
+class StockFundamentalsQuarterly(Base):
+    __tablename__ = "stock_fundamentals_quarterly"
+    __table_args__ = (
+        UniqueConstraint("ticker", "fiscal_quarter", name="uq_fundamentals_ticker_quarter"),
+    )
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    ticker          = Column(String(10), nullable=False, index=True)
+    fiscal_quarter  = Column(String(12), nullable=False)
+    period_end_date = Column(Date, nullable=False)
+    total_debt      = Column(BigInteger, nullable=True)
+    cash            = Column(BigInteger, nullable=True)
+    net_debt        = Column(BigInteger, nullable=True)        # service 层算 (total_debt - cash)
+    fcf             = Column(BigInteger, nullable=True)
+    fetched_at      = Column(
         DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )

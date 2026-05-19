@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-15
-last_modified_by: system-design (F217 Phase C — setupType 枚举更新 + decision 端点追加 capitulationEvidence + preferredSetups 默认值)
+confirmed_at: 2026-05-18
+last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Triggers 命名空间 2 endpoint + Namespace 汇总表 cockpit 总数 18 → 20)
 ---
 
 # API-CONTRACT.md
@@ -1985,11 +1985,132 @@ last_modified_by: system-design (F217 Phase C — setupType 枚举更新 + decis
 
 ---
 
+## Cockpit Repricing Triggers（/api/cockpit/repricing-triggers）
+
+> Feature：F218 Cockpit Phase D — Repricing Trigger 完整框架（5 类）
+> 数据源：`repricing_triggers` 表（每日 22:40 UTC cron 写入，详见 ARCHITECTURE §Cockpit Repricing Trigger Service）
+
+### GET /api/cockpit/repricing-triggers/{ticker}
+> Feature：F218 D7 — 单标的 active triggers 查询（DecisionPanel badge 区消费）
+
+**用途**：返回指定 ticker 当前所有 `active=true` 的 repricing triggers，按 `detected_date` 倒序。无命中时返回空数组（**不报 404**，便于前端 badge 区静默不渲染）。
+
+**请求参数**：
+- 路径参数：`ticker`（必填，大小写自动 upper）
+
+**成功响应（200）**：
+```json
+{
+  "data": {
+    "ticker": "NVDA",
+    "triggers": [
+      {
+        "triggerType": "MARGIN_EXPANSION",
+        "detectedDate": "2026-05-15",
+        "confidence": 0.8,
+        "evidence": {
+          "grossMarginTrend": [0.62, 0.66, 0.71],
+          "fcfMarginTrend": [0.32, 0.38, 0.45],
+          "quarters": ["2025Q3", "2025Q4", "2026Q1"],
+          "triggerMetric": "gross_margin",
+          "expansionBp": 900
+        },
+        "computedAt": "2026-05-15T22:40:00Z"
+      },
+      {
+        "triggerType": "EARNINGS_ACCEL",
+        "detectedDate": "2026-05-15",
+        "confidence": 0.8,
+        "evidence": {
+          "epsYoyGrowth": [0.42, 0.61, 0.78],
+          "revenueYoyGrowth": [0.35, 0.52, 0.71],
+          "quarters": ["2025Q3", "2025Q4", "2026Q1"]
+        },
+        "computedAt": "2026-05-15T22:40:00Z"
+      }
+    ]
+  },
+  "message": "success"
+}
+```
+
+**字段说明**：
+- `triggerType` 枚举（5 选 1）：`EARNINGS_ACCEL` / `MARGIN_EXPANSION` / `NEW_PRODUCT` / `SECTOR_CYCLE` / `BALANCE_INFLECTION`
+- `evidence` schema 按 `triggerType` 区分（详见 DATA-MODEL.md §RepricingTrigger）；service 层将 `evidence_json` 反序列化 + camelCase 转换后返回
+- `confidence` 范围 0.0-1.0
+
+**错误响应**：
+
+| 场景 | 错误码 | HTTP |
+|------|--------|------|
+| ticker 无 active triggers | 返回 200 + `triggers: []`，**不报错** | — |
+| ticker 格式非法（含非字母数字） | VALIDATION_ERROR | 422 |
+
+---
+
+### GET /api/cockpit/repricing-triggers
+> Feature：F218 D7 — 全市场 active triggers 查询（RepricingTriggerWidget 消费）
+
+**用途**：返回当前全市场所有 `active=true` 的 triggers，按 `detected_date` 倒序。支持可选 `triggerType` 过滤。
+
+**请求参数**：
+- 查询参数 `triggerType`（可选，单值，枚举 5 选 1）：仅返回该类型 triggers
+- 查询参数 `limit`（可选，默认 100，最大 500）：分页上限
+
+**成功响应（200）**：
+```json
+{
+  "data": {
+    "triggers": [
+      {
+        "ticker": "NVDA",
+        "triggerType": "MARGIN_EXPANSION",
+        "detectedDate": "2026-05-15",
+        "confidence": 0.8,
+        "evidence": { /* 同上 */ },
+        "computedAt": "2026-05-15T22:40:00Z"
+      },
+      {
+        "ticker": "TSLA",
+        "triggerType": "BALANCE_INFLECTION",
+        "detectedDate": "2026-05-14",
+        "confidence": 0.5,
+        "evidence": {
+          "netDebtTrend": [12000000000, 10500000000, 9500000000],
+          "fcfTrend": [-1500000000, 800000000, 2200000000],
+          "quarters": ["2025Q3", "2025Q4", "2026Q1"],
+          "triggerMetric": "net_debt"
+        },
+        "computedAt": "2026-05-14T22:40:00Z"
+      }
+    ],
+    "totalCount": 47,
+    "computedAt": "2026-05-15T22:40:00Z"
+  },
+  "message": "success"
+}
+```
+
+**字段说明**：
+- `triggers` 数组按 `detectedDate` 倒序，同日按 `confidence` 倒序
+- `totalCount`：全市场 active 总数（无视 limit），便于前端 widget 显示"显示 N / 总 M"
+- `computedAt`：最近一次 cron 跑完时间戳（取所有 triggers 中最大 computed_at）；表为空时返回当前 UTC
+
+**错误响应**：
+
+| 场景 | 错误码 | HTTP |
+|------|--------|------|
+| `repricing_triggers` 表为空（冷启动未跑过 cron） | 返回 200 + `triggers: []` + `totalCount: 0`，**不报错** | — |
+| `triggerType` 不在枚举内 | VALIDATION_ERROR | 422 |
+| `limit` 超过 500 | VALIDATION_ERROR | 422 |
+
+---
+
 ## Cockpit/AI Namespace 汇总
 
 | 命名空间 | Endpoint 总数 | Feature 映射 |
 |---------|------|------------|
-| `/api/cockpit/*` | 18 | F200（框架，零 endpoint） / F201 / F202 / F203 (×4) / F204 / F205 / F206 (×8) / F207 |
+| `/api/cockpit/*` | 20 | F200（框架，零 endpoint） / F201 / F202 / F203 (×4) / F204 / F205 / F206 (×8) / F207 / F218 (×2) |
 | `/api/ai/{task_type}` | 1 动态（8 task） | F208（基座） / F209 / F210 / F211 / F213 |
 
 **依赖层级约束**（与 ARCHITECTURE.md 同步）：
