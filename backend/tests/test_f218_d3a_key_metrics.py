@@ -222,3 +222,129 @@ class TestComputeKeyMetricsRow:
             assert result[key] is None, f"{key} should be None"
         for key in {"gross_margin", "op_margin", "net_margin"} - expected_nulls:
             assert result[key] is not None, f"{key} should be non-None"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 6: PoolCacheService — _rebuild_key_metrics integration
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _make_income_record(ticker: str, q: str, fy: str, end: str) -> dict:
+    """Minimal valid FMP income-statement record."""
+    return {
+        "symbol": ticker,
+        "period": q,
+        "fiscalYear": fy,
+        "date": end,
+        "revenue": 10_000,
+        "grossProfit": 7_500,
+        "operatingIncome": 5_000,
+        "netIncome": 4_000,
+    }
+
+
+class _FakeFmpForKeyMetrics:
+    """Minimal FMP stub for PoolCacheService integration tests."""
+
+    def __init__(self, income_by_ticker: dict, error_tickers: set | None = None) -> None:
+        self._income = income_by_ticker
+        self._errors = error_tickers or set()
+
+    def get_income_statement_quarterly(self, symbol: str, limit: int = 8) -> list[dict]:
+        if symbol in self._errors:
+            import httpx
+            raise httpx.HTTPStatusError(
+                "402", request=object(), response=object()  # type: ignore[arg-type]
+            )
+        return self._income.get(symbol, [])
+
+    # Pool cache core calls — return empty to skip cockpit path
+    def get_daily_bars(self, *args, **kwargs) -> list:
+        return []
+
+    def get_financial_growth(self, symbol: str):
+        return None
+
+
+class _FakeBreakoutRepo:
+    """Returns a fake snapshot with a pre-set ticker list."""
+
+    def __init__(self, tickers: list[str]) -> None:
+        class Item:
+            def __init__(self, t): self.ticker = t
+        class Snapshot:
+            def __init__(self, ts): self.items = [Item(t) for t in ts]
+        self._snapshot = Snapshot(tickers)
+
+    def get_latest_snapshot(self):
+        return self._snapshot
+
+
+class TestPoolCacheKeyMetricsIntegration:
+    """Integration tests for PoolCacheService._rebuild_key_metrics."""
+
+    def _make_service(self, db_session, fmp, tickers: list[str]):
+        from app.services.cockpit.pool_cache_service import PoolCacheService
+        svc = PoolCacheService(db_session, fmp)
+        svc._breakout_repo = _FakeBreakoutRepo(tickers)
+        return svc
+
+    def test_rebuild_key_metrics_upserts_successful_tickers(self, db_session):
+        """2 tickers × 2 quarters each → 4 rows upserted; failed ticker doesn't block."""
+        from app.repositories.key_metrics_repository import KeyMetricsRepository
+
+        income = {
+            "NVDA": [
+                _make_income_record("NVDA", "Q1", "2026", "2026-04-30"),
+                _make_income_record("NVDA", "Q2", "2026", "2026-07-31"),
+            ],
+            "AAPL": [
+                _make_income_record("AAPL", "Q1", "2026", "2026-03-31"),
+                _make_income_record("AAPL", "Q2", "2026", "2026-06-30"),
+            ],
+            "FAIL": [],  # returns empty → zero upserts for this ticker
+        }
+        fmp = _FakeFmpForKeyMetrics(income, error_tickers={"ERR"})
+        svc = self._make_service(db_session, fmp, ["NVDA", "AAPL", "FAIL", "ERR"])
+
+        count = svc._rebuild_key_metrics(["NVDA", "AAPL", "FAIL", "ERR"])
+
+        assert count == 4, f"expected 4 upserted rows, got {count}"
+        repo = KeyMetricsRepository(db_session)
+        assert len(repo.get_recent_for_ticker("NVDA")) == 2
+        assert len(repo.get_recent_for_ticker("AAPL")) == 2
+        assert repo.get_recent_for_ticker("FAIL") == []
+        assert repo.get_recent_for_ticker("ERR") == []
+
+    def test_rebuild_does_not_affect_cockpit_pool_cache(self, db_session):
+        """Full rebuild(): cockpit_pool_cache rows unaffected + key_metrics rows written
+        + system_logs contain both rebuilt and key_metrics log entries."""
+        from sqlalchemy import select
+        from app.models.cockpit_pool_cache import CockpitPoolCache
+        from app.models.system_log import SystemLog
+        from app.services.cockpit.pool_cache_service import PoolCacheService
+
+        income = {
+            "MSFT": [_make_income_record("MSFT", "Q1", "2026", "2026-03-31")],
+        }
+        fmp = _FakeFmpForKeyMetrics(income)
+        svc = PoolCacheService(db_session, fmp)
+        svc._breakout_repo = _FakeBreakoutRepo(["MSFT"])
+
+        result = svc.rebuild()
+
+        assert result.status == "ok"
+        # cockpit_pool_cache: MSFT has no bars → 0 rows (consistent with existing behavior)
+        pool_rows = db_session.execute(select(CockpitPoolCache)).scalars().all()
+        assert len(pool_rows) == 0  # no bars → no cockpit row
+
+        # key_metrics: 1 row written
+        from app.repositories.key_metrics_repository import KeyMetricsRepository
+        km_rows = KeyMetricsRepository(db_session).get_recent_for_ticker("MSFT")
+        assert len(km_rows) == 1
+        assert km_rows[0].gross_margin == pytest.approx(0.75)
+
+        # system_logs: must have both OK entries
+        logs = db_session.execute(select(SystemLog)).scalars().all()
+        messages = [l.message for l in logs]
+        assert any("rebuilt" in m for m in messages), "should have cockpit rebuild log"
+        assert any("key_metrics upserted" in m for m in messages), "should have key_metrics log"

@@ -16,9 +16,11 @@ from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
 from app.models.cockpit_pool_cache import CockpitPoolCache
+from app.repositories.key_metrics_repository import KeyMetricsRepository
 from app.repositories.market_breakout_repository import MarketBreakoutRepository
 from app.repositories.system_log_repository import SystemLogRepository
 from app.services.cockpit.pool_helpers import (
+    compute_key_metrics_row_from_income_statement,
     compute_return_ratio_250d,
     compute_rs_percentile_map,
     extract_revenue_growth_yoy_pct,
@@ -44,6 +46,7 @@ class PoolCacheService:
         self._fmp = fmp
         self._breakout_repo = MarketBreakoutRepository(db)
         self._log_repo = SystemLogRepository(db)
+        self._key_metrics_repo = KeyMetricsRepository(db)
 
     def rebuild(self) -> PoolCacheResult:
         """Rebuild the pool cache from the latest trend snapshot.
@@ -106,11 +109,19 @@ class PoolCacheService:
                 self._db.add(row)
             self._db.commit()
 
+            elapsed_cockpit = time.monotonic() - t0
+            self._log_repo.create(
+                "OK", "pool_cache",
+                f"rebuilt N={len(rows)} elapsed={elapsed_cockpit:.1f}s",
+            )
+
+            km_upserted = self._rebuild_key_metrics(tickers)
             elapsed = time.monotonic() - t0
             self._log_repo.create(
                 "OK", "pool_cache",
-                f"rebuilt N={len(rows)} elapsed={elapsed:.1f}s",
+                f"key_metrics upserted={km_upserted} elapsed={elapsed:.1f}s",
             )
+
             return PoolCacheResult(status="ok", upserted=len(rows), elapsed_seconds=elapsed)
 
         except Exception as exc:
@@ -170,3 +181,41 @@ class PoolCacheService:
                 ticker, growth = future.result()
                 result[ticker] = growth
         return result
+
+    def _fetch_income_statement_concurrent(
+        self, tickers: list[str],
+    ) -> dict[str, list[dict]]:
+        """Fetch quarterly income-statements for all tickers concurrently (fail-open per ticker)."""
+        def _one(ticker: str) -> tuple[str, list[dict]]:
+            try:
+                return ticker, self._fmp.get_income_statement_quarterly(ticker)
+            except Exception:
+                return ticker, []
+
+        result: dict[str, list[dict]] = {}
+        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
+            futures = {executor.submit(_one, t): t for t in tickers}
+            for future in as_completed(futures):
+                ticker, records = future.result()
+                result[ticker] = records
+        return result
+
+    def _rebuild_key_metrics(self, tickers: list[str]) -> int:
+        """Fetch income-statements and upsert key_metrics rows for all pool tickers.
+
+        Fails open per ticker: FMP errors / empty responses skip that ticker without
+        aborting the batch. Returns total upserted row count.
+        """
+        statements_by_ticker = self._fetch_income_statement_concurrent(tickers)
+        upserted = 0
+        for ticker, records in statements_by_ticker.items():
+            for record in records:
+                row = compute_key_metrics_row_from_income_statement(record)
+                if row is None:
+                    continue
+                try:
+                    self._key_metrics_repo.upsert(row)
+                    upserted += 1
+                except Exception as exc:
+                    logger.warning("key_metrics upsert failed ticker=%s: %s", ticker, exc)
+        return upserted
