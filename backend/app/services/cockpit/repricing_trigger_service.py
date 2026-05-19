@@ -22,6 +22,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.repositories.earnings_event_repository import EarningsEventRepository
+from app.repositories.key_metrics_repository import KeyMetricsRepository
 from app.repositories.repricing_trigger_repository import RepricingTriggerRepository
 from app.repositories.stock_repository import StockRepository
 
@@ -43,6 +44,14 @@ T1_HIGH_CONFIDENCE_YOY = 0.30   # 最近一季 EPS YoY ≥ 30% → confidence=0.
 T1_HIGH_CONFIDENCE_SCORE = 0.8
 T1_DEFAULT_CONFIDENCE = 0.5
 
+# T2 MARGIN_EXPANSION detector 参数
+T2_LOOKBACK_QUARTERS = 6            # 需 Q0..Q-1 + 上年同期 Q-4..Q-5 = 至少 6 季
+T2_GROSS_THRESHOLD_BP = 200         # gross_margin YoY 扩张阈值（基点）
+T2_FCF_THRESHOLD_BP = 300           # fcf_margin YoY 扩张阈值（基点）
+T2_HIGH_CONFIDENCE_BP = 400         # Q0 YoY 扩张 ≥ 400bp → confidence=0.8（DATA-MODEL §1107）
+T2_HIGH_CONFIDENCE_SCORE = 0.8
+T2_DEFAULT_CONFIDENCE = 0.5
+
 
 @dataclass
 class DetectorResult:
@@ -57,6 +66,7 @@ class RepricingTriggerService:
         self._repo = RepricingTriggerRepository(db)
         self._stocks = StockRepository(db)
         self._earnings = EarningsEventRepository(db)
+        self._key_metrics = KeyMetricsRepository(db)
 
     # ── Public ────────────────────────────────────────────────────────────────
 
@@ -202,3 +212,29 @@ class RepricingTriggerService:
 def _quarter_label(d: date) -> str:
     """Map a date to calendar-quarter label, e.g. 2026-02-15 → "2026Q1"."""
     return f"{d.year}Q{(d.month - 1) // 3 + 1}"
+
+
+def _eval_margin_arm(
+    q0: float | None, q1: float | None,
+    q4: float | None, q5: float | None,
+    *, threshold_bp: int,
+) -> tuple[bool, int]:
+    """評価単臂（gross 或 fcf）：Q0 vs Q-4 AND Q-1 vs Q-5 双 YoY 都 ≥ threshold_bp → 命中.
+
+    Returns (hit, q0_yoy_bp)：
+      - 任一字段 None → (False, 0)
+      - 双 YoY 都 ≥ threshold → (True, q0_yoy_bp)
+      - 任一 YoY < threshold → (False, q0_yoy_bp)
+    q0_yoy_bp 为 round((q0 - q4) * 10000)，非命中场景仍计算用于调试（caller 忽略）。
+    """
+    if q0 is None or q1 is None or q4 is None or q5 is None:
+        return False, 0
+    q0_bp = round((q0 - q4) * 10000)
+    q1_bp = round((q1 - q5) * 10000)
+    hit = (q0_bp >= threshold_bp) and (q1_bp >= threshold_bp)
+    return hit, q0_bp
+
+
+def _round_or_none(v: float | None, ndigits: int = 4) -> float | None:
+    """Round to ndigits, preserving None."""
+    return None if v is None else round(v, ndigits)
