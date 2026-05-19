@@ -21,6 +21,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.repositories import news_cache_repository as news_repo
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.key_metrics_repository import KeyMetricsRepository
 from app.repositories.repricing_trigger_repository import RepricingTriggerRepository
@@ -51,6 +52,17 @@ T2_FCF_THRESHOLD_BP = 300           # fcf_margin YoY 扩张阈值（基点）
 T2_HIGH_CONFIDENCE_BP = 400         # Q0 YoY 扩张 ≥ 400bp → confidence=0.8（DATA-MODEL §1107）
 T2_HIGH_CONFIDENCE_SCORE = 0.8
 T2_DEFAULT_CONFIDENCE = 0.5
+
+# T3 NEW_PRODUCT (D4a 关键词扫描) detector 参数 — D098
+T3_LOOKBACK_DAYS = 30
+T3_KEYWORDS = (
+    "launch", "unveil", "introduce", "release",
+    "AI", "platform", "new product",
+)
+T3_MIN_TOTAL_HITS = 2
+T3_MAX_NEWS_LINKS = 5
+T3_DEFAULT_CONFIDENCE = 0.5  # DATA-MODEL §1107: T3 无高置信路径
+T3_FETCH_LIMIT = 200          # news_cache 30 日内拉取上限（DB-level cap）
 
 
 @dataclass
@@ -246,8 +258,55 @@ class RepricingTriggerService:
     def _detect_new_product(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T3 D4a — F218-d4 实装。当前返回 None。"""
-        return None
+        """T3 D4a — 最近 30 日该 ticker 的 news headlines 关键词命中总数 ≥ 2 → 触发.
+
+        关键词集合 T3_KEYWORDS（D098）；命中规则：title 大小写不敏感子串匹配；
+        同一文章不同关键词都计入；同一关键词在同一标题出现多次按 1 次计（避免重复词刷量）.
+        evidence：keyword_hits 按关键词聚合 count + news_links 按 published_at DESC 去重保留前 5.
+        confidence 恒为 0.5（DATA-MODEL §1107，T3 无高置信路径）.
+        """
+        articles = news_repo.get_recent_for_ticker(
+            self.db, ticker,
+            scan_date=scan_date,
+            lookback_days=T3_LOOKBACK_DAYS,
+            limit=T3_FETCH_LIMIT,
+        )
+        if not articles:
+            return None
+
+        keyword_counts: dict[str, int] = {}
+        hit_urls_in_order: list[str] = []  # 已是 published_at DESC（repo 排序）
+
+        for art in articles:
+            title_lower = (art.title or "").lower()
+            hit_in_this_article = False
+            for kw in T3_KEYWORDS:
+                if kw.lower() in title_lower:
+                    keyword_counts[kw] = keyword_counts.get(kw, 0) + 1
+                    hit_in_this_article = True
+            if hit_in_this_article and art.url and art.url not in hit_urls_in_order:
+                hit_urls_in_order.append(art.url)
+
+        total_hits = sum(keyword_counts.values())
+        if total_hits < T3_MIN_TOTAL_HITS:
+            return None
+
+        # 按 count DESC 排序（同 count 按 T3_KEYWORDS 原顺序稳定排序）
+        keyword_hits = [
+            {"keyword": kw, "count": keyword_counts[kw]}
+            for kw in T3_KEYWORDS
+            if kw in keyword_counts
+        ]
+        keyword_hits.sort(key=lambda x: x["count"], reverse=True)
+
+        return DetectorResult(
+            confidence=T3_DEFAULT_CONFIDENCE,
+            evidence={
+                "keyword_hits": keyword_hits,
+                "news_links": hit_urls_in_order[:T3_MAX_NEWS_LINKS],
+                "scan_window_days": T3_LOOKBACK_DAYS,
+            },
+        )
 
     def _detect_sector_cycle(
         self, ticker: str, scan_date: date,
