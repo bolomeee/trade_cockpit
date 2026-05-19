@@ -10,6 +10,8 @@ Build order (wip commits):
 """
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
+
 import pytest
 
 
@@ -91,3 +93,71 @@ class TestFmpClientIncomeStatementQuarterly:
         result = client.get_income_statement_quarterly("MSFT", limit=8)
 
         assert result == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 4: KeyMetricsRepository — upsert / null-not-erase / get_recent
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestKeyMetricsRepository:
+    """Unit tests (sqlite in-memory via db_session fixture) for KeyMetricsRepository."""
+
+    def _base_row(self, ticker: str = "NVDA", fiscal_quarter: str = "Q2 2026") -> dict:
+        return {
+            "ticker": ticker,
+            "fiscal_quarter": fiscal_quarter,
+            "period_end_date": date(2026, 7, 31),
+            "gross_margin": 0.75,
+            "op_margin": 0.60,
+            "net_margin": 0.533,
+            "fcf_margin": None,
+            "roic": None,
+            "fetched_at": datetime(2026, 5, 19, 6, 30, tzinfo=timezone.utc),
+        }
+
+    def test_upsert_happy_path(self, db_session):
+        """First insert creates row; second upsert with changed gross_margin overwrites."""
+        from app.repositories.key_metrics_repository import KeyMetricsRepository
+
+        repo = KeyMetricsRepository(db_session)
+        row = repo.upsert(self._base_row())
+        assert row.ticker == "NVDA"
+        assert row.fiscal_quarter == "Q2 2026"
+        assert row.gross_margin == pytest.approx(0.75)
+
+        updated = repo.upsert({**self._base_row(), "gross_margin": 0.80})
+        assert updated.gross_margin == pytest.approx(0.80)
+        assert updated.op_margin == pytest.approx(0.60)
+
+    def test_upsert_null_not_erase(self, db_session):
+        """null-not-erase: second upsert with gross_margin=None keeps existing value;
+        non-null fcf_margin in second upsert fills the previously-null column."""
+        from app.repositories.key_metrics_repository import KeyMetricsRepository
+
+        repo = KeyMetricsRepository(db_session)
+        repo.upsert(self._base_row())  # gross_margin=0.75, fcf_margin=None
+
+        row2 = repo.upsert({
+            **self._base_row(),
+            "gross_margin": None,   # should NOT overwrite 0.75
+            "fcf_margin": 0.18,     # should fill in
+        })
+        assert row2.gross_margin == pytest.approx(0.75), "existing gross_margin must be preserved"
+        assert row2.fcf_margin == pytest.approx(0.18), "new fcf_margin must be written"
+
+    def test_get_recent_for_ticker(self, db_session):
+        """Returns rows for the correct ticker only, ordered by period_end_date DESC, limited."""
+        from app.repositories.key_metrics_repository import KeyMetricsRepository
+
+        repo = KeyMetricsRepository(db_session)
+        for q, end in [("Q1 2026", date(2026, 3, 31)), ("Q2 2026", date(2026, 6, 30))]:
+            repo.upsert({**self._base_row(ticker="NVDA", fiscal_quarter=q), "period_end_date": end})
+        repo.upsert({**self._base_row(ticker="AAPL", fiscal_quarter="Q1 2026"), "period_end_date": date(2026, 3, 31)})
+
+        rows = repo.get_recent_for_ticker("NVDA", limit=4)
+        assert len(rows) == 2
+        assert all(r.ticker == "NVDA" for r in rows)
+        assert rows[0].period_end_date >= rows[1].period_end_date, "should be DESC"
+
+        empty = repo.get_recent_for_ticker("TSLA", limit=4)
+        assert empty == []
