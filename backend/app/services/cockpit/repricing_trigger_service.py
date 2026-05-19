@@ -258,13 +258,7 @@ class RepricingTriggerService:
     def _detect_new_product(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T3 D4a — 最近 30 日该 ticker 的 news headlines 关键词命中总数 ≥ 2 → 触发.
-
-        关键词集合 T3_KEYWORDS（D098）；命中规则：title 大小写不敏感子串匹配；
-        同一文章不同关键词都计入；同一关键词在同一标题出现多次按 1 次计（避免重复词刷量）.
-        evidence：keyword_hits 按关键词聚合 count + news_links 按 published_at DESC 去重保留前 5.
-        confidence 恒为 0.5（DATA-MODEL §1107，T3 无高置信路径）.
-        """
+        """T3 D4a — 30-day news headline keyword scan; ≥2 total hits → trigger (D098)."""
         articles = news_repo.get_recent_for_ticker(
             self.db, ticker,
             scan_date=scan_date,
