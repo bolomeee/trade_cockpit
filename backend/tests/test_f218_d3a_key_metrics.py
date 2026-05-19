@@ -161,3 +161,64 @@ class TestKeyMetricsRepository:
 
         empty = repo.get_recent_for_ticker("TSLA", limit=4)
         assert empty == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 5: compute_key_metrics_row_from_income_statement — pure function
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestComputeKeyMetricsRow:
+    """Unit tests for the pool_helpers pure function."""
+
+    _HAPPY_PAYLOAD = {
+        "symbol": "NVDA",
+        "period": "Q2",
+        "fiscalYear": "2026",
+        "date": "2026-07-31",
+        "revenue": 30_000,
+        "grossProfit": 22_500,
+        "operatingIncome": 18_000,
+        "netIncome": 16_000,
+    }
+
+    def test_happy_path(self):
+        """Happy path: correct margins, fiscal_quarter, period_end_date, exact key set."""
+        from app.services.cockpit.pool_helpers import compute_key_metrics_row_from_income_statement
+
+        result = compute_key_metrics_row_from_income_statement(self._HAPPY_PAYLOAD)
+
+        assert result is not None
+        assert result["ticker"] == "NVDA"
+        assert result["fiscal_quarter"] == "Q2 2026"
+        assert result["period_end_date"] == date(2026, 7, 31)
+        assert result["gross_margin"] == pytest.approx(0.75)
+        assert result["op_margin"] == pytest.approx(0.60)
+        assert result["net_margin"] == pytest.approx(16_000 / 30_000)
+        assert isinstance(result["fetched_at"], datetime)
+        assert set(result.keys()) == {
+            "ticker", "fiscal_quarter", "period_end_date",
+            "gross_margin", "op_margin", "net_margin", "fetched_at",
+        }, "must not include fcf_margin or roic"
+
+    @pytest.mark.parametrize("patch,expected_nulls,expect_none", [
+        ({"revenue": 0}, {"gross_margin", "op_margin", "net_margin"}, False),
+        ({"grossProfit": None}, {"gross_margin"}, False),
+        ({"revenue": None}, {"gross_margin", "op_margin", "net_margin"}, False),
+        ({"symbol": None}, set(), True),
+    ])
+    def test_null_and_zero_safety(self, patch, expected_nulls, expect_none):
+        """revenue=0 / field=None → margin=None; missing id fields → returns None."""
+        from app.services.cockpit.pool_helpers import compute_key_metrics_row_from_income_statement
+
+        payload = {**self._HAPPY_PAYLOAD, **patch}
+        result = compute_key_metrics_row_from_income_statement(payload)
+
+        if expect_none:
+            assert result is None
+            return
+
+        assert result is not None
+        for key in expected_nulls:
+            assert result[key] is None, f"{key} should be None"
+        for key in {"gross_margin", "op_margin", "net_margin"} - expected_nulls:
+            assert result[key] is not None, f"{key} should be non-None"

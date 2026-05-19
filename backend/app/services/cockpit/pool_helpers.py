@@ -95,3 +95,57 @@ def passes_fundamental_sanity(
     if growth_yoy_pct is None:
         return True
     return growth_yoy_pct >= threshold_pct
+
+
+def compute_key_metrics_row_from_income_statement(
+    payload: dict,
+) -> dict | None:
+    """Map one FMP /income-statement?period=quarter record → dict for KeyMetricsRepository.upsert.
+
+    Returns None if `payload` lacks required identification fields (symbol/period/fiscalYear/date).
+    For numeric inputs where revenue is missing/zero, the corresponding margin field is set to None
+    (D097 §5 + DATA-MODEL.md null rules). No rounding — DB Float stores natural precision.
+
+    Output keys (exactly 7): ticker, fiscal_quarter, period_end_date,
+    gross_margin, op_margin, net_margin, fetched_at.
+    Does NOT include fcf_margin / roic (F218-d6a will partial-upsert those via null-not-erase).
+    """
+    from datetime import date, datetime, timezone
+
+    symbol = payload.get("symbol")
+    period = payload.get("period")
+    fiscal_year = payload.get("fiscalYear")
+    raw_date = payload.get("date")
+
+    if not all([symbol, period, fiscal_year, raw_date]):
+        return None
+
+    try:
+        period_end_date = date.fromisoformat(str(raw_date))
+    except (ValueError, TypeError):
+        return None
+
+    fiscal_quarter = f"{period} {fiscal_year}"
+
+    revenue = payload.get("revenue")
+    gross_profit = payload.get("grossProfit")
+    operating_income = payload.get("operatingIncome")
+    net_income = payload.get("netIncome")
+
+    def _margin(numerator, denom) -> float | None:
+        if denom is None or denom == 0 or numerator is None:
+            return None
+        try:
+            return float(numerator) / float(denom)
+        except (TypeError, ValueError, ZeroDivisionError):
+            return None
+
+    return {
+        "ticker": str(symbol),
+        "fiscal_quarter": fiscal_quarter,
+        "period_end_date": period_end_date,
+        "gross_margin": _margin(gross_profit, revenue),
+        "op_margin": _margin(operating_income, revenue),
+        "net_margin": _margin(net_income, revenue),
+        "fetched_at": datetime.now(timezone.utc),
+    }
