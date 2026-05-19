@@ -175,8 +175,73 @@ class RepricingTriggerService:
     def _detect_margin_expansion(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T2 — F218-d3b 实装。当前返回 None。"""
-        return None
+        """T2: 最近 2 季 gross_margin 或 fcf_margin YoY 扩张 ≥ 阈值 → 触发.
+
+        读最近 ≥ 6 季 stock_key_metrics_quarterly（DESC by period_end_date）：
+          - gross 臂：Q0 vs Q-4 AND Q-1 vs Q-5 都 ≥ 200bp 扩张
+          - fcf 臂：  Q0 vs Q-4 AND Q-1 vs Q-5 都 ≥ 300bp 扩张
+        任一臂数据缺失（rows 不足 / 字段 None）→ 跳过该臂；两臂全空 → return None.
+        两臂都命中 → trigger_metric=gross_margin（DATA-MODEL §1098 默认偏好）.
+        """
+        rows = self._key_metrics.get_recent_for_ticker(
+            ticker, limit=T2_LOOKBACK_QUARTERS,
+        )
+        if len(rows) < T2_LOOKBACK_QUARTERS:
+            return None
+
+        # rows[0]=Q0（最新）, rows[1]=Q-1, rows[4]=Q-4, rows[5]=Q-5
+        q0, q1, q4, q5 = rows[0], rows[1], rows[4], rows[5]
+
+        gross_hit, gross_q0_bp = _eval_margin_arm(
+            q0.gross_margin, q1.gross_margin, q4.gross_margin, q5.gross_margin,
+            threshold_bp=T2_GROSS_THRESHOLD_BP,
+        )
+        fcf_hit, fcf_q0_bp = _eval_margin_arm(
+            q0.fcf_margin, q1.fcf_margin, q4.fcf_margin, q5.fcf_margin,
+            threshold_bp=T2_FCF_THRESHOLD_BP,
+        )
+
+        if not (gross_hit or fcf_hit):
+            return None
+
+        # gross 优先（D096 默认偏好），fcf 备选
+        if gross_hit:
+            trigger_metric = "gross_margin"
+            expansion_bp = gross_q0_bp
+        else:
+            trigger_metric = "fcf_margin"
+            expansion_bp = fcf_q0_bp
+
+        confidence = (
+            T2_HIGH_CONFIDENCE_SCORE
+            if expansion_bp >= T2_HIGH_CONFIDENCE_BP
+            else T2_DEFAULT_CONFIDENCE
+        )
+
+        # trend 3 个值：[Q-2, Q-1, Q0] 时间顺序，与 DATA-MODEL §1098 example 对齐
+        q2 = rows[2]
+        gross_trend = [
+            _round_or_none(q2.gross_margin),
+            _round_or_none(q1.gross_margin),
+            _round_or_none(q0.gross_margin),
+        ]
+        fcf_trend = [
+            _round_or_none(q2.fcf_margin),
+            _round_or_none(q1.fcf_margin),
+            _round_or_none(q0.fcf_margin),
+        ]
+        quarters = [_quarter_label(r.period_end_date) for r in (q2, q1, q0)]
+
+        return DetectorResult(
+            confidence=confidence,
+            evidence={
+                "gross_margin_trend": gross_trend,
+                "fcf_margin_trend": fcf_trend,
+                "quarters": quarters,
+                "trigger_metric": trigger_metric,
+                "expansion_bp": expansion_bp,
+            },
+        )
 
     def _detect_new_product(
         self, ticker: str, scan_date: date,
