@@ -1,4 +1,20 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d4 Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - news_cache_repository.py +get_recent_for_ticker（as_of_date SQL窗+Python symbols过滤+DESC）
+  - repricing_trigger_service.py +T3_*常量段 +_detect_new_product实装（47行）
+  - test_repricing_trigger_new_product.py 新建 10测试 3class 全绿
+  - 单元测试：10/10 通过
+  - 全量回归：1179 passed，9 pre-existing failures（与d3b基线一致）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+📊 F218 进度：d1 ✅ | d2 ✅ | d3a ✅ | d3b ✅ | d4 🔍 needs_review | d5~d7b ⬜
+🔜 下一步：F218-d4 acceptance，然后 F218-d5（T4 SECTOR_CYCLE detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-19] F218-d3a 验收通过 ✅
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -347,3 +363,50 @@
 
 📊 F218 進度：d1 ✅ | d2 ✅ | d3a ✅ | d3b ✅ | d4~d7b ⬜ design_needed
 🔜 次のステップ：F218-d4（T3 NEW_PRODUCT detector）Sprint Contract 協商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d4 Sprint Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Sprint Contract 起草 + 确认
+  - docs/开发/sprint-contracts/F218-d4-contract.md（status: confirmed）
+  - 范围：T3 NEW_PRODUCT detector D4a 关键词扫描实装（d1 skeleton 第 3 个占位）
+  - 文件预算：3 文件（远低于 6 上限）
+    1. backend/app/repositories/news_cache_repository.py（修改：+ get_recent_for_ticker 模块级函数）
+    2. backend/app/services/cockpit/repricing_trigger_service.py（修改：T3 常量段 + _detect_new_product 实装）
+    3. backend/tests/test_repricing_trigger_new_product.py（新建：10 测试 / 3 class）
+  - 关键策略：
+    · 关键词大小写不敏感子串匹配（D098 原文 7 项不动）
+    · 命中总数 ≥ 2 触发；同关键词同标题计 1（防词刷）
+    · ticker → 文章映射：as_of_date SQL 窗 + Python 端 symbols 过滤（不加 ticker 列，不动 news 表结构）
+    · confidence 恒 0.5（DATA-MODEL §1107，T3 无高置信路径）
+    · evidence_json: keyword_hits（count DESC）/ news_links（published_at DESC + 去重 + ≤5）/ scan_window_days=30
+
+🔧 系统变更：
+  - features.json:
+    · F218.sub_sprints["F218-d4"]: design_needed → contract_agreed
+    · F218.last_updated: 2026-05-19
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - _pipeline_status.active_sprint: F218-d3b → F218-d4
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D098 已覆盖；NP-d4-1~10 是实施级决策，由 contract 承载，不升 DXXX）
+
+⚠️ 待你决策：
+  无未决事项（NP-d4-1~10 全部按推荐确认）
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: ✅ done
+  F218-d4: 🟡 contract_agreed
+  F218-d5 ~ F218-d7b: ⬜ design_needed (5 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d4，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d4-contract.md，
+  进入 Generator 模式，从开发步骤 1（news_cache_repository.get_recent_for_ticker）开始。
+  ──────────────────────────────────────────

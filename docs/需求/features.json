@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d3b",
-    "active_sprint_phase": "contract_agreed",
+    "active_sprint": "F218-d4",
+    "active_sprint_phase": "needs_review",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4606,7 +4606,7 @@
         "F218-d2": "done",
         "F218-d3a": "done",
         "F218-d3b": "done",
-        "F218-d4": "design_needed",
+        "F218-d4": "needs_review",
         "F218-d5": "design_needed",
         "F218-d6a": "design_needed",
         "F218-d6b": "design_needed",
@@ -4764,6 +4764,20 @@
           "date": "2026-05-19",
           "status": "done",
           "note": "T2 MARGIN_EXPANSION detector implemented: _detect_margin_expansion + _eval_margin_arm + _round_or_none + 10 tests (15 pass with parametrize)"
+        },
+        {
+          "date": "2026-05-19",
+          "subtask": "F218-d4",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Contract 协商（F218-d4 T3 NEW_PRODUCT detector）",
+          "changes": "F218-d4 Sprint Contract 起草并确认：范围 = T3 NEW_PRODUCT detector D4a 关键词扫描实装（d1 skeleton 第 3 个占位 → 真实业务逻辑），3 文件 / 10 测试 / 不动 cron / API / 前端 / news_articles_cache 表结构。修改 news_cache_repository.py（+1 模块级函数 get_recent_for_ticker，as_of_date SQL 窗 + Python 端 symbols 过滤）+ repricing_trigger_service.py（_detect_new_product 占位换实装 + T3_* 常量段 7 行含 T3_KEYWORDS 与 D098 原文 7 项一致）+ 新测试文件 test_repricing_trigger_new_product.py（10 测试 3 class）。核心业务逻辑：扫最近 30 日该 ticker 文章 headlines，关键词大小写不敏感子串匹配，同关键词同标题计 1（防词刷），命中总数 ≥ 2 触发；confidence 恒 0.5（DATA-MODEL §1107 锁死，T3 无高置信路径）；evidence_json 含 keyword_hits（按 count DESC 排序）/ news_links（published_at DESC 去重至多 5）/ scan_window_days=30。关键决策 NP-d4-1~10 全部按推荐：(1) 子串+lower 匹配（接受 AI→Ainsley 偶发假阳，D098 §3.5 已明确）/ (2) 跨文章总命中 ≥ 2（同关键词同标题计 1）/ (3) SQL 窗 + Python symbols 过滤（不加 ticker 列，不动 news 表）/ (4) T3_FETCH_LIMIT=200 / (5) confidence 恒 0.5 / (6) news_links published_at DESC + 去重 + ≤5 / (7) get_recent_for_ticker 模块级（news_cache_repository.py 内）/ (8) symbols 比较前都 upper / (9) T3_KEYWORDS D098 原文 7 项不动 / (10) news_links 不带 published_at。features.json 更新：F218-d4 design_needed → contract_agreed；_pipeline_status.active_sprint=F218-d4；active_sprint_phase=contract_agreed。下一步：feature-dev A-2 Generator 模式，3 步开发顺序：news_cache_repository.get_recent_for_ticker → T3 常量段 + _detect_new_product 实装（含 import / 常量 / 主体） → 10 测试，每步通过最小验证后 wip commit。"
+        },
+        {
+          "date": "2026-05-19",
+          "phase": "needs_review",
+          "subtask": "F218-d4",
+          "session": "feature-dev A-2 Generator 完成 + A-3 Evaluator 通过（F218-d4 T3 NEW_PRODUCT detector）",
+          "changes": "F218-d4 全部 3 步 Generator 完成，10 测试全绿，Evaluator 自检通过，全量回归 9 failures 均为 pre-existing（d3b baseline 相同）。实装清单：(1) news_cache_repository.py 追加 get_recent_for_ticker(db, ticker, *, scan_date, lookback_days, limit=200) → list[NewsArticle]，as_of_date SQL 窗 [scan_date-lookback_days, scan_date] inclusive 双端 + DB-level limit cap + published_at DESC，Python 端 symbols.upper() 过滤；import 行追加 timedelta；既有 6 函数全部不动；(2) repricing_trigger_service.py 追加 from app.repositories import news_cache_repository as news_repo + T3_* 常量段 7 行（T3_LOOKBACK_DAYS=30 / T3_KEYWORDS D098 原文 7 项 / T3_MIN_TOTAL_HITS=2 / T3_MAX_NEWS_LINKS=5 / T3_DEFAULT_CONFIDENCE=0.5 / T3_FETCH_LIMIT=200）+ _detect_new_product 占位替换为完整实装 47 行（≤50 行合格）：关键词大小写不敏感子串 + 同关键词同标题计 1 + keyword_hits count DESC stable sort + news_links published_at DESC去重≤5 + confidence 恒 0.5；(3) test_repricing_trigger_new_product.py 新建 10 测试 3 class（TestNewsCacheGetRecentForTicker N1-N3 / TestDetectNewProduct N4-N9 / TestNewProductEndToEnd N10），N6-sub/N11 嵌入 N5/N4 断言。wip commits: fb4d801(Step1 repo) → 475b2ef(Step2 service) → 4fc7c96(Step3 tests)。代码质量：函数 47 行 ≤ 50 / 无硬编码魔法值 / 无副作用 / 无死代码。设计约束全部守住：不加 ticker 列 / 不接 FMP / 不动 cron/API/前端 / T4/T5 仍占位。F218-d4 phase → needs_review。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
