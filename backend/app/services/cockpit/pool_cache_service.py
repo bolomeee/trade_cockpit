@@ -16,13 +16,16 @@ from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
 from app.models.cockpit_pool_cache import CockpitPoolCache
+from app.repositories.fundamentals_repository import FundamentalsRepository
 from app.repositories.key_metrics_repository import KeyMetricsRepository
 from app.repositories.market_breakout_repository import MarketBreakoutRepository
 from app.repositories.system_log_repository import SystemLogRepository
 from app.services.cockpit.pool_helpers import (
+    compute_fundamentals_row_from_balance_cash,
     compute_key_metrics_row_from_income_statement,
     compute_return_ratio_250d,
     compute_rs_percentile_map,
+    compute_supplemental_key_metrics_from_is_bs_cf,
     extract_revenue_growth_yoy_pct,
 )
 
@@ -47,6 +50,7 @@ class PoolCacheService:
         self._breakout_repo = MarketBreakoutRepository(db)
         self._log_repo = SystemLogRepository(db)
         self._key_metrics_repo = KeyMetricsRepository(db)
+        self._fundamentals_repo = FundamentalsRepository(db)
 
     def rebuild(self) -> PoolCacheResult:
         """Rebuild the pool cache from the latest trend snapshot.
@@ -115,11 +119,18 @@ class PoolCacheService:
                 f"rebuilt N={len(rows)} elapsed={elapsed_cockpit:.1f}s",
             )
 
-            km_upserted = self._rebuild_key_metrics(tickers)
+            km_upserted, is_by_ticker = self._rebuild_key_metrics(tickers)
+            elapsed_km = time.monotonic() - t0
+            self._log_repo.create(
+                "OK", "pool_cache",
+                f"key_metrics upserted={km_upserted} elapsed={elapsed_km:.1f}s",
+            )
+
+            fund_upserted, supp_km_upserted = self._rebuild_fundamentals(tickers, is_by_ticker)
             elapsed = time.monotonic() - t0
             self._log_repo.create(
                 "OK", "pool_cache",
-                f"key_metrics upserted={km_upserted} elapsed={elapsed:.1f}s",
+                f"fundamentals upserted={fund_upserted} supplemental_key_metrics upserted={supp_km_upserted} elapsed={elapsed:.1f}s",
             )
 
             return PoolCacheResult(status="ok", upserted=len(rows), elapsed_seconds=elapsed)
@@ -200,11 +211,15 @@ class PoolCacheService:
                 result[ticker] = records
         return result
 
-    def _rebuild_key_metrics(self, tickers: list[str]) -> int:
+    def _rebuild_key_metrics(
+        self, tickers: list[str],
+    ) -> tuple[int, dict[str, list[dict]]]:
         """Fetch income-statements and upsert key_metrics rows for all pool tickers.
 
         Fails open per ticker: FMP errors / empty responses skip that ticker without
-        aborting the batch. Returns total upserted row count.
+        aborting the batch.
+        Returns (upserted_count, income_statements_by_ticker) — IS dict passed to
+        _rebuild_fundamentals to avoid re-fetching the same endpoint (NP-d6a-4).
         """
         statements_by_ticker = self._fetch_income_statement_concurrent(tickers)
         upserted = 0
@@ -218,4 +233,99 @@ class PoolCacheService:
                     upserted += 1
                 except Exception as exc:
                     logger.warning("key_metrics upsert failed ticker=%s: %s", ticker, exc)
-        return upserted
+        return upserted, statements_by_ticker
+
+    def _fetch_balance_sheet_concurrent(
+        self, tickers: list[str],
+    ) -> dict[str, list[dict]]:
+        """Fetch quarterly balance-sheets for all tickers concurrently (fail-open per ticker)."""
+        def _one(ticker: str) -> tuple[str, list[dict]]:
+            try:
+                return ticker, self._fmp.get_balance_sheet_quarterly(ticker)
+            except Exception:
+                return ticker, []
+
+        result: dict[str, list[dict]] = {}
+        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
+            futures = {executor.submit(_one, t): t for t in tickers}
+            for future in as_completed(futures):
+                ticker, records = future.result()
+                result[ticker] = records
+        return result
+
+    def _fetch_cash_flow_concurrent(
+        self, tickers: list[str],
+    ) -> dict[str, list[dict]]:
+        """Fetch quarterly cash-flow statements for all tickers concurrently (fail-open per ticker)."""
+        def _one(ticker: str) -> tuple[str, list[dict]]:
+            try:
+                return ticker, self._fmp.get_cash_flow_quarterly(ticker)
+            except Exception:
+                return ticker, []
+
+        result: dict[str, list[dict]] = {}
+        with ThreadPoolExecutor(max_workers=_FMP_MAX_WORKERS) as executor:
+            futures = {executor.submit(_one, t): t for t in tickers}
+            for future in as_completed(futures):
+                ticker, records = future.result()
+                result[ticker] = records
+        return result
+
+    def _rebuild_fundamentals(
+        self,
+        tickers: list[str],
+        income_statements_by_ticker: dict[str, list[dict]],
+    ) -> tuple[int, int]:
+        """Fetch BS+CF, pair with IS, upsert fundamentals + supplemental key_metrics rows.
+
+        Pairing by (ticker, fiscal_quarter): only quarters present in both BS and CF are
+        processed. IS is sourced from the already-fetched income_statements_by_ticker to
+        avoid re-calling FMP (NP-d6a-4). Fails open per ticker/quarter.
+        Returns (fundamentals_upserted, supplemental_key_metrics_upserted).
+        """
+        bs_by_ticker = self._fetch_balance_sheet_concurrent(tickers)
+        cf_by_ticker = self._fetch_cash_flow_concurrent(tickers)
+
+        fund_upserted = 0
+        supp_km_upserted = 0
+
+        for ticker in tickers:
+            bs_records = bs_by_ticker.get(ticker, [])
+            cf_records = cf_by_ticker.get(ticker, [])
+            is_records = income_statements_by_ticker.get(ticker, [])
+            if not bs_records or not cf_records:
+                continue
+
+            def _quarter_key(r: dict) -> str:
+                return f"{r.get('period', '')} {r.get('fiscalYear', '')}"
+
+            cf_by_quarter = {_quarter_key(r): r for r in cf_records}
+            is_by_quarter = {_quarter_key(r): r for r in is_records}
+
+            for bs_record in bs_records:
+                q = _quarter_key(bs_record)
+                cf_record = cf_by_quarter.get(q)
+                if cf_record is None:
+                    continue
+
+                fund_row = compute_fundamentals_row_from_balance_cash(bs_record, cf_record)
+                if fund_row is not None:
+                    try:
+                        self._fundamentals_repo.upsert(fund_row)
+                        fund_upserted += 1
+                    except Exception as exc:
+                        logger.warning("fundamentals upsert failed ticker=%s q=%s: %s", ticker, q, exc)
+
+                is_record = is_by_quarter.get(q)
+                if is_record is not None:
+                    supp_row = compute_supplemental_key_metrics_from_is_bs_cf(
+                        is_record, bs_record, cf_record
+                    )
+                    if supp_row is not None:
+                        try:
+                            self._key_metrics_repo.upsert(supp_row)
+                            supp_km_upserted += 1
+                        except Exception as exc:
+                            logger.warning("supplemental km upsert failed ticker=%s q=%s: %s", ticker, q, exc)
+
+        return fund_upserted, supp_km_upserted
