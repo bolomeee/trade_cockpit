@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d7a",
-    "active_sprint_phase": "done",
+    "active_sprint": "F218-d7b",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4611,7 +4611,7 @@
         "F218-d6a": "done",
         "F218-d6b": "done",
         "F218-d7a": "done",
-        "F218-d7b": "design_needed"
+        "F218-d7b": "contract_agreed"
       },
       "dependencies": [
         "F215",
@@ -4875,12 +4875,19 @@
           "phase": "done",
           "session": "acceptance",
           "changes": "验收通过。Bug 修复：computedAt naive datetime +UTC offset。11 tests 全绿，全量回归 9 pre-existing。"
+        },
+        {
+          "date": "2026-05-20",
+          "subtask": "F218-d7b",
+          "phase": "contract_agreed",
+          "session": "F218-d7b feature-dev A-1",
+          "changes": "F218-d7b Sprint Contract 起草并确认：范围 = 前端 widget + DecisionPanel chip 区收官 Phase D 全栈环。10 文件（4 新建 + 6 修改）用户授权超 6 例外同 F217-c2c 模式：cockpitRepricingApi.ts（新 API client + 5 类 evidence union 类型）+ RepricingTriggerWidget.tsx（新表格 widget，filter + 行点击 setSelectedTicker 联动）+ CockpitRegistry.ts（注册 cockpit.repricing-trigger + repricing category，默认布局 x:6 y:43 w:6 h:10）+ DecisionPanelWidget.tsx（header 下方插入 RepricingChipRow helper 调 /repricing-triggers/{ticker}）+ tokens.css（+5 个 --color-trigger-* token：earnings-accel green-700 / margin-expansion cyan-600 / new-product pink-600 / sector-cycle amber-600 / balance-inflection violet-600，避开既有 setup/signal 冲突）+ design-spec.md（内联 +§Widget X RepricingTrigger + §DecisionPanel chip 区描述）+ component-plan.md（cockpit widgets 表 +1 行）+ 3 测试文件（cockpitRepricingApi.test.ts 6 / RepricingTriggerWidget.test.tsx 9 / DecisionPanelWidget.test.tsx +6）共 23 新测试。不动后端 / cron / endpoint 契约 / 其他 widget。关键决策 NP-d7b-1~7 全部按推荐 A：(1) 5 色板绿/青/桃/琥珀/紫避开既有 token / (2) 布局 x:6 y:43 w:6 h:10 与 Weekly Stage 并列 / (3) chip 区放 DecisionPanel header 下方常驻区 / (4) v1.0 limit=100 + '显示 N/总 M' 文本不实装分页 / (5) chip 简称英文驼峰 EarningsAccel/MarginExp/NewProduct/SectorCycle/BalanceInflect / (6) refresh 按钮 title bar 右上角 / (7) 开发顺序 vertical slice 优先：API client → widget 独立 → registry → DecisionPanel chip → 文档 → 测试补全。features.json 更新：F218-d7b design_needed → contract_agreed / _pipeline_status.active_sprint=F218-d7b / active_sprint_phase=contract_agreed。下一步：开新 session 进入 feature-dev A-2 Generator，按 7 步开发顺序逐步推进，每步通过最小验证后 wip commit。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
       "last_updated": "2026-05-20",
-      "active_sub_sprint": "F218-d7a",
-      "active_sprint_phase": "done"
+      "active_sub_sprint": "F218-d7b",
+      "active_sprint_phase": "contract_agreed"
     }
   ]
 }

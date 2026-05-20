@@ -717,3 +717,32 @@
 
 📊 功能状态：
   F218：🔄 in_progress（d7a ✅ done，d7b design_needed）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint Contract 协商：F218-d7b Repricing Trigger 前端 widget + DecisionPanel chip
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 起草并确认（docs/开发/sprint-contracts/F218-d7b-contract.md）
+  - 6 文件原则：预扫描 10 文件超 6，用户授权一次性例外（同 F217-c2c 模式）
+  - NP-d7b-1~7 全部按推荐 A 确认（5 色板 / 布局 / chip 位置 / 分页 / 简称 / refresh / 开发顺序）
+  - features.json 更新：F218-d7b design_needed → contract_agreed / active_sprint=F218-d7b
+  - iteration_history 追加 contract_agreed 条目
+
+📋 Contract 范围摘要：
+  - 4 新建文件：cockpitRepricingApi.ts / RepricingTriggerWidget.tsx / 2 测试
+  - 6 修改文件：CockpitRegistry / DecisionPanelWidget / tokens.css / DecisionPanel test / design-spec.md / component-plan.md
+  - 23 新测试（API 6 / Widget 9 / chip 6 / Registry 2）
+  - 5 类 trigger 色 token 新增：--color-trigger-{earnings-accel/margin-expansion/new-product/sector-cycle/balance-inflection}
+  - 开发顺序：vertical slice 优先（API → widget → registry → chip → 文档 → 测试）
+
+⏸️ 强制停止：A-1 协商完毕，不在本 session 继续 Generator
+
+📊 功能状态：
+  F218：🔄 in_progress（d7a ✅ done / d7b ✅ contract_agreed / 最后 1 sub-sprint）
+
+[下一个 Session]
+  用 Sonnet 开新 session，输入：
+  > 继续开发 F218-d7b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d7b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（cockpitRepricingApi.ts）开始。
