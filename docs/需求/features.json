@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.4",
     "active_sprint": "F218-d6b",
-    "active_sprint_phase": "design_needed",
+    "active_sprint_phase": "needs_review",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4609,7 +4609,7 @@
         "F218-d4": "done",
         "F218-d5": "done",
         "F218-d6a": "done",
-        "F218-d6b": "design_needed",
+        "F218-d6b": "needs_review",
         "F218-d7a": "design_needed",
         "F218-d7b": "design_needed"
       },
@@ -4619,7 +4619,7 @@
         "F217"
       ],
       "estimated_sessions": 8,
-      "estimated_files_changed": [],
+      "estimated_files_changed": 7,
       "scope": {
         "pages": [
           "Cockpit"
@@ -4820,9 +4820,21 @@
           "subtask": "F218-d6a",
           "session": "feature-dev A-2 Generator 模式（F218-d6a T5 数据层）",
           "changes": "F218-d6a 全部 7 步 Generator 完成，15 测试全绿（参数化展开超 contract 预期 11），全量回归 9 failures 均为 pre-existing（d5 baseline 一致）。实装清单：(1) fmp_client.py 追加 FMP_EP_BALANCE_SHEET/FMP_EP_CASH_FLOW 常量 + get_balance_sheet_quarterly/get_cash_flow_quarterly 2 方法（fail-open 返 []，与 get_income_statement_quarterly 1:1 风格）；(2) stock_fundamentals_quarterly.py 新建 ORM model（9 字段，UQ uq_fundamentals_ticker_quarter，ticker index）+ models/__init__.py 注册；(3) alembic 024 新建（upgrade create_table + UQ + index，downgrade drop_table，双向跑通）；(4) fundamentals_repository.py 新建（3 方法：upsert null-not-erase / get_recent_for_ticker / delete_for_tickers_not_in，与 KeyMetricsRepository 同模板）；(5) pool_helpers.py 追加 compute_fundamentals_row_from_balance_cash（BS+CF → 8-key dict，id 字段不匹配返 None，NP-d6a-6 cash 字段 fallback 逻辑）+ compute_supplemental_key_metrics_from_is_bs_cf（IS+BS+CF → 5-key dict，fcf_margin+roic 计算，NP-d6a-7 分母≤0→null）；(6) pool_cache_service.py 修改（import +2 repo/helper / __init__ 追加 _fundamentals_repo / 追加 _fetch_balance_sheet_concurrent + _fetch_cash_flow_concurrent / 重构 _rebuild_key_metrics 返回 tuple[int, dict] / 新增 _rebuild_fundamentals / rebuild() 流程改造追加 fundamentals log）；test_f218_d3a_key_metrics.py 同步修复（_rebuild_key_metrics tuple 解包）。active_sprint → F218-d6b（design_needed）。"
+        },
+        {
+          "date": "2026-05-20",
+          "subtask": "F218-d6b",
+          "event": "contract_agreed",
+          "note": "T5 BALANCE_INFLECTION detector — net_debt 双 QoQ ≥5% / fcf 负→正切换 / confidence 恒 0.5；2 文件 / 10 测试"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "needs_review",
+          "subtask": "F218-d6b",
+          "session": "feature-dev A-2 Generator + A-3 Evaluator 通过（F218-d6b T5 BALANCE_INFLECTION detector）",
+          "changes": "F218-d6b 全部 4 步 Generator 完成，Evaluator 自检通过，全量回归 9 failures 均为 pre-existing。实装：(1) repricing_trigger_service.py: +import FundamentalsRepository / +__init__ self._fundamentals 注入 / +T5_LOOKBACK_QUARTERS=3 + T5_NET_DEBT_QOQ_THRESHOLD=0.05 + T5_DEFAULT_CONFIDENCE=0.5 常量段 / +_detect_balance_inflection 占位替换为完整实装（39 行 ≤50 ✓）/ +模块级 _eval_net_debt_arm（双 QoQ 下降臂，分母 ≤0 跳过）+ _eval_fcf_arm（严格负→正切换臂）；(2) test_repricing_trigger_balance_inflection.py 新建（4 class / 10 方法 / 19 参数化 case 全绿）：TestEvalNetDebtArm B1-B3 / TestEvalFcfArm B4-B5 / TestDetectBalanceInflection B6-B9（含 B11 嵌入 B6）/ TestBalanceInflectionEndToEnd B10。evidence_json 4 键 {net_debt_trend/fcf_trend/quarters/trigger_metric} 1:1 DATA-MODEL §1100 example。NP-d6b-1~8 全部落地：双 QoQ 严格判定 / 分母 ≤0 跳过 / FCF 严格切换 / fail-soft / net_debt 优先 / trend [Q-2,Q-1,Q0] / confidence=0.5 恒定 / 2 helpers 模块级。wip commits: c2b5e35(step1) e14cf68(step2) 3b945f7(step3) cff4a27(step4)。F218-d6b → needs_review。"
         }
       ],
-      "estimated_files_changed": 7,
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
       "last_updated": "2026-05-20"
     }
