@@ -19,6 +19,14 @@ build/
 # Databases
 *.db
 *.db-journal
+*.db.bak-*
+
+# Local-only data directory (per-developer DBs, snapshots, backups)
+backend/data/
+
+# Backup files (manual snapshots, never check in)
+*.bak
+*.bak[0-9]*
 
 # Node / frontend (for future F000-b)
 node_modules/
@@ -27,3 +35,6 @@ node_modules/
 # Editor
 .idea/
 .vscode/
+
+# Claude Code local artifacts (worktrees, session caches)
+.claude/worktrees/
