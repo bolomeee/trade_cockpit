@@ -551,3 +551,80 @@
   读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d6a-contract.md，
   进入 Generator 模式，从开发步骤 1（fmp_client 追加 2 endpoint 常量 + 2 方法）开始。
   ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint：F218-d6b T5 BALANCE_INFLECTION detector — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 起草并确认 Sprint Contract：docs/开发/sprint-contracts/F218-d6b-contract.md
+  - 8 项 NP 决策（NP-d6b-1~8）用户全部按推荐确认：
+    · NP-d6b-1 双 QoQ 严格判定（net_debt 臂）
+    · NP-d6b-2 分母 ≤ 0 跳过（已净现金公司不参与 T5）
+    · NP-d6b-3 严格切换点 fcf 臂（Q-2 ≤ 0 / Q-1 > 0 / Q0 > 0）
+    · NP-d6b-4 fail-soft 数据缺失策略
+    · NP-d6b-5 trigger_metric 偏好 net_debt
+    · NP-d6b-6 evidence trend [Q-2, Q-1, Q0] 连续 3 季
+    · NP-d6b-7 confidence 恒 0.5（DATA-MODEL §1107）
+    · NP-d6b-8 2 helpers 模块级与既有 _eval_margin_arm 同居所
+  - features.json 更新：
+    · _pipeline_status.active_sprint = F218-d6b（保持）
+    · _pipeline_status.active_sprint_phase = design_needed → contract_agreed
+    · F218.sub_sprints["F218-d6b"]: design_needed → contract_agreed
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - consistency-check (C5/C8) 全清：sub_sprints ↔ 合约文件双向一致，active_sprint 引用有效
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D096/D097 已覆盖；NP-d6b-1~8 是实施级决策由 contract 承载）
+
+⚠️ 待你决策：
+  无未决事项（NP-d6b-1~8 全部按推荐确认）
+
+🔧 系统变更：
+  - 新增 docs/开发/sprint-contracts/F218-d6b-contract.md
+  - 更新 docs/需求/features.json
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1 ~ F218-d6a: ✅ done (7 个)
+  F218-d6b: 🟡 contract_agreed ← 下一 session 进入 Generator
+  F218-d7a / F218-d7b: ⬜ design_needed
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d6b，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d6b-contract.md，
+  进入 Generator 模式，从开发步骤 1（顶部 import + __init__ 注入 + T5 常量段）开始。
+  ──────────────────────────────────────────
+
+## F218-d6b — T5 BALANCE_INFLECTION detector (2026-05-20)
+
+### Generator 完成 + Evaluator 通过 → needs_review
+
+**实装文件（2 个）：**
+1. `backend/app/services/cockpit/repricing_trigger_service.py`
+   - +import FundamentalsRepository
+   - +`self._fundamentals = FundamentalsRepository(db)` in `__init__`
+   - +T5 常量段：T5_LOOKBACK_QUARTERS=3 / T5_NET_DEBT_QOQ_THRESHOLD=0.05 / T5_DEFAULT_CONFIDENCE=0.5
+   - +`_detect_balance_inflection` 实装（39 行）：net_debt 双 QoQ 臂 + FCF 负→正切换臂
+   - +模块级 `_eval_net_debt_arm`（分母 ≤0 跳过，NP-d6b-2）
+   - +模块级 `_eval_fcf_arm`（严格 Q-2≤0 / Q-1>0 / Q0>0，NP-d6b-3）
+
+2. `backend/tests/test_repricing_trigger_balance_inflection.py`（新建）
+   - 4 class / 10 方法 / 19 参数化 case 全绿
+   - B1-B3 eval_net_debt_arm / B4-B5 eval_fcf_arm / B6-B9 detector / B10 E2E
+   - B11 evidence_json schema 嵌入 B6
+
+**Evaluator 结果：**
+- 新测试 19/19 ✅
+- 既有 F218 套件 90/90 ✅
+- 全量回归 1223 pass / 9 pre-existing failures（不变）
+- consistency-check severe=0 medium=0 minor=0
+
+**Git commits:**
+- c2b5e35 wip step1 import+__init__+T5 constants
+- e14cf68 wip step2 eval_net_debt_arm + eval_fcf_arm
+- 3b945f7 wip step3 _detect_balance_inflection
+- cff4a27 wip step4 10 tests (19 cases)
+- 4870f3d feat(F218-d6b): T5 BALANCE_INFLECTION detector
+
+**下一步：** acceptance skill 验收 F218-d6b → done → F218-d7a contract 协商
