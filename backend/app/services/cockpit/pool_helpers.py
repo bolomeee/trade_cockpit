@@ -97,6 +97,151 @@ def passes_fundamental_sanity(
     return growth_yoy_pct >= threshold_pct
 
 
+def compute_fundamentals_row_from_balance_cash(
+    balance_payload: dict,
+    cash_payload: dict,
+) -> dict | None:
+    """Map one (BS, CF) pair (same ticker/fiscal_quarter) → dict for FundamentalsRepository.upsert.
+
+    Both payloads must share identical symbol/period/fiscalYear/date; returns None on mismatch
+    or missing identification fields. Pairing is the caller's responsibility.
+
+    net_debt = total_debt - cash; null if either input null.
+    cash source: cashAndShortTermInvestments, fallback cashAndCashEquivalents (NP-d6a-6).
+    fcf source: FMP freeCashFlow field (NP-d6a-2, equivalent to D097 §5 OCF+capex formula).
+    Returns 8 keys: ticker, fiscal_quarter, period_end_date, total_debt, cash, net_debt, fcf, fetched_at.
+    """
+    from datetime import date, datetime, timezone
+
+    def _id_fields(p: dict) -> tuple | None:
+        symbol = p.get("symbol")
+        period = p.get("period")
+        fiscal_year = p.get("fiscalYear")
+        raw_date = p.get("date")
+        if not all([symbol, period, fiscal_year, raw_date]):
+            return None
+        return (str(symbol), str(period), str(fiscal_year), str(raw_date))
+
+    bs_id = _id_fields(balance_payload)
+    cf_id = _id_fields(cash_payload)
+    if bs_id is None or cf_id is None or bs_id != cf_id:
+        return None
+
+    symbol, period, fiscal_year, raw_date = bs_id
+    try:
+        period_end_date = date.fromisoformat(raw_date)
+    except (ValueError, TypeError):
+        return None
+
+    fiscal_quarter = f"{period} {fiscal_year}"
+
+    total_debt_raw = balance_payload.get("totalDebt")
+    cash_raw = (
+        balance_payload.get("cashAndShortTermInvestments")
+        or balance_payload.get("cashAndCashEquivalents")
+    )
+    fcf_raw = cash_payload.get("freeCashFlow")
+
+    def _to_int(v) -> int | None:
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    total_debt = _to_int(total_debt_raw)
+    cash = _to_int(cash_raw)
+    fcf = _to_int(fcf_raw)
+    net_debt = (total_debt - cash) if (total_debt is not None and cash is not None) else None
+
+    return {
+        "ticker": symbol,
+        "fiscal_quarter": fiscal_quarter,
+        "period_end_date": period_end_date,
+        "total_debt": total_debt,
+        "cash": cash,
+        "net_debt": net_debt,
+        "fcf": fcf,
+        "fetched_at": datetime.now(timezone.utc),
+    }
+
+
+def compute_supplemental_key_metrics_from_is_bs_cf(
+    income_payload: dict,
+    balance_payload: dict,
+    cash_payload: dict,
+) -> dict | None:
+    """Build a partial-upsert dict for stock_key_metrics_quarterly (fcf_margin + roic only).
+
+    All 3 payloads must share identical symbol/period/fiscalYear/date; returns None on mismatch
+    or missing identification fields.
+
+    fcf_margin = freeCashFlow / revenue; null if either missing or revenue ≤ 0.
+    roic       ≈ netIncome / (totalStockholdersEquity + totalDebt - cash);
+                 null if any input null or denominator ≤ 0 (D097 §5, NP-d6a-7).
+    cash source: cashAndShortTermInvestments fallback cashAndCashEquivalents (NP-d6a-6).
+    Output keys (exactly 5): ticker, fiscal_quarter, fcf_margin, roic, fetched_at.
+    """
+    from datetime import datetime, timezone
+
+    def _id_key(p: dict) -> tuple | None:
+        symbol = p.get("symbol")
+        period = p.get("period")
+        fiscal_year = p.get("fiscalYear")
+        raw_date = p.get("date")
+        if not all([symbol, period, fiscal_year, raw_date]):
+            return None
+        return (str(symbol), str(period), str(fiscal_year), str(raw_date))
+
+    is_id = _id_key(income_payload)
+    bs_id = _id_key(balance_payload)
+    cf_id = _id_key(cash_payload)
+    if None in (is_id, bs_id, cf_id) or not (is_id == bs_id == cf_id):
+        return None
+
+    symbol, period, fiscal_year, _ = is_id
+    fiscal_quarter = f"{period} {fiscal_year}"
+    ticker = str(symbol)
+
+    def _to_float(v) -> float | None:
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    revenue = _to_float(income_payload.get("revenue"))
+    net_income = _to_float(income_payload.get("netIncome"))
+    fcf = _to_float(cash_payload.get("freeCashFlow"))
+    equity = _to_float(balance_payload.get("totalStockholdersEquity"))
+    total_debt = _to_float(balance_payload.get("totalDebt"))
+    cash_raw = (
+        balance_payload.get("cashAndShortTermInvestments")
+        or balance_payload.get("cashAndCashEquivalents")
+    )
+    cash = _to_float(cash_raw)
+
+    fcf_margin: float | None = None
+    if fcf is not None and revenue is not None and revenue > 0:
+        fcf_margin = fcf / revenue
+
+    roic: float | None = None
+    if all(v is not None for v in (net_income, equity, total_debt, cash)):
+        denom = equity + total_debt - cash  # type: ignore[operator]
+        if denom > 0:
+            roic = net_income / denom  # type: ignore[operator]
+
+    return {
+        "ticker": ticker,
+        "fiscal_quarter": fiscal_quarter,
+        "fcf_margin": fcf_margin,
+        "roic": roic,
+        "fetched_at": datetime.now(timezone.utc),
+    }
+
+
 def compute_key_metrics_row_from_income_statement(
     payload: dict,
 ) -> dict | None:
