@@ -1037,6 +1037,15 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 
 字段绑定：见 `data-mapping.md` §Cockpit-6。
 
+**Repricing chip 区（F218-d7b）**：
+
+header 行下方、body 状态分支之前，常驻区域。调用 `GET /api/cockpit/repricing-triggers/{ticker}`（staleTime 5 分钟）。
+- 空数组 / 加载中 / 错误 → 区域不渲染（静默，不阻碍主面板）
+- 有 trigger → flex 行，每个 trigger 一个 chip（高 18px，内边距 0 6px，圆角 4px）
+- chip 背景：`color-mix(in srgb, var(--color-trigger-{type}) 16%, transparent)`；文字：`var(--color-trigger-{type})`
+- chip 简称：EarningsAccel / MarginExp / NewProduct / SectorCycle / BalanceInflect
+- hover tooltip（shadcn Tooltip）显 evidence 单行概要（规则见 §RepricingTriggerWidget）
+
 交互：
 - Override 输入框：onChange debounce 500ms 重发 `/api/cockpit/decision/{ticker}` 带 query 参数
 - `[Recompute]`：手动触发刷新（不依赖 debounce）
@@ -1174,6 +1183,63 @@ CockpitChart 用，封装 `lightweight-charts` 的 `createPriceLine`：传 `pric
 - AI 按钮 loading：spinner + "Generating..." 文字
 - Cache hit 提示：AI 输出区上方显示小字"Cached · 12h ago" 灰色（`meta.cacheHit=true && tokensIn=0`）
 - `deterministicHash` 校验失败：DecisionPanel AI Plan 区显示红色 banner "Guardrail violation - AI output rejected"，附 `[Report]` 按钮（v2.0 后续决定是否上报）
+
+---
+
+## Widget 11：RepricingTriggerWidget（F218）
+
+**数据源**：`GET /api/cockpit/repricing-triggers`（全市场，带 triggerType / limit 可选参数）
+
+**默认布局**：`x:6 y:43 w:6 h:10 minW:4 minH:6`（与 WeeklyStageChartWidget 同行右半）
+
+**色板**（tokens.css，5 类共用）：
+
+| TriggerType | CSS Token | 颜色 | 含义 |
+|---|---|---|---|
+| EARNINGS_ACCEL | `--color-trigger-earnings-accel` | #15803d（green-700） | 业绩加速 |
+| MARGIN_EXPANSION | `--color-trigger-margin-expansion` | #0891b2（cyan-600） | 毛利扩张 |
+| NEW_PRODUCT | `--color-trigger-new-product` | #db2777（pink-600） | 新产品周期 |
+| SECTOR_CYCLE | `--color-trigger-sector-cycle` | #d97706（amber-600） | Sector 轮动 |
+| BALANCE_INFLECTION | `--color-trigger-balance-inflection` | #7c3aed（violet-600） | 资产负债拐点 |
+
+**视觉规格**：
+
+```
+┌─RepricingTriggerWidget Shell──────────────────────────────────┐
+│ Repricing Triggers · 47 active   [All ▾]               [⟳]   │ ← title + filter Select + refresh button
+├───────────────────────────────────────────────────────────────┤
+│ Ticker  Trigger           Date        Conf  Evidence          │
+│ NVDA    ■ MarginExp       2026-05-15  0.80  gross_margin +900bp│
+│ TSLA    ■ BalanceInflect  2026-05-14  0.50  net_debt ↓ 21%    │
+│ AAPL    ■ EarningsAccel   2026-05-13  0.80  eps yoy 78%       │
+│ ...                                                           │
+│                     ── 显示 100 / 总 N ──（超 100 时显示）    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**Evidence 摘要规则（widget 表格列 + DecisionPanel chip tooltip 共用）**：
+
+| triggerType | 摘要模板 | 示例 |
+|---|---|---|
+| EARNINGS_ACCEL | `eps yoy {last}%` | `eps yoy 78%` |
+| MARGIN_EXPANSION | `{triggerMetric} +{expansionBp}bp` | `gross_margin +900bp` |
+| NEW_PRODUCT | `{N} keywords / {M} news` | `3 keywords / 5 news` |
+| SECTOR_CYCLE | `{sector} RS {first}→{last}` | `XLK RS 35→68` |
+| BALANCE_INFLECTION | `{triggerMetric} ↓ {pct}%` 或 `fcf flip +` | `net_debt ↓ 21%` |
+
+**交互**：
+- filter Select（All / 5 类）→ 切换 triggerType query param，react-query refetch
+- 行点击 → `cockpitStore.setSelectedTicker(ticker)`，与 DecisionPanel 联动
+- refresh 按钮（右上角图标，仿 PoolBuilderWidget）→ 手动 refetch
+- 行 hover → `var(--color-bg-secondary)` 背景
+
+**状态机**：
+- 正常：表格渲染（按后端返回顺序，不前端排序）
+- 空（totalCount=0）：EmptyState "今日全市场无 active trigger（cron 每日 22:40 UTC 后刷新）"
+- 加载：Loading 文字（无 SkeletonCard，widget 尺寸小）
+- 错误：`加载失败，请稍后重试` + `[重试]` 按钮
+
+**分页（v1.0）**：limit=100（后端默认），超 100 显示 "显示 100 / 总 N"，虚拟滚动留 v2.0。
 
 ---
 

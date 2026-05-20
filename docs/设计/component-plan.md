@@ -349,6 +349,7 @@ shadcn/ui 全局复用；Cockpit 不引入新基础组件。
 | `PositionListWidget` | F206（v1.9） | `GET / POST / PATCH / DELETE /api/cockpit/positions` |
 | `PendingOrdersWidget` | F206（v1.9） | `GET / POST / PATCH / DELETE /api/cockpit/pending-orders` |
 | `ActionListWidget` | F207（v1.9） | `GET /api/cockpit/actions/today` + `POST /api/ai/contradiction_detector`（v2.0 brief） |
+| `RepricingTriggerWidget` | F218 | `GET /api/cockpit/repricing-triggers` + `GET /api/cockpit/repricing-triggers/{ticker}`（chip 区共用） |
 
 ### Cockpit Dialog 组件
 
