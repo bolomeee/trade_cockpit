@@ -677,3 +677,30 @@
   > 继续开发 F218-d7a，Sprint Contract 已确认。
   > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d7a-contract.md，
   > 进入 feature-dev Generator 模式，从开发步骤 1（refresh_job.py 改动）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20 06:00] Sprint：F218-d7a Repricing Trigger cron + router
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - refresh_job.py：+REPRICING_TRIGGER_CRON/JOB_ID 常量 / +import / +add_job(22:40 UTC weekdays) / +_repricing_trigger_tick
+  - schemas/cockpit/repricing_trigger.py 新建：6 Pydantic 类 + TriggerType Literal（CamelModel 基类）
+  - routers/cockpit/repricing_triggers.py 新建：2 endpoint（GET /{ticker} + GET /）+ evidence snake→camel helper
+  - routers/cockpit/__init__.py：include repricing_triggers_router
+  - 单元测试：3/3 通过（S1 cron 注册 / S2a tick 调用 / S2b 异常吞咽）
+  - 集成测试：8/8 通过（R1-R8 全覆盖）
+  - 全量回归：9 pre-existing failures（未新增）
+  - Evaluator 自检：全部通过
+  - consistency-check (C1/C4/C5/C7)：全清（exit=0）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新增 cron job #11（22:40 UTC weekdays，在 pending_orders_expirer 22:35 之后）
+  - 新增 2 个 API endpoint（/api/cockpit/repricing-triggers/{ticker} + /api/cockpit/repricing-triggers）
+  - 新增 4 文件，修改 2 文件
+
+📊 功能状态：
+  F218：🔍 in_progress（d7a needs_review，d7b design_needed）
+
+[下一个 Session]
+  acceptance skill（F218-d7a needs_review）或协商 F218-d7b Sprint Contract（前端 widget + DecisionPanel chip）
