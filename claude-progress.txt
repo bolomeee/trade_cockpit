@@ -704,3 +704,16 @@
 
 [下一个 Session]
   acceptance skill（F218-d7a needs_review）或协商 F218-d7b Sprint Contract（前端 widget + DecisionPanel chip）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20 06:20] 验收：F218-d7a Repricing Trigger cron + router
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过
+  - B1-B5 全部通过（cron / OpenAPI / evidence camelCase / UTC format / API behavior）
+  - Bug 修复：computedAt SQLite naive datetime 未含 UTC offset，已在 router 补 .replace(tzinfo=UTC)
+  - 全量回归：9 pre-existing，未新增
+  - phase → done
+
+📊 功能状态：
+  F218：🔄 in_progress（d7a ✅ done，d7b design_needed）

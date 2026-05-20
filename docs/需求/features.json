@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.4",
     "active_sprint": "F218-d7a",
-    "active_sprint_phase": "needs_review",
+    "active_sprint_phase": "done",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4610,7 +4610,7 @@
         "F218-d5": "done",
         "F218-d6a": "done",
         "F218-d6b": "done",
-        "F218-d7a": "needs_review",
+        "F218-d7a": "done",
         "F218-d7b": "design_needed"
       },
       "dependencies": [
@@ -4868,12 +4868,19 @@
           "phase": "needs_review",
           "session": "F218-d7a Evaluator",
           "changes": "Evaluator 通过：11 新测试 + 109 既有 d1-d6b + 全量回归 9 pre-existing failures（未新增）。phase=needs_review。"
+        },
+        {
+          "date": "2026-05-20",
+          "subtask": "F218-d7a",
+          "phase": "done",
+          "session": "acceptance",
+          "changes": "验收通过。Bug 修复：computedAt naive datetime +UTC offset。11 tests 全绿，全量回归 9 pre-existing。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
       "last_updated": "2026-05-20",
       "active_sub_sprint": "F218-d7a",
-      "active_sprint_phase": "needs_review"
+      "active_sprint_phase": "done"
     }
   ]
 }
