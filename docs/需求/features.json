@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.1-planning",
-  "last_updated": "2026-05-18",
+  "last_updated": "2026-05-20",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d4",
-    "active_sprint_phase": "needs_review",
+    "active_sprint": "F218-d6a",
+    "active_sprint_phase": "design_needed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4606,8 +4606,8 @@
         "F218-d2": "done",
         "F218-d3a": "done",
         "F218-d3b": "done",
-        "F218-d4": "needs_review",
-        "F218-d5": "design_needed",
+        "F218-d4": "done",
+        "F218-d5": "done",
         "F218-d6a": "design_needed",
         "F218-d6b": "design_needed",
         "F218-d7a": "design_needed",
@@ -4778,10 +4778,38 @@
           "subtask": "F218-d4",
           "session": "feature-dev A-2 Generator 完成 + A-3 Evaluator 通过（F218-d4 T3 NEW_PRODUCT detector）",
           "changes": "F218-d4 全部 3 步 Generator 完成，10 测试全绿，Evaluator 自检通过，全量回归 9 failures 均为 pre-existing（d3b baseline 相同）。实装清单：(1) news_cache_repository.py 追加 get_recent_for_ticker(db, ticker, *, scan_date, lookback_days, limit=200) → list[NewsArticle]，as_of_date SQL 窗 [scan_date-lookback_days, scan_date] inclusive 双端 + DB-level limit cap + published_at DESC，Python 端 symbols.upper() 过滤；import 行追加 timedelta；既有 6 函数全部不动；(2) repricing_trigger_service.py 追加 from app.repositories import news_cache_repository as news_repo + T3_* 常量段 7 行（T3_LOOKBACK_DAYS=30 / T3_KEYWORDS D098 原文 7 项 / T3_MIN_TOTAL_HITS=2 / T3_MAX_NEWS_LINKS=5 / T3_DEFAULT_CONFIDENCE=0.5 / T3_FETCH_LIMIT=200）+ _detect_new_product 占位替换为完整实装 47 行（≤50 行合格）：关键词大小写不敏感子串 + 同关键词同标题计 1 + keyword_hits count DESC stable sort + news_links published_at DESC去重≤5 + confidence 恒 0.5；(3) test_repricing_trigger_new_product.py 新建 10 测试 3 class（TestNewsCacheGetRecentForTicker N1-N3 / TestDetectNewProduct N4-N9 / TestNewProductEndToEnd N10），N6-sub/N11 嵌入 N5/N4 断言。wip commits: fb4d801(Step1 repo) → 475b2ef(Step2 service) → 4fc7c96(Step3 tests)。代码质量：函数 47 行 ≤ 50 / 无硬编码魔法值 / 无副作用 / 无死代码。设计约束全部守住：不加 ticker 列 / 不接 FMP / 不动 cron/API/前端 / T4/T5 仍占位。F218-d4 phase → needs_review。"
+        },
+        {
+          "date": "2026-05-19",
+          "phase": "done",
+          "subtask": "F218-d4",
+          "session": "acceptance skill — F218-d4 验收通过",
+          "changes": "F218-d4 验收通过。consistency-check severe=0 medium=0（C5 d5-d7b design_needed 无合约为预期行为）。12 项 AC 全部通过：AC1-3 get_recent_for_ticker（窗口/大小写/边界）/ AC4-11 T3 detector（happy多文多词/单文多词/同词不刷/阈值/空数据/cap/去重/排序）/ AC12 端到端 soft expire。10 测试全绿，d1-d3b 55 tests 无回归，全量 9 pre-existing failures 不变。代码质量：函数47行≤50/无魔法值/T3_KEYWORDS D098原文7项/6既有函数不动/T4+T5保持占位。F218-d4 → done。active_sprint → F218-d5（design_needed）。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "contract_agreed",
+          "subtask": "F218-d5",
+          "session": "feature-dev A-1 Contract 协商（F218-d5 T4 SECTOR_CYCLE detector）",
+          "changes": "F218-d5 Sprint Contract 起草并确认：范围 = T4 SECTOR_CYCLE detector 实装（d1 skeleton 第 4 个占位 → 真实业务逻辑），3 文件 / 10 测试 / 不动 API / 不动前端 / 不动 cron / 不接 FMP / 不建表。修改 cockpit_params.py（CockpitSharedParams 新增 SECTOR_TO_ETF 11 项 dict，FMP /profile.sector 原文 → 11 XL* ETF 一一对应，2026-05-20 dev DB 实测对齐）+ repricing_trigger_service.py（T4 常量段 6 行 + _detect_sector_cycle 占位换实装 ~50 行 + 3 service helper _lookup_ticker_sector/_fetch_market_index_closes/_rs_ratio_population/_sma_and_latest + 模块级 _close_on_or_before）+ 新测试文件 test_repricing_trigger_sector_cycle.py（10 测试 3 class TestSectorMapping S1-S2 / TestSectorCycleDetector S3-S9 / TestSectorCycleEndToEnd S10）。核心业务逻辑：ticker → market_scan_universe.sector → SHARED.SECTOR_TO_ETF → ETF symbol；两采样日（end=scan_date / start=scan_date-60cal）按 60d return ratio = etf_return / spy_return 计算 11 ETF ratio；pool_helpers.compute_rs_percentile_map 跨 11 ETF mid-rank percentile（D081）；触发条件 start_pct<40 AND end_pct>60 AND latest_close>SMA200；confidence 恒 0.5（DATA-MODEL §1107，T4 无高置信路径）；evidence_json sector(ETF symbol) / rs_history(长 2 ASC ISO 日期+percentile) / price_vs_200d(close/SMA200 4 位小数)。关键决策 NP-d5-1~10 全部按推荐：(1) RS 公式 60d calendar return ratio（同 D081 算法形态）/ (2) 2 采样点 start vs end（与 DATA-MODEL §1100 example 字面对齐）/ (3) 直接复用 pool_helpers.compute_rs_percentile_map（澄清 ARCHITECTURE §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，本 Contract 承载澄清不升 DXXX）/ (4) ticker→sector 走 market_scan_universe.sector（dev DB 实测 11 项 FMP 原文与 SECTOR_ETFS 11 ETF 1:1 对齐）/ (5) SECTOR_TO_ETF 放 CockpitSharedParams（与 SECTOR_ETFS 同居所）/ (6) sector 字符串严格大小写（FMP Title Case 稳定）/ (7) universe 行不加 last_seen_at 过滤（detector 是写场景下游）/ (8) population 缺失 fail-fast 整体 return None（防 percentile mid-rank 失真）/ (9) SMA200 以 end_date 为终点取最后 200 有效行（同 market_regime_service._ma 语义）/ (10) rs_history.date 用 ISO 字符串 YYYY-MM-DD（与 DATA-MODEL §1100 example 字面一致）。features.json 更新：F218-d5 design_needed → contract_agreed；_pipeline_status.active_sprint=F218-d5；active_sprint_phase=contract_agreed。下一步：feature-dev A-2 Generator 模式，3 步开发顺序：cockpit_params.SECTOR_TO_ETF → repricing_trigger_service T4 实装（含 imports / 常量 / detector / 4 helper） → 10 测试，每步通过最小验证后 wip commit。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "needs_review",
+          "subtask": "F218-d5",
+          "session": "feature-dev A-2 Generator 完成 + A-3 Evaluator 通过（F218-d5 T4 SECTOR_CYCLE detector）",
+          "changes": "F218-d5 全部 3 步 Generator 完成，10 测试全绿，Evaluator 自检通过，全量回归 9 failures 均为 pre-existing（d4 baseline 相同）。实装清单：(1) cockpit_params.py CockpitSharedParams 追加 SECTOR_TO_ETF dict[str,str] Field（11 项 FMP /profile.sector 原文 → 11 XL* ETF 一一对应，验证 values == set(SECTOR_ETFS) ✓）；(2) repricing_trigger_service.py 追加 imports（timedelta / select / MarketIndex / MarketScanUniverse / SHARED / compute_rs_percentile_map）+ T4 常量段 7 行（含 T4_SMA_FETCH_DAYS=280 修正 Contract 伪码 earliest=scan_date-120 不足以覆盖 SMA200 的 bug，实际取 scan_date-280 ≈ 200 trading days，NP-d5-9 明确 '≈ 280 calendar days'）+ _detect_sector_cycle 占位替换为 55 行完整实装（≤60 行 ✓）+ 4 service helpers _lookup_ticker_sector(9L)/_fetch_market_index_closes(15L)/_rs_ratio_population(26L)/_sma_and_latest(9L)（各 ≤30L ✓）+ 模块级 _close_on_or_before(11L)；(3) test_repricing_trigger_sector_cycle.py 新建 10 测试 3 class（TestSectorMapping S1-S2 / TestSectorCycleDetector S3-S9 / TestSectorCycleEndToEnd S10），S10 soft expire 使用 next_day = scan_date+1 正确触发 detected_date < current_date 条件。关键实施偏差：T4_SMA_FETCH_DAYS=280（vs Contract 伪码 earliest=scan_date-120），属 Contract 伪码与 NP-d5-9 文字说明不一致的修正，向正确方向偏。wip commits: 161caad(Step1 SECTOR_TO_ETF) → 6ab017a(Step2 detector+helpers) → fed2e51(Step3 tests+fetch window fix)。consistency-check(mode=interactive) severe=0 medium=0 minor=1(C4 d5 history补齐即本条) → 全清。下一步：F218-d6a design_needed（T5 数据层 balance-sheet+cash-flow+fundamentals 表 + pool_cache，F218-d5 → done）。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "done",
+          "subtask": "F218-d5",
+          "session": "F218-d5 Evaluator 通过 → done",
+          "changes": "F218-d5 → done。12 项 Contract AC 全部确认。consistency-check 全清。active_sprint → F218-d6a（design_needed）。"
         }
       ],
-      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。",
-      "last_updated": "2026-05-19"
+      "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
+      "last_updated": "2026-05-20"
     }
   ]
 }

@@ -319,17 +319,7 @@ class RepricingTriggerService:
     def _detect_sector_cycle(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T4 SECTOR_CYCLE: sector ETF RS percentile 跨升 < 40 → > 60 (60d) AND 价 > SMA200 → 触发.
-
-        步骤：
-          1. ticker → market_scan_universe.sector → SHARED.SECTOR_TO_ETF → ETF symbol
-          2. 拉 SPY + 11 sector ETF 自 [scan_date - 120, scan_date] 的 market_index closes
-          3. 在 start_date = scan_date - 60 / end_date = scan_date 上，
-             按 60-day calendar return 算 ratio = (close_d / close_{d-60}) / (spy_close_d / spy_close_{d-60})
-          4. pool_helpers.compute_rs_percentile_map 跨 11 ETF → 目标 ETF percentile
-          5. 触发判定：start_pct < 40 AND end_pct > 60 AND latest_close > SMA200 (200 行简单平均)
-        任何中间步骤缺数据 → return None.
-        """
+        """T4 SECTOR_CYCLE: sector ETF RS percentile 跨升 < 40 → > 60 (60d) AND 价 > SMA200 → 触发；任何缺数据 → None."""
         # Step 1: ticker → ETF
         sector = self._lookup_ticker_sector(ticker)
         if sector is None:
