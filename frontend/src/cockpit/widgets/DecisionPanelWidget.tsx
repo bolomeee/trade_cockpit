@@ -4,9 +4,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ApiError } from '@/lib/api/client'
 import { useCockpitStore } from '@/store/cockpitStore'
 import { getCockpitDecision, type CockpitDecisionData, type GetCockpitDecisionOverrides } from '../lib/api/cockpitDecisionApi'
+import { getTickerRepricingTriggers } from '../lib/api/cockpitRepricingApi'
+import { TRIGGER_COLOR_TOKEN, summarizeEvidence } from './RepricingTriggerWidget'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
 import { AiTradePlanSection } from '../components/AiTradePlanSection'
 import { AiContradictionsSection } from '../components/AiContradictionsSection'
@@ -264,6 +267,71 @@ function SkeletonCard() {
   )
 }
 
+// ── RepricingChipRow ─────────────────────────────────────────────────────────
+
+function RepricingChipRow({ ticker }: { ticker: string | null }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['cockpit-repricing-ticker', ticker],
+    queryFn: () => getTickerRepricingTriggers(ticker!),
+    enabled: ticker != null,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  if (isLoading || isError || !data || data.triggers.length === 0) return null
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '4px',
+        paddingBottom: '6px',
+      }}
+    >
+      {data.triggers.map((t, i) => {
+        const color = TRIGGER_COLOR_TOKEN[t.triggerType]
+        const label =
+          t.triggerType === 'EARNINGS_ACCEL'
+            ? 'EarningsAccel'
+            : t.triggerType === 'MARGIN_EXPANSION'
+              ? 'MarginExp'
+              : t.triggerType === 'NEW_PRODUCT'
+                ? 'NewProduct'
+                : t.triggerType === 'SECTOR_CYCLE'
+                  ? 'SectorCycle'
+                  : 'BalanceInflect'
+        const evidence = summarizeEvidence(t)
+
+        return (
+          <Tooltip key={`${t.triggerType}-${i}`}>
+            <TooltipTrigger asChild>
+              <span
+                data-repricing-chip={t.triggerType}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  height: '18px',
+                  padding: '0 6px',
+                  borderRadius: '4px',
+                  background: `color-mix(in srgb, ${color} 16%, transparent)`,
+                  color,
+                  fontSize: 'var(--font-size-caption)',
+                  cursor: 'default',
+                }}
+              >
+                {label}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <span style={{ fontSize: 'var(--font-size-caption)' }}>{evidence}</span>
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── main widget ───────────────────────────────────────────────────────────────
 
 export function DecisionPanelWidget() {
@@ -367,6 +435,9 @@ export function DecisionPanelWidget() {
       >
         {headerTitle}
       </div>
+
+      {/* Repricing chip row — silent on null/empty/loading/error */}
+      <RepricingChipRow ticker={ticker} />
 
       {/* Body */}
       {decisionQuery.isLoading ? (

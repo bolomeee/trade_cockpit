@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { DecisionPanelWidget } from '../DecisionPanelWidget'
 import { useCockpitStore } from '@/store/cockpitStore'
 import type { SetupItem, SetupMonitorData } from '../../lib/api/setupMonitorApi'
@@ -61,9 +62,21 @@ function makeDecisionFetch(status?: 200 | 404 | 422) {
 function renderWidget() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={qc}>
-      <DecisionPanelWidget />
-    </QueryClientProvider>,
+    <TooltipProvider>
+      <QueryClientProvider client={qc}>
+        <DecisionPanelWidget />
+      </QueryClientProvider>
+    </TooltipProvider>,
+  )
+}
+
+function renderWidgetWith(qc: QueryClient) {
+  return render(
+    <TooltipProvider>
+      <QueryClientProvider client={qc}>
+        <DecisionPanelWidget />
+      </QueryClientProvider>
+    </TooltipProvider>,
   )
 }
 
@@ -129,11 +142,7 @@ describe('S5 – override input debounce 500ms', () => {
     useCockpitStore.setState({ selectedTicker: 'NVDA' })
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={qc}>
-        <DecisionPanelWidget />
-      </QueryClientProvider>,
-    )
+    renderWidgetWith(qc)
 
     // Let the initial fetch fire and resolve (Promises still work with fake timers)
     await vi.waitFor(async () => {
@@ -553,11 +562,7 @@ describe('T11 – close→reopen same hash → fetch count = 1 (cache hit)', () 
     useCockpitStore.setState({ selectedTicker: 'NVDA' })
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={qc}>
-        <DecisionPanelWidget />
-      </QueryClientProvider>,
-    )
+    renderWidgetWith(qc)
 
     await waitFor(() => expect(screen.getByTestId('ai-plan-trigger')).toBeInTheDocument())
 
@@ -607,11 +612,7 @@ describe('T12 – new decision hash (via Recompute) → AI auto-refetches', () =
     useCockpitStore.setState({ selectedTicker: 'NVDA' })
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
-      <QueryClientProvider client={qc}>
-        <DecisionPanelWidget />
-      </QueryClientProvider>,
-    )
+    renderWidgetWith(qc)
 
     // Wait for initial decision to load (hash = abc123de456789)
     await waitFor(() => expect(screen.getByTestId('ai-plan-trigger')).toBeInTheDocument())
@@ -967,5 +968,164 @@ describe('C8 – integration: trade_plan + contradictions dividers both rendered
     // Both trigger buttons visible (both sections closed by default)
     expect(screen.getByTestId('ai-plan-trigger')).toBeInTheDocument()
     expect(screen.getByTestId('ai-contradictions-trigger')).toBeInTheDocument()
+  })
+})
+
+// ── C1–C6: RepricingChipRow (F218-d7b) ─────────────────────────────────────
+
+// Multi-endpoint fetch mock: routes /cockpit/decision/ and /cockpit/repricing-triggers/
+function makeChipFetch(opts: {
+  repricingTriggers?: object[]
+  repricingStatus?: 200 | 422 | 'pending'
+}) {
+  return vi.fn((url: string) => {
+    if ((url as string).includes('/cockpit/repricing-triggers/')) {
+      if (opts.repricingStatus === 'pending') return new Promise(() => {}) // never resolves
+      if (opts.repricingStatus === 422) {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () => Promise.resolve({ error: { code: 'ERR', message: 'err' } }),
+        })
+      }
+      const data = { ticker: 'NVDA', triggers: opts.repricingTriggers ?? [] }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data }) })
+    }
+    if ((url as string).includes('/cockpit/decision/')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: mockDecision }) })
+    }
+    return Promise.reject(new Error(`Unexpected URL: ${url}`))
+  }) as unknown as typeof fetch
+}
+
+describe('C1 – ticker=null → chip area not rendered', () => {
+  it('empty state shows; no repricing chip in DOM', () => {
+    vi.stubGlobal('fetch', vi.fn())
+    useCockpitStore.setState({ selectedTicker: null })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+    expect(screen.getByText(/请在 Setup Monitor/)).toBeInTheDocument()
+    expect(document.querySelector('[data-repricing-chip]')).toBeNull()
+  })
+})
+
+describe('C2 – ticker="NVDA" + 2 triggers → 2 chips rendered with correct colors', () => {
+  it('chip row shows 2 chips matching token vars', async () => {
+    const triggers = [
+      {
+        triggerType: 'EARNINGS_ACCEL',
+        detectedDate: '2026-05-15',
+        confidence: 0.8,
+        evidence: { epsYoyGrowth: [78], revenueYoyGrowth: [32], quarters: ['Q1'] },
+        computedAt: '2026-05-20T22:40:00Z',
+      },
+      {
+        triggerType: 'MARGIN_EXPANSION',
+        detectedDate: '2026-05-15',
+        confidence: 0.75,
+        evidence: {
+          grossMarginTrend: [0.40, 0.49],
+          fcfMarginTrend: [0.10, 0.15],
+          quarters: ['Q1'],
+          triggerMetric: 'gross_margin',
+          expansionBp: 900,
+        },
+        computedAt: '2026-05-20T22:40:00Z',
+      },
+    ]
+    vi.stubGlobal('fetch', makeChipFetch({ repricingTriggers: triggers }))
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-repricing-chip]')).toHaveLength(2)
+    })
+
+    const chips = Array.from(document.querySelectorAll('[data-repricing-chip]')) as HTMLElement[]
+    const chipTypes = chips.map((c) => c.getAttribute('data-repricing-chip'))
+    expect(chipTypes).toContain('EARNINGS_ACCEL')
+    expect(chipTypes).toContain('MARGIN_EXPANSION')
+
+    const earningsChip = chips.find((c) => c.getAttribute('data-repricing-chip') === 'EARNINGS_ACCEL')!
+    expect(earningsChip.style.color).toBe('var(--color-trigger-earnings-accel)')
+  })
+})
+
+describe('C3 – ticker="AAPL" + empty triggers → chip area null, decision normal', () => {
+  it('no chips rendered; decision card body still renders', async () => {
+    vi.stubGlobal('fetch', makeChipFetch({ repricingTriggers: [] }))
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+
+    await waitFor(() => screen.getByText('850.00'))
+
+    expect(document.querySelector('[data-repricing-chip]')).toBeNull()
+    expect(screen.getByText('850.00')).toBeInTheDocument()
+  })
+})
+
+describe('C4 – repricing API loading → chip area null (does not block SkeletonCard)', () => {
+  it('decision loading shows skeleton; chip row absent', async () => {
+    vi.stubGlobal('fetch', makeChipFetch({ repricingStatus: 'pending' }))
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+
+    // Decision also pending → skeleton is shown
+    await waitFor(() => {
+      expect(document.querySelector('[data-slot="skeleton"]')).not.toBeNull()
+    })
+    expect(document.querySelector('[data-repricing-chip]')).toBeNull()
+  })
+})
+
+describe('C5 – repricing API error → chip area null (silent)', () => {
+  it('decision card renders normally; no chips on repricing 422', async () => {
+    vi.stubGlobal('fetch', makeChipFetch({ repricingStatus: 422 }))
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+
+    await waitFor(() => screen.getByText('850.00'))
+
+    expect(document.querySelector('[data-repricing-chip]')).toBeNull()
+    expect(screen.getByText('850.00')).toBeInTheDocument()
+  })
+})
+
+describe('C6 – hover chip → tooltip shows evidence summary', () => {
+  it('EarningsAccel chip tooltip content contains "eps yoy 78%"', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+
+    const triggers = [
+      {
+        triggerType: 'EARNINGS_ACCEL',
+        detectedDate: '2026-05-15',
+        confidence: 0.8,
+        evidence: { epsYoyGrowth: [78], revenueYoyGrowth: [32], quarters: ['Q1'] },
+        computedAt: '2026-05-20T22:40:00Z',
+      },
+    ]
+    vi.stubGlobal('fetch', makeChipFetch({ repricingTriggers: triggers }))
+    useCockpitStore.setState({ selectedTicker: 'NVDA' })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    renderWidgetWith(qc)
+
+    // Wait for chip to appear
+    const chip = await waitFor(() => {
+      const el = document.querySelector('[data-repricing-chip="EARNINGS_ACCEL"]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+
+    // Hover to open Radix tooltip (fires pointerenter; tooltip opens after delayDuration)
+    await user.hover(chip)
+
+    // Tooltip renders with role="tooltip" in a Radix portal
+    const tooltip = await screen.findByRole('tooltip', {}, { timeout: 2000 })
+    expect(tooltip.textContent).toContain('eps yoy 78%')
   })
 })
