@@ -382,8 +382,49 @@ class RepricingTriggerService:
     def _detect_balance_inflection(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T5 — F218-d6b 实装。当前返回 None。"""
-        return None
+        """T5: 净负债连续 2 季 QoQ 下降 ≥ 5%，或 FCF 由负切为连续 2 季正 → 触发.
+
+        读最近 ≥ 3 季 stock_fundamentals_quarterly（DESC by period_end_date）：
+          - net_debt 臂：(Q-1−Q0)/Q-1 ≥ 5% AND (Q-2−Q-1)/Q-2 ≥ 5%；分母 ≤ 0 → 跳过该臂
+          - fcf 臂：    Q-2 ≤ 0 AND Q-1 > 0 AND Q0 > 0（严格切换点）
+        任一臂数据缺失（rows 不足 / 字段 None / 分母无效）→ 跳过该臂；两臂全空 → return None.
+        两臂都命中 → trigger_metric=net_debt（DATA-MODEL §1100 默认偏好）.
+        """
+        rows = self._fundamentals.get_recent_for_ticker(
+            ticker, limit=T5_LOOKBACK_QUARTERS,
+        )
+        if len(rows) < T5_LOOKBACK_QUARTERS:
+            return None
+
+        # rows[0]=Q0 (最新), rows[1]=Q-1, rows[2]=Q-2
+        q0, q1, q2 = rows[0], rows[1], rows[2]
+
+        net_debt_hit, _ = _eval_net_debt_arm(
+            q0.net_debt, q1.net_debt, q2.net_debt,
+            threshold=T5_NET_DEBT_QOQ_THRESHOLD,
+        )
+        fcf_hit = _eval_fcf_arm(q0.fcf, q1.fcf, q2.fcf)
+
+        if not (net_debt_hit or fcf_hit):
+            return None
+
+        # net_debt 优先（DATA-MODEL §1100 默认偏好），fcf 备选
+        trigger_metric = "net_debt" if net_debt_hit else "fcf"
+
+        # trend [Q-2, Q-1, Q0] 时间顺序，与 DATA-MODEL §1100 example 对齐
+        net_debt_trend = [q2.net_debt, q1.net_debt, q0.net_debt]
+        fcf_trend = [q2.fcf, q1.fcf, q0.fcf]
+        quarters = [_quarter_label(r.period_end_date) for r in (q2, q1, q0)]
+
+        return DetectorResult(
+            confidence=T5_DEFAULT_CONFIDENCE,
+            evidence={
+                "net_debt_trend": net_debt_trend,
+                "fcf_trend": fcf_trend,
+                "quarters": quarters,
+                "trigger_metric": trigger_metric,
+            },
+        )
 
     # ── T4 helpers ───────────────────────────────────────────────────────────
 
