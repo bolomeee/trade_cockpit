@@ -95,6 +95,8 @@ class TestTickerEndpoint:
         assert "detectedDate" in first
         assert "computedAt" in first
         assert first["triggerType"] == "MARGIN_EXPANSION"
+        # computedAt must carry UTC offset (not bare naive datetime)
+        assert "+00:00" in first["computedAt"] or "Z" in first["computedAt"]
         # evidence snake→camel
         ev = first["evidence"]
         assert "triggerMetric" in ev

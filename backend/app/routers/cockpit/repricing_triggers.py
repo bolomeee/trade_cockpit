@@ -41,13 +41,16 @@ def _evidence_to_camel(evidence: dict) -> dict:
 def _row_to_item(row: RepricingTrigger) -> dict:
     """Map ORM row → dict suitable for RepricingTriggerItem(WithTicker) validation."""
     evidence = _evidence_to_camel(json.loads(row.evidence_json))
+    computed_at = row.computed_at
+    if computed_at.tzinfo is None:  # SQLite strips tzinfo; re-attach UTC
+        computed_at = computed_at.replace(tzinfo=timezone.utc)
     return {
         "ticker": row.ticker,
         "trigger_type": row.trigger_type,
         "detected_date": row.detected_date.isoformat(),
         "confidence": row.confidence,
         "evidence": evidence,
-        "computed_at": row.computed_at.isoformat(),
+        "computed_at": computed_at.isoformat(),
     }
 
 
@@ -79,10 +82,13 @@ def get_repricing_triggers_market(
         trigger_type=trigger_type, limit=limit,
     )
     items = [RepricingTriggerItemWithTicker.model_validate(_row_to_item(r)) for r in rows]
-    computed_at = (
-        max(r.computed_at for r in rows).isoformat()
-        if rows else datetime.now(timezone.utc).isoformat()
-    )
+    if rows:
+        raw_ct = max(r.computed_at for r in rows)
+        if raw_ct.tzinfo is None:
+            raw_ct = raw_ct.replace(tzinfo=timezone.utc)
+        computed_at = raw_ct.isoformat()
+    else:
+        computed_at = datetime.now(timezone.utc).isoformat()
     return MarketRepricingTriggersResponse(
         data=MarketRepricingTriggersData(
             triggers=items, total_count=total, computed_at=computed_at,
