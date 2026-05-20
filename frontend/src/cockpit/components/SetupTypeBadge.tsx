@@ -29,7 +29,22 @@ const TYPE_LABELS: Record<string, string> = {
 type Props = { value: SetupType }
 
 export function SetupTypeBadge({ value }: Props) {
-  if (!value || value === 'NONE') {
+  if (value === 'NONE') {
+    // detector 已判定，明确"无 setup 形态" — 用斜体小写灰字与"数据缺失"区分
+    return (
+      <span
+        style={{
+          color: 'var(--color-text-muted)',
+          fontSize: 'var(--font-size-badge)',
+          fontStyle: 'italic',
+        }}
+      >
+        none
+      </span>
+    )
+  }
+  if (!value) {
+    // 字段真缺失（生产几乎不出现） — 保留中划线作为"异常/未知"标记
     return (
       <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-badge)' }}>
         —
