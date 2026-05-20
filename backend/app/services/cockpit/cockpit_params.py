@@ -18,6 +18,23 @@ class CockpitSharedParams(BaseModel):
         default=["XLK", "XLY", "XLF", "XLI", "XLE", "XLV", "XLC", "XLP", "XLU", "XLB", "XLRE"],
         description="11 GICS sector ETFs for breadth and participation scoring",
     )
+    SECTOR_TO_ETF: dict[str, str] = Field(
+        default={
+            # FMP /profile.sector 原文（11 类，2026-05-20 dev DB 实测） → 11 GICS sector ETF
+            "Technology": "XLK",
+            "Consumer Cyclical": "XLY",
+            "Financial Services": "XLF",
+            "Industrials": "XLI",
+            "Energy": "XLE",
+            "Healthcare": "XLV",
+            "Communication Services": "XLC",
+            "Consumer Defensive": "XLP",
+            "Utilities": "XLU",
+            "Basic Materials": "XLB",
+            "Real Estate": "XLRE",
+        },
+        description="FMP /profile.sector 字符串 → cockpit 11 GICS sector ETF symbol（T4 SECTOR_CYCLE detector 用，与 SECTOR_ETFS 一一对应）",
+    )
     INDEX_ETFS: list[str] = Field(
         default=["SPY", "QQQ", "IWM", "VXX"],
         description="Broad-market index ETFs used in trend scoring; VXX proxies VIX (iPath S&P 500 VIX Short-Term Futures)",
