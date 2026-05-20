@@ -1,0 +1,757 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d7b 验收通过 → done | F218 Phase D 整体收官
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d7b 验收通过：27 新增测试全绿 / 视觉 V1-V10 全部确认 / design-spec+tokens+component-plan 同步
+✅ F218 全部 10 sub-sprint done → 父 F218 升 done（completed_at 2026-05-20）
+✅ cockpit 4 支柱齐全：Phase A 基础 / Phase B Ready Signal / Phase C Capitulation / Phase D Repricing Trigger
+⏭ 下一步：project-commiter 发版（v2.4）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d6a Generator 完成 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ T5 数据层 plumbing 实装完成（15/15 tests 全绿，全量回归 9 failures 均 pre-existing）
+  - fmp_client.py: FMP_EP_BALANCE_SHEET + FMP_EP_CASH_FLOW 常量 + 2 方法（fail-open）
+  - stock_fundamentals_quarterly.py: ORM model 9 字段 + models/__init__.py 注册
+  - alembic 024: stock_fundamentals_quarterly 表（BigInteger 字段 + UQ + index）双向跑通
+  - fundamentals_repository.py: 3 方法 upsert null-not-erase / get_recent / delete_for_tickers_not_in
+  - pool_helpers.py: compute_fundamentals_row_from_balance_cash + compute_supplemental_key_metrics_from_is_bs_cf
+  - pool_cache_service.py: _rebuild_key_metrics 重构 tuple return + _rebuild_fundamentals + 2 并发 helper + rebuild() 改造
+  - test_f218_d3a_key_metrics.py: 修复 _rebuild_key_metrics tuple 解包（同步 d3a 测试）
+  - feat commit: 4ffde3b
+
+🔜 下一步：F218-d6b contract 协商（T5 BALANCE_INFLECTION detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d5 Generator + Evaluator 完成 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ T4 SECTOR_CYCLE detector 实装完成（10/10 tests, 全量回归无新失败）
+  - cockpit_params.py: CockpitSharedParams +SECTOR_TO_ETF 11 项 dict（FMP Title Case → XL* ETF）
+  - repricing_trigger_service.py: T4 常量段 + _detect_sector_cycle 55L + 4 helpers + _close_on_or_before
+  - test_repricing_trigger_sector_cycle.py: 10 tests / 3 class (S1-S10) 全绿
+  - 实施修正：T4_SMA_FETCH_DAYS=280（Contract 伪码 earliest=120cal 不足覆盖 SMA200；NP-d5-9 明确 280cal）
+  - consistency-check(mode=interactive) severe=0 medium=0 minor=0 全清
+  - feat commit: 266273c
+
+🔜 下一步：F218-d6a contract 协商（T5 数据层 balance-sheet+cash-flow+fundamentals+pool_cache）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d5 Contract 协商完成 → contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Sprint Contract 起草 + 确认
+  - docs/开发/sprint-contracts/F218-d5-contract.md（status: confirmed）
+  - 范围：T4 SECTOR_CYCLE detector 实装（d1 skeleton 第 4 个占位）
+  - 文件预算：3 文件（远低于 6 上限）
+    1. backend/app/services/cockpit/cockpit_params.py（修改：CockpitSharedParams +SECTOR_TO_ETF 11 项 dict）
+    2. backend/app/services/cockpit/repricing_trigger_service.py（修改：T4 常量段 6 行 + _detect_sector_cycle 实装 + 3 service helper + 1 模块级 helper）
+    3. backend/tests/test_repricing_trigger_sector_cycle.py（新建：10 测试 / 3 class）
+  - 关键策略：
+    · ticker → market_scan_universe.sector → SHARED.SECTOR_TO_ETF → ETF symbol
+    · 两采样日按 60d return ratio = etf_return / spy_return 计算 11 ETF ratio
+    · pool_helpers.compute_rs_percentile_map 跨 11 ETF mid-rank percentile（D081）
+    · 触发条件 start_pct<40 AND end_pct>60 AND latest_close>SMA200
+    · confidence 恒 0.5（DATA-MODEL §1107，T4 无高置信路径）
+    · evidence_json: sector(ETF) / rs_history(长 2 ASC ISO 日期+percentile) / price_vs_200d(4 位小数)
+
+🔍 协商期重要发现：
+  - ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile **实际不存在**
+  - 等价算法在 pool_helpers.compute_rs_percentile_map（D081 mid-rank 已在 F205 验证）
+  - 由 F218-d5 Contract NP-d5-3 承载澄清，不升 DXXX，不在 market_regime_service 加重复实现
+  - features.json F218.notes 已追加此说明
+
+🔧 系统变更：
+  - features.json:
+    · F218.sub_sprints["F218-d5"]: design_needed → contract_agreed
+    · F218.last_updated: 2026-05-20
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+    · F218.notes: 追加 ARCHITECTURE 澄清说明
+  - _pipeline_status.active_sprint_phase: design_needed → contract_agreed
+  - 顶级 last_updated: 2026-05-18 → 2026-05-20
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（NP-d5-1~10 是实施级决策，由 contract 承载，不升 DXXX；ARCHITECTURE §564 偏差由 Contract 澄清承载）
+
+⚠️ 待你决策：
+  无未决事项（NP-d5-1~10 全部按推荐确认）
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: ✅ done
+  F218-d4: ✅ done
+  F218-d5: 🟡 contract_agreed
+  F218-d6a ~ F218-d7b: ⬜ design_needed (4 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d5，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d5-contract.md，
+  进入 Generator 模式，从开发步骤 1（cockpit_params.SECTOR_TO_ETF）开始。
+  ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d4 Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - news_cache_repository.py +get_recent_for_ticker（as_of_date SQL窗+Python symbols过滤+DESC）
+  - repricing_trigger_service.py +T3_*常量段 +_detect_new_product实装（47行）
+  - test_repricing_trigger_new_product.py 新建 10测试 3class 全绿
+  - 单元测试：10/10 通过
+  - 全量回归：1179 passed，9 pre-existing failures（与d3b基线一致）
+  - Evaluator 自检：全部通过
+  - phase → needs_review
+
+📊 F218 进度：d1 ✅ | d2 ✅ | d3a ✅ | d3b ✅ | d4 🔍 needs_review | d5~d7b ⬜
+🔜 下一步：F218-d4 acceptance，然后 F218-d5（T4 SECTOR_CYCLE detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d3a 验收通过 ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d3a — T2 数据层（income-statement → key_metrics 表 + pool_cache 集成）
+  - 10 Contract AC 全部确认（用户验收通过）
+  - 设计边界全部确认（detector 留 d3b / fcf_margin+roic NULL 等 d6a）
+  - 验收记录：docs/验收/v2.4-F218-d3a-acceptance.md
+
+📊 F218 进度：d1 ✅ done | d2 ✅ done | d3a ✅ done | d3b~d7b ⬜ design_needed
+🔜 下一步：F218-d3b Sprint Contract 协商（T2 Margin Expansion detector 实装）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d3a Generator 完成 → needs_review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d3a — T2 数据层（income-statement → key_metrics 表 + pool_cache 集成）
+  - 7 文件（超额授权 Path A，同 F217-c2c 模式）
+  - fmp_client: FMP_EP_INCOME_STATEMENT 常量 + get_income_statement_quarterly(symbol, limit=8) fail-open
+  - StockKeyMetricsQuarterly ORM（9 列，DATA-MODEL.md §1163-1183 1:1）+ __init__ 注册
+  - alembic 023（revision=f218_d3a_key_metrics_quarterly）upgrade/downgrade round-trip 通过
+  - KeyMetricsRepository: upsert null-not-erase（SELECT-then-INSERT-OR-REPLACE）+ get_recent_for_ticker + delete_for_tickers_not_in
+  - compute_key_metrics_row_from_income_statement 纯函数（pool_helpers.py），7 keys 输出，不含 fcf_margin/roic
+  - PoolCacheService: _fetch_income_statement_concurrent（6 worker）+ _rebuild_key_metrics + rebuild() 末尾追加 + 双 system_log
+  - 12 测试全绿（10 方法 / 4 class；parametrize 展开 12 case）
+  - 全量回归 9 failures 均为 pre-existing（d2 baseline 相同），无新增
+  - fcf_margin / roic 列保持 NULL 等待 d6a 补齐（null-not-erase 保证不回退）
+
+📊 F218 进度：d1 ✅ done | d2 ✅ done | d3a 🟡 needs_review | d3b~d7b ⬜ design_needed
+🔜 下一步：F218-d3a 验收（acceptance skill）→ done → F218-d3b Sprint Contract（T2 Margin Expansion detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] feature-dev A-1 Contract 协商：F218-d3a 段
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] F218-d1 验收通过 ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d1 — Repricing Trigger Framework (skeleton)
+  - 6 文件：ORM model + alembic 022 + repository + service skeleton + tests
+  - 14 测试全绿（Repo R1-R8 / Service S9-S12 / Migration M13 / Constants C14）
+  - alembic 022 upgrade/downgrade 双向跑通
+  - TRIGGER_TYPES 5 枚举与 DATA-MODEL.md 字面一致
+  - soft_expire / 错误隔离 / DetectorResult 全部验证
+  - 全量回归 1128 passed，无新增失败
+  - 验收记录：docs/验收/v2.4-F218-d1-acceptance.md
+
+📊 F218 进度：F218-d1 ✅ done | d2~d7b ⬜ design_needed
+🔜 下一步：F218-d2 Sprint Contract 协商（T1 Earnings Acceleration detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] project-init 迭代登记：F218 (v2.4)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - features.json _iteration_log：v2.3 收口 (status=done, released_at=2026-05-18, released_tag=v2.3.0) + 追加 v2.4 entry
+  - features.json _pipeline_status：current_iteration=v2.4, system_design=needs_update, ui_design=needs_update, development=planned
+  - features.json 新增 F218 entry (Cockpit Phase D — Repricing Trigger 完整框架 5 类)，phase=design_needed
+  - PRD.md 追加 v2.4 迭代记录章节（变更原因 / 新增 feature / 下游影响 / 预期影响 / 明确不做 / 下一步）
+  - features.json 写入前已备份到 docs/需求/.features.json.bak
+  - JSON 合法性验证通过（features count=59, F218 已登记）
+
+⚠️ 待用户决策（写入前已确认 4 项）：
+  - NP-init-1=v2.4 迭代版本（按推荐确认）
+  - NP-init-2=A 不预拆 sub_sprints（按推荐确认，留给 feature-dev sizing）
+  - NP-init-3=A 走完整 system-design 变更协议 4 文档同步（按推荐确认）
+  - NP-init-4=A design-spec 内联模式参考 F216-d3 / F217-c2c（按推荐确认）
+
+🔧 系统变更（即将由 system-design 落地）：
+  - DATA-MODEL.md 新增 3 张表：repricing_triggers / stock_key_metrics_quarterly / stock_fundamentals_quarterly
+  - API-CONTRACT.md 新增 2 个 endpoint：GET /api/cockpit/repricing-triggers/{ticker} + GET /api/cockpit/repricing-triggers
+  - DECISIONS.md 预期新增 D096 (5 类 trigger 框架与 evidence_json 取舍) / D097 (FMP 4 endpoint 接入 quota+缓存) / D098 (D4a 关键词 vs NLP)
+  - ARCHITECTURE.md 新模块 repricing_trigger_service.py + 2 新 repository + cron 周一-周五 22:40 UTC
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：⬜ design_needed (v2.4 新增)
+
+[下一步]
+  在新 session 中触发 system-design skill 走变更协议：
+  > 触发 system-design 变更协议，为 F218 (Phase D Repricing Trigger) 新增 3 张表 + 2 endpoint + D096/D097/D098 + ARCHITECTURE 新模块说明。
+  完整范围见 PRD.md v2.4 迭代记录与 features.json F218 entry。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18 15:30] Sprint：F218-d1 — Framework: model + alembic 022 + repository + service skeleton
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容（Contract 协商阶段）：
+  - F218 system-design 变更协议落地：DATA-MODEL.md 新增 §RepricingTrigger / §StockKeyMetricsQuarterly / §StockFundamentalsQuarterly + API-CONTRACT.md 新增 §Cockpit Repricing Triggers (2 endpoint) + DECISIONS.md 追加 D096/D097/D098 + ARCHITECTURE.md 新增 §Cockpit Repricing Trigger Service 模块 + FMP 4 endpoint 映射。4 文档 confirmed @ 2026-05-18。
+  - feature-dev A-1 sizing 协商完成：F218 拆 10 个 sub-sprint（d1/d2/d3a/d3b/d4/d5/d6a/d6b/d7a/d7b），开发顺序 d1 → d2 → d4 → d5 → d3a → d3b → d6a → d6b → d7a → d7b。NP-size-1/2/3/4/5=A/6 全部按推荐确认。
+  - features.json F218 sub_sprints 字段写入 10 个 key（全 design_needed），sub_sprint_notes 追加 A-1 协商结果。
+  - consistency-check (mode=interactive) 全清：10 个 sub-sprint 缺合约文件属预期 pending（design_needed）；C5/C4 计划随各 sub-sprint 推进自然清零。
+  - F218-d1 Sprint Contract 起草并确认：docs/开发/sprint-contracts/F218-d1-contract.md (status=confirmed)。范围 6 文件 / 14 测试 / 不动 API/前端/cron。NP-d1-1~5 全部按推荐。
+  - phase 转换：F218 design_needed → in_progress / F218-d1 design_needed → contract_agreed / _pipeline_status.active_sprint=F218-d1 / development planned → in_progress / iteration_history 追加 F218-d1 contract_agreed 条目。
+
+⚠️ 待用户决策：
+  - 无（NP-init / NP-size / NP-d1 全部已确认）
+
+🔧 系统变更（即将由 Generator 阶段落地）：
+  - 新表 repricing_triggers（id / ticker / trigger_type / detected_date / confidence / evidence_json / active），UQ(ticker,trigger_type,detected_date) + 3 索引
+  - alembic 022_f218_repricing_triggers.py
+  - backend/app/models/repricing_trigger.py
+  - backend/app/repositories/repricing_trigger_repository.py（upsert / soft_expire / get_active_for_ticker / get_all_active / delete_expired_inactive）
+  - backend/app/services/cockpit/repricing_trigger_service.py skeleton（DetectorResult dataclass + compute_and_store_all_triggers + 5 _detect_* 占位返 None + soft expire 调度内同循环触发）
+  - backend/tests/test_repricing_trigger_skeleton.py（14 测试 4 class 分组）
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：🔄 in_progress
+    F218-d1：📋 contract_agreed → 即将 Generator
+    F218-d2/d3a/d3b/d4/d5/d6a/d6b/d7a/d7b：⬜ design_needed（排队）
+
+[下一步]
+  feature-dev 铁律：A-1 后必须开新 session 进入 Generator。
+  在 Sonnet 新 session 中执行：
+
+  > 继续开发 F218-d1，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d1-contract.md，
+  > 进入 Generator 模式，从开发步骤 1 (model 文件) 开始。
+
+
+────────────────────────────────────────────────────────────────────
+[2026-05-18 ⑤] feature-dev A-3 Contract 协商：F218-d2 T1 Earnings Acceleration（前置：F218-d1 ✅ done）
+────────────────────────────────────────────────────────────────────
+
+✅ 本 session 完成：
+  - F218-d2 Sprint Contract 起草并确认：docs/开发/sprint-contracts/F218-d2-contract.md (status=confirmed)
+  - 范围 = T1 EARNINGS_ACCEL detector 实装（d1 skeleton 留下的第 1 个占位 → 真实业务逻辑）
+  - 3 文件 / 10 测试 / 不动 API / 不动前端 / 不动 cron / 不动 alembic
+    1) backend/app/repositories/earnings_event_repository.py — +1 read 方法 get_recent_completed_for_ticker(ticker, limit=8)
+    2) backend/app/services/cockpit/repricing_trigger_service.py — _detect_earnings_acceleration 占位 → 实装 + EarningsEventRepository 注入 + 5 个 T1_* 常量 + 模块级 _quarter_label helper
+    3) backend/tests/test_repricing_trigger_earnings_accel.py — 10 测试 / 3 class（repo 2 + detector 7 + 端到端 1）
+  - 核心业务逻辑：取最近 6 季 actual EPS 配对上年同期 → 3 个 EPS YoY → 严格单调递增 (yoy[0]<yoy[1]<yoy[2]) 触发；confidence 最近一季 yoy ≥ 30% 升 0.8 否则 0.5（DATA-MODEL.md §RepricingTrigger 业务规则原文）；revenue YoY 同步入 evidence 但缺失/负基准不阻断 EPS 判定
+  - NP-d2-1~7 关键决策全部按推荐：
+    (1) 严格单调（非允许持平 / 非每步最小增量）
+    (2) EPS 单独判定（revenue 仅作 evidence 副产物）
+    (3) 6 季全齐才判定（不插值不均值）
+    (4) confidence 阈值仅看最近一季（DATA-MODEL.md 原文一致）
+    (5) quarter label 用 earnings_date 日历季度 YYYYQN（不加 alembic 023 fiscal_quarter 列）
+    (6) repo 新方法叫 get_recent_completed_for_ticker（与既有 get_next_earnings 对称）
+    (7) 负基准（上年同期 EPS ≤ 0）整体返 None 不做负基准除法
+  - features.json 更新：F218-d2 design_needed → contract_agreed；_pipeline_status.active_sprint 保持 F218-d2；iteration_history 追加 F218-d2 contract_agreed 条目
+
+⚠️ 待用户决策：
+  - 无（NP-d2-1~7 全部已确认）
+
+🔧 系统变更（即将由 Generator 阶段落地）：
+  - backend/app/repositories/earnings_event_repository.py +1 方法（既有 3 方法签名不变）
+  - backend/app/services/cockpit/repricing_trigger_service.py：占位换实装 + import EarningsEventRepository + 5 T1 常量 + _quarter_label 模块 helper
+  - backend/tests/test_repricing_trigger_earnings_accel.py（10 测试）
+
+📊 功能状态：
+  F215 Phase A Volume z-score：✅ done
+  F216 Phase B Weekly Stage：✅ done
+  F217 Phase C Capitulation Reversal：✅ done (released v2.3.0)
+  F218 Phase D Repricing Trigger：🔄 in_progress
+    F218-d1：✅ done
+    F218-d2：📋 contract_agreed → 即将 Generator
+    F218-d3a/d3b/d4/d5/d6a/d6b/d7a/d7b：⬜ design_needed（排队）
+
+[下一步]
+  feature-dev 铁律：A-3 后必须开新 session 进入 Generator。
+  在 Sonnet 新 session 中执行：
+
+  > 继续开发 F218-d2，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d2-contract.md，
+  > 进入 Generator 模式，按 3 步开发顺序推进：
+  >   1) repo +方法 get_recent_completed_for_ticker（+pytest 单测验证最小通过）
+  >   2) service detector 实装（import / 5 常量 / _detect_earnings_acceleration 主体 / _quarter_label helper）
+  >   3) 10 测试落地 + 全量回归
+  > 每步通过最小验证后 wip commit。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] Sprint：F218-d2 T1 EARNINGS_ACCEL detector
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - EarningsEventRepository.get_recent_completed_for_ticker(ticker, limit=8)
+    （过滤 eps_actual IS NOT NULL，ORDER BY earnings_date DESC，limit 截断）
+  - RepricingTriggerService._detect_earnings_acceleration 占位 → 真实实装
+    （5 T1_* 常量 / EarningsEventRepository 注入 / 严格单调 YoY 判定 / confidence 阈值 / revenue evidence）
+  - 模块级 _quarter_label(d: date) -> str helper（YYYYQN 格式）
+  - 新测试文件 tests/test_repricing_trigger_earnings_accel.py：3 class / 14 test case（10 logical cases，参数化展开）
+  - 单元测试：14/14 通过
+  - d1 回归：14/14 通过
+  - 全量后端回归：1142 pass，9 失败全部为预先存在（stash 验证）
+  - Evaluator 自检：通过（1 项：函数 62 行 >50 行上限，已向用户报告）
+  - phase → needs_review
+
+⚠️ 待用户决策：
+  - _detect_earnings_acceleration 函数 62 行（含 8 行 docstring + 7 行注释），超出 50 行上限须报告。
+    建议：保留现状（docstring 承载 NP-d2-1~7 决策说明，逻辑清晰）；
+    或：修剪 inline 注释和 docstring 至 ≤ 50 行。
+
+🔧 系统变更：
+  - backend/app/repositories/earnings_event_repository.py：+1 方法
+  - backend/app/services/cockpit/repricing_trigger_service.py：+import / +init / +5 常量 / detector 实装 / _quarter_label
+  - backend/tests/test_repricing_trigger_earnings_accel.py：新建
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: done ✅
+  F218-d2: needs_review 🔍
+  F218-d3a ~ d7b: design_needed ⬜
+
+[下一步]
+  验收 F218-d2 → acceptance skill
+  或开始 F218-d3a (T2 FMP 接入) Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-18] 验收：F218-d2 T1 EARNINGS_ACCEL detector
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过（用户亲确认 10 条业务逻辑 + 3 项边缘决策）
+   F218-d2 phase: needs_review → done
+   父 F218 phase: 保持 in_progress（d3a~d7b 尚未开始）
+   consistency-check: 0 严重违例，acceptance gate 通过
+   验收记录: docs/验收/v2.4-F218-d2-acceptance.md
+
+📊 F218 子 Sprint 状态：
+  F218-d1 ✅ done
+  F218-d2 ✅ done
+  F218-d3a ~ d7b ⬜ design_needed（8 个待开发）
+
+[下一步]
+  F218-d3a：T2 MARGIN_EXPANSION，需接入 FMP key-metrics，Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] feature-dev A-1 Contract 协商：F218-d3a
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F218-d3a Sprint Contract 起草并确认（status=confirmed @ docs/开发/sprint-contracts/F218-d3a-contract.md）
+  - 范围：T2 Margin Expansion 数据层 plumbing（不含 detector，detector 留 d3b）
+  - 7 文件预算（超 6 上限 1 / NP-d3a-1 Path A 同 F217-c2c 模式授权）：
+      1. backend/app/external/fmp_client.py（+endpoint 常量 + get_income_statement_quarterly 方法）
+      2. backend/app/models/stock_key_metrics_quarterly.py（新建 ORM model）+ models/__init__.py（注册，合并算 1 logical change）
+      3. backend/alembic/versions/023_f218_d3a_stock_key_metrics_quarterly.py（新建迁移）
+      4. backend/app/repositories/key_metrics_repository.py（新建：upsert / get_recent_for_ticker / delete_for_tickers_not_in）
+      5. backend/app/services/cockpit/pool_cache_service.py（+_rebuild_key_metrics 集成）
+      6. backend/app/services/cockpit/pool_helpers.py（+compute_key_metrics_row_from_income_statement 纯函数）
+      7. backend/tests/test_f218_d3a_key_metrics.py（新建：10 测试 / 4 class）
+  - 关键决策 NP-d3a-1~8 全部按推荐：
+      (1) Path A 申请超额授权 7 文件
+      (2) FMP fail-open 返 [] 与 D079 一致
+      (3) KeyMetricsRepository.upsert SELECT-then-INSERT-OR-REPLACE 显式 null-not-erase
+      (4) margin 计算 helper 放 pool_helpers.py 末尾不新建文件
+      (5) delete_for_tickers_not_in 实装方法但不挂调用点
+      (6) fcf_margin + roic 列 d3a 期间保持 NULL（d6a null-not-erase upsert 补齐）
+      (7) _rebuild_key_metrics 复用 ThreadPoolExecutor(_FMP_MAX_WORKERS=6)
+      (8) FMP limit=8（DATA-MODEL.md 硬编码）
+
+🔧 系统变更：
+  - features.json：F218.sub_sprints.F218-d3a → contract_agreed
+  - features.json：F218.iteration_history 追加 contract_agreed 条目（2026-05-19）
+  - _pipeline_status.active_sprint: F218-d2 → F218-d3a
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - SESSION-HANDOFF.md 改写为 F218-d3a Generator 启动版
+
+⚠️ 待你决策：
+  无未决事项
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: 🟡 contract_agreed
+  F218-d3b ~ d7b: ⬜ design_needed (7 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session：
+  ──────────────────────────────────────────
+  继续开发 F218-d3a，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3a-contract.md，
+  进入 Generator 模式，从开发步骤 1 (FMP client 方法) 开始。
+  ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] Sprint：F218-d3b Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 草拟 F218-d3b Sprint Contract（T2 MARGIN_EXPANSION detector 实装）
+  - 用户全盘按推荐确认 8 项关键决策 + evidence_json schema
+  - Contract status: draft → confirmed @ 2026-05-19
+  - 预计修改文件 2 个（远低于 6 上限）：
+      1. backend/app/services/cockpit/repricing_trigger_service.py
+         （+import KeyMetricsRepository / __init__ 注入 / +T2 常量段 / 替换 _detect_margin_expansion / +2 模块级 helpers）
+      2. backend/tests/test_repricing_trigger_margin_expansion.py
+         （新建：10 测试 / 3 class）
+  - 关键决策 NP-d3b-1~8 全部按推荐：
+      (1) "最近 2 季同比扩张" → 双 YoY 都过阈值（严格对齐 T1）
+      (2) FCF 臂 fail-soft 跳过（d6a 上线后零修改激活）
+      (3) 两臂同命中 → trigger_metric=gross_margin（D096 偏好）
+      (4) confidence 阈值取触发臂 Q0 YoY（≥400bp → 0.8）
+      (5) evidence_json `quarters` 用 YYYYQN（与 T1 一致，period_end_date 派生）
+      (6) trend 3 个值 = [Q-2, Q-1, Q0] 连续 3 季（DATA-MODEL §1098 example 对齐）
+      (7) helpers 留 repricing_trigger_service.py 模块级（YAGNI，不预抽 helpers 文件）
+      (8) 不动 d3a delete_for_tickers_not_in（trigger 行 TTL 由 365 天 retention 管）
+
+🔧 系统变更：
+  - features.json：F218.sub_sprints.F218-d3b → contract_agreed
+  - features.json：F218.iteration_history 追加 contract_agreed 条目（2026-05-19）
+  - _pipeline_status.active_sprint: F218-d3a → F218-d3b
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - SESSION-HANDOFF.md 改写为 F218-d3b Generator 启动版
+
+⚠️ 待你决策：
+  无未决事项
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: 🟡 contract_agreed
+  F218-d4 ~ F218-d7b: ⬜ design_needed (6 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d3b，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d3b-contract.md，
+  进入 Generator 模式，从开发步骤 1（T2 常量段 + helpers + KeyMetricsRepo 注入）开始。
+  ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d3b Generator + Evaluator 完成 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ F218-d3b — T2 MARGIN_EXPANSION detector 実装（detector 実装）
+  - 2 文件（Contract §2 上限 6 内）
+  - repricing_trigger_service.py：KeyMetricsRepository 注入 / T2_* 定数 6 行 / _detect_margin_expansion 実装(~30行) / _eval_margin_arm + _round_or_none モジュールレベル helpers
+  - T2 ロジック：gross 臂（200bp）/ FCF 臂（300bp）双 YoY 判定；両臂命中 → gross 優先（D096）；confidence 400bp threshold
+  - evidence_json: {gross_margin_trend, fcf_margin_trend, quarters, trigger_metric, expansion_bp} 5-key schema（DATA-MODEL §1098 1:1）
+  - d6a 前は FCF 臂は全 NULL → 永不命中；d6a 後はゼロ修改で自動激活
+  - テスト 15 pass（M1-M3/M4-M9/M10、M3+M9 parametrize 展開）
+  - 単体：M1 happy / M2 単 YoY 不過 / M3×4 None / M4 低置信+M11 schema / M5 高置信 / M6 FCF 単臂 / M7 両臂 gross 優先 / M8 単季不過 / M9×3 return None
+  - 統合：M10 upsert + soft_expire（scan_date +1日）
+  - 全量回帰 9 failures = pre-existing（d2 baseline 同）、新規追加なし
+  - Evaluator 自検全通過；F218 親 in_progress 維持（C1 invariant；sibling d4-d7b 未 done）
+
+📊 F218 進度：d1 ✅ | d2 ✅ | d3a ✅ | d3b ✅ | d4~d7b ⬜ design_needed
+🔜 次のステップ：F218-d4（T3 NEW_PRODUCT detector）Sprint Contract 協商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-19] F218-d4 Sprint Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Sprint Contract 起草 + 确认
+  - docs/开发/sprint-contracts/F218-d4-contract.md（status: confirmed）
+  - 范围：T3 NEW_PRODUCT detector D4a 关键词扫描实装（d1 skeleton 第 3 个占位）
+  - 文件预算：3 文件（远低于 6 上限）
+    1. backend/app/repositories/news_cache_repository.py（修改：+ get_recent_for_ticker 模块级函数）
+    2. backend/app/services/cockpit/repricing_trigger_service.py（修改：T3 常量段 + _detect_new_product 实装）
+    3. backend/tests/test_repricing_trigger_new_product.py（新建：10 测试 / 3 class）
+  - 关键策略：
+    · 关键词大小写不敏感子串匹配（D098 原文 7 项不动）
+    · 命中总数 ≥ 2 触发；同关键词同标题计 1（防词刷）
+    · ticker → 文章映射：as_of_date SQL 窗 + Python 端 symbols 过滤（不加 ticker 列，不动 news 表结构）
+    · confidence 恒 0.5（DATA-MODEL §1107，T3 无高置信路径）
+    · evidence_json: keyword_hits（count DESC）/ news_links（published_at DESC + 去重 + ≤5）/ scan_window_days=30
+
+🔧 系统变更：
+  - features.json:
+    · F218.sub_sprints["F218-d4"]: design_needed → contract_agreed
+    · F218.last_updated: 2026-05-19
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - _pipeline_status.active_sprint: F218-d3b → F218-d4
+  - _pipeline_status.active_sprint_phase: → contract_agreed
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D098 已覆盖；NP-d4-1~10 是实施级决策，由 contract 承载，不升 DXXX）
+
+⚠️ 待你决策：
+  无未决事项（NP-d4-1~10 全部按推荐确认）
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: ✅ done
+  F218-d4: 🟡 contract_agreed
+  F218-d5 ~ F218-d7b: ⬜ design_needed (5 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d4，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d4-contract.md，
+  进入 Generator 模式，从开发步骤 1（news_cache_repository.get_recent_for_ticker）开始。
+  ──────────────────────────────────────────
+
+[2026-05-19] F218-d4 验收通过
+  12/12 AC ✅ | 10/10 tests ✅ | d1-d3b 55 tests 无回归 | 全量 9 pre-existing failures 不变
+  T3 NEW_PRODUCT detector D4a 关键词扫描实装完成，evidence_json schema 1:1 DATA-MODEL §1099
+  F218-d4 → done | active_sprint → F218-d5（design_needed）
+  验收记录：docs/验收/v2.4-acceptance-F218-d4.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint：F218-d6a Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - feature-dev A-1：F218-d6a Sprint Contract 起草并确认
+  - 范围：T5 数据层 plumbing（不含 detector，detector 留 d6b）
+    · FMP /balance-sheet-statement?period=quarter + /cash-flow-statement?period=quarter client 方法（fail-open 返 []）
+    · stock_fundamentals_quarterly 表（model + alembic 024）
+    · FundamentalsRepository（null-not-erase upsert，同 KeyMetricsRepository 模板）
+    · 2 个 pool_helpers 纯函数：
+        - compute_fundamentals_row_from_balance_cash（BS+CF → fundamentals 行）
+        - compute_supplemental_key_metrics_from_is_bs_cf（IS+BS+CF → 仅 fcf_margin+roic partial-upsert）
+    · PoolCacheService 集成：重构 _rebuild_key_metrics 返回 (int, IS_dict)，新增 _rebuild_fundamentals + 2 个并发抓取 helper
+  - 文件预算 7（超 6 上限 1）— NP-d6a-1 Path A 申请超额授权同 F218-d3a / F217-c2c 模式
+  - 11 测试 / 5 class
+  - NP-d6a-1~8 全部按推荐确认
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F218-d6a-contract.md（新建，confirmed）
+  - features.json:
+    · F218-d6a phase: design_needed → contract_agreed
+    · _pipeline_status.active_sprint_phase: → contract_agreed
+    · F218.estimated_files_changed: 7
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D097 已覆盖；NP-d6a-1~8 是实施级决策由 contract 承载）
+
+⚠️ 待你决策：
+  无未决事项（NP-d6a-1~8 全部按推荐确认）
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: ✅ done
+  F218-d4: ✅ done
+  F218-d5: ✅ done
+  F218-d6a: 🟡 contract_agreed
+  F218-d6b ~ F218-d7b: ⬜ design_needed (3 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d6a，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d6a-contract.md，
+  进入 Generator 模式，从开发步骤 1（fmp_client 追加 2 endpoint 常量 + 2 方法）开始。
+  ──────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint：F218-d6b T5 BALANCE_INFLECTION detector — Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 起草并确认 Sprint Contract：docs/开发/sprint-contracts/F218-d6b-contract.md
+  - 8 项 NP 决策（NP-d6b-1~8）用户全部按推荐确认：
+    · NP-d6b-1 双 QoQ 严格判定（net_debt 臂）
+    · NP-d6b-2 分母 ≤ 0 跳过（已净现金公司不参与 T5）
+    · NP-d6b-3 严格切换点 fcf 臂（Q-2 ≤ 0 / Q-1 > 0 / Q0 > 0）
+    · NP-d6b-4 fail-soft 数据缺失策略
+    · NP-d6b-5 trigger_metric 偏好 net_debt
+    · NP-d6b-6 evidence trend [Q-2, Q-1, Q0] 连续 3 季
+    · NP-d6b-7 confidence 恒 0.5（DATA-MODEL §1107）
+    · NP-d6b-8 2 helpers 模块级与既有 _eval_margin_arm 同居所
+  - features.json 更新：
+    · _pipeline_status.active_sprint = F218-d6b（保持）
+    · _pipeline_status.active_sprint_phase = design_needed → contract_agreed
+    · F218.sub_sprints["F218-d6b"]: design_needed → contract_agreed
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - consistency-check (C5/C8) 全清：sub_sprints ↔ 合约文件双向一致，active_sprint 引用有效
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D096/D097 已覆盖；NP-d6b-1~8 是实施级决策由 contract 承载）
+
+⚠️ 待你决策：
+  无未决事项（NP-d6b-1~8 全部按推荐确认）
+
+🔧 系统变更：
+  - 新增 docs/开发/sprint-contracts/F218-d6b-contract.md
+  - 更新 docs/需求/features.json
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1 ~ F218-d6a: ✅ done (7 个)
+  F218-d6b: 🟡 contract_agreed ← 下一 session 进入 Generator
+  F218-d7a / F218-d7b: ⬜ design_needed
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d6b，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d6b-contract.md，
+  进入 Generator 模式，从开发步骤 1（顶部 import + __init__ 注入 + T5 常量段）开始。
+  ──────────────────────────────────────────
+
+## F218-d6b — T5 BALANCE_INFLECTION detector (2026-05-20)
+
+### Generator 完成 + Evaluator 通过 → needs_review
+
+**实装文件（2 个）：**
+1. `backend/app/services/cockpit/repricing_trigger_service.py`
+   - +import FundamentalsRepository
+   - +`self._fundamentals = FundamentalsRepository(db)` in `__init__`
+   - +T5 常量段：T5_LOOKBACK_QUARTERS=3 / T5_NET_DEBT_QOQ_THRESHOLD=0.05 / T5_DEFAULT_CONFIDENCE=0.5
+   - +`_detect_balance_inflection` 实装（39 行）：net_debt 双 QoQ 臂 + FCF 负→正切换臂
+   - +模块级 `_eval_net_debt_arm`（分母 ≤0 跳过，NP-d6b-2）
+   - +模块级 `_eval_fcf_arm`（严格 Q-2≤0 / Q-1>0 / Q0>0，NP-d6b-3）
+
+2. `backend/tests/test_repricing_trigger_balance_inflection.py`（新建）
+   - 4 class / 10 方法 / 19 参数化 case 全绿
+   - B1-B3 eval_net_debt_arm / B4-B5 eval_fcf_arm / B6-B9 detector / B10 E2E
+   - B11 evidence_json schema 嵌入 B6
+
+**Evaluator 结果：**
+- 新测试 19/19 ✅
+- 既有 F218 套件 90/90 ✅
+- 全量回归 1223 pass / 9 pre-existing failures（不变）
+- consistency-check severe=0 medium=0 minor=0
+
+**Git commits:**
+- c2b5e35 wip step1 import+__init__+T5 constants
+- e14cf68 wip step2 eval_net_debt_arm + eval_fcf_arm
+- 3b945f7 wip step3 _detect_balance_inflection
+- cff4a27 wip step4 10 tests (19 cases)
+- 4870f3d feat(F218-d6b): T5 BALANCE_INFLECTION detector
+
+**下一步：** acceptance skill 验收 F218-d6b → done → F218-d7a contract 协商
+
+---
+
+## [2026-05-20] F218-d6b 验收通过 → done
+
+**状态**：F218-d6b T5 BALANCE_INFLECTION detector → ✅ done
+
+**验收结论**：用户确认通过（2026-05-20）
+- 19 测试全绿 / d1-d6a 回归 90 通过 / 全量 1223 pass 9 pre-existing 无新增
+- 业务逻辑 L1-L8 全部确认：双 QoQ 阈值 / 净现金跳过 / FCF 严格切换 / net_debt 优先 / evidence_json 4 键 / soft expire
+- 验收记录：docs/验收/v2.4-F218-d6b-acceptance.md
+
+**下一步：** F218-d7a contract 协商（cron 22:40 UTC 注册 + router + 2 endpoint）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d7a Sprint Contract 协商完成 → contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 读取前置文档：ARCHITECTURE §Cockpit Repricing Trigger Service / API-CONTRACT §Cockpit Repricing Triggers / DATA-MODEL §RepricingTrigger / refresh_job.py 现有 9 cron 样板 / test_weekly_stage_cron_f216e.py 测试样板 / regime.py router 样板
+  - 6 文件预算（= 上限）：refresh_job.py(改) + routers/cockpit/repricing_triggers.py(新) + routers/cockpit/__init__.py(改) + schemas/cockpit/repricing_trigger.py(新) + tests/test_f218_d7a_repricing_cron.py(新) + tests/test_f218_d7a_repricing_router.py(新)
+  - 10 设计决策 NP-d7a-1~10 全部按推荐确认（cron 顶部常量 / tick 签名对齐 / 错误吞咽 / _session_scope / router prefix / ticker upper+regex / evidence dict[str,Any]+手动 camelCase / computedAt max / triggerType Literal / limit ge/le）
+  - 11 测试规划（3 cron S1/S2a/S2b + 8 router R1-R8）
+  - 7 步开发顺序明确（refresh_job → cron 测试 → schema → router → __init__ include → router 测试 → 回归+Evaluator+consistency-check+needs_review）
+  - Sprint Contract 写入 docs/开发/sprint-contracts/F218-d7a-contract.md（status=confirmed）
+  - features.json 更新：F218.sub_sprints["F218-d7a"]=contract_agreed / active_sub_sprint=F218-d7a / active_sprint_phase=contract_agreed / iteration_history +1 entry
+  - SESSION-HANDOFF.md 更新（指向下一 session Generator 启动指令）
+  - consistency-check (mode=interactive scope=F218): C1/C2/C3/C5/C6/C8 ✅ / C4 自动修复（追加 iteration_history entry）/ C7 d6a/d6b pre-existing minor 不阻塞 / 退出 0
+
+⚠️ 待你决策：
+  - 无。10 决策全部按推荐确认。
+
+🔧 系统变更：
+  - 新增：docs/开发/sprint-contracts/F218-d7a-contract.md
+  - 修改：docs/需求/features.json（sub_sprints[F218-d7a]=contract_agreed / iteration_history +1 / active_sub_sprint 字段）
+  - 修改：SESSION-HANDOFF.md（指向 Generator 启动）
+  - 修改：claude-progress.txt（本条目）
+
+📊 功能状态：
+  F218 Phase D Repricing Trigger 框架：phase=in_progress（8/10 sub_sprints done）
+    F218-d1..d6b: ✅ done
+    F218-d7a:    🎯 contract_agreed（本 session）
+    F218-d7b:    ⬜ design_needed（前端 widget + DecisionPanel chip）
+
+[下一个 Session]
+  用 Sonnet 开新 session，粘贴：
+  > 继续开发 F218-d7a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d7a-contract.md，
+  > 进入 feature-dev Generator 模式，从开发步骤 1（refresh_job.py 改动）开始。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20 06:00] Sprint：F218-d7a Repricing Trigger cron + router
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - refresh_job.py：+REPRICING_TRIGGER_CRON/JOB_ID 常量 / +import / +add_job(22:40 UTC weekdays) / +_repricing_trigger_tick
+  - schemas/cockpit/repricing_trigger.py 新建：6 Pydantic 类 + TriggerType Literal（CamelModel 基类）
+  - routers/cockpit/repricing_triggers.py 新建：2 endpoint（GET /{ticker} + GET /）+ evidence snake→camel helper
+  - routers/cockpit/__init__.py：include repricing_triggers_router
+  - 单元测试：3/3 通过（S1 cron 注册 / S2a tick 调用 / S2b 异常吞咽）
+  - 集成测试：8/8 通过（R1-R8 全覆盖）
+  - 全量回归：9 pre-existing failures（未新增）
+  - Evaluator 自检：全部通过
+  - consistency-check (C1/C4/C5/C7)：全清（exit=0）
+  - phase → needs_review
+
+🔧 系统变更：
+  - 新增 cron job #11（22:40 UTC weekdays，在 pending_orders_expirer 22:35 之后）
+  - 新增 2 个 API endpoint（/api/cockpit/repricing-triggers/{ticker} + /api/cockpit/repricing-triggers）
+  - 新增 4 文件，修改 2 文件
+
+📊 功能状态：
+  F218：🔍 in_progress（d7a needs_review，d7b design_needed）
+
+[下一个 Session]
+  acceptance skill（F218-d7a needs_review）或协商 F218-d7b Sprint Contract（前端 widget + DecisionPanel chip）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20 06:20] 验收：F218-d7a Repricing Trigger cron + router
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 验收通过
+  - B1-B5 全部通过（cron / OpenAPI / evidence camelCase / UTC format / API behavior）
+  - Bug 修复：computedAt SQLite naive datetime 未含 UTC offset，已在 router 补 .replace(tzinfo=UTC)
+  - 全量回归：9 pre-existing，未新增
+  - phase → done
+
+📊 功能状态：
+  F218：🔄 in_progress（d7a ✅ done，d7b design_needed）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint Contract 协商：F218-d7b Repricing Trigger 前端 widget + DecisionPanel chip
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - Sprint Contract 起草并确认（docs/开发/sprint-contracts/F218-d7b-contract.md）
+  - 6 文件原则：预扫描 10 文件超 6，用户授权一次性例外（同 F217-c2c 模式）
+  - NP-d7b-1~7 全部按推荐 A 确认（5 色板 / 布局 / chip 位置 / 分页 / 简称 / refresh / 开发顺序）
+  - features.json 更新：F218-d7b design_needed → contract_agreed / active_sprint=F218-d7b
+  - iteration_history 追加 contract_agreed 条目
+
+📋 Contract 范围摘要：
+  - 4 新建文件：cockpitRepricingApi.ts / RepricingTriggerWidget.tsx / 2 测试
+  - 6 修改文件：CockpitRegistry / DecisionPanelWidget / tokens.css / DecisionPanel test / design-spec.md / component-plan.md
+  - 23 新测试（API 6 / Widget 9 / chip 6 / Registry 2）
+  - 5 类 trigger 色 token 新增：--color-trigger-{earnings-accel/margin-expansion/new-product/sector-cycle/balance-inflection}
+  - 开发顺序：vertical slice 优先（API → widget → registry → chip → 文档 → 测试）
+
+⏸️ 强制停止：A-1 协商完毕，不在本 session 继续 Generator
+
+📊 功能状态：
+  F218：🔄 in_progress（d7a ✅ done / d7b ✅ contract_agreed / 最后 1 sub-sprint）
+
+[下一个 Session]
+  用 Sonnet 开新 session，输入：
+  > 继续开发 F218-d7b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d7b-contract.md，
+  > 进入 Generator 模式，从开发步骤 1（cockpitRepricingApi.ts）开始。

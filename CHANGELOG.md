@@ -4,6 +4,32 @@
 
 ---
 
+## [v2.4.0] - 2026-05-20
+
+### ✨ 新增
+- **Repricing Trigger 完整框架（5 类）**：新增 cockpit Phase D，独立识别让市场重新定价的基本面/产业/资产负债端事件，与 Phase C Capitulation 信号解耦
+  - T1 Earnings Acceleration：复用 EarningsEventRepository，连续 3 季 EPS YoY 严格单调递增触发，confidence 按末季 yoy ≥ 30% 分 0.8/0.5
+  - T2 Margin Expansion：FMP `/income-statement` 接入，新建 `stock_key_metrics_quarterly` 表（alembic 023），gross/FCF margin 连续扩张 ≥ 200/300bp 触发
+  - T3 New Product（关键词扫描）：扫描 `news_cache` 过去 30 日 headlines，命中 7 关键词集合 ≥ 2 次触发，evidence 含 keyword_hits/news_links
+  - T4 Sector Cycle Reversal：复用 `SECTOR_ETFS` 与 `compute_rs_percentile_map`，sector ETF RS percentile 60 日内从 <40 升至 >60 且 close > SMA200 触发
+  - T5 Balance Sheet Inflection：FMP `balance-sheet + cash-flow` 接入（T2/T5 共享），新建 `stock_fundamentals_quarterly` 表（alembic 024），净负债连续环比 ↓5% 或 FCF 负转正 2 季触发
+- **定时刷新 cron**：`refresh_job.py` 新增 `REPRICING_TRIGGER_JOB_ID`，每周一至五 22:40 UTC 调度 `RepricingTriggerService.compute_and_store_all_triggers`
+- **2 个新 REST 端点**：
+  - `GET /api/cockpit/repricing-triggers/{ticker}` — 单标的 active triggers，按 detected_date 倒序
+  - `GET /api/cockpit/repricing-triggers/{ticker}` — 全市场 active triggers，支持 `triggerType` 过滤 + `limit` 上限
+- **RepricingTriggerWidget**：Cockpit 新 widget（x:6 y:43），表格列出全市场 active triggers，支持 5 类 filter + 行点击联动 chart widget
+- **DecisionPanel chip 区**：持仓 ticker 有 active trigger 时，header 下方显示 5 类彩色 chip（hover 展示 evidence 单行概要）；无 trigger 时不占空间
+- **5 类 trigger 色板**：`tokens.css` 新增 `--color-trigger-{earnings-accel/margin-expansion/new-product/sector-cycle/balance-inflection}`
+
+### 📐 技术
+- `repricing_triggers` 表（alembic 022）：UQ(ticker, trigger_type, detected_date)，soft expire 机制
+- `stock_key_metrics_quarterly` 表（alembic 023）：gross/op/net/FCF margin + roic（近似公式）
+- `stock_fundamentals_quarterly` 表（alembic 024）：net_debt / FCF 等资产负债指标，与 key_metrics 共享 null-not-erase upsert 模式
+- FMP quota 优化：T2/T5 共享 cash-flow 接入，由 4 endpoint 收敛至 3（D097 修正）
+- pool_cache rebuild 末尾追加 `_rebuild_key_metrics` + `_rebuild_fundamentals` 步骤
+
+---
+
 ## [v2.3.0] - 2026-05-18
 
 ### ✨ 新增
