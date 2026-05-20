@@ -40,6 +40,8 @@ FMP_EP_FMP_ARTICLES = "/fmp-articles"  # F112-a news proxy
 FMP_EP_EARNINGS_CALENDAR = "/earnings-calendar"  # F204-a earnings events
 FMP_EP_FINANCIAL_GROWTH = "/financial-growth"  # F205-b D079 revenue growth YoY
 FMP_EP_INCOME_STATEMENT = "/income-statement"  # F218 D3 T2 Margin Expansion (D097 修正 2026-05-18)
+FMP_EP_BALANCE_SHEET = "/balance-sheet-statement"  # F218 D6 T5 Balance Inflection + T2 roic 分母 (D097)
+FMP_EP_CASH_FLOW = "/cash-flow-statement"          # F218 D6 T5 + T2 fcf_margin (T2/T5 共享，D097)
 
 # F105: status codes that trigger the SMA → EOD fallback in get_ma150_series_or_eod.
 # Narrow set on purpose: 402 (paywall / tier unavailable), 403 (forbidden),
@@ -527,6 +529,32 @@ class FmpClient:
         try:
             body = self._request(
                 FMP_EP_INCOME_STATEMENT,
+                {"symbol": symbol, "period": "quarter", "limit": limit},
+            )
+            return list(body or [])
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return []
+
+    def get_balance_sheet_quarterly(
+        self, symbol: str, limit: int = 8,
+    ) -> list[dict[str, Any]]:
+        """FMP /stable/balance-sheet-statement?period=quarter (F218 D6 T5)."""
+        try:
+            body = self._request(
+                FMP_EP_BALANCE_SHEET,
+                {"symbol": symbol, "period": "quarter", "limit": limit},
+            )
+            return list(body or [])
+        except (httpx.HTTPStatusError, httpx.RequestError):
+            return []
+
+    def get_cash_flow_quarterly(
+        self, symbol: str, limit: int = 8,
+    ) -> list[dict[str, Any]]:
+        """FMP /stable/cash-flow-statement?period=quarter (F218 D6 T2/T5 共享)."""
+        try:
+            body = self._request(
+                FMP_EP_CASH_FLOW,
                 {"symbol": symbol, "period": "quarter", "limit": limit},
             )
             return list(body or [])
