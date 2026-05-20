@@ -89,6 +89,13 @@
   --color-setup-capitulation: #8b5cf6;
   /* NONE 不渲染 Badge，无需 token */
 
+  /* ---------- 颜色 · Cockpit Repricing Trigger 5 类色板（F218，widget chip + DecisionPanel chip 共用） ---------- */
+  --color-trigger-earnings-accel: #15803d;     /* green-700, 业绩加速 */
+  --color-trigger-margin-expansion: #0891b2;   /* cyan-600, 毛利扩张 */
+  --color-trigger-new-product: #db2777;        /* pink-600, 新产品周期 */
+  --color-trigger-sector-cycle: #d97706;       /* amber-600, sector 轮动 */
+  --color-trigger-balance-inflection: #7c3aed; /* violet-600, 资产负债拐点 */
+
   /* ---------- 颜色 · Cockpit Earnings Risk（对齐 SetupSnapshot.earnings_risk） ---------- */
   --color-earnings-safe: var(--color-change-positive);
   --color-earnings-caution: var(--color-log-warn);
