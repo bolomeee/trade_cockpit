@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d6b",
-    "active_sprint_phase": "needs_review",
+    "active_sprint": "F218-d7a",
+    "active_sprint_phase": "design_needed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -4609,8 +4609,8 @@
         "F218-d4": "done",
         "F218-d5": "done",
         "F218-d6a": "done",
-        "F218-d6b": "needs_review",
-        "F218-d7a": "design_needed",
+        "F218-d6b": "done",
+        "F218-d7a": "contract_agreed",
         "F218-d7b": "design_needed"
       },
       "dependencies": [
@@ -4833,10 +4833,26 @@
           "subtask": "F218-d6b",
           "session": "feature-dev A-2 Generator + A-3 Evaluator 通过（F218-d6b T5 BALANCE_INFLECTION detector）",
           "changes": "F218-d6b 全部 4 步 Generator 完成，Evaluator 自检通过，全量回归 9 failures 均为 pre-existing。实装：(1) repricing_trigger_service.py: +import FundamentalsRepository / +__init__ self._fundamentals 注入 / +T5_LOOKBACK_QUARTERS=3 + T5_NET_DEBT_QOQ_THRESHOLD=0.05 + T5_DEFAULT_CONFIDENCE=0.5 常量段 / +_detect_balance_inflection 占位替换为完整实装（39 行 ≤50 ✓）/ +模块级 _eval_net_debt_arm（双 QoQ 下降臂，分母 ≤0 跳过）+ _eval_fcf_arm（严格负→正切换臂）；(2) test_repricing_trigger_balance_inflection.py 新建（4 class / 10 方法 / 19 参数化 case 全绿）：TestEvalNetDebtArm B1-B3 / TestEvalFcfArm B4-B5 / TestDetectBalanceInflection B6-B9（含 B11 嵌入 B6）/ TestBalanceInflectionEndToEnd B10。evidence_json 4 键 {net_debt_trend/fcf_trend/quarters/trigger_metric} 1:1 DATA-MODEL §1100 example。NP-d6b-1~8 全部落地：双 QoQ 严格判定 / 分母 ≤0 跳过 / FCF 严格切换 / fail-soft / net_debt 优先 / trend [Q-2,Q-1,Q0] / confidence=0.5 恒定 / 2 helpers 模块级。wip commits: c2b5e35(step1) e14cf68(step2) 3b945f7(step3) cff4a27(step4)。F218-d6b → needs_review。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "done",
+          "subtask": "F218-d6b",
+          "session": "acceptance 通过（F218-d6b T5 BALANCE_INFLECTION detector）",
+          "changes": "19 测试全绿（含参数化展开）/ d1-d6a 回归 90 通过 / 全量 1223 通过 9 pre-existing failures 无新增。验收确认：net_debt 双 QoQ ≥5% 阈值 / FCF 严格切换 / 两臂同命中 net_debt 优先 / fail-soft / confidence=0.5 / evidence_json 4 键 / soft expire 端到端。F218-d6b → done。"
+        },
+        {
+          "date": "2026-05-20",
+          "subtask": "F218-d7a",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Contract 协商（F218-d7a cron 注册 + router + 2 endpoint）",
+          "changes": "F218-d7a Sprint Contract 起草并确认：范围 = cron 接线（refresh_job.py 注册 REPRICING_TRIGGER_JOB_ID @ 22:40 UTC weekdays，调度 RepricingTriggerService.compute_and_store_all_triggers）+ router /api/cockpit/repricing-triggers 2 endpoint（API-CONTRACT §1988-2106 1:1，单标的 + 全市场）+ Pydantic schema（CamelModel 基类，evidence 为 dict[str, Any] + 手动 snake→camel 转 key）+ 11 测试（3 cron + 8 router）。6 文件命中上限：refresh_job.py / routers/cockpit/repricing_triggers.py / routers/cockpit/__init__.py / schemas/cockpit/repricing_trigger.py / tests/test_f218_d7a_repricing_cron.py / tests/test_f218_d7a_repricing_router.py。不动 detector 逻辑 / 不动 repo 读接口 / 不动 4 设计文档（status=confirmed）。关键决策 NP-d7a-1~10 全部按推荐：(1) cron 顶部常量不进 config.py / (2) tick 签名保留 fmp_factory 与同模块周期 tick 对齐 / (3) tick 错误吞咽 / (4) service 实例化用 _session_scope / (5) router prefix=/repricing-triggers tag=cockpit-repricing / (6) ticker upper + regex 校验 → 422 / (7) evidence dict[str, Any] 不强 schema 用手动 camelCase 转换 / (8) 全市场 computedAt=max(rows.computed_at) 表空回退 now / (9) triggerType Literal Query alias=triggerType / (10) limit Query ge=1 le=500。consistency-check (mode=interactive scope=F218) 全清（C1/C2/C3/C5/C6/C8 ✅；C4 当前条目即修复；C7 d6a/d6b pre-existing 不阻塞）。features.json 更新：F218-d7a contract_agreed / active_sub_sprint=F218-d7a / active_sprint_phase=contract_agreed。下一步：开新 session 进入 feature-dev A-2 Generator，按 7 步开发顺序（refresh_job 改动 → cron 单测 → schema → router → __init__ include → router 集成测试 → 回归 + Evaluator + consistency-check → needs_review）。"
         }
       ],
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
-      "last_updated": "2026-05-20"
+      "last_updated": "2026-05-20",
+      "active_sub_sprint": "F218-d7a",
+      "active_sprint_phase": "contract_agreed"
     }
   ]
 }

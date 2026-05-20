@@ -628,3 +628,52 @@
 - 4870f3d feat(F218-d6b): T5 BALANCE_INFLECTION detector
 
 **下一步：** acceptance skill 验收 F218-d6b → done → F218-d7a contract 协商
+
+---
+
+## [2026-05-20] F218-d6b 验收通过 → done
+
+**状态**：F218-d6b T5 BALANCE_INFLECTION detector → ✅ done
+
+**验收结论**：用户确认通过（2026-05-20）
+- 19 测试全绿 / d1-d6a 回归 90 通过 / 全量 1223 pass 9 pre-existing 无新增
+- 业务逻辑 L1-L8 全部确认：双 QoQ 阈值 / 净现金跳过 / FCF 严格切换 / net_debt 优先 / evidence_json 4 键 / soft expire
+- 验收记录：docs/验收/v2.4-F218-d6b-acceptance.md
+
+**下一步：** F218-d7a contract 协商（cron 22:40 UTC 注册 + router + 2 endpoint）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d7a Sprint Contract 协商完成 → contract_agreed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - 读取前置文档：ARCHITECTURE §Cockpit Repricing Trigger Service / API-CONTRACT §Cockpit Repricing Triggers / DATA-MODEL §RepricingTrigger / refresh_job.py 现有 9 cron 样板 / test_weekly_stage_cron_f216e.py 测试样板 / regime.py router 样板
+  - 6 文件预算（= 上限）：refresh_job.py(改) + routers/cockpit/repricing_triggers.py(新) + routers/cockpit/__init__.py(改) + schemas/cockpit/repricing_trigger.py(新) + tests/test_f218_d7a_repricing_cron.py(新) + tests/test_f218_d7a_repricing_router.py(新)
+  - 10 设计决策 NP-d7a-1~10 全部按推荐确认（cron 顶部常量 / tick 签名对齐 / 错误吞咽 / _session_scope / router prefix / ticker upper+regex / evidence dict[str,Any]+手动 camelCase / computedAt max / triggerType Literal / limit ge/le）
+  - 11 测试规划（3 cron S1/S2a/S2b + 8 router R1-R8）
+  - 7 步开发顺序明确（refresh_job → cron 测试 → schema → router → __init__ include → router 测试 → 回归+Evaluator+consistency-check+needs_review）
+  - Sprint Contract 写入 docs/开发/sprint-contracts/F218-d7a-contract.md（status=confirmed）
+  - features.json 更新：F218.sub_sprints["F218-d7a"]=contract_agreed / active_sub_sprint=F218-d7a / active_sprint_phase=contract_agreed / iteration_history +1 entry
+  - SESSION-HANDOFF.md 更新（指向下一 session Generator 启动指令）
+  - consistency-check (mode=interactive scope=F218): C1/C2/C3/C5/C6/C8 ✅ / C4 自动修复（追加 iteration_history entry）/ C7 d6a/d6b pre-existing minor 不阻塞 / 退出 0
+
+⚠️ 待你决策：
+  - 无。10 决策全部按推荐确认。
+
+🔧 系统变更：
+  - 新增：docs/开发/sprint-contracts/F218-d7a-contract.md
+  - 修改：docs/需求/features.json（sub_sprints[F218-d7a]=contract_agreed / iteration_history +1 / active_sub_sprint 字段）
+  - 修改：SESSION-HANDOFF.md（指向 Generator 启动）
+  - 修改：claude-progress.txt（本条目）
+
+📊 功能状态：
+  F218 Phase D Repricing Trigger 框架：phase=in_progress（8/10 sub_sprints done）
+    F218-d1..d6b: ✅ done
+    F218-d7a:    🎯 contract_agreed（本 session）
+    F218-d7b:    ⬜ design_needed（前端 widget + DecisionPanel chip）
+
+[下一个 Session]
+  用 Sonnet 开新 session，粘贴：
+  > 继续开发 F218-d7a，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d7a-contract.md，
+  > 进入 feature-dev Generator 模式，从开发步骤 1（refresh_job.py 改动）开始。
