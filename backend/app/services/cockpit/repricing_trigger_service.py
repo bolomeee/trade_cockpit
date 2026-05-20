@@ -16,16 +16,21 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.market_index import MarketIndex
+from app.models.market_scan_universe import MarketScanUniverse
 from app.repositories import news_cache_repository as news_repo
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.key_metrics_repository import KeyMetricsRepository
 from app.repositories.repricing_trigger_repository import RepricingTriggerRepository
 from app.repositories.stock_repository import StockRepository
+from app.services.cockpit.cockpit_params import SHARED
+from app.services.cockpit.pool_helpers import compute_rs_percentile_map
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +68,14 @@ T3_MIN_TOTAL_HITS = 2
 T3_MAX_NEWS_LINKS = 5
 T3_DEFAULT_CONFIDENCE = 0.5  # DATA-MODEL §1107: T3 无高置信路径
 T3_FETCH_LIMIT = 200          # news_cache 30 日内拉取上限（DB-level cap）
+
+# T4 SECTOR_CYCLE detector 参数 — AC #5 / DATA-MODEL §1100
+T4_SAMPLE_WINDOW_DAYS = 60      # start_sample = scan_date - 60 calendar days
+T4_RS_LOOKBACK_DAYS = 60        # RS ratio = ETF/SPY 60 calendar-day return
+T4_SMA_PERIOD = 200             # close > 200日 SMA 价格门
+T4_PCT_LOW = 40.0               # start 端 percentile 上限（严格 < 40）
+T4_PCT_HIGH = 60.0              # end 端 percentile 下限（严格 > 60）
+T4_DEFAULT_CONFIDENCE = 0.5     # DATA-MODEL §1107: T4 无高置信路径
 
 
 @dataclass
@@ -305,14 +318,138 @@ class RepricingTriggerService:
     def _detect_sector_cycle(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
-        """T4 — F218-d5 实装。当前返回 None。"""
-        return None
+        """T4 SECTOR_CYCLE: sector ETF RS percentile 跨升 < 40 → > 60 (60d) AND 价 > SMA200 → 触发.
+
+        步骤：
+          1. ticker → market_scan_universe.sector → SHARED.SECTOR_TO_ETF → ETF symbol
+          2. 拉 SPY + 11 sector ETF 自 [scan_date - 120, scan_date] 的 market_index closes
+          3. 在 start_date = scan_date - 60 / end_date = scan_date 上，
+             按 60-day calendar return 算 ratio = (close_d / close_{d-60}) / (spy_close_d / spy_close_{d-60})
+          4. pool_helpers.compute_rs_percentile_map 跨 11 ETF → 目标 ETF percentile
+          5. 触发判定：start_pct < 40 AND end_pct > 60 AND latest_close > SMA200 (200 行简单平均)
+        任何中间步骤缺数据 → return None.
+        """
+        # Step 1: ticker → ETF
+        sector = self._lookup_ticker_sector(ticker)
+        if sector is None:
+            return None
+        etf = SHARED.SECTOR_TO_ETF.get(sector)
+        if etf is None:
+            return None
+
+        # Step 2: fetch closes [scan_date - 120, scan_date]
+        end_date = scan_date
+        start_date = scan_date - timedelta(days=T4_SAMPLE_WINDOW_DAYS)
+        earliest = start_date - timedelta(days=T4_RS_LOOKBACK_DAYS)
+        symbols = ("SPY", *SHARED.SECTOR_ETFS)
+        closes_by_symbol = self._fetch_market_index_closes(symbols, earliest, end_date)
+
+        # Step 3: RS ratio per ETF at end / start
+        end_ratios = self._rs_ratio_population(closes_by_symbol, end_date)
+        start_ratios = self._rs_ratio_population(closes_by_symbol, start_date)
+        if end_ratios is None or start_ratios is None:
+            return None
+
+        # Step 4: percentile via pool_helpers
+        end_pcts = compute_rs_percentile_map(end_ratios)
+        start_pcts = compute_rs_percentile_map(start_ratios)
+        end_pct = end_pcts.get(etf)
+        start_pct = start_pcts.get(etf)
+        if end_pct is None or start_pct is None:
+            return None
+
+        # Step 5: trigger gates
+        if not (start_pct < T4_PCT_LOW and end_pct > T4_PCT_HIGH):
+            return None
+
+        sma200, latest_close = self._sma_and_latest(
+            closes_by_symbol.get(etf, []), T4_SMA_PERIOD, end_date,
+        )
+        if sma200 is None or latest_close is None or latest_close <= sma200:
+            return None
+
+        return DetectorResult(
+            confidence=T4_DEFAULT_CONFIDENCE,
+            evidence={
+                "sector": etf,
+                "rs_history": [
+                    {"date": start_date.isoformat(), "percentile": round(start_pct, 2)},
+                    {"date": end_date.isoformat(),   "percentile": round(end_pct, 2)},
+                ],
+                "price_vs_200d": round(latest_close / sma200, 4),
+            },
+        )
 
     def _detect_balance_inflection(
         self, ticker: str, scan_date: date,
     ) -> DetectorResult | None:
         """T5 — F218-d6b 实装。当前返回 None。"""
         return None
+
+    # ── T4 helpers ───────────────────────────────────────────────────────────
+
+    def _lookup_ticker_sector(self, ticker: str) -> str | None:
+        """读 market_scan_universe.sector（FMP 原文）；未在 universe / sector NULL → None."""
+        row = self.db.execute(
+            select(MarketScanUniverse.sector)
+            .where(MarketScanUniverse.ticker == ticker)
+        ).first()
+        if row is None:
+            return None
+        return row[0]  # 可能为 None
+
+    def _fetch_market_index_closes(
+        self, symbols: tuple[str, ...], start: date, end: date,
+    ) -> dict[str, list[tuple[date, float]]]:
+        """按 symbol 聚合 market_index 行，过滤 [start, end]，按 date ASC."""
+        out: dict[str, list[tuple[date, float]]] = {s: [] for s in symbols}
+        rows = self.db.execute(
+            select(MarketIndex.symbol, MarketIndex.date, MarketIndex.close)
+            .where(MarketIndex.symbol.in_(symbols))
+            .where(MarketIndex.date >= start)
+            .where(MarketIndex.date <= end)
+            .order_by(MarketIndex.symbol, MarketIndex.date.asc())
+        ).all()
+        for sym, d, c in rows:
+            out[sym].append((d, c))
+        return out
+
+    def _rs_ratio_population(
+        self, closes_by_symbol: dict[str, list[tuple[date, float]]], at: date,
+    ) -> dict[str, float] | None:
+        """11 sector ETF 在 `at` 日的 RS ratio = ETF_return_60d / SPY_return_60d.
+
+        任一 ETF 或 SPY 在 `at` 或 `at - T4_RS_LOOKBACK_DAYS` 无数据 → 整体返 None.
+        spy_return ≈ 0（abs < 0.001）→ 整体返 None（防除零不稳）.
+        """
+        lookback_at = at - timedelta(days=T4_RS_LOOKBACK_DAYS)
+        spy_now = _close_on_or_before(closes_by_symbol.get("SPY", []), at)
+        spy_then = _close_on_or_before(closes_by_symbol.get("SPY", []), lookback_at)
+        if spy_now is None or spy_then is None or spy_then <= 0:
+            return None
+        spy_return = spy_now / spy_then - 1.0
+        if abs(spy_return) < 0.001:
+            return None
+
+        ratios: dict[str, float] = {}
+        for etf in SHARED.SECTOR_ETFS:
+            c_now = _close_on_or_before(closes_by_symbol.get(etf, []), at)
+            c_then = _close_on_or_before(closes_by_symbol.get(etf, []), lookback_at)
+            if c_now is None or c_then is None or c_then <= 0:
+                return None
+            etf_return = c_now / c_then - 1.0
+            ratios[etf] = etf_return / spy_return
+        return ratios
+
+    def _sma_and_latest(
+        self, closes_asc: list[tuple[date, float]], period: int, at: date,
+    ) -> tuple[float | None, float | None]:
+        """ETF 在 `at` 或之前的 SMA(period) 与 latest close；< period 行返 (None, None)."""
+        truncated = [c for (d, c) in closes_asc if d <= at]
+        if len(truncated) < period:
+            return None, None
+        sma = sum(truncated[-period:]) / period
+        return sma, truncated[-1]
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
@@ -356,3 +493,16 @@ def _eval_margin_arm(
 def _round_or_none(v: float | None, ndigits: int = 4) -> float | None:
     """Round to ndigits, preserving None."""
     return None if v is None else round(v, ndigits)
+
+
+def _close_on_or_before(
+    closes_asc: list[tuple[date, float]], target: date,
+) -> float | None:
+    """Return close on or strictly before `target` (closes_asc sorted ASC by date)."""
+    candidate = None
+    for d, c in closes_asc:
+        if d <= target:
+            candidate = c
+        else:
+            break
+    return candidate
