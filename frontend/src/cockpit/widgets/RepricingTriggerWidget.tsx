@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const TRIGGER_COLOR_TOKEN: Record<TriggerType, string> = {
   EARNINGS_ACCEL: 'var(--color-trigger-earnings-accel)',
   MARGIN_EXPANSION: 'var(--color-trigger-margin-expansion)',
@@ -47,6 +48,7 @@ const FILTER_OPTIONS: Array<{ value: FilterValue; label: string }> = [
   { value: 'BALANCE_INFLECTION', label: 'BalanceInflect' },
 ]
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function summarizeEvidence(t: RepricingTrigger): string {
   switch (t.triggerType) {
     case 'EARNINGS_ACCEL': {
