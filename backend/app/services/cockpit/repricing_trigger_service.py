@@ -27,6 +27,7 @@ from app.models.market_scan_universe import MarketScanUniverse
 from app.repositories import news_cache_repository as news_repo
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.key_metrics_repository import KeyMetricsRepository
+from app.repositories.fundamentals_repository import FundamentalsRepository
 from app.repositories.repricing_trigger_repository import RepricingTriggerRepository
 from app.repositories.stock_repository import StockRepository
 from app.services.cockpit.cockpit_params import SHARED
@@ -78,6 +79,11 @@ T4_PCT_HIGH = 60.0              # end 端 percentile 下限（严格 > 60）
 T4_DEFAULT_CONFIDENCE = 0.5     # DATA-MODEL §1107: T4 无高置信路径
 T4_SMA_FETCH_DAYS = 280         # fetch window ≈ 200 trading days（SMA200 lookback, NP-d5-9）
 
+# T5 BALANCE_INFLECTION detector 参数
+T5_LOOKBACK_QUARTERS = 3            # 需 Q0/Q-1/Q-2 = 至少 3 季
+T5_NET_DEBT_QOQ_THRESHOLD = 0.05    # 净负债环比下降率阈值（5%）
+T5_DEFAULT_CONFIDENCE = 0.5         # DATA-MODEL §1107: T5 无高置信路径
+
 
 @dataclass
 class DetectorResult:
@@ -93,6 +99,7 @@ class RepricingTriggerService:
         self._stocks = StockRepository(db)
         self._earnings = EarningsEventRepository(db)
         self._key_metrics = KeyMetricsRepository(db)
+        self._fundamentals = FundamentalsRepository(db)
 
     # ── Public ────────────────────────────────────────────────────────────────
 
