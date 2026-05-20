@@ -76,6 +76,7 @@ T4_SMA_PERIOD = 200             # close > 200日 SMA 价格门
 T4_PCT_LOW = 40.0               # start 端 percentile 上限（严格 < 40）
 T4_PCT_HIGH = 60.0              # end 端 percentile 下限（严格 > 60）
 T4_DEFAULT_CONFIDENCE = 0.5     # DATA-MODEL §1107: T4 无高置信路径
+T4_SMA_FETCH_DAYS = 280         # fetch window ≈ 200 trading days（SMA200 lookback, NP-d5-9）
 
 
 @dataclass
@@ -337,10 +338,11 @@ class RepricingTriggerService:
         if etf is None:
             return None
 
-        # Step 2: fetch closes [scan_date - 120, scan_date]
+        # Step 2: fetch closes [scan_date - T4_SMA_FETCH_DAYS, scan_date]
+        # T4_SMA_FETCH_DAYS=280 ≈ 200 trading days covers both SMA200 and RS lookback (120 days)
         end_date = scan_date
         start_date = scan_date - timedelta(days=T4_SAMPLE_WINDOW_DAYS)
-        earliest = start_date - timedelta(days=T4_RS_LOOKBACK_DAYS)
+        earliest = scan_date - timedelta(days=T4_SMA_FETCH_DAYS)
         symbols = ("SPY", *SHARED.SECTOR_ETFS)
         closes_by_symbol = self._fetch_market_index_closes(symbols, earliest, end_date)
 
