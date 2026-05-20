@@ -33,6 +33,7 @@ from app.services.cockpit.market_regime_service import MarketRegimeService
 from app.services.cockpit.pending_order_expirer import expire_due_pending_orders
 from app.services.cockpit.pool_cache_service import PoolCacheService
 from app.services.cockpit.setup_service import SetupService
+from app.services.cockpit.repricing_trigger_service import RepricingTriggerService
 from app.services.cockpit.weekly_stage_service import WeeklyStageService
 from app.services.data_refresh_service import DataRefreshService
 from app.services.market_refresh_service import MarketRefreshService
@@ -61,6 +62,11 @@ POOL_CACHE_CRON = "30 6 * * 1"
 POOL_CACHE_JOB_ID = "cockpit_pool_cache_rebuild"
 # F211-d2: monthly journal review — 1st of month 06:00 UTC (1h after universe at 05:00)
 JOURNAL_MONTHLY_JOB_ID = "f211_journal_monthly_review"
+# F218-d7a: repricing triggers compute, weekdays 22:40 UTC
+# After: setup_cron (22:30) → pending_orders_expirer (22:35) → repricing (22:40).
+# Detectors are pure-DB reads; no FMP calls in this tick.
+REPRICING_TRIGGER_CRON = "40 22 * * 1-5"
+REPRICING_TRIGGER_JOB_ID = "cockpit_repricing_triggers"
 
 SessionFactory = Callable[[], Session]
 FmpFactory = Callable[[], FmpClient]
@@ -320,6 +326,14 @@ def start_scheduler(
             args=[session_factory],
             replace_existing=True,
         )
+        # F218-d7a: repricing triggers compute, weekdays 22:40 UTC
+        sched.add_job(
+            _repricing_trigger_tick,
+            trigger=CronTrigger.from_crontab(REPRICING_TRIGGER_CRON, timezone="UTC"),
+            id=REPRICING_TRIGGER_JOB_ID,
+            args=[session_factory, fmp_factory],
+            replace_existing=True,
+        )
         if autostart:
             sched.start()
         _scheduler = sched
@@ -451,6 +465,18 @@ def _journal_monthly_tick(session_factory: SessionFactory) -> None:
             JournalReviewService(db).monthly_review_for_month(year_month)
     except Exception:  # noqa: BLE001
         logger.error("journal monthly tick failed\n%s", traceback.format_exc())
+
+
+def _repricing_trigger_tick(
+    session_factory: SessionFactory,
+    fmp_factory: FmpFactory,  # noqa: ARG001 — signature parity; detectors are pure-DB
+) -> None:
+    """APScheduler tick for RepricingTriggerService (F218-d7a): weekdays 22:40 UTC."""
+    try:
+        with _session_scope(session_factory) as db:
+            RepricingTriggerService(db).compute_and_store_all_triggers()
+    except Exception:  # noqa: BLE001
+        logger.error("repricing trigger tick failed\n%s", traceback.format_exc())
 
 
 def _previous_month_utc(now: datetime) -> str:
