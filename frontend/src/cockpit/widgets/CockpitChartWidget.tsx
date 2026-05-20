@@ -48,6 +48,7 @@ function toTs(date: string): UTCTimestamp {
 export function CockpitChartWidget() {
   const ticker = useCockpitStore((s) => s.selectedTicker)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const priceLinesRef = useRef<IPriceLine[]>([])
 
@@ -87,6 +88,7 @@ export function CockpitChartWidget() {
       timeScale: { borderColor, timeVisible: false },
       crosshair: { mode: 1 },
     })
+    chartRef.current = chart
 
     const candleSeries: ISeriesApi<'Candlestick'> = chart.addSeries(CandlestickSeries, {
       upColor,
@@ -187,9 +189,21 @@ export function CockpitChartWidget() {
       observer.disconnect()
       candleSeriesRef.current = null
       priceLinesRef.current = []
+      chartRef.current = null
       chart.remove()
     }
   }, [chartQuery.data])
+
+  // Guard: 当 isError 变为 true 时（data 未必从非-undefined 变化），
+  // 显式销毁可能遗留的 canvas，避免 stale chart 透过条件渲染缺口继续显示。
+  useEffect(() => {
+    if (chartQuery.isError && chartRef.current) {
+      chartRef.current.remove()
+      chartRef.current = null
+      candleSeriesRef.current = null
+      priceLinesRef.current = []
+    }
+  }, [chartQuery.isError])
 
   // Decision price lines: applies after chart exists; removes stale lines before adding
   useEffect(() => {

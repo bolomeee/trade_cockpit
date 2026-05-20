@@ -90,7 +90,7 @@ export function PoolBuilderWidget() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '5px 12px',
+          padding: '3px 10px',
           flexShrink: 0,
           borderBottom: '1px solid var(--color-border)',
         }}
@@ -359,7 +359,7 @@ function Th({ children, width, style }: { children: React.ReactNode; width: stri
   return (
     <th
       style={{
-        padding: '4px 6px',
+        padding: '2px 5px',
         textAlign: 'left',
         fontSize: 'var(--font-size-caption)',
         fontWeight: 'var(--font-weight-normal)',
@@ -374,7 +374,7 @@ function Th({ children, width, style }: { children: React.ReactNode; width: stri
 }
 
 const tdStyle: React.CSSProperties = {
-  padding: '5px 6px',
+  padding: '3px 5px',
   fontSize: 'var(--font-size-caption)',
   color: 'var(--color-text-primary)',
 }

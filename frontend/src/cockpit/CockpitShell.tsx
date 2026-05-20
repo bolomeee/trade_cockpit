@@ -33,7 +33,7 @@ export default function CockpitShell() {
           <ReactGridLayout
             width={width}
             layout={layout}
-            gridConfig={{ cols: 12, rowHeight: 40, margin: [12, 12] }}
+            gridConfig={{ cols: 12, rowHeight: 32, margin: [8, 8] }}
             dragConfig={{ enabled: true, handle: '.widget-handle' }}
             resizeConfig={{ handles: ['se', 'sw', 'nw'] }}
             compactor={verticalCompactor}
@@ -47,7 +47,7 @@ export default function CockpitShell() {
                 <div key={item.i}>
                   <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
                     <div
-                      className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
+                      className="widget-handle flex h-[14px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
                       style={{ backgroundColor: '#ebf2fa' }}
                     >
                       <span className="text-xs text-foreground">{manifest.title}</span>

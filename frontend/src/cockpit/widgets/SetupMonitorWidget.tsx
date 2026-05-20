@@ -94,8 +94,8 @@ export function SetupMonitorWidget() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          padding: '8px 12px',
+          gap: '8px',
+          padding: '5px 10px',
           borderBottom: '1px solid var(--color-border)',
           flexShrink: 0,
           flexWrap: 'wrap',
@@ -220,7 +220,7 @@ function Th({ children, width, align = 'left' }: { children: React.ReactNode; wi
   return (
     <th
       style={{
-        padding: '4px 6px',
+        padding: '2px 5px',
         textAlign: align,
         fontSize: 'var(--font-size-badge)',
         fontWeight: 'var(--font-weight-normal)',
@@ -278,7 +278,7 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
       {/* Ready signal: left blue bar via box-shadow on first cell */}
       <td
         style={{
-          padding: '5px 6px',
+          padding: '3px 5px',
           fontFamily: 'var(--font-family-numeric)',
           fontWeight: 'var(--font-weight-medium)',
           color: 'var(--color-text-primary)',
@@ -407,7 +407,7 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
 }
 
 const tdStyle: React.CSSProperties = {
-  padding: '5px 6px',
+  padding: '3px 5px',
   fontSize: 'var(--font-size-caption)',
   color: 'var(--color-text-primary)',
   overflow: 'hidden',

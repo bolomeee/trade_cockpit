@@ -2455,3 +2455,32 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 - **`backend/app/services/cockpit/repricing_trigger_service.py`**：常量 `NEW_PRODUCT_KEYWORDS` + `_detect_new_product` 方法
 - **F218 acceptance**：D4b NLP 升级**不在 F218 验收范围**；T3 假阳率作为运行后观察项，必要时调参或加入 D4b 排期
 - **后续 D4b epic（独立 feature）**：建议在 F218 上线 2-3 个月后基于实际数据评估是否启动；候选技术包括 embedding 相似度（OpenAI text-embedding-3-small）或 AiGateway LLM 分类（task_type=news_classifier）
+
+---
+
+## D099：CockpitChartWidget — stale canvas 问题修复（isError guard effect）
+
+**日期**：2026-05-20
+**文件**：`frontend/src/cockpit/widgets/CockpitChartWidget.tsx`
+
+**背景（Bug 描述）**：
+用户切换到 DB 中不存在的 ticker（如 SPYG）时，CockpitChart 有时会继续显示**前一个 ticker 的图表**，而不是切换到 "Failed to load chart data" 空状态。
+
+**根本原因**：
+主 `useEffect` 依赖 `[chartQuery.data]`。当 ticker 切换时：
+- 若之前 ticker 有数据（`dataA`），切换后 `chartQuery.data` 从 `dataA` → `undefined`，cleanup 正常触发，`chart.remove()` 被调用 ✓
+- 但存在边缘情况：React 先卸载含 `ref` 的 container div（因 `chartQuery.isSuccess` 变 false），再异步运行 cleanup；若 `chart.remove()` 因竞态未正确执行，旧 canvas 仍挂在已卸载的 DOM 节点里，但视觉上因为旧 DOM 可能短暂保留而可见。
+- 另一条路径：两次连续切换到非 DB ticker，`chartQuery.data` 始终为 `undefined`（未变化），cleanup 永远不触发。
+
+**决策**：
+1. 新增 `chartRef = useRef<IChartApi | null>(null)` — 跨 effect 持久持有 chart 实例
+2. 主 effect 在创建 chart 后立即 `chartRef.current = chart`；cleanup 里同步置 `chartRef.current = null`
+3. 新增独立 `useEffect([chartQuery.isError])`：若 `isError === true` 且 `chartRef.current` 非 null，主动调用 `chartRef.current.remove()` 并清空所有 series ref
+
+**放弃了什么**：
+- **方案 A：始终渲染 container div（隐藏/显示而非挂卸）** — 可完全避免 containerRef 竞态，但需要重构条件渲染逻辑，改动范围更大，且当前 lightweight-charts 在 display:none 容器里有 ResizeObserver 问题
+- **方案 B：在主 effect 里监听 `[chartQuery.data, chartQuery.isError]`** — 会导致 `isError` 变化时触发完整的 chart 重建逻辑（因为 effect 会重新运行），无谓开销
+
+**影响**：
+- 仅修改 `CockpitChartWidget.tsx`，不影响其他 widget
+- `chartRef` 作为内部实现细节，不暴露到组件外部
