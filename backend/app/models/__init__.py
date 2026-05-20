@@ -27,6 +27,7 @@ from app.models.cockpit_pool_cache import CockpitPoolCache  # noqa: E402
 from app.models.weekly_stage_snapshot import WeeklyStageSnapshot  # noqa: E402
 from app.models.repricing_trigger import RepricingTrigger  # noqa: E402
 from app.models.stock_key_metrics_quarterly import StockKeyMetricsQuarterly  # noqa: E402
+from app.models.stock_fundamentals_quarterly import StockFundamentalsQuarterly  # noqa: E402
 
 __all__ = [
     "Base",
@@ -52,4 +53,5 @@ __all__ = [
     "WeeklyStageSnapshot",
     "RepricingTrigger",
     "StockKeyMetricsQuarterly",
+    "StockFundamentalsQuarterly",
 ]
