@@ -306,7 +306,7 @@ class TestPoolCacheKeyMetricsIntegration:
         fmp = _FakeFmpForKeyMetrics(income, error_tickers={"ERR"})
         svc = self._make_service(db_session, fmp, ["NVDA", "AAPL", "FAIL", "ERR"])
 
-        count = svc._rebuild_key_metrics(["NVDA", "AAPL", "FAIL", "ERR"])
+        count, _ = svc._rebuild_key_metrics(["NVDA", "AAPL", "FAIL", "ERR"])
 
         assert count == 4, f"expected 4 upserted rows, got {count}"
         repo = KeyMetricsRepository(db_session)
