@@ -31,6 +31,25 @@ describe('S14 – CockpitRegistry cockpit.decision-panel', () => {
   })
 })
 
+// D1/D2 – cockpit.repricing-trigger (F218-d7b)
+describe('D1 – CockpitRegistry cockpit.repricing-trigger', () => {
+  it('entry exists with category=repricing', () => {
+    const manifest = COCKPIT_WIDGET_REGISTRY['cockpit.repricing-trigger']
+    expect(manifest).toBeDefined()
+    expect(manifest.category).toBe('repricing')
+    expect(manifest.title).toBe('Repricing Triggers')
+  })
+})
+
+describe('D2 – getCockpitDefaultLayout includes repricing-trigger layout', () => {
+  it('layout item with i="cockpit.repricing-trigger" has x=6 y=43 w=6 h=10', () => {
+    const items = getCockpitDefaultLayout()
+    const found = items.find((item) => item.i === 'cockpit.repricing-trigger')
+    expect(found).toBeDefined()
+    expect(found).toMatchObject({ x: 6, y: 43, w: 6, h: 10 })
+  })
+})
+
 // S18 – cockpit.position-list
 describe('S18 – CockpitRegistry cockpit.position-list', () => {
   it('entry exists with category=position', () => {

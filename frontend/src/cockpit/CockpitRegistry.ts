@@ -9,6 +9,7 @@ import { PendingOrdersWidget } from './widgets/PendingOrdersWidget'
 import { ActionListWidget } from './widgets/ActionListWidget'
 import { PoolBuilderWidget } from './widgets/PoolBuilderWidget'
 import { WeeklyStageChartWidget } from './widgets/WeeklyStageChartWidget'
+import { RepricingTriggerWidget } from './widgets/RepricingTriggerWidget'
 
 export type CockpitWidgetCategory =
   | 'regime'
@@ -19,6 +20,7 @@ export type CockpitWidgetCategory =
   | 'position'
   | 'pool'
   | 'action'
+  | 'repricing'
 
 export type CockpitWidgetManifest = {
   id: string
@@ -91,6 +93,13 @@ export const COCKPIT_WIDGET_REGISTRY: Record<string, CockpitWidgetManifest> = {
     component: WeeklyStageChartWidget,
     defaultLayout: { x: 0, y: 43, w: 6, h: 10, minW: 3, minH: 8 },
     category: 'chart',
+  },
+  'cockpit.repricing-trigger': {
+    id: 'cockpit.repricing-trigger',
+    title: 'Repricing Triggers',
+    component: RepricingTriggerWidget,
+    defaultLayout: { x: 6, y: 43, w: 6, h: 10, minW: 4, minH: 6 },
+    category: 'repricing',
   },
 }
 
