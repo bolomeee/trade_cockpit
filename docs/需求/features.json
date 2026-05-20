@@ -12,7 +12,7 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.4",
-    "active_sprint": "F218-d6a",
+    "active_sprint": "F218-d6b",
     "active_sprint_phase": "design_needed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
@@ -4608,7 +4608,7 @@
         "F218-d3b": "done",
         "F218-d4": "done",
         "F218-d5": "done",
-        "F218-d6a": "design_needed",
+        "F218-d6a": "done",
         "F218-d6b": "design_needed",
         "F218-d7a": "design_needed",
         "F218-d7b": "design_needed"
@@ -4806,8 +4806,23 @@
           "subtask": "F218-d5",
           "session": "F218-d5 Evaluator 通过 → done",
           "changes": "F218-d5 → done。12 项 Contract AC 全部确认。consistency-check 全清。active_sprint → F218-d6a（design_needed）。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "contract_agreed",
+          "subtask": "F218-d6a",
+          "session": "feature-dev A-1 Contract 协商（F218-d6a T5 数据层）",
+          "changes": "F218-d6a Sprint Contract 起草并确认：范围 = T5 数据层 plumbing（不含 detector，detector 留给 d6b），FMP /balance-sheet-statement?period=quarter + /cash-flow-statement?period=quarter client 方法（fail-open 返 []）+ stock_fundamentals_quarterly 表（model + alembic 024）+ FundamentalsRepository（null-not-erase upsert）+ 2 个 pool_helpers 纯函数（compute_fundamentals_row_from_balance_cash / compute_supplemental_key_metrics_from_is_bs_cf）+ PoolCacheService 集成（重构 _rebuild_key_metrics 返回 (int, dict) 让 IS 字典传给新 _rebuild_fundamentals 复用，避免重复抓 IS）。文件预算 7 文件超 6 上限 1 个（NP-d6a-1 Path A：申请超额授权同 F218-d3a / F217-c2c 模式 — fmp_client / model + __init__ 合并算 1 / alembic 024 / repository / pool_helpers / pool_cache_service / test = 7）。11 测试 / 5 class（FMP BS client mock ×2 / FMP CF client mock ×1 / 纯函数 fundamentals 行 ×3 / 纯函数 supplemental key_metrics ×3 / repo upsert+null-not-erase+get_recent ×1 / pool_cache 集成端到端 ×1）。核心切分：d6a 抓 BS + CF 入 stock_fundamentals_quarterly 表（total_debt / cash / net_debt / fcf），同时用 d3a 已抓的 IS + 新抓 BS + CF 计算 fcf_margin + roic partial-upsert 入 stock_key_metrics_quarterly 表（null-not-erase 保留 d3a 已写的 gross/op/net margin）。关键决策 NP-d6a-1~8 全部按推荐：(1) Path A 申请超额授权 7 文件 / (2) FCF 取 FMP freeCashFlow 字段直接取（DATA-MODEL §1203 原文，与 D097 §5 OCF+capex 公式数学等价）/ (3) FMP fail-open 返 [] 与 d3a 一致 / (4) 重构 _rebuild_key_metrics 返回 (int, IS_dict) 让 _rebuild_fundamentals 复用 IS 数据 / (5) compute_supplemental_key_metrics 输出仅 5 keys（ticker/fiscal_quarter/fcf_margin/roic/fetched_at，省略 margin 键避免擦覆盖）/ (6) BS cash 字段优先 cashAndShortTermInvestments fallback cashAndCashEquivalents / (7) roic 分母 ≤ 0 → null（D097 §5）/ (8) _rebuild_fundamentals 复用 ThreadPoolExecutor(_FMP_MAX_WORKERS=6) 与既有并发同模式。下一步：feature-dev A-2 Generator 模式，按 d6a 7 步开发顺序（fmp_client +2 方法 → model + __init__ 注册 → alembic 024 → repository → 2 helper → pool_cache 集成（含 _rebuild_key_metrics 重构） → 11 测试）逐步推进，每步通过最小验证后 wip commit。"
+        },
+        {
+          "date": "2026-05-20",
+          "phase": "done",
+          "subtask": "F218-d6a",
+          "session": "feature-dev A-2 Generator 模式（F218-d6a T5 数据层）",
+          "changes": "F218-d6a 全部 7 步 Generator 完成，15 测试全绿（参数化展开超 contract 预期 11），全量回归 9 failures 均为 pre-existing（d5 baseline 一致）。实装清单：(1) fmp_client.py 追加 FMP_EP_BALANCE_SHEET/FMP_EP_CASH_FLOW 常量 + get_balance_sheet_quarterly/get_cash_flow_quarterly 2 方法（fail-open 返 []，与 get_income_statement_quarterly 1:1 风格）；(2) stock_fundamentals_quarterly.py 新建 ORM model（9 字段，UQ uq_fundamentals_ticker_quarter，ticker index）+ models/__init__.py 注册；(3) alembic 024 新建（upgrade create_table + UQ + index，downgrade drop_table，双向跑通）；(4) fundamentals_repository.py 新建（3 方法：upsert null-not-erase / get_recent_for_ticker / delete_for_tickers_not_in，与 KeyMetricsRepository 同模板）；(5) pool_helpers.py 追加 compute_fundamentals_row_from_balance_cash（BS+CF → 8-key dict，id 字段不匹配返 None，NP-d6a-6 cash 字段 fallback 逻辑）+ compute_supplemental_key_metrics_from_is_bs_cf（IS+BS+CF → 5-key dict，fcf_margin+roic 计算，NP-d6a-7 分母≤0→null）；(6) pool_cache_service.py 修改（import +2 repo/helper / __init__ 追加 _fundamentals_repo / 追加 _fetch_balance_sheet_concurrent + _fetch_cash_flow_concurrent / 重构 _rebuild_key_metrics 返回 tuple[int, dict] / 新增 _rebuild_fundamentals / rebuild() 流程改造追加 fundamentals log）；test_f218_d3a_key_metrics.py 同步修复（_rebuild_key_metrics tuple 解包）。active_sprint → F218-d6b（design_needed）。"
         }
       ],
+      "estimated_files_changed": 7,
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
       "last_updated": "2026-05-20"
     }

@@ -1,6 +1,6 @@
-# SESSION-HANDOFF — F218-d5 ✅ done → 下一步 F218-d6a contract 协商
+# SESSION-HANDOFF — F218-d6a Done → 下一 session 进入 F218-d6b
 
-> 生成：2026-05-20 (Sonnet 4.6) | 用途：下一 session 进入 F218-d6a contract 协商
+> 生成：2026-05-20 (Sonnet 4.6) | 用途：下一 session 进入 F218-d6b Contract 协商
 
 ---
 
@@ -8,34 +8,38 @@
 
 | 字段 | 值 |
 |------|-----|
-| `_pipeline_status.active_sprint` | **F218-d6a** |
+| `_pipeline_status.active_sprint` | **F218-d6b** |
 | `_pipeline_status.active_sprint_phase` | **design_needed** |
 | `F218.phase` | in_progress |
-| `F218.sub_sprints["F218-d5"]` | **done** |
-| `F218.sub_sprints["F218-d6a"]` | design_needed |
-| 前置依赖 | F218-d1/d2/d3a/d3b/d4/d5 全部 done |
+| `F218.sub_sprints["F218-d6a"]` | **done** |
+| `F218.sub_sprints["F218-d6b"]` | **design_needed** |
 
 ---
 
-## 2. F218-d5 完成摘要
+## 2. F218-d6a 完成摘要
 
-**已实装（3 文件，3 wip + 1 feat commits）**：
+**7 步 Generator 全部完成，15 测试全绿，全量回归 9 failures 均 pre-existing**
 
-| 文件 | 改动 |
-|------|------|
-| `backend/app/services/cockpit/cockpit_params.py` | `CockpitSharedParams` 新增 `SECTOR_TO_ETF: dict[str, str]`（11 项，FMP Title Case → XL* ETF） |
-| `backend/app/services/cockpit/repricing_trigger_service.py` | +imports / +T4 常量段 7 行（含 `T4_SMA_FETCH_DAYS=280`）/ `_detect_sector_cycle` 55 行实装 / 4 helpers / 模块级 `_close_on_or_before` |
-| `backend/tests/test_repricing_trigger_sector_cycle.py` | 新建：10 测试 / 3 class（S1-S10）全绿 |
+| # | 文件 | 说明 |
+|---|------|------|
+| 1 | `backend/app/external/fmp_client.py` | FMP_EP_BALANCE_SHEET + FMP_EP_CASH_FLOW 常量 + 2 方法 fail-open |
+| 2 | `backend/app/models/stock_fundamentals_quarterly.py` | ORM model 9 字段（UQ + ticker index） |
+| 2b | `backend/app/models/__init__.py` | StockFundamentalsQuarterly 注册 |
+| 3 | `backend/alembic/versions/024_f218_d6a_stock_fundamentals_quarterly.py` | upgrade/downgrade 双向跑通 |
+| 4 | `backend/app/repositories/fundamentals_repository.py` | 3 方法：upsert null-not-erase / get_recent_for_ticker / delete_for_tickers_not_in |
+| 5 | `backend/app/services/cockpit/pool_helpers.py` | +compute_fundamentals_row_from_balance_cash + compute_supplemental_key_metrics_from_is_bs_cf |
+| 6 | `backend/app/services/cockpit/pool_cache_service.py` | _rebuild_key_metrics 重构 tuple return + _rebuild_fundamentals + 2 并发 helper + rebuild() log 改造 |
+| 7 | `backend/tests/test_f218_d6a_fundamentals.py` | 15 测试（参数化展开超 contract 11） |
+| fix | `backend/tests/test_f218_d3a_key_metrics.py` | _rebuild_key_metrics tuple 解包修复 |
 
-**关键实施偏差（已修正）**：
-- Contract 伪码 `earliest = scan_date - 120`（RS lookback）与 NP-d5-9 "≈280 calendar days"（SMA200）不一致。实际用 `T4_SMA_FETCH_DAYS=280`，向正确方向修正。
-
-**测试结果**：
-- 新增 10 tests：10/10 ✅
-- d1-d5 回归（75 tests）：75/75 ✅
-- 全量后端：9 pre-existing failures（与 d4 baseline 一致），无新增 ✅
-
-**consistency-check (mode=interactive)**：severe=0 medium=0 minor=0，全清 ✅
+**关键 wip commits**：
+- `d42cfac` — fmp_client balance-sheet+cash-flow methods
+- `0a37f7d` — fundamentals model + __init__ register
+- `1173d59` — alembic 024 fundamentals table
+- `e46524b` — fundamentals repo
+- `04a852a` — pool_helpers fundamentals + supplemental km
+- `7363ff3` — pool_cache _rebuild_fundamentals + km refactor
+- `4ffde3b` — feat(F218-d6a): T5 data layer (15 tests)
 
 ---
 
@@ -45,34 +49,31 @@
 |------------|------|------|
 | F218-d1 | ✅ done | 框架（service skeleton + repricing_triggers 表 + 5 占位）|
 | F218-d2 | ✅ done | T1 EARNINGS_ACCEL detector |
-| F218-d3a | ✅ done | T2 数据层（income-statement + key_metrics 表 + pool_cache）|
+| F218-d3a | ✅ done | T2 数据层（income-statement + key_metrics 表）|
 | F218-d3b | ✅ done | T2 MARGIN_EXPANSION detector |
-| F218-d4 | ✅ done | T3 NEW_PRODUCT detector（D4a 关键词扫描）|
-| F218-d5 | ✅ done | T4 SECTOR_CYCLE detector（RS rotation + SMA200 gate）|
-| **F218-d6a** | 🟡 **design_needed** | **T5 数据层（balance-sheet + cash-flow + fundamentals 表 + pool_cache）— 下一步** |
-| F218-d6b | ⬜ design_needed | T5 BALANCE_INFLECTION detector |
+| F218-d4 | ✅ done | T3 NEW_PRODUCT detector |
+| F218-d5 | ✅ done | T4 SECTOR_CYCLE detector |
+| F218-d6a | ✅ done | T5 数据层（BS+CF+fundamentals 表 + key_metrics fcf_margin/roic + pool_cache）|
+| **F218-d6b** | 🟡 **design_needed** | **T5 BALANCE_INFLECTION detector — 下一步协商 Contract** |
 | F218-d7a | ⬜ design_needed | cron + router + 2 endpoint |
 | F218-d7b | ⬜ design_needed | 前端 widget + DecisionPanel badge + 内联 design-spec 4 文档 |
 
 ---
 
-## 4. 下一步：F218-d6a Contract 协商
+## 4. F218-d6b 背景（下一 session 需要了解的）
 
-**范围**：T5 数据层 plumbing（不含 detector，detector 留给 d6b）
+**T5 BALANCE_INFLECTION detector**（d1 skeleton 第 5 个占位 `_detect_balance_inflection`）：
+- 读 `stock_fundamentals_quarterly` 表（d6a 已建好，`FundamentalsRepository.get_recent_for_ticker`）
+- 触发条件（DATA-MODEL §1212 业务规则）：
+  - 净负债下降 ≥ 5% × 连续 2 季 (`net_debt` 环比下降)
+  - **OR** FCF 从负值切为连续 2 季正 (`fcf` > 0 连续 2 季 且前一季 ≤ 0)
+- confidence：两条路均恒 0.5（T5 无高置信路径，DATA-MODEL §1107）
+- evidence_json：需体现触发路径（net_debt 下降幅度 OR fcf 转正时间点）
 
-参考 d3a 模式（T2 数据层），d6a 预期包含：
-- FMP `/balance-sheet-statement?period=quarter` + `/cash-flow-statement?period=quarter` client 方法（d3a 分别 fail-open）
-- `stock_fundamentals_quarterly` 表（model + alembic 024）— DATA-MODEL §FundamentalsQuarterly
-- `FundamentalsRepository`（null-not-erase upsert）
-- `compute_fundamentals_row_from_balance_cash` 纯函数（pool_helpers.py 追加）
-- `PoolCacheService.rebuild()` 末尾追加 `_rebuild_fundamentals` 步骤
-- 预估 6-7 文件（参考 d3a 7 文件超额授权模式）
-
-**⚠️ 协商前必读**：
-- `DATA-MODEL.md` §StockFundamentalsQuarterly（字段权威）
-- `DECISIONS.md` §D097（FMP endpoint 修正记录：/stable/balance-sheet-statement + /stable/cash-flow-statement，与 income-statement 同用 Starter tier；已确认 ~150 calls/week）
-- `ARCHITECTURE.md` §Cockpit Repricing Trigger Service（T5 数据获取端点描述）
-- d3a Sprint Contract（模板参考）：`docs/开发/sprint-contracts/F218-d3a-contract.md`
+**关键依赖**：
+- `stock_fundamentals_quarterly` 表 ✅ 已建（d6a done）
+- `FundamentalsRepository.get_recent_for_ticker` ✅ 已实装
+- `_detect_balance_inflection` 占位 ✅ 在 repricing_trigger_service.py 已有 skeleton
 
 ---
 
@@ -81,13 +82,27 @@
 **复制以下指令到新 session（建议 Sonnet 4.6）**：
 
 ```
-继续开发 F218，当前活跃 sprint 是 F218-d6a（design_needed）。
-读取 SESSION-HANDOFF.md，进入 feature-dev skill，
-协商 F218-d6a Sprint Contract（T5 数据层：balance-sheet + cash-flow + fundamentals 表 + pool_cache）。
+开始 F218-d6b Sprint Contract 协商（T5 BALANCE_INFLECTION detector）。
+读取 SESSION-HANDOFF.md + docs/系统设计/DATA-MODEL.md §StockFundamentalsQuarterly（1186-1235 行）。
+参照 F218-d6a-contract.md（detector 不在 d6a 范围）和 F218-d3b-contract.md（T2 detector 模板）。
+进入 feature-dev A-1 sizing 协商阶段：
+- 范围：_detect_balance_inflection 占位 → 真实实装（读 stock_fundamentals_quarterly / 判 net_debt 下降 ≥5%×2季 OR FCF 负→正×2季）
+- 预估 2-3 文件（repricing_trigger_service.py 修改 + 测试新建 + 可能 fundamentals_repository 小扩展）
+- 触发条件 / confidence / evidence_json 设计
+- NP 系列起草并协商
 ```
 
 ---
 
-## 6. 未决事项
+## 6. 关键引用
 
-无。F218-d5 全部决策（NP-d5-1~10）已实装，无遗留待决。
+- DATA-MODEL.md §StockFundamentalsQuarterly: 业务规则 §1208-1214 行（T5 detector 触发条件）
+- contract 模板：[F218-d3b-contract.md](docs/开发/sprint-contracts/F218-d3b-contract.md)（T2 detector 同质）
+- 已实装 repository：`backend/app/repositories/fundamentals_repository.py` — `get_recent_for_ticker(ticker, limit=8)`
+- 占位方法：`backend/app/services/cockpit/repricing_trigger_service.py` — `_detect_balance_inflection`
+
+---
+
+## 7. 未决事项
+
+无。F218-d6a 全部 NP-d6a-1~8 按推荐实装，无遗留待决。

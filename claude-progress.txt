@@ -1,4 +1,20 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] F218-d6a Generator 完成 → done
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ T5 数据层 plumbing 实装完成（15/15 tests 全绿，全量回归 9 failures 均 pre-existing）
+  - fmp_client.py: FMP_EP_BALANCE_SHEET + FMP_EP_CASH_FLOW 常量 + 2 方法（fail-open）
+  - stock_fundamentals_quarterly.py: ORM model 9 字段 + models/__init__.py 注册
+  - alembic 024: stock_fundamentals_quarterly 表（BigInteger 字段 + UQ + index）双向跑通
+  - fundamentals_repository.py: 3 方法 upsert null-not-erase / get_recent / delete_for_tickers_not_in
+  - pool_helpers.py: compute_fundamentals_row_from_balance_cash + compute_supplemental_key_metrics_from_is_bs_cf
+  - pool_cache_service.py: _rebuild_key_metrics 重构 tuple return + _rebuild_fundamentals + 2 并发 helper + rebuild() 改造
+  - test_f218_d3a_key_metrics.py: 修复 _rebuild_key_metrics tuple 解包（同步 d3a 测试）
+  - feat commit: 4ffde3b
+
+🔜 下一步：F218-d6b contract 协商（T5 BALANCE_INFLECTION detector）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [2026-05-20] F218-d5 Generator + Evaluator 完成 → done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -486,3 +502,52 @@
   T3 NEW_PRODUCT detector D4a 关键词扫描实装完成，evidence_json schema 1:1 DATA-MODEL §1099
   F218-d4 → done | active_sprint → F218-d5（design_needed）
   验收记录：docs/验收/v2.4-acceptance-F218-d4.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-20] Sprint：F218-d6a Contract 协商完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - feature-dev A-1：F218-d6a Sprint Contract 起草并确认
+  - 范围：T5 数据层 plumbing（不含 detector，detector 留 d6b）
+    · FMP /balance-sheet-statement?period=quarter + /cash-flow-statement?period=quarter client 方法（fail-open 返 []）
+    · stock_fundamentals_quarterly 表（model + alembic 024）
+    · FundamentalsRepository（null-not-erase upsert，同 KeyMetricsRepository 模板）
+    · 2 个 pool_helpers 纯函数：
+        - compute_fundamentals_row_from_balance_cash（BS+CF → fundamentals 行）
+        - compute_supplemental_key_metrics_from_is_bs_cf（IS+BS+CF → 仅 fcf_margin+roic partial-upsert）
+    · PoolCacheService 集成：重构 _rebuild_key_metrics 返回 (int, IS_dict)，新增 _rebuild_fundamentals + 2 个并发抓取 helper
+  - 文件预算 7（超 6 上限 1）— NP-d6a-1 Path A 申请超额授权同 F218-d3a / F217-c2c 模式
+  - 11 测试 / 5 class
+  - NP-d6a-1~8 全部按推荐确认
+
+🔧 系统变更：
+  - docs/开发/sprint-contracts/F218-d6a-contract.md（新建，confirmed）
+  - features.json:
+    · F218-d6a phase: design_needed → contract_agreed
+    · _pipeline_status.active_sprint_phase: → contract_agreed
+    · F218.estimated_files_changed: 7
+    · F218.iteration_history: 追加 1 条 contract_agreed 记录
+  - 不动：DATA-MODEL.md / API-CONTRACT.md / ARCHITECTURE.md / DECISIONS.md（D097 已覆盖；NP-d6a-1~8 是实施级决策由 contract 承载）
+
+⚠️ 待你决策：
+  无未决事项（NP-d6a-1~8 全部按推荐确认）
+
+📊 功能状态：
+  F218 phase: in_progress
+  F218-d1: ✅ done
+  F218-d2: ✅ done
+  F218-d3a: ✅ done
+  F218-d3b: ✅ done
+  F218-d4: ✅ done
+  F218-d5: ✅ done
+  F218-d6a: 🟡 contract_agreed
+  F218-d6b ~ F218-d7b: ⬜ design_needed (3 个待开发)
+
+[下一 Session]
+  复制以下指令到新 session（建议 Sonnet 4.6）：
+  ──────────────────────────────────────────
+  继续开发 F218-d6a，Sprint Contract 已确认。
+  读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F218-d6a-contract.md，
+  进入 Generator 模式，从开发步骤 1（fmp_client 追加 2 endpoint 常量 + 2 方法）开始。
+  ──────────────────────────────────────────
