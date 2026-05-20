@@ -494,6 +494,40 @@ def _round_or_none(v: float | None, ndigits: int = 4) -> float | None:
     return None if v is None else round(v, ndigits)
 
 
+def _eval_net_debt_arm(
+    q0: int | None, q1: int | None, q2: int | None,
+    *, threshold: float,
+) -> tuple[bool, float]:
+    """评估 net_debt 臂：(Q-1−Q0)/Q-1 AND (Q-2−Q-1)/Q-2 都 ≥ threshold → 命中.
+
+    Returns (hit, recent_qoq_pct)：
+      - 任一字段 None → (False, 0.0)
+      - 分母 (Q-1 或 Q-2) ≤ 0（已净现金）→ (False, 0.0)
+      - 双 QoQ 下降比例都 ≥ threshold → (True, recent_qoq_pct)
+    recent_qoq_pct = round((q1 - q0) / q1, 4)，hit=False 时仍计算用于调试日志.
+    """
+    if q0 is None or q1 is None or q2 is None:
+        return False, 0.0
+    if q1 <= 0 or q2 <= 0:
+        return False, 0.0
+    qoq_recent = (q1 - q0) / q1
+    qoq_prior = (q2 - q1) / q2
+    hit = (qoq_recent >= threshold) and (qoq_prior >= threshold)
+    return hit, round(qoq_recent, 4)
+
+
+def _eval_fcf_arm(
+    q0: int | None, q1: int | None, q2: int | None,
+) -> bool:
+    """评估 fcf 臂：Q-2 ≤ 0 AND Q-1 > 0 AND Q0 > 0（严格"负→连续 2 季正"切换）.
+
+    任一字段 None → False.
+    """
+    if q0 is None or q1 is None or q2 is None:
+        return False
+    return q2 <= 0 and q1 > 0 and q0 > 0
+
+
 def _close_on_or_before(
     closes_asc: list[tuple[date, float]], target: date,
 ) -> float | None:
