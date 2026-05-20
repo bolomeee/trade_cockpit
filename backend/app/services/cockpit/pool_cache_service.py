@@ -276,38 +276,25 @@ class PoolCacheService:
         tickers: list[str],
         income_statements_by_ticker: dict[str, list[dict]],
     ) -> tuple[int, int]:
-        """Fetch BS+CF, pair with IS, upsert fundamentals + supplemental key_metrics rows.
-
-        Pairing by (ticker, fiscal_quarter): only quarters present in both BS and CF are
-        processed. IS is sourced from the already-fetched income_statements_by_ticker to
-        avoid re-calling FMP (NP-d6a-4). Fails open per ticker/quarter.
-        Returns (fundamentals_upserted, supplemental_key_metrics_upserted).
-        """
+        """Pair IS/BS/CF by fiscal_quarter and upsert; fail-open per ticker (NP-d6a-4/8)."""
         bs_by_ticker = self._fetch_balance_sheet_concurrent(tickers)
         cf_by_ticker = self._fetch_cash_flow_concurrent(tickers)
-
+        _qk = lambda r: f"{r.get('period', '')} {r.get('fiscalYear', '')}"
         fund_upserted = 0
         supp_km_upserted = 0
-
         for ticker in tickers:
             bs_records = bs_by_ticker.get(ticker, [])
             cf_records = cf_by_ticker.get(ticker, [])
             is_records = income_statements_by_ticker.get(ticker, [])
             if not bs_records or not cf_records:
                 continue
-
-            def _quarter_key(r: dict) -> str:
-                return f"{r.get('period', '')} {r.get('fiscalYear', '')}"
-
-            cf_by_quarter = {_quarter_key(r): r for r in cf_records}
-            is_by_quarter = {_quarter_key(r): r for r in is_records}
-
+            cf_by_quarter = {_qk(r): r for r in cf_records}
+            is_by_quarter = {_qk(r): r for r in is_records}
             for bs_record in bs_records:
-                q = _quarter_key(bs_record)
+                q = _qk(bs_record)
                 cf_record = cf_by_quarter.get(q)
                 if cf_record is None:
                     continue
-
                 fund_row = compute_fundamentals_row_from_balance_cash(bs_record, cf_record)
                 if fund_row is not None:
                     try:
@@ -315,7 +302,6 @@ class PoolCacheService:
                         fund_upserted += 1
                     except Exception as exc:
                         logger.warning("fundamentals upsert failed ticker=%s q=%s: %s", ticker, q, exc)
-
                 is_record = is_by_quarter.get(q)
                 if is_record is not None:
                     supp_row = compute_supplemental_key_metrics_from_is_bs_cf(
@@ -327,5 +313,4 @@ class PoolCacheService:
                             supp_km_upserted += 1
                         except Exception as exc:
                             logger.warning("supplemental km upsert failed ticker=%s q=%s: %s", ticker, q, exc)
-
         return fund_upserted, supp_km_upserted
