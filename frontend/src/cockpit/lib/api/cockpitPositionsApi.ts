@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api/client'
+import type { MacdDivergence } from './setupMonitorApi'
 
 export type PositionStatus = 'OPEN' | 'CLOSED'
 export type NextAction = 'hold' | 'raise_stop' | 'reduce' | 'exit'
@@ -27,6 +28,7 @@ export type Position = {
   notes: string | null
   createdAt: string
   updatedAt: string
+  macdDivergence: MacdDivergence
 }
 
 export type PositionSummary = {
