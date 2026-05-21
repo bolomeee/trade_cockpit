@@ -21,6 +21,8 @@ export type SetupFilterValue = 'ready' | 'near' | 'extended' | 'broken' | 'none'
 
 export type ObvTrend = 'UP' | 'DOWN' | 'FLAT' | null
 
+export type MacdDivergence = 'bearish' | 'bullish' | null
+
 export type SetupItem = {
   ticker: string
   stockName: string
@@ -43,6 +45,7 @@ export type SetupItem = {
   obvTrend: ObvTrend
   upDownVolumeRatio: number | null
   weeklyStage: number | null
+  macdDivergence: MacdDivergence
 }
 
 export type SetupSummary = {
