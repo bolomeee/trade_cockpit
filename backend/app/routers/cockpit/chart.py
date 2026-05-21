@@ -34,8 +34,11 @@ def _get_service(
     return CockpitChartService(db, fmp)
 
 
-def _get_weekly_chart_service(db: Session = Depends(get_db)) -> WeeklyChartService:
-    return WeeklyChartService(db)
+def _get_weekly_chart_service(
+    db: Session = Depends(get_db),
+    fmp: FmpClient = Depends(get_fmp_client),
+) -> WeeklyChartService:
+    return WeeklyChartService(db, fmp)
 
 
 def _get_weekly_stage_service(db: Session = Depends(get_db)) -> WeeklyStageService:

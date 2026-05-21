@@ -1,17 +1,23 @@
 """F216-a: Weekly bar aggregation service — pure function + WeeklyChartService."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, TypedDict
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.external.fmp_client import FmpClient
 from app.models import DailyBar, Stock
 from app.repositories.stock_repository import StockRepository
-from app.services.cockpit.chart_service import _compute_ma_series
+from app.services.cockpit.chart_service import _bar_valid, _compute_ma_series, _normalize_bar
 from app.services.cockpit.cockpit_params import WEEKLY
 from app.services.watchlist_service import APIError
+
+# Need enough calendar days to cover DEFAULT_WEEKS + max MA period (40w) of warmup.
+# 90 weeks × 7/5 ≈ 126 calendar days/week → ~900 days.
+_WEEKLY_FMP_LOOKBACK_DAYS = 900
 
 
 class WeeklyBarDict(TypedDict):
@@ -53,17 +59,22 @@ def aggregate_daily_to_weekly(daily_bars: list[dict[str, Any]]) -> list[WeeklyBa
 
 
 class WeeklyChartService:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, fmp: FmpClient | None = None) -> None:
         self._db = db
+        self._fmp = fmp
         self._stocks = StockRepository(db)
 
     def get_weekly_chart(self, ticker: str, weeks: int = WEEKLY.DEFAULT_WEEKS) -> dict[str, Any]:
         ticker = ticker.strip().upper()
         stock = self._stocks.get_by_ticker(ticker)
-        if stock is None:
-            raise APIError("NOT_FOUND", f"ticker {ticker} not found", 404)
 
-        all_bars = self._load_all_bars(stock)
+        if stock is not None:
+            all_bars = self._load_all_bars(stock)
+        elif self._fmp is not None:
+            # FMP on-demand fallback: ticker not in watchlist/DB (e.g. ETFs, ad-hoc lookups)
+            all_bars = self._bars_from_fmp(ticker)
+        else:
+            raise APIError("NOT_FOUND", f"ticker {ticker} not found", 404)
 
         if len(all_bars) < WEEKLY.MIN_DAILY_BARS_FOR_WEEKLY:
             return {
@@ -80,6 +91,28 @@ class WeeklyChartService:
             weekly_mas[str(period)] = _compute_ma_series(weekly_bars, period)
 
         return {"ticker": ticker, "weekly_bars": weekly_bars, "weekly_mas": weekly_mas}
+
+    def _bars_from_fmp(self, ticker: str) -> list[dict[str, Any]]:
+        today = date.today()
+        from_d = today - timedelta(days=_WEEKLY_FMP_LOOKBACK_DAYS)
+        try:
+            raw = self._fmp.get_daily_bars(ticker, from_d, today)
+        except httpx.HTTPError as exc:
+            raise APIError(
+                "EXTERNAL_API_ERROR",
+                f"FMP weekly chart fetch failed for {ticker}: {exc}",
+                502,
+            ) from exc
+        if not raw:
+            raise APIError("NOT_FOUND", f"ticker {ticker} not found", 404)
+        normalized = [_normalize_bar(b) for b in raw if _bar_valid(b)]
+        seen: dict[date, dict] = {}
+        for b in sorted(normalized, key=lambda x: x["date"]):
+            seen[b["date"]] = b
+        bars_asc = list(seen.values())
+        if not bars_asc:
+            raise APIError("NOT_FOUND", f"ticker {ticker} not found", 404)
+        return bars_asc
 
     def _load_all_bars(self, stock: Stock) -> list[dict[str, Any]]:
         stmt = (
