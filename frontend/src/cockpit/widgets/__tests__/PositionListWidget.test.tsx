@@ -276,6 +276,36 @@ describe('S12 – delete AlertDialog confirm/cancel', () => {
   })
 })
 
+// ── S14 – MACD bearish ⚠️ marker (F219-b) ─────────────────────────────────────
+
+describe('S14 – MACD bearish ⚠️ marker', () => {
+  it('OPEN + bearish → ⚠️ span present with correct title', async () => {
+    vi.stubGlobal('fetch', makePositionsFetch([makePosition({ id: 1, status: 'OPEN', macdDivergence: 'bearish' })]))
+    renderWidget()
+    await waitFor(() => {
+      const el = screen.getByTestId('macd-bearish-1')
+      expect(el).toBeInTheDocument()
+      expect(el.getAttribute('title')).toBe('bearish divergence detected, consider partial exit at 2R')
+    })
+  })
+
+  it('CLOSED + bearish → ⚠️ span absent', async () => {
+    vi.stubGlobal('fetch', makePositionsFetch([makePosition({ id: 1, status: 'CLOSED', macdDivergence: 'bearish' })]))
+    renderWidget()
+    await waitFor(() => expect(screen.getByText('NVDA')).toBeInTheDocument())
+    expect(screen.queryByTestId('macd-bearish-1')).toBeNull()
+  })
+
+  it('OPEN + bullish → ⚠️ span absent; OPEN + null → ⚠️ span absent', async () => {
+    vi.stubGlobal('fetch', makePositionsFetch([
+      makePosition({ id: 1, status: 'OPEN', macdDivergence: 'bullish' }),
+    ]))
+    renderWidget()
+    await waitFor(() => expect(screen.getByText('NVDA')).toBeInTheDocument())
+    expect(screen.queryByTestId('macd-bearish-1')).toBeNull()
+  })
+})
+
 // ── S13 – New Position dialog ─────────────────────────────────────────────────
 
 describe('S13 – [+ New Position] opens PositionFormDialog mode=new', () => {
