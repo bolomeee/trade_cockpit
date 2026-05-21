@@ -294,7 +294,24 @@ function SetupRow({ item, onClick }: { item: SetupItem; onClick: () => void }) {
         {item.ticker}
       </td>
       <td style={tdStyle}>
-        <SetupTypeBadge value={item.setupType} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <SetupTypeBadge value={item.setupType} />
+          {item.setupType === 'CAPITULATION' && item.macdDivergence === 'bullish' && (
+            <span
+              data-testid={`macd-plus-${item.ticker}`}
+              title="bullish divergence — auxiliary evidence for CAPITULATION (not part of ready gate)"
+              aria-label="bullish divergence chip"
+              style={{
+                color: 'var(--color-change-positive)',
+                fontSize: 'var(--font-size-badge)',
+                fontWeight: 'var(--font-weight-medium)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              MACD+
+            </span>
+          )}
+        </span>
       </td>
       <td style={tdStyle}>
         <SetupQualityBadge value={item.setupQuality} />
