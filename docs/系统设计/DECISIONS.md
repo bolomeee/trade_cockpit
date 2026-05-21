@@ -2511,3 +2511,27 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：`MIN_BARS_REQUIRED=50`（SLOW=26 + SIGNAL=9 + LOOKBACK=20 上下界保护）；macd_line 末尾任何 None（短历史）→ 返回 None；同时满足两个方向的病态情况→ None，不抛异常。参数 12/26/9 硬编码在 `CockpitMACDParams` 类，不可通过 query 参数覆盖。
 
+---
+
+## D102：F219-b — 不抽 MacdDivergenceBadge 组件
+
+**决定**：`macdDivergence` 的视觉渲染直接 inline 在 `_positionListRow.tsx`（⚠️ emoji span）和 `SetupMonitorWidget.tsx`（'MACD+' chip span），不抽共享组件。
+
+**放弃了什么**：单独 `MacdDivergenceBadge` 组件——F219-b 仅 2 处使用，且两处表现形式不同（emoji vs 文字 chip），CockpitChart overlay / DecisionPanel 经 F219 contract 明确排除，无任何下游复用点；抽组件会成为虚假抽象。
+
+**影响**：若未来真的有第 3 处复用，再抽即可；CLAUDE.md "三处相似才抽象"原则在此成立。
+
+---
+
+## D103：F219-b — MACD divergence 触发规则收紧（NP-3）
+
+**决定**：PositionList 仅 `status === 'OPEN' && macdDivergence === 'bearish'` 显示 ⚠️；SetupMonitor 仅 `setupType === 'CAPITULATION' && macdDivergence === 'bullish'` 显示 'MACD+'。
+
+**放弃了什么**：
+- PositionList 显示 CLOSED 持仓的 bearish 标识 — 已平仓持仓显示 ⚠️ 会被误读为历史问题报警，无操作价值
+- SetupMonitor 非 CAPITULATION 行显示 'MACD+' — 会被误读为进了 ready gate，与 8-AND gate 语义冲突
+- PositionList 显示 bullish chip — 持仓 widget 没有 CAPITULATION 上下文，bullish 信号在此无意义
+
+**影响**：4 个"不渲染"路径均有对应单元测试覆盖（S14-2/3 + M2/3）。
+
+

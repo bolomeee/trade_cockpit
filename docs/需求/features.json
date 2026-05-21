@@ -4907,11 +4907,11 @@
       "user_story": "作为不做日内的美股 swing 玩家，我希望在持仓 setup 还没变 EXTENDED 之前就收到动能衰竭的早期警报，并在 CAPITULATION 候选上看到 MACD bullish divergence 的辅助证据，以便：(1) 在仍盈利时主动减半仓 + stop 上移到 +1R 以下；(2) 对 CAPITULATION 仓位的信心做 +/- 校准。",
       "priority": "P2",
       "status": "planned",
-      "phase": "in_progress",
+      "phase": "needs_review",
       "sub_sprint_notes": "2 个 sub-sprint：F219-a 后端（compute + persist + endpoint schema）；F219-b 前端（PositionList badge + SetupMonitor chip）。",
       "sub_sprints": {
         "F219-a": "done",
-        "F219-b": "planned"
+        "F219-b": "done"
       },
       "dependencies": [
         "F215",
@@ -4945,7 +4945,7 @@
         ],
         "design_figma_link": null
       },
-      "contract": "docs/开发/sprint-contracts/F219-a-contract.md (drafted 2026-05-21)",
+      "contract": "docs/开发/sprint-contracts/F219-a-contract.md (confirmed 2026-05-21, done); docs/开发/sprint-contracts/F219-b-contract.md (confirmed 2026-05-21)",
       "acceptance_criteria": [
         "MACD divergence 检测逻辑可由 20 日 fixture 单元测试覆盖（bearish / bullish / null 三态 + 病态兜底）",
         "EOD cron 22:10 UTC 后查询 setup_snapshots，watchlist 中 trend_score>=4 标的可观察到非 null macd_divergence（统计性验收，不强制具体标的）",
@@ -4977,6 +4977,24 @@
           "date": "2026-05-21",
           "action": "contract_agreed",
           "rationale": "F219-a 合同用户按推荐方案全 A 确认 + 8-file 例外授权；下一 session 进 Generator。"
+        },
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "sub_sprint_done",
+          "rationale": "F219-a 后端切片完成：indicator + persist + 2 endpoint schema；wip commits d82f5cd / ff86175 / f9058a1 / 066a3c0 / 942572b；进入 F219-b 前端切片协商。"
+        },
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "contract_agreed",
+          "rationale": "F219-b 合同用户按推荐方案全 A 确认（NP-1~4）；6-file 内无需例外；下一 session 进 Generator。"
+        },
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "needs_review",
+          "rationale": "F219-b 前端切片完成：PositionList ⚠️ bearish marker + SetupMonitorWidget MACD+ chip。6 文件改动（2 API type + 2 widget + 2 test）；wip commits 3c62b3c / aac26ec / 9a4ce98 / 654dc29 / 3f70ec6 / 6039582；tsc 零错误；新增 6 测试（S14-1~3 + M1~3）全绿；零新增失败（pre-existing 37 不变）；design-spec.md + data-mapping.md + DECISIONS.md D102/D103 同步完成。F219 所有 sub-sprint done → 父 phase 升 needs_review。"
         }
       ],
       "notes": "MACD 标准参数 12/26/9 硬编码不开放 query；divergence lookback=20；不接入 ready gate、不接入 AI 区块、不接入 CockpitChart overlay；F219-a 后端先行，F219-b 前端 follow-up。",

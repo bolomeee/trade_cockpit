@@ -1061,3 +1061,20 @@ AI Daily Brief（v2.0，可折叠）：
 | 7f — tokens.json ↔ DATA-MODEL 新枚举色彩对齐 | ✅ PASS（待 tokens.json/css 同步落地） |
 
 F200–F211 共 12 个 feature 的数据绑定基础已验证完整。phase 维持 `design_ready`（features.json 用），UI 设计阶段完成（`_pipeline_status.ui_design = done`）。
+
+---
+
+# F219-b — macdDivergence 字段映射
+
+| API 字段 | 类型 | 来源 endpoint | 视觉映射 | 触发条件 |
+|---------|------|--------------|---------|---------|
+| `macdDivergence` | `'bearish' \| 'bullish' \| null` | `GET /api/cockpit/positions` items[] | ⚠️ emoji span（PositionListWidget ticker cell） | 仅 `status === 'OPEN' && macdDivergence === 'bearish'` |
+| `macdDivergence` | `'bearish' \| 'bullish' \| null` | `GET /api/cockpit/setup-monitor` items[] | 'MACD+' 行内 chip（SetupMonitorWidget Setup 列） | 仅 `setupType === 'CAPITULATION' && macdDivergence === 'bullish'` |
+
+**不渲染规则**（含义反向时一律不渲染）：
+- CLOSED 持仓 bearish → 不显示（历史报警无操作价值）
+- OPEN 持仓 bullish/null → 不显示
+- 非 CAPITULATION 行 bullish → 不显示（会误读为进 ready gate）
+- CAPITULATION 行 bearish/null → 不显示
+
+Token 引用：⚠️ 使用 `--font-size-caption`；'MACD+' 使用 `--color-change-positive` + `--font-size-badge` + `--font-weight-medium`。

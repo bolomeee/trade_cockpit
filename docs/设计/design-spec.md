@@ -1253,6 +1253,29 @@ header 行下方、body 状态分支之前，常驻区域。调用 `GET /api/coc
 
 ---
 
+## F219-b — MACD Divergence 视觉规格
+
+### PositionList ⚠️ bearish 标识
+
+- **触发条件**：`position.status === 'OPEN' && position.macdDivergence === 'bearish'`（CLOSED 持仓 / bullish / null 一律不渲染）
+- **位置**：ticker cell，ticker 文字后紧跟
+- **实现**：`<span>⚠️</span>`，`margin-left: 4px`，`font-size: var(--font-size-caption)`，`cursor: help`
+- **Tooltip**：native `title` 属性，文案锁定为 `'bearish divergence detected, consider partial exit at 2R'`
+- **无障碍**：`aria-label="bearish divergence warning"`
+- **data-testid**：`macd-bearish-{position.id}`
+
+### SetupMonitor 'MACD+' chip
+
+- **触发条件**：`item.setupType === 'CAPITULATION' && item.macdDivergence === 'bullish'`（非 CAPITULATION 行 / bearish / null 一律不渲染）
+- **位置**：Setup 列，`<SetupTypeBadge>` 右侧，inline-flex 排列（gap: 4px）
+- **实现**：`<span>MACD+</span>`，颜色 `var(--color-change-positive)`，`font-size: var(--font-size-badge)`，`font-weight: var(--font-weight-medium)`，`letter-spacing: 0.04em`
+- **Tooltip**：native `title` 属性，文案锁定为 `'bullish divergence — auxiliary evidence for CAPITULATION (not part of ready gate)'`
+- **无障碍**：`aria-label="bullish divergence chip"`
+- **data-testid**：`macd-plus-{item.ticker}`
+- **不影响**：readySignal 计算、ready filter tabs 统计数、setup filter 逻辑
+
+---
+
 ## 待 feature-dev 阶段细化的项
 
 1. **CockpitChart 的 setup annotation 文本气泡**：lightweight-charts 不直接支持文本框，需要用 `createSeriesMarkers` + `tooltip` 自定义；具体样式 v1.8 F203 实现时确定
