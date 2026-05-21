@@ -4,6 +4,19 @@
 
 ---
 
+## [v2.5.0] - 2026-05-21
+
+### ✨ 新增
+- **F219 MACD Divergence 早衰报警（Phase E）**：在已有 trend_score / vol_zscore / weekly_stage 体系下，新增 MACD divergence 作为两处视觉辅助信号
+  - PositionListWidget：持仓 status=OPEN 且 `macdDivergence='bearish'` 时，ticker 右侧显示 ⚠️（hover tooltip："bearish divergence detected, consider partial exit at 2R"）
+  - SetupMonitorWidget：setup_type=CAPITULATION 且 `macdDivergence='bullish'` 时，SetupTypeBadge 右侧显示绿色 `MACD+` chip（tooltip 注明不进 ready gate）
+  - Ready 8-AND gate 行为零变化，macd_divergence 不参与评分逻辑
+
+### 🐛 修复
+- `SetupMonitorWidget.test.tsx`：修复存量失败用例 R11（ai-rank-close testid 已移除，改用 `getByRole('button', {name:'Close'})`）；§S1-S3/S7-S11 跳过（AiSetupExplainerPopover ? 按钮已从 SetupRow JSX 移除）
+
+---
+
 ## [v2.4.0] - 2026-05-20
 
 ### ✨ 新增

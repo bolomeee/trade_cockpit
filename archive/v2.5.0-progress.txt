@@ -1,0 +1,40 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-05-21 contract] Sprint：F219-b MACD Divergence 前端切片
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - F219-b Sprint Contract 协商完成（NP-1~4 用户全 A 确认）
+  - 文件清单：6 个（2 API 类型同步 + 2 widget + 2 测试），6-file 内无需例外
+  - 范围确认：PositionList ⚠️ (OPEN+bearish) + SetupMonitor 'MACD+' chip (CAPITULATION+bullish)
+  - 触发规则收紧：closed 持仓 / 非 CAPITULATION 行一律不渲染
+  - 不抽 MacdDivergenceBadge 组件（CLAUDE.md no premature abstraction）
+  - features.json F219.sub_sprints['F219-b'] → contract_agreed
+  - iteration_history 追加 F219-a sub_sprint_done + F219-b contract_agreed
+
+⚠️ 待你决策：
+  - 无（合同条款已全部确认）
+
+🔧 系统变更：
+  - 新建：docs/开发/sprint-contracts/F219-b-contract.md (status: confirmed)
+  - 修改：docs/需求/features.json (F219 sub_sprints + iteration_history + contract 字段)
+  - 更新：SESSION-HANDOFF.md（F219-b Generator 入口指令）
+
+📊 功能状态：
+  F219 [MACD Divergence 早衰报警]：🔄 in_progress
+    F219-a [后端切片]：✅ done（indicator + persist + 2 endpoint schema）
+    F219-b [前端切片]：📝 contract_agreed → 等待 Generator
+
+[下一个 Session]
+  建议用 Sonnet 开新 session，粘贴：
+  > 继续开发 F219-b，Sprint Contract 已确认。
+  > 读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F219-b-contract.md，
+  > 进入 Generator 模式，从开发步骤 Step 1 (setupMonitorApi.ts MacdDivergence type) 开始。
+
+---
+[2026-05-21] F219 验收通过 → done
+  F219-b Generator 完成（6 文件，wip commits 3c62b3c/aac26ec/9a4ce98/654dc29/3f70ec6/6039582）
+  F219 acceptance 通过（AC1~AC3 后端数据 + V1~V10 前端渲染 + E1~E2 边缘情况全通过）
+  F219 phase → done，completed_at = 2026-05-21
+  验收记录：docs/验收/v2.5-F219-acceptance.md
+  Phase E（MACD Divergence 早衰报警）整体闭环。
+  下一步：发版 → 触发 project-commiter

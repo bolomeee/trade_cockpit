@@ -4906,7 +4906,7 @@
       "description": "基于 Ross Cameron 慢交易方法移植讨论的产出（2026-05-21 session）：MACD 的 line/signal 交叉、0 轴判定、histogram 加速在本项目已有的 trend_score / vol_zscore / weekly_stage 体系下全部冗余。唯一独立有效的用法是 divergence（背离）：bearish divergence（价 20 日新高、MACD 不新高）作持仓早衰报警，比 EXTENDED 触发早 2–3 周；bullish divergence（价 20 日新低、MACD 不新低）作 CAPITULATION 候选辅助证据（不进 7-AND 门）。\n\n实施原则（最小化）：仅新增 1 列 setup_snapshots.macd_divergence ∈ {bearish, bullish, null}；仅扩展 2 个 endpoint（setup-monitor + positions）响应字段；仅扩展 2 个 widget 展示；不动 ready 8-AND gate、不动 CockpitChart overlay、不接入 DecisionPanel AI 区块。MACD 参数 12/26/9 硬编码不开放调参，lookback=20 与 EXTENDED 同量级。\n\n拆分：F219-a 后端切片（indicator + DB + setup_service + 2 endpoint schema）；F219-b 前端切片（PositionList badge + SetupMonitor chip）。",
       "user_story": "作为不做日内的美股 swing 玩家，我希望在持仓 setup 还没变 EXTENDED 之前就收到动能衰竭的早期警报，并在 CAPITULATION 候选上看到 MACD bullish divergence 的辅助证据，以便：(1) 在仍盈利时主动减半仓 + stop 上移到 +1R 以下；(2) 对 CAPITULATION 仓位的信心做 +/- 校准。",
       "priority": "P2",
-      "status": "planned",
+      "status": "done",
       "phase": "done",
       "sub_sprint_notes": "2 个 sub-sprint：F219-a 后端（compute + persist + endpoint schema）；F219-b 前端（PositionList badge + SetupMonitor chip）。",
       "sub_sprints": {
