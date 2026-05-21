@@ -113,6 +113,7 @@ class PositionItem(_CamelModel):
     days_until_earnings: int | None = None
     next_action: _VALID_NEXT_ACTIONS = "hold"
     recommended_shares: int | None = None  # populated only in POST response
+    macd_divergence: str | None = None
 
 
 class PositionSummary(_CamelModel):

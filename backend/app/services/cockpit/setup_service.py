@@ -15,8 +15,8 @@ from app.repositories.market_regime_repository import MarketRegimeRepository
 from app.repositories.setup_snapshot_repository import SetupSnapshotRepository
 from app.repositories.stock_repository import StockRepository
 from app.repositories.weekly_stage_repository import WeeklyStageRepository
-from app.services.cockpit._indicators import compute_wilder_atr
-from app.services.cockpit.cockpit_params import SETUP
+from app.services.cockpit._indicators import compute_macd_series, compute_wilder_atr, detect_macd_divergence
+from app.services.cockpit.cockpit_params import MACD, SETUP
 
 # ── Setup type constants ───────────────────────────────────────────────────────
 
@@ -558,6 +558,7 @@ class SetupService:
                     "obv_trend": None,
                     "up_down_volume_ratio": None,
                     "weekly_stage": weekly_stage_val,
+                    "macd_divergence": None,
                     "scanned_at": datetime.now(timezone.utc),
                 })
                 continue
@@ -600,6 +601,11 @@ class SetupService:
             )
             action = _compute_suggested_action(setup_type, ready, dist)
 
+            macd_divergence: str | None = None
+            if len(closes) >= MACD.MIN_BARS_REQUIRED:
+                macd_line = compute_macd_series(closes, MACD.FAST, MACD.SLOW)
+                macd_divergence = detect_macd_divergence(closes, macd_line, MACD.DIVERGENCE_LOOKBACK)
+
             rows.append({
                 "ticker": stock.ticker,
                 "scan_date": today,
@@ -621,6 +627,7 @@ class SetupService:
                 "obv_trend": obv_trend,
                 "up_down_volume_ratio": ud_ratio,
                 "weekly_stage": weekly_stage_val,
+                "macd_divergence": macd_divergence,
                 "scanned_at": datetime.now(timezone.utc),
             })
 
@@ -738,4 +745,5 @@ def _row_to_dict(r: Any, stock_name: str | None = None) -> dict:
         "obvTrend": r.obv_trend,
         "upDownVolumeRatio": r.up_down_volume_ratio,
         "weeklyStage": r.weekly_stage,
+        "macdDivergence": r.macd_divergence,
     }

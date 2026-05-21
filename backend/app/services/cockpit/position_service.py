@@ -14,6 +14,7 @@ from app.models.position import Position
 from app.repositories.earnings_event_repository import EarningsEventRepository
 from app.repositories.pending_order_repository import PendingOrderRepository
 from app.repositories.position_repository import PositionRepository
+from app.repositories.setup_snapshot_repository import SetupSnapshotRepository
 from app.repositories.user_settings_repository import UserSettingsRepository
 from app.services.watchlist_service import APIError
 from app.schemas.cockpit.position import (
@@ -54,6 +55,7 @@ class PositionService:
         self._pending_repo = PendingOrderRepository(db)
         self._settings_repo = UserSettingsRepository(db)
         self._earnings_repo = EarningsEventRepository(db)
+        self._setup_repo = SetupSnapshotRepository(db)
         self._loader = LastCloseLoader(db, fmp)
 
     # ------------------------------------------------------------------
@@ -66,8 +68,10 @@ class PositionService:
         if rows:
             tickers = [r.ticker for r in rows]
             last_closes = self._loader.load(tickers)
+            macd_div_map = self._get_macd_divergence_map(tickers)
         else:
             last_closes = {}
+            macd_div_map = {}
 
         today = date.today()
         items = [
@@ -76,6 +80,7 @@ class PositionService:
                 last_closes.get(row.ticker),
                 self._earnings_repo.get_next_earnings(row.ticker, today),
                 include_recommended=False,
+                macd_divergence=macd_div_map.get(row.ticker),
             )
             for row in rows
         ]
@@ -106,6 +111,7 @@ class PositionService:
             closes.get(row.ticker),
             self._earnings_repo.get_next_earnings(row.ticker, today),
             include_recommended=False,
+            macd_divergence=self._get_macd_divergence_map([row.ticker]).get(row.ticker),
         )
 
     def create_position(self, payload: PositionCreate) -> PositionItem:
@@ -119,6 +125,7 @@ class PositionService:
             closes.get(row.ticker),
             self._earnings_repo.get_next_earnings(row.ticker, today),
             include_recommended=True,
+            macd_divergence=self._get_macd_divergence_map([row.ticker]).get(row.ticker),
         )
         return item
 
@@ -165,6 +172,7 @@ class PositionService:
             closes.get(updated_row.ticker),
             self._earnings_repo.get_next_earnings(updated_row.ticker, today),
             include_recommended=False,
+            macd_divergence=self._get_macd_divergence_map([updated_row.ticker]).get(updated_row.ticker),
         )
 
     def delete_position(self, position_id: int) -> bool:
@@ -235,6 +243,7 @@ class PositionService:
         earnings_event: EarningsEvent | None,
         *,
         include_recommended: bool,
+        macd_divergence: str | None = None,
     ) -> PositionItem:
         metrics = self._compute_metrics(row, last_close, earnings_event, include_recommended)
         return PositionItem(
@@ -253,8 +262,13 @@ class PositionService:
             close_price=row.close_price,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            macd_divergence=macd_divergence,
             **metrics,
         )
+
+    def _get_macd_divergence_map(self, tickers: list[str]) -> dict[str, str | None]:
+        snapshots = self._setup_repo.get_latest_for_tickers(tickers)
+        return {s.ticker: s.macd_divergence for s in snapshots}
 
     def _compute_summary(
         self,

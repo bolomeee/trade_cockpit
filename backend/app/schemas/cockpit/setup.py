@@ -43,6 +43,7 @@ class SetupItemResponse(CamelModel):
     obv_trend: str | None = None
     up_down_volume_ratio: float | None = None
     weekly_stage: int | None = None
+    macd_divergence: str | None = None
 
 
 class SetupMonitorData(CamelModel):
