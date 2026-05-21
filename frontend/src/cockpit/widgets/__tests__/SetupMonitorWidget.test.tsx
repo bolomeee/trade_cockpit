@@ -68,6 +68,7 @@ function makeItem(overrides: Partial<SetupItem>): SetupItem {
     obvTrend: 'UP',
     upDownVolumeRatio: 1.45,
     weeklyStage: 2,
+    macdDivergence: null,
     ...overrides,
   }
 }
@@ -968,5 +969,54 @@ describe('§W – WS column', () => {
     await screen.findByText('AAPL')
     const cell = await screen.findByTitle('无 Weekly Stage 数据')
     expect(cell).toHaveTextContent('—')
+  })
+})
+
+// ─── §M – MACD+ chip (F219-b) ─────────────────────────────────────────────────
+
+describe('§M – MACD+ chip', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  function makeSingleFetch(item: SetupItem) {
+    return makeRoutedFetch({
+      '/cockpit/setup-monitor': () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: {
+                summary: { total: 1, ready: 1, near: 0, extended: 0, broken: 0, none: 0 },
+                items: [item],
+              },
+            }),
+        } as FetchResponse),
+    })
+  }
+
+  it('M1: CAPITULATION + bullish → macd-plus chip present, text "MACD+"', async () => {
+    vi.stubGlobal('fetch', makeSingleFetch(makeItem({ ticker: 'AAPL', setupType: 'CAPITULATION', macdDivergence: 'bullish' })))
+    renderWidget()
+    await screen.findByText('AAPL')
+    const chip = screen.getByTestId('macd-plus-AAPL')
+    expect(chip).toBeInTheDocument()
+    expect(chip.textContent).toBe('MACD+')
+  })
+
+  it('M2: BREAKOUT + bullish → macd-plus chip absent (NP-3 触发收紧)', async () => {
+    vi.stubGlobal('fetch', makeSingleFetch(makeItem({ ticker: 'AAPL', setupType: 'BREAKOUT', macdDivergence: 'bullish' })))
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.queryByTestId('macd-plus-AAPL')).toBeNull()
+  })
+
+  it('M3: CAPITULATION + bearish/null → chip absent; readySignal 行为零变化', async () => {
+    const itemBearish = makeItem({ ticker: 'AAPL', setupType: 'CAPITULATION', readySignal: true, macdDivergence: 'bearish' })
+    vi.stubGlobal('fetch', makeSingleFetch(itemBearish))
+    renderWidget()
+    await screen.findByText('AAPL')
+    expect(screen.queryByTestId('macd-plus-AAPL')).toBeNull()
+    // Ready tab count unchanged — summary.ready=1 still shows 'Ready 1'
+    expect(screen.getByText(/Ready 1/)).toBeInTheDocument()
   })
 })
