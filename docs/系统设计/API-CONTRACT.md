@@ -1172,7 +1172,8 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
         "volumeZscore": 1.83,
         "obvTrend": "UP",
         "upDownVolumeRatio": 1.45,
-        "weeklyStage": 2
+        "weeklyStage": 2,
+        "macdDivergence": "bearish"
       }
     ]
   },
@@ -1191,6 +1192,7 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
 - `obvTrend`：`'UP' | 'DOWN' | 'FLAT' | null`；OBV 20 日趋势分类；历史不足或基值为 0 时为 null（F215-b）
 - `upDownVolumeRatio`：`number | null`；近 50 日 O'Neil U/D ratio；无下跌日时为 null（F215-b）
 - `weeklyStage`：`number | null`；Stan Weinstein Stage 1-4（0=UNKNOWN；null=该日 weekly_stage cron 未跑到）；F216-d2 起作为 readySignal 第 8 条 AND 门
+- `macdDivergence`：`'bearish' | 'bullish' | null`；price/MACD 20 日背离（F219 / D098）。不进 readySignal 8-AND
 - 返回 watchlist 内 active 股票，按 `suggestedAction` 优先级排序（enter > watch > wait > null > reduce > exit）
 
 **BREAKOUT 吸筹门槛（F215-b / D088）**：
@@ -1650,7 +1652,8 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
         "closedAt": null,
         "closePrice": null,
         "createdAt": "2026-04-15T10:00:00Z",
-        "updatedAt": "2026-04-15T10:00:00Z"
+        "updatedAt": "2026-04-15T10:00:00Z",
+        "macdDivergence": null
       }
     ]
   },
@@ -1663,6 +1666,7 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
 - `last_close` 来源：watchlist 内走 `daily_bars` 最新行；非 watchlist 走 on-demand FMP（D041）
 - `nextAction` 枚举：`hold` / `raise_stop` / `reduce` / `exit`（规则引擎生成，供 F207 action list 复用）
 - `summary` 由 F207 action_service 计算；`positionValue` = shares × last_close，百分比 = `positionValue / account_size × 100`
+- `macdDivergence`：`'bearish' | 'bullish' | null`；从最新 setup_snapshot 读取；无快照或 bars<50 时为 null（F219 / D098）
 
 ---
 

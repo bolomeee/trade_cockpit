@@ -2,7 +2,7 @@
   "_schema_version": "2.0",
   "project": "MA150 Tracker → Workbench → Cockpit",
   "version": "1.8.1-planning",
-  "last_updated": "2026-05-20",
+  "last_updated": "2026-05-21",
   "_infrastructure_note": "F000-a/b/c 为基础设施脚手架。F001-F008 为 v1.0.0 发布内容，v1.1.0 的 F100/F101/F102 将其重构为 widget。D034（2026-04-19）起外部数据源从 Polygon 迁移到 FMP，F103 被 F104 吸收。v1.2 新增 F105 Market Breakout Scanner。v1.3 新增 F106/F107/F108/F109。v1.4-v1.7 历史记录在 CHANGELOG.md（features.json _iteration_log 未同步，已知 drift，本次迭代不修复）。v1.8 Cockpit P0（F200-F204）：新建 /cockpit 独立页，慢交易工作流；v1.9 Cockpit P1（F205-F207）；v2.0 Cockpit P2（F208-F211）AI 层，基于 LiteLLM 实现 provider-agnostic 多 tier 路由。",
   "completion_rate": "v1.0.0 – v1.7.0 全部 done；v1.8 Cockpit P0 规划中（requirements 阶段完成）",
   "_pipeline_status": {
@@ -156,6 +156,11 @@
       "deprecated": [],
       "status": "planned",
       "description": "Cockpit 改善计划 Phase D — Repricing Trigger 完整框架（5 类）。对照 SRS § 十一 + plan §Phase D，新增独立 RepricingTriggerService 与 repricing_triggers 表，串行调度 5 个 detector：T1 Earnings Acceleration（复用 EarningsEventRepository）/ T2 Margin Expansion（新接 FMP key-metrics-ttm + ratios?period=quarter，新 stock_key_metrics_quarterly 表）/ T3 New Product D4a 关键词扫描（复用 news_cache，过去 30 日 launch/unveil/AI 等关键词 ≥2 次命中）/ T4 Sector Cycle Reversal（复用 SECTOR_ETFS + _compute_rs_percentile，sector RS 40→60 且 > SMA200）/ T5 Balance Sheet Inflection（新接 FMP balance-sheet + cash-flow，新 stock_fundamentals_quarterly 表，净负债连降或 FCF 转正）。前端新增 RepricingTriggerWidget 全市场列表 + DecisionPanel 顶部 trigger badge 区。refresh_job cron 周一至周五 22:40 UTC。Sub-sprint 拆分留给 feature-dev A-1 sizing 协商（预期 D1 框架 / D2-D6 五 detector / D7 调度+前端 三阶段，总 7-9 sub-sprint）。NP-init-1=v2.4 / NP-init-2=不预拆 sub_sprints / NP-init-3=走完整 system-design 变更协议 / NP-init-4=design-spec 内联模式 (F216-d3 / F217-c2c 经验)。完整计划见 /Users/wonderer/.claude/plans/featrue-dev-replicated-goblet.md §Phase D。"
+    },
+    {
+      "iteration": "v2.5",
+      "date": "2026-05-21",
+      "summary": "Add F219 (MACD Divergence minimal scheme); F219-a contract drafted, pending user confirmation."
     }
   ],
   "_phase_legend": {
@@ -4894,6 +4899,89 @@
       "notes": "本 feature 是 cockpit-vs-srs-framework 改善计划 4 阶段的第 4 阶段（Phase D / 收官）。依赖 F215（Phase A Volume z-score，全部完了）+ F216（Phase B Weekly Stage，全部完了）+ F217（Phase C Capitulation Reversal，全部完了）。完成后 cockpit 慢交易框架 4 个支柱齐全：Volume z-score（异常放量）+ Weekly Stage（趋势阶段）+ Capitulation Reversal（投降反转 setup）+ Repricing Trigger（基本面/产业/资产负债重定价）。⚠️ T3 New Product 用 D4a 关键词扫描（高 recall 低 precision），D4b NLP 升级是独立 issue 不在 F218 范围。⚠️ FMP 新增 3 endpoint（income-statement / balance-sheet-statement / cash-flow-statement，后 2 个 T2/T5 共享，~150 calls/week；D097 修正 2026-05-18：原计划 key-metrics-ttm + ratios quarterly Starter 不支持改 income-statement）需评估 quota 占用与缓存策略（DECISIONS D097 详述）。⚠️ Repricing Trigger 与 setup 信号解耦但在 DecisionPanel 同屏展示，前端边界由 component-plan 明确（trigger badge 区独立于 setup chip 区）。⚠️ Sub-sprint 拆分留给 feature-dev sizing，避免 project-init 阶段预先固化后二次拆分（F217-c 即因此教训拆成 c1+c2 又拆成 c2a/c2b/c2c）。⚠️ T4 SECTOR_CYCLE 实施期发现 ARCHITECTURE.md §564 提到的 market_regime_service._compute_rs_percentile 实际不存在，等价算法在 pool_helpers.compute_rs_percentile_map（D081），由 F218-d5 Contract NP-d5-3 承载澄清不升 DXXX。",
       "last_updated": "2026-05-20",
       "completed_at": "2026-05-20"
+    },
+    {
+      "id": "F219",
+      "name": "Cockpit Phase E — MACD Divergence 早衰报警（最小化方案）",
+      "description": "基于 Ross Cameron 慢交易方法移植讨论的产出（2026-05-21 session）：MACD 的 line/signal 交叉、0 轴判定、histogram 加速在本项目已有的 trend_score / vol_zscore / weekly_stage 体系下全部冗余。唯一独立有效的用法是 divergence（背离）：bearish divergence（价 20 日新高、MACD 不新高）作持仓早衰报警，比 EXTENDED 触发早 2–3 周；bullish divergence（价 20 日新低、MACD 不新低）作 CAPITULATION 候选辅助证据（不进 7-AND 门）。\n\n实施原则（最小化）：仅新增 1 列 setup_snapshots.macd_divergence ∈ {bearish, bullish, null}；仅扩展 2 个 endpoint（setup-monitor + positions）响应字段；仅扩展 2 个 widget 展示；不动 ready 8-AND gate、不动 CockpitChart overlay、不接入 DecisionPanel AI 区块。MACD 参数 12/26/9 硬编码不开放调参，lookback=20 与 EXTENDED 同量级。\n\n拆分：F219-a 后端切片（indicator + DB + setup_service + 2 endpoint schema）；F219-b 前端切片（PositionList badge + SetupMonitor chip）。",
+      "user_story": "作为不做日内的美股 swing 玩家，我希望在持仓 setup 还没变 EXTENDED 之前就收到动能衰竭的早期警报，并在 CAPITULATION 候选上看到 MACD bullish divergence 的辅助证据，以便：(1) 在仍盈利时主动减半仓 + stop 上移到 +1R 以下；(2) 对 CAPITULATION 仓位的信心做 +/- 校准。",
+      "priority": "P2",
+      "status": "planned",
+      "phase": "contract_agreed",
+      "sub_sprint_notes": "2 个 sub-sprint：F219-a 后端（compute + persist + endpoint schema）；F219-b 前端（PositionList badge + SetupMonitor chip）。",
+      "sub_sprints": {
+        "F219-a": "in_progress",
+        "F219-b": "planned"
+      },
+      "dependencies": [
+        "F215",
+        "F217"
+      ],
+      "estimated_sessions": 2,
+      "estimated_files_changed": [
+        "backend/app/services/cockpit/cockpit_params.py",
+        "backend/app/services/cockpit/_indicators.py",
+        "backend/app/services/cockpit/setup_service.py",
+        "backend/app/services/cockpit/position_service.py",
+        "backend/app/db/models.py",
+        "backend/alembic/versions/025_f219a_setup_macd_divergence.py",
+        "backend/app/schemas/cockpit/setup.py",
+        "backend/app/schemas/cockpit/position.py",
+        "frontend/src/cockpit/lib/api/setupMonitorApi.ts",
+        "frontend/src/cockpit/lib/api/positionApi.ts",
+        "frontend/src/cockpit/widgets/SetupMonitorWidget.tsx",
+        "frontend/src/cockpit/widgets/PositionListWidget.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Cockpit"
+        ],
+        "api_endpoints": [
+          "GET /api/cockpit/setup-monitor (响应 items[] 新增 macdDivergence 字段)",
+          "GET /api/cockpit/positions (响应 items[] 新增 macdDivergence 字段)"
+        ],
+        "db_tables": [
+          "setup_snapshots (新增 macd_divergence String(8) nullable 列, alembic 025)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": "docs/开发/sprint-contracts/F219-a-contract.md (drafted 2026-05-21)",
+      "acceptance_criteria": [
+        "MACD divergence 检测逻辑可由 20 日 fixture 单元测试覆盖（bearish / bullish / null 三态 + 病态兜底）",
+        "EOD cron 22:10 UTC 后查询 setup_snapshots，watchlist 中 trend_score>=4 标的可观察到非 null macd_divergence（统计性验收，不强制具体标的）",
+        "PositionListWidget 在持仓 macdDivergence='bearish' 时显示 ⚠️ 标识，hover 显示 'bearish divergence detected, consider partial exit at 2R'（F219-b 验收）",
+        "SetupMonitorWidget 在 setup_type=CAPITULATION 且 macdDivergence='bullish' 时显示一枚 'MACD+' chip，不进 ready gate（F219-b 验收）",
+        "Ready 8-AND gate 行为零变化（macd_divergence 不参与）",
+        "回归：所有现有 setup_service / position_service 单元 + 集成测试 100% 通过"
+      ],
+      "test_cases": [
+        "compute_macd_series 对手算 fixture（递增/递减/正弦）输出对齐 1e-6",
+        "detect_macd_divergence: 价 20 日新高 + MACD 非新高 → 'bearish'",
+        "detect_macd_divergence: 价 20 日新低 + MACD 非新低 → 'bullish'",
+        "detect_macd_divergence: bars<50 / macd_line 末位 None → None",
+        "detect_macd_divergence: 同时满足 bearish+bullish 病态构造 → None",
+        "setup_service: bars>=50 时 macd_divergence 正确写入 setup_snapshot",
+        "GET /api/cockpit/setup-monitor 响应 items[] 含 macdDivergence（camelCase）",
+        "GET /api/cockpit/positions 响应 items[] 含 macdDivergence（camelCase）",
+        "alembic 025 upgrade/downgrade 双向干净"
+      ],
+      "iteration_history": [
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "added",
+          "rationale": "Ross Cameron 慢交易方法移植讨论的产出：MACD 体系裁剪到 divergence 一项保留，作为持仓早衰报警 + CAPITULATION 辅助证据。"
+        },
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "contract_agreed",
+          "rationale": "F219-a 合同用户按推荐方案全 A 确认 + 8-file 例外授权；下一 session 进 Generator。"
+        }
+      ],
+      "notes": "MACD 标准参数 12/26/9 硬编码不开放 query；divergence lookback=20；不接入 ready gate、不接入 AI 区块、不接入 CockpitChart overlay；F219-a 后端先行，F219-b 前端 follow-up。",
+      "last_updated": "2026-05-21",
+      "completed_at": null
     }
   ]
 }
