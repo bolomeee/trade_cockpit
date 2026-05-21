@@ -463,3 +463,18 @@ class CockpitChartWeeklyParams(BaseModel):
 
 
 CHART_WEEKLY = CockpitChartWeeklyParams()
+
+
+class CockpitMACDParams(BaseModel):
+    """§8 MACD — divergence detection parameters (F219 / D098). Hard-coded, not query-param exposed."""
+
+    model_config = ConfigDict(frozen=True)
+
+    FAST: int = Field(default=12, description="Short EMA period (Cameron standard)", ge=2, le=50)
+    SLOW: int = Field(default=26, description="Long EMA period", ge=5, le=100)
+    SIGNAL: int = Field(default=9, description="Signal line EMA period (reserved, not consumed by F219-a)", ge=2, le=30)
+    DIVERGENCE_LOOKBACK: int = Field(default=20, description="Lookback window (bars) for price/MACD extreme comparison", ge=5, le=60)
+    MIN_BARS_REQUIRED: int = Field(default=50, description="Minimum bars before divergence detection runs (SLOW + SIGNAL + LOOKBACK safety bound)", ge=30, le=200)
+
+
+MACD = CockpitMACDParams()
