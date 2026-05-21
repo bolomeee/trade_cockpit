@@ -1,7 +1,7 @@
-# SESSION-HANDOFF — F218-d7b Evaluator 完成 → 进入 acceptance
+# SESSION-HANDOFF — F219-b 完成 → F219 needs_review
 
-> 生成：2026-05-20 (Sonnet 4.6) | 用途：下一 session 触发 acceptance skill
-> 触发：F218-d7b 全量测试通过 → needs_review
+> 生成：2026-05-21 (Sonnet 4.6) | 用途：下一 session 进入 acceptance 阶段
+> 触发：F219-b Evaluator 通过，F219 整体升 needs_review
 
 ---
 
@@ -9,79 +9,80 @@
 
 | 字段 | 值 |
 |------|-----|
-| `_pipeline_status.active_sprint` | **F218-d7b** |
-| `_pipeline_status.active_sprint_phase` | **needs_review** |
-| `F218.phase` | in_progress |
-| `F218.active_sub_sprint` | F218-d7b |
-| `F218.active_sprint_phase` | needs_review |
-| `F218.sub_sprints["F218-d7b"]` | **needs_review** |
+| `F219.phase` | **needs_review** |
+| `F219.sub_sprints["F219-a"]` | done（后端：indicator + persist + endpoint schema） |
+| `F219.sub_sprints["F219-b"]` | done（前端：PositionList ⚠️ + SetupMonitor MACD+ chip） |
+| `_pipeline_status.active_sprint` | null |
+| 最新 commit | `9637300 feat(F219-b): MACD divergence 前端 ⚠️ + MACD+ chip 切片` |
 
 ---
 
-## 2. 本 sprint 完成摘要（F218-d7b）
+## 2. F219-b 完成内容（本 session）
 
-### 新建文件（4 个）
-| 文件 | 内容 |
-|------|------|
-| `frontend/src/cockpit/lib/api/cockpitRepricingApi.ts` | 5 类 evidence union + 2 API 函数 |
-| `frontend/src/cockpit/lib/api/__tests__/cockpitRepricingApi.test.ts` | A1-A6 6 tests |
-| `frontend/src/cockpit/widgets/RepricingTriggerWidget.tsx` | 全市场 trigger 表格 widget + TRIGGER_COLOR_TOKEN + summarizeEvidence |
-| `frontend/src/cockpit/widgets/__tests__/RepricingTriggerWidget.test.tsx` | B1-B9 13 tests |
+**改动 6 文件**：
 
-### 修改文件（6 个）
 | 文件 | 改动 |
 |------|------|
-| `frontend/src/styles/tokens.css` | +5 个 `--color-trigger-*` token |
-| `frontend/src/cockpit/CockpitRegistry.ts` | 注册 `cockpit.repricing-trigger` + `repricing` category |
-| `frontend/src/cockpit/__tests__/CockpitRegistry.test.ts` | D1-D2 2 tests |
-| `frontend/src/cockpit/widgets/DecisionPanelWidget.tsx` | RepricingChipRow helper + Tooltip evidence |
-| `frontend/src/cockpit/widgets/__tests__/DecisionPanelWidget.test.tsx` | C1-C6 6 tests + TooltipProvider |
-| `docs/设计/design-spec.md` | Widget 6 chip 区子段 + Widget 11 RepricingTriggerWidget |
-| `docs/设计/component-plan.md` | cockpit widgets 表追加 RepricingTriggerWidget 行 |
-| `docs/需求/features.json` | F218-d7b → needs_review |
+| `frontend/src/cockpit/lib/api/setupMonitorApi.ts` | 新增 `export type MacdDivergence`；`SetupItem` 加 `macdDivergence` 字段 |
+| `frontend/src/cockpit/lib/api/cockpitPositionsApi.ts` | import `MacdDivergence`；`Position` 加 `macdDivergence` 字段 |
+| `frontend/src/cockpit/widgets/_positionListRow.tsx` | `PositionRow` ticker cell 注入 ⚠️ span（OPEN + bearish） |
+| `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` | Setup 列 inline-flex + CAPITULATION+bullish 渲染 'MACD+' chip |
+| `frontend/src/cockpit/widgets/__tests__/PositionListWidget.test.tsx` | fixture 加 `macdDivergence: null`；新增 S14-1~3（3/3 全绿） |
+| `frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx` | fixture 加 `macdDivergence: null`；新增 M1~3（3/3 全绿） |
+
+**文档同步（Evaluator 阶段）**：
+- `docs/设计/design-spec.md` — 新增 §F219-b MACD Divergence 视觉规格段落
+- `docs/设计/data-mapping.md` — 新增 macdDivergence 字段映射表
+- `docs/系统设计/DECISIONS.md` — 新增 D102（不抽 MacdDivergenceBadge）+ D103（触发收紧 NP-3）
+- `docs/需求/features.json` — F219-b: done；F219.phase: needs_review；追加 needs_review iteration_history
+
+**Evaluator 结果**：
+- `pnpm tsc --noEmit` 零错误
+- 新增测试 6 个全绿（S14-1~3 + M1~3）
+- 全量回归：37 failed | 330 passed（与 F219-b 改动前基线完全一致，零新增失败）
 
 ---
 
-## 3. Evaluator 自检结果
-
-| 检查项 | 结果 |
-|--------|------|
-| A1-A6 (API client tests) | ✅ 6/6 |
-| B1-B9 (widget tests) | ✅ 13/13 |
-| C1-C6 (DecisionPanel chip tests) | ✅ 6/6 |
-| D1-D2 (Registry tests) | ✅ 2/2 |
-| 全量新增测试 | ✅ 27 tests 全绿 |
-| DecisionPanel 既有测试 | ✅ 35/36（S4 是已有缺陷，stash 验证确认不是我的改动导致） |
-| Lint 新增错误 | ✅ 0 个（修复了 react-refresh/only-export-components 2 处） |
-| TypeScript typecheck | ✅ 无错误 |
-| features.json F218-d7b | ✅ → needs_review |
-
----
-
-## 4. 已有缺陷（本 sprint 前已存在，不是回归）
-
-- `DecisionPanelWidget.test.tsx > S4`：期望 "Decision · NVDA" 但 headerTitle 格式为 "NVDA"，stash 验证确认是已有问题
-- 全量前端测试：30 failed（与 sprint 开始前基线一致，均为已有问题）
-
----
-
-## 5. 下一步
-
-**触发 acceptance skill**：
+## 3. 未提交改动（遗留）
 
 ```
-验收 F218-d7b
+M backend/uv.lock      ← F219-a 遗留，与前端无关（可在 acceptance 后与发版一起处理）
+M claude-progress.txt  ← 本 session 协商记录
 ```
-
-acceptance 通过后：
-1. F218-d7b → done
-2. consistency-check C1 自动触发：sub_sprints 全 done → 父 F218 待 acceptance
-3. Phase D 整体收官，cockpit 4 支柱齐全
 
 ---
 
-## 6. 手动验证清单（E1/E2，acceptance 时执行）
+## 4. 下一步：acceptance skill
 
-- E1：cockpit 页可见 RepricingTriggerWidget（位置 x:6 y:43），filter Select 可切换类型，refresh 按钮可用
-- E2：选中持仓 ticker → DecisionPanel chip 区渲染，hover chip 显示 evidence tooltip
-- E3：dev server 启动无报错（`pnpm dev`）
+F219 phase = `needs_review` → 触发 acceptance。
+
+**验收清单（合同 §4）**：
+
+| # | 验收标准 | 方法 |
+|---|---------|------|
+| 1 | `pnpm dev` 启动，PositionList 中 OPEN+bearish 持仓 ticker 后出现 ⚠️ | 真机 EOD 后观察 |
+| 2 | hover ⚠️ → tooltip 显示 'bearish divergence detected, consider partial exit at 2R' | 真机 |
+| 3 | CLOSED 持仓 bearish 行无 ⚠️ | 真机 |
+| 4 | SetupMonitor CAPITULATION+bullish 行 Setup 列 SetupTypeBadge 右侧出现绿色 'MACD+' | 真机 EOD |
+| 5 | non-CAPITULATION 行无 'MACD+' | 真机 |
+| 6 | Ready / Near filter tab 数字与添加 macdDivergence 字段前一致 | 单元测试 M3 已覆盖 |
+
+**前提**：EOD 跑完后 `setup_snapshots.macd_divergence` 有非 null 数据，才能看到真实渲染。
+
+---
+
+## 5. Pre-existing test failures（不阻塞）
+
+以下失败是 F219-b 之前已存在，本切片未引入：
+- `SetupMonitorWidget.test.tsx` §R-R11（ai-rank-close testid 已移除）
+- `SetupMonitorWidget.test.tsx` §S 系列（AiSetupExplainerPopover ? button testid 问题）
+- `TopNav.test.tsx` S12/S13（TooltipProvider 缺失）
+
+---
+
+## 6. 下一 session 恢复指令
+
+```
+F219 phase = needs_review，F219-b 已完成（前端 ⚠️ + MACD+ chip，6 文件）。
+触发 acceptance skill，验收 F219 整体（含后端 EOD 实际落数据 + 两个 widget 真机渲染）。
+```
