@@ -189,7 +189,7 @@ function BreakoutRow({
   return (
     <TableRow onClick={onSelect} className="cursor-pointer">
       <TableCell className="font-bold">{ticker}</TableCell>
-      <TableCell className="text-muted-foreground">{companyName}</TableCell>
+      <TableCell className="text-muted-foreground max-w-[160px] truncate" title={companyName}>{companyName}</TableCell>
       {showSignalCol && (
         <TableCell className="text-muted-foreground">
           {SIGNAL_LABEL[signalType]}

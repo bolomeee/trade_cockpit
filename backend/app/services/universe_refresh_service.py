@@ -22,6 +22,14 @@ from typing import Any, Protocol
 # letters). See D052.
 _MUTUAL_FUND_TICKER_RE = re.compile(r"^[A-Z]{4}X$")
 
+# Preferred depositary shares slip through FMP's isFund=false filter because
+# FMP classifies them as ordinary securities. Their legal names always contain
+# characteristic phrases. Matching any one phrase is sufficient to exclude.
+_PREFERRED_SHARE_RE = re.compile(
+    r"Depositary Shares|Preferred Stock|Non-Cumulative|Perpetual Preferred",
+    re.IGNORECASE,
+)
+
 from sqlalchemy.orm import Session
 
 from app.repositories.market_scan_universe_repository import (
@@ -141,6 +149,8 @@ def _parse_screener_row(item: Any) -> UniverseUpsertRow | None:
     if market_cap <= 0:
         return None
     company_name = item.get("companyName") or symbol
+    if _PREFERRED_SHARE_RE.search(str(company_name)):
+        return None
     exchange = item.get("exchange") or item.get("exchangeShortName") or ""
 
     # Optional fields: degrade to None on missing or bad type rather than
