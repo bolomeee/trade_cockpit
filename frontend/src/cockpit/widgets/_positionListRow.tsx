@@ -194,6 +194,16 @@ export function PositionRow({
       <tr onClick={onToggle} style={{ backgroundColor: expanded ? 'var(--color-table-row-alt)' : undefined }}>
         <td style={{ ...tdBase, fontWeight: 'var(--font-weight-medium)' }}>
           {position.ticker}
+          {position.status === 'OPEN' && position.macdDivergence === 'bearish' && (
+            <span
+              data-testid={`macd-bearish-${position.id}`}
+              title="bearish divergence detected, consider partial exit at 2R"
+              aria-label="bearish divergence warning"
+              style={{ marginLeft: '4px', fontSize: 'var(--font-size-caption)', cursor: 'help' }}
+            >
+              ⚠️
+            </span>
+          )}
           <div style={{ fontSize: 'var(--font-size-caption)', color: 'var(--color-text-muted)' }}>({position.shares} sh)</div>
         </td>
         <td style={tdBase}>{fmt2(position.entryPrice)}</td>

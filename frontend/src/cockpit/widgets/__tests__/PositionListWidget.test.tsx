@@ -36,6 +36,7 @@ const makePosition = (overrides = {}) => ({
   notes: null,
   createdAt: '2026-04-15T10:00:00Z',
   updatedAt: '2026-04-15T10:00:00Z',
+  macdDivergence: null,
   ...overrides,
 })
 
