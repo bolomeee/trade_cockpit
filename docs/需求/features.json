@@ -4907,10 +4907,10 @@
       "user_story": "作为不做日内的美股 swing 玩家，我希望在持仓 setup 还没变 EXTENDED 之前就收到动能衰竭的早期警报，并在 CAPITULATION 候选上看到 MACD bullish divergence 的辅助证据，以便：(1) 在仍盈利时主动减半仓 + stop 上移到 +1R 以下；(2) 对 CAPITULATION 仓位的信心做 +/- 校准。",
       "priority": "P2",
       "status": "planned",
-      "phase": "contract_agreed",
+      "phase": "in_progress",
       "sub_sprint_notes": "2 个 sub-sprint：F219-a 后端（compute + persist + endpoint schema）；F219-b 前端（PositionList badge + SetupMonitor chip）。",
       "sub_sprints": {
-        "F219-a": "in_progress",
+        "F219-a": "done",
         "F219-b": "planned"
       },
       "dependencies": [

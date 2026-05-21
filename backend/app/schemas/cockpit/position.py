@@ -4,7 +4,6 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-import pydantic
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 

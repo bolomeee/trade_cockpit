@@ -2484,3 +2484,30 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 **影响**：
 - 仅修改 `CockpitChartWidget.tsx`，不影响其他 widget
 - `chartRef` 作为内部实现细节，不暴露到组件外部
+
+---
+
+## D100：F219 — MACD 体系裁剪到 divergence，其余冗余不实现
+
+**决定**：在已有 `trend_score` / `vol_zscore` / `weekly_stage` 体系下，MACD 的 line/signal 交叉、0 轴判定、histogram 加速全部冗余。仅保留 divergence（价 vs MACD 背离）一个用途：bearish divergence 作持仓早衰报警，bullish divergence 作 CAPITULATION 辅助证据（不进 7-AND 门）。
+
+**放弃了什么**：
+- MACD line/signal 交叉信号 — 与 trend_score MA 阶梯重叠
+- 0 轴过滤 — 不启用，bearish/bullish 不强制 MACD 正负
+- histogram 加速 — 在 vol_zscore + OBV trend 体系下冗余
+- `?macd_fast=...` 查询参数开放 — 硬编码 12/26/9 不允许外部调参
+
+**影响**：`setup_snapshots.macd_divergence` 列仅存 `'bearish'/'bullish'/NULL`，不暴露 MACD 序列原始值；不接入 CockpitChart overlay 和 DecisionPanel AI 区块。
+
+---
+
+## D101：F219 — MACD divergence 检测算法选型（简单极值法 vs swing-pivot）
+
+**决定**：采用"lookback=20 内末位极值 vs 反向极值"简单规则。bearish：closes[-1] == max(closes[-20:]) AND macd_line[-1] < max(macd_line[-20:])；bullish：对称。不采用 swing-pivot 识别的更复杂版本。
+
+**放弃了什么**：
+- swing-pivot 版本 — 精度更高但实现复杂，引入 peak/valley 定义歧义；lookback=20 与 EXTENDED 分类同量级已够用
+- 0 轴过滤辅助条件 — 协商点 NP-2 决定不启用，保持逻辑最简
+
+**影响**：`MIN_BARS_REQUIRED=50`（SLOW=26 + SIGNAL=9 + LOOKBACK=20 上下界保护）；macd_line 末尾任何 None（短历史）→ 返回 None；同时满足两个方向的病态情况→ None，不抛异常。参数 12/26/9 硬编码在 `CockpitMACDParams` 类，不可通过 query 参数覆盖。
+

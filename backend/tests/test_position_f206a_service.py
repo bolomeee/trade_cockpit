@@ -109,8 +109,11 @@ def _make_service(db=None, fmp=None) -> PositionService:
     svc._db = db
     svc._fmp = fmp
     svc._repo = MagicMock()
+    svc._pending_repo = MagicMock()
     svc._settings_repo = MagicMock()
     svc._earnings_repo = MagicMock()
+    svc._setup_repo = MagicMock()
+    svc._setup_repo.get_latest_for_tickers.return_value = []
     svc._loader = MagicMock()
     # default: no settings row
     svc._settings_repo.get_or_default.return_value = {

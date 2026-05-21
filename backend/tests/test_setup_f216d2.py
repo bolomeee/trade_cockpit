@@ -427,6 +427,7 @@ class _FakeRow:
     obv_trend = "UP"
     up_down_volume_ratio = 1.3
     weekly_stage: int | None = None
+    macd_divergence: str | None = None
 
 
 def test_t14_row_to_dict_includes_weekly_stage_int() -> None:
