@@ -4907,7 +4907,7 @@
       "user_story": "作为不做日内的美股 swing 玩家，我希望在持仓 setup 还没变 EXTENDED 之前就收到动能衰竭的早期警报，并在 CAPITULATION 候选上看到 MACD bullish divergence 的辅助证据，以便：(1) 在仍盈利时主动减半仓 + stop 上移到 +1R 以下；(2) 对 CAPITULATION 仓位的信心做 +/- 校准。",
       "priority": "P2",
       "status": "planned",
-      "phase": "needs_review",
+      "phase": "done",
       "sub_sprint_notes": "2 个 sub-sprint：F219-a 后端（compute + persist + endpoint schema）；F219-b 前端（PositionList badge + SetupMonitor chip）。",
       "sub_sprints": {
         "F219-a": "done",
@@ -4995,11 +4995,17 @@
           "date": "2026-05-21",
           "action": "needs_review",
           "rationale": "F219-b 前端切片完成：PositionList ⚠️ bearish marker + SetupMonitorWidget MACD+ chip。6 文件改动（2 API type + 2 widget + 2 test）；wip commits 3c62b3c / aac26ec / 9a4ce98 / 654dc29 / 3f70ec6 / 6039582；tsc 零错误；新增 6 测试（S14-1~3 + M1~3）全绿；零新增失败（pre-existing 37 不变）；design-spec.md + data-mapping.md + DECISIONS.md D102/D103 同步完成。F219 所有 sub-sprint done → 父 phase 升 needs_review。"
+        },
+        {
+          "iteration": "v2.5",
+          "date": "2026-05-21",
+          "action": "done",
+          "rationale": "用户验收通过。AC1-AC3（后端 macd_divergence 写入）/ V1-V4（PositionList ⚠️）/ V5-V8（SetupMonitor MACD+ chip）/ V9-V10（ready gate 零影响）/ E1-E2（边缘情况）全部通过。F219 整体完成，Phase E 闭环。"
         }
       ],
       "notes": "MACD 标准参数 12/26/9 硬编码不开放 query；divergence lookback=20；不接入 ready gate、不接入 AI 区块、不接入 CockpitChart overlay；F219-a 后端先行，F219-b 前端 follow-up。",
       "last_updated": "2026-05-21",
-      "completed_at": null
+      "completed_at": "2026-05-21"
     }
   ]
 }
