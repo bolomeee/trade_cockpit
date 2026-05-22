@@ -71,6 +71,25 @@ last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 live
 
 ---
 
+## 运行端口（权威表）
+
+> 任何文档、脚本、CORS、跨项目集成均以此表为准。变更必须同步 `docker-compose.yml` 与 `frontend/vite.config.ts`。
+
+| 服务 | 模式 | 容器内端口 | 宿主端口 | URL |
+|------|------|-----------|----------|-----|
+| 后端 FastAPI | 开发 (uvicorn --reload) | — | **8001** | http://localhost:8001 |
+| 后端 FastAPI | Docker (发版) | 8000 | **8001** | http://localhost:8001 |
+| 前端 Vite dev server | 开发 (pnpm dev) | — | **5173** | http://localhost:5173 |
+| 前端 Nginx | Docker (发版) | 80 | **8080** | http://localhost:8080 |
+
+**绝对约定：**
+- **后端端口永远是 8001**（宿主侧），无论 dev 还是 Docker。容器内 8000 仅是 Docker 内部细节。
+- 开发期访问入口：**http://localhost:5173**（Vite dev 代理 `/api` → `127.0.0.1:8001`）
+- 发版后访问入口：**http://localhost:8080**（Nginx serve SPA + 反代 `/api` → backend:8000）
+- 跨项目调用 stock_portal 后端 → 一律用 `http://localhost:8001/api/*`
+
+---
+
 ## 依赖层级规则（不得违反）
 
 ### 前端

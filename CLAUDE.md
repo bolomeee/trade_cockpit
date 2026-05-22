@@ -31,6 +31,7 @@
 - 改/增 API → API-CONTRACT.md，有变更先更新再动代码
 - 写前端 widget → WidgetRegistry.ts + design-spec.md + API-CONTRACT.md
 - 技术决策 → 完成后追加 DECISIONS.md
+- 端口/URL → ARCHITECTURE.md「运行端口」表（**后端永远 8001**；前端 dev=5173 / 发版 Nginx=8080；不要把后端写成 8080）
 
 ## 开发时文档查询（强制）
 使用以下技术时，必须先通过 context7 MCP 查询最新文档，不得凭记忆编写：
