@@ -392,3 +392,46 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 2. system-design 完成后进入 `feature-dev` A-1 sizing 协商，按 plan D1 / D2-D6 / D7 自然拆 sub-sprints（预期 7-9 个）。design-spec.md / tokens.css / data-mapping.md / component-plan.md 由前端 sub-sprint 内联模式更新（参考 F216-d3 / F217-c2c 经验，无需独立 design-bridge）。
 3. F218 整体 acceptance 通过后，cockpit-vs-srs-framework 改善计划 4 阶段（A/B/C/D）全部收官，可衔接 v3.0 发版规划。
 
+### v2.6 迭代 — 2026-06-10（Fundamentals 估值指标增强：正常化 P/E 体系）
+
+**变更原因**：当前 Fundamentals widget 的 P/E 是 FMP `/ratios-ttm` 透传的原始 GAAP P/E，无任何计算，极易被一次性会计项目失真 —— DUOL FY2025 净利润含一次性递延税资产转回约 $222.7M，原始 P/E ~13×（假象便宜），剔除后正常化 P/E 实际 ~28×。本次把估值指标从『易被会计噪音误导』升级为『去噪 + 稳定』的体系，并补充 swing trading 有指征意义的动量/预期派生信号。主锚 = 正常化 P/E（异常季用税后营业利润 NOPAT 替代 GAAP 净利润）；交叉验证 = P/(FCF−SBC)（现金流视角，SBC 当真实股东成本）；两者自洽性本身是信号。
+
+**新增 feature**：
+
+- **F220**：Fundamentals 估值指标增强 — 正常化 P/E 体系。范围 P0 + P1（⑤历史分位计算后置到未来 F220-f）。5 个 sub-sprint：
+  - **F220-a 正常化 P/E 核心（P0）**：新建 `backend/app/services/normalized_valuation.py` 纯函数模块（季报归一化 / 防循环平均有效税率 / 异常季 NOPAT 判定 / TTM 正常化 EPS / 正常化 P/E）+ `get_fundamentals` 成员门控编排 + 当前价路径 + schema/cache 扩展 + 前端主位渲染 + 追溯折叠区
+  - **F220-b P/(FCF−SBC) 双版本 + 自洽红旗（P0）**：`p_fcf_raw` / `p_fcf_adj`（市值 = 最新季 Diluted 股本 × 当前价，自算口径自洽）+ `sbcSensitiveFlag`（gap>40% 红旗）
+  - **F220-c 正常化 P/E 时序表预埋（P0）**：新表 `normalized_pe_history`（alembic 026）+ repository + 机会性 `upsert_today`（同日幂等）；分位字段本轮恒 None
+  - **F220-d EPS 加速度（P1）**：`compute_normalized_eps_series`（最近 8 季滑动 4 季 TTM 正常化 EPS）+ 二阶差分信号；<8 季 → None 不报错
+  - **F220-e 预期修正方向（P1）**：fmp `get_analyst_estimates` + 新表 `analyst_estimate_snapshots`（alembic 027）+ weekly cron（建议 Mon 07:00 UTC）抓 watchlist+pool 快照 + 两快照 diff 算方向/幅度/离散度；仅辅助信号不进①主锚
+
+**修改 feature**：无。
+
+**废弃 feature**：无。
+
+**对下游文档的影响**：
+
+- **API-CONTRACT.md**：扩展 `GET /api/stocks/{ticker}/fundamentals` —— `Fundamentals` 模型保留 `priceToEarnings` 作 raw（向后兼容 + 自洽检验），新增 `normalizedPe` / `normalizedEps` / `normalizedTtmEarnings` / `pFcfRaw` / `pFcfAdj` / `sbcSensitiveFlag` / `traceability`（子对象：currentPrice / priceSource / dilutedShares / avgEffectiveTaxRate / taxRateSourceQuarters[] / abnormalQuarters[] / degradeReason）/ `epsAcceleration` / `estimateRevision` / `normalizedPePercentile`（本轮恒 None）。router `stocks.py` 无需改（response_model 自动带新字段）。
+- **DATA-MODEL.md**：新增 2 张表 —
+  - `normalized_pe_history`（id / ticker / as_of_date / normalized_pe / normalized_eps / current_price / p_fcf_adj / computed_at；UQ ticker+as_of_date 同日幂等）
+  - `analyst_estimate_snapshots`（id / ticker / snapshot_date / target_period / estimated_eps_avg/low/high / fetched_at；UQ ticker+snapshot_date+target_period）
+  - `daily_payload_cache`（复用：正常化字段塞进同一 payload，无需新 endpoint）
+- **DECISIONS.md**：预期新增至少 4 条 — 正常化税率防循环策略（税率自身边界 IBT>0 且 0≤rate≤0.50 筛种子，绝不复用净利润异常判定）/ 市值自算口径（最新季 Diluted × 当前价，不用 key-metrics-ttm 的 marketCap）/ 成员门控（仅 watchlist+pool 计算正常化）+ 同日缓存 / 降级显式不可用绝不回退 raw P/E。
+- **ARCHITECTURE.md**：新增模块 `backend/app/services/normalized_valuation.py`（workbench 侧纯函数，照 `cockpit/pool_helpers.py` 模式重写但**禁止 import**，遵依赖方向 routers→services→repositories→models）+ FMP `get_analyst_estimates` 端点 + weekly cron Mon 07:00 UTC（避开既有窗口）。
+- **design-spec.md**：新增追溯折叠区（`<details>`）紧凑规范（11px 表 + `--font-family-numeric` + 正负色）；正常化 P/E 主位大字 + raw 小灰字副标 + 红旗角标规范。
+- **WidgetRegistry.ts**：`sma150.fundamentals` 默认高度上调（h:7, minH:5），`news.fundamentals` 同步，否则追溯区被截断。
+
+**明确不做**：
+
+- ❌ ⑤历史分位计算（F220-f）—— 本轮只做 F220-c 时序表预埋，待积累历史后单列
+- ❌ 覆盖全市场任意 ticker —— 仅 watchlist(active) + trend pool 成员门控（FMP 配额 + 同日缓存）
+- ❌ 降级时回退原始 P/E —— 原始 GAAP P/E 正是要规避的失真源，算不出就显式标不可用
+- ❌ NTM（forward）P/E —— 规避分析师预期主观性，正常化用 TTM 历史实绩去噪
+- ❌ 预期修正引入 NLP —— F220-e 只读 FMP analyst-estimates 数值 diff
+
+**下一步**：
+
+1. 触发 `system-design` skill 走变更协议，更新 API-CONTRACT.md（fundamentals 扩展）+ DATA-MODEL.md（2 新表 + daily_payload_cache 复用口径）+ DECISIONS.md（税率破环/市值自算/成员门控/降级 4 决策）+ ARCHITECTURE.md（normalized_valuation 模块 + 架构守约 + weekly cron）。
+2. system-design 完成后进入 `feature-dev` A-1，从 F220-a 起逐 sub-sprint sizing 协商（注意 F220-a ≈7 文件 / F220-e ≈9 文件超 6 文件原则，按 F217-c2c / F218-d3a 模式申请超额授权或二次拆）。design-spec.md 由前端 sub-sprint 内联模式更新（参考 F216-d3 / F217-c2c）。
+3. F220 全部 sub-sprint done 后做 DUOL 实测 acceptance（正常化 P/E ∈ [25,30]× / p_fcf_adj ∈ [20,22]× / EPS 加速度给减速 / 追溯区可查），衔接 v2.6 发版。
+

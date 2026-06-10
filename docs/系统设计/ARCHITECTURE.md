@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-18
-last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 live probe — Starter 不支持 key-metrics+ratios quarterly，改 income-statement；T2/T5 共享 cash-flow，FMP 端点表与常量段从 4 endpoint 收敛到 3 endpoint；roic 改 service 层近似公式)
+confirmed_at: 2026-06-10
+last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — 新增 §Normalized Valuation 模块（workbench 纯函数，禁 import cockpit）+ FMP analyst-estimates 端点/常量 + weekly 周一 07:00 UTC cron；上一版 F218 Phase D 修正见 git history)
 ---
 
 # ARCHITECTURE.md
@@ -441,6 +441,7 @@ type WidgetManifest = {
 | 季度利润表（F218 T2 Margin Expansion） | `/stable/income-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097 修正 2026-05-18：原计划 key-metrics+ratios quarterly Starter 不支持） |
 | 季度资产负债表（F218 T5 Balance Sheet Inflection + T2 roic 近似公式） | `/stable/balance-sheet-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097） |
 | 季度现金流（F218 T2 fcf_margin + T5 balance sheet inflection，T2/T5 共享） | `/stable/cash-flow-statement` | `symbol=AAPL`, `period=quarter`, `limit=8`, `apikey` | 无（v2.4 新增，D097 修正：T2/T5 共享同一 endpoint，pool rebuild 单次抓取） |
+| 分析师 EPS 预期（F220-e 预期修正方向） | `/stable/analyst-estimates` | `symbol=AAPL`, `period=annual`, `limit=...`, `apikey` | 无（v2.6 新增，weekly 周一 07:00 UTC 抓 watchlist+pool 快照，D106） |
 
 > DB 层 `market_indices.symbol` 保留 `SPX/NDX/TNX` 三个原 symbol + v1.8 新增 14 个 ETF symbol（SPY/QQQ/IWM + 11 sector ETF），FMP 的 `^GSPC / ^NDX` 在 service/repo 边界做映射，ETF symbol 直接等于 FMP symbol；数据库字段命名不变。
 
@@ -476,7 +477,9 @@ FMP_EP_KEY_METRICS_TTM = "/key-metrics-ttm"    # F104 / D035 估值 TTM（market
 FMP_EP_INCOME_STATEMENT = "/income-statement"  # F218 T2 Margin Expansion，period=quarter（v2.4 新增，D097 修正 2026-05-18 取代原 key-metrics+ratios quarterly）
 FMP_EP_BALANCE_SHEET = "/balance-sheet-statement"  # F218 T5 Balance Sheet Inflection + T2 roic 近似公式分母（v2.4 新增，D097）
 FMP_EP_CASH_FLOW = "/cash-flow-statement"      # F218 T2 fcf_margin + T5 balance sheet inflection（T2/T5 共享，v2.4 新增，D097）
+FMP_EP_ANALYST_ESTIMATES = "/analyst-estimates"  # F220-e 预期修正方向（v2.6 新增，D106）
 ```
+> F220 正常化 P/E 当前价（pool-非watchlist）复用 `LastCloseLoader._fmp_latest_close`（FMP EOD 末根），**不**新增 quote 方法（`FMP_EP_QUOTE` 仅声明未用，维持现状）；季度利润表 / 现金流复用 F218 既有 `get_income_statement_quarterly` / `get_cash_flow_quarterly`，仅在解析层新增字段（incomeTaxExpense / incomeBeforeTax / weightedAverageShsOutDil / stockBasedCompensation / OCF / capex）。
 未来 FMP 若改路径，只改一处。
 
 ---
@@ -610,3 +613,60 @@ APScheduler cron 周一-周五 22:40 UTC（refresh_job.py）：
   - `services/cockpit/cockpit_params.SECTOR_ETFS`（T4 配置复用）
 - **禁止 import**：`journal_service` / `watchlist_service` / `signal_engine`（除既有纯函数 utility 外）
 - 前端 `frontend/src/cockpit/lib/api/cockpitRepricingApi.ts` 消费 2 endpoint；`RepricingTriggerWidget.tsx` 注册到 Cockpit Registry；`DecisionPanelWidget` 顶部 trigger badge 区按 `/repricing-triggers/{ticker}` 渲染（5 类颜色 chip 区分）
+
+---
+
+## Normalized Valuation（F220 正常化 P/E 体系，v2.6，D104–D107）
+
+把 Fundamentals widget 的 P/E 从 FMP `/ratios-ttm` 透传的原始 GAAP P/E 升级为去噪 + 稳定的正常化估值体系。主锚 = 正常化 P/E（异常季用税后营业利润 NOPAT 替代 GAAP 净利润）；交叉验证 = P/(FCF−SBC)。**workbench 命名空间，非 cockpit。**
+
+### 模块位置
+
+```
+backend/app/services/normalized_valuation.py                     # 纯函数模块（无 IO / 无 DB / 无日志）
+backend/app/services/stock_detail_service.py                     # get_fundamentals 门控编排 + _resolve_current_price（既有，扩展）
+backend/app/repositories/normalized_pe_history_repository.py     # normalized_pe_history 表 CRUD（F220-c 新增）
+backend/app/repositories/analyst_estimate_snapshot_repository.py # analyst_estimate_snapshots 表 CRUD（F220-e 新增）
+```
+
+### 架构守约（硬约束，最易违反）
+
+- `normalized_valuation.py` **照 `services/cockpit/pool_helpers.py` 的 `compute_*_from_*` 纯函数模式重写**（`_to_float` 容错 + None 传播），但**禁止 import `cockpit/pool_helpers`**（依赖层级规则：workbench 侧不得 import cockpit）。纯函数无 IO / 无 DB / 无日志，便于单测（含税率防循环回归测试）。
+- 计算编排在 `stock_detail_service.get_fundamentals()`（service 层），FMP IO 在 `fmp_client`，落库在 repository — 遵 routers→services→repositories→models 单向依赖。
+- trend pool 成员判断通过**只读访问 pool_cache 表（repository 层数据访问）**，**不** import cockpit service 逻辑；具体 repository 入口 F220-a 实现时确认（待查-1）。
+
+### 编排链（get_fundamentals on-demand）
+
+```
+get_fundamentals(ticker):
+  1. same-day daily_payload_cache 命中（含正常化字段）→ 直接返回
+  2. 成员门控：stock = stocks.get_by_ticker(ticker)（watchlist active）OR trend pool 成员
+     非成员 → 正常化字段 None + degradeReason="out_of_scope"，原始 TTM 照常返回（短路）
+  3. 成员且 miss → fmp.get_income_statement_quarterly(ticker, limit=8)
+                 + fmp.get_cash_flow_quarterly(ticker, limit=8)（复用 F218 方法，解析新增字段）
+  4. _resolve_current_price(ticker, stock)：watchlist→daily_bars latest close；
+     pool-非watchlist→LastCloseLoader._fmp_latest_close 模式（FMP EOD 末根）；fail-open None
+  5. normalized_valuation 纯函数编排（税率破环 → 异常季 NOPAT → TTM 正常化 EPS → 正常化 P/E
+     → P/(FCF−SBC) 双版本 + 红旗 → EPS 加速度 → 组装 traceability）
+  6. 机会性 normalized_pe_history.upsert_today（成功才写，F220-c）
+  7. estimateRevision：读 analyst_estimate_snapshot_repository.get_two_latest diff（F220-e）
+  8. upsert_today_payload 落 daily cache
+  fail-open：季报失败/不足 → 正常化字段 None + degradeReason，endpoint 仍 200
+```
+
+### 调度时段（F220-e 唯一新增 cron）
+
+```
+APScheduler cron 周一 07:00 UTC（refresh_job.py，紧接 06:30 pool rebuild、避开既有窗口）：
+  → 对 watchlist(active) + trend pool 批量 fmp.get_analyst_estimates → analyst_estimate_snapshots upsert
+
+注：正常化 P/E 计算本身**无 cron**（on-demand，成员门控 + 同日缓存）；
+    normalized_pe_history 为 get_fundamentals 成功后**机会性写库**（非 cron）。
+```
+
+### 模块边界
+
+- `services/normalized_valuation.py`（纯函数）：不 import 任何 service / repository / cockpit；只接收 dict/list 入参、返回 dict
+- `services/stock_detail_service.py` 可 import：`external/fmp_client`、`repositories/normalized_pe_history_repository`、`repositories/analyst_estimate_snapshot_repository`、`services/normalized_valuation`（纯函数）、当前价 loader
+- **禁止 import**：`services/cockpit/*`（含 `pool_helpers`）；pool 成员查询走只读 repository 入口（不引 cockpit service 逻辑）
+- 阈值硬编码常量（带注释来源，R2）：异常季偏离 20% / 税率边界 0–50% / 红旗 40% / 滑动窗口 4 季 / 季报 limit=8

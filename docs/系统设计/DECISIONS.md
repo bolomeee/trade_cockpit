@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-18
-last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 — D097 补 §修正记录：live probe 发现 Starter 不支持 key-metrics+ratios quarterly，改 income-statement；T2/T5 共享 cash-flow，4 endpoint → 3 endpoint；roic 改 service 层近似公式)
+confirmed_at: 2026-06-10
+last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — 新增 D104 税率防循环 / D105 市值自算 / D106 成员门控 / D107 降级不回退 raw；上一版 F218 Phase D 见 git history)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -2533,5 +2533,69 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 - PositionList 显示 bullish chip — 持仓 widget 没有 CAPITULATION 上下文，bullish 信号在此无意义
 
 **影响**：4 个"不渲染"路径均有对应单元测试覆盖（S14-2/3 + M2/3）。
+
+---
+
+## D104：F220 — 正常化 P/E 平均有效税率防循环（税率自身边界筛种子）
+
+**日期**：2026-06-10
+
+**决定**：计算税后营业利润 NOPAT 所用的"平均有效税率"，其"正常季"判定**用税率自身边界独立筛选**——仅取 `incomeBeforeTax > 0` 且 `0 ≤ rate ≤ 0.50` 的季（rate = incomeTaxExpense / incomeBeforeTax），取最近 ≤4 季均值。**绝不复用净利润异常判定**来选税率正常季。无可信种子（全季 IBT≤0 或越界）→ 税率 None → 整体降级（degradeReason=`no_tax_seed`），**不用法定 21% 兜底**。
+
+**原因**：异常季判定依赖 NOPAT，NOPAT 依赖税率——若税率"正常季"也用净利润异常判定来选，形成**循环依赖**（设计文档点名最易写错处）。改用税率自身合理边界独立筛种子破环：DUOL Q3'25 一次性递延税资产转回会使该季 effective rate 落到负值/越界 → 自动从均值剔除，达成"排除被污染季"意图而无循环。返回 `taxRateSourceQuarters` 满足可追溯。
+
+**放弃了什么**：
+- 复用净利润异常判定筛税率正常季——循环依赖，设计文档明确禁止
+- 法定 21% 兜底——遵设计文档：无可信税率宁可降级也不用假设值，避免给出"看似精确实则编造"的正常化 P/E
+- 单季税率——1 季易受噪声，取 ≤4 季均值更稳
+
+**影响**：F220-a `compute_normal_tax_rate(quarters)` 纯函数 + **硬要求回归单测**（污染季畸高/畸低/越界被剔除、均值仅来自正常季）；degradeReason 新增 `no_tax_seed`；API `traceability.avgEffectiveTaxRate` + `taxRateSourceQuarters`。
+
+---
+
+## D105：F220 — 市值自算口径（Diluted × price）+ P/(FCF−SBC) 自洽红旗
+
+**日期**：2026-06-10
+
+**决定**：P/(FCF−SBC) 双版本与自洽红旗所用的市值 = **最新季 `weightedAverageShsOutDil`（Diluted）× 当前价（自算）**，与正常化 EPS 口径自洽；**不用** FMP key-metrics-ttm 的 `marketCap`。红旗规则：`|pFcfAdj − normalizedPe| / normalizedPe > 0.40` → `sbcSensitiveFlag = true`。
+
+**原因**：normalizedPe 的分母是 diluted EPS（基于 weightedAverageShsOutDil）。若 P/(FCF−SBC) 用 FMP 的 basic / 期末口径 marketCap，两个估值指标口径分叉，自洽检验（gap>40% 红旗）失真。自算市值保证两者同口径，gap 才有信号意义。
+
+**放弃了什么**：FMP key-metrics-ttm.marketCap 作自洽计算输入（口径不一致，破坏自洽）。schema 顶层 `marketCap` **仍保留** FMP 值（向后兼容 + 一般展示），自算市值仅用于 traceability 语义内（R7 口径分叉，不暴露为顶层字段避免二义）。
+
+**影响**：F220-b `compute_p_fcf(last4, market_cap=diluted×price)`；`traceability.dilutedShares` 暴露口径；API 说明标注口径分叉。
+
+---
+
+## D106：F220 — 成员门控（仅 watchlist+pool）+ 同日缓存 + pool 只读访问边界
+
+**日期**：2026-06-10
+
+**决定**：正常化字段仅对 ticker ∈ watchlist(active) 或 trend pool 计算；非成员 → 正常化字段 None + `degradeReason="out_of_scope"`，原始 TTM 指标照常返回。计算结果走 same-day `daily_payload_cache`（每票每日最多一次真实计算 + FMP 季报调用）。trend pool 成员判断走**只读 repository 访问 pool_cache 表**，**不** import cockpit service 逻辑（守 workbench↛cockpit 依赖层级规则）。F220-e analyst-estimates weekly cron（周一 07:00 UTC）同样只覆盖 watchlist+pool。
+
+**原因**：正常化计算需拉季报（FMP 配额）+ live 计算（延迟）。对全市场任意 ticker 都算会爆配额 / 拖延迟。门控把成本限于小集合（watchlist+pool ~几十票），同日缓存再砍重复请求。冷门股不触发（R3 缓解）。
+
+**放弃了什么**：
+- 覆盖全市场任意 ticker（配额 + 延迟不可控）
+- workbench 直接 import cockpit pool service 做成员判断（违反依赖层级，改走只读 repository 数据访问）
+
+**影响**：get_fundamentals 门控编排短路；normalized_pe_history / analyst_estimate_snapshots 覆盖天然限于成员，历史稀疏（R4 留待 F220-f）；**待查-1** = pool 成员只读 repository 入口（F220-a 实现确认）。
+
+---
+
+## D107：F220 — 降级显式"不可用"不回退 raw + fail-open + 辅助信号不进主锚
+
+**日期**：2026-06-10
+
+**决定**：正常化算不出（季报<4 → `insufficient_quarters` / 正常化EPS≤0 → `negative_normalized_eps` / 无税率种子 → `no_tax_seed` / 无当前价 → `no_price`）→ normalizedPe=None，前端主位显示"—"+ degradeReason tooltip，**绝不回退原始 `priceToEarnings`**。fail-open：季报拉取失败/不足 → 正常化字段 None + degradeReason，endpoint 仍 200，原始 P/S/PEG/ROCE/FCF/raw P/E 照常。`epsAcceleration` / `estimateRevision` 仅作质量表**辅助信号**，不进①正常化 P/E / P/(FCF−SBC) 主锚数值。
+
+**原因**：原始 GAAP P/E 正是 F220 要规避的失真源（DUOL raw ~13× 假象便宜）。算不出时回退 raw 等于把用户推回陷阱。显式标"不可用"+原因（可追溯）比给一个误导值更诚实。fail-open 保证新功能不拖垮既有 Fundamentals widget。
+
+**放弃了什么**：
+- 降级回退 raw P/E（把失真源当兜底，违背 feature 初衷）
+- 算不出时 endpoint 报错（会拖垮整个 widget，改 fail-open 200 + 原始指标照常）
+- 把 epsAcceleration / estimateRevision 纳入主锚加权（动量 / 预期是参考维度，混入会污染去噪后的估值锚）
+
+**影响**：degradeReason 枚举（5 值 + null）；前端主位降级渲染 + tooltip + `<details>` 追溯折叠区；P/(FCF−SBC) 始终并列展示供参考（即便 normalizedPe 降级）。
 
 

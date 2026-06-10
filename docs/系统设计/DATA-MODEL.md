@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-18
-last_modified_by: system-design (F218 Phase D T2 数据源修正 2026-05-18 live probe — D097 endpoint key-metrics+ratios quarterly Starter 不支持，改 income-statement；T2/T5 共享 cash-flow，4 endpoint → 3 endpoint；roic 改 service 层近似公式)
+confirmed_at: 2026-06-10
+last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — 新增 §NormalizedPeHistory(026) + §AnalystEstimateSnapshot(027) 两表 + DailyPayloadCache F220 复用注记；上一版 F218 Phase D 修正见 git history)
 ---
 
 # DATA-MODEL.md
@@ -344,6 +344,7 @@ AiMemo（独立实体；task_type + input_hash 双列索引供去重）
 - 只缓存成功响应（FMP 抛 httpx.HTTPError → 不写入；FMP 返回空 → 不写入，走原有 null 路径）
 - Watchlist ticker chart 仍走 `daily_bars` 表，不写入此表
 - 无需清理旧记录（数据量极小：每天最多几十行）
+- **F220（v2.6）复用**：`endpoint="fundamentals"` 的 payload 现额外携带正常化 P/E 体系字段（normalizedPe / normalizedEps / pFcfRaw / pFcfAdj / sbcSensitiveFlag / traceability / epsAcceleration / estimateRevision，见 API-CONTRACT §fundamentals）；复用同一行缓存，无新表 / 无新 endpoint 枚举值；成员门控保证非 watchlist+pool ticker 的 payload 仍只含原始 TTM 字段 + `traceability.degradeReason="out_of_scope"`
 
 ---
 
@@ -1231,6 +1232,111 @@ class StockFundamentalsQuarterly(Base):
     net_debt        = Column(BigInteger, nullable=True)        # service 层算 (total_debt - cash)
     fcf             = Column(BigInteger, nullable=True)
     fetched_at      = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```
+
+
+## ── F220 Fundamentals 估值指标增强新增实体（v2.6）──
+
+> 以下 2 张表放入 `backend/app/models/normalized_pe_history.py` 与 `backend/app/models/analyst_estimate_snapshot.py`（平铺，与 workbench 既有 models 同级；**非** cockpit 命名空间）。照 `StockKeyMetricsQuarterly` 风格。migration 编号接当前 head `025_f219a_setup_macd_divergence`：normalized_pe_history = **026**，analyst_estimate_snapshots = **027**。
+
+## NormalizedPeHistory（F220-c — 正常化 P/E 日级时序，⑤分位预埋）
+
+> 对应数据库表：`normalized_pe_history`
+> Feature：F220-c 时序表预埋
+> 决策依据：D104（正常化税率防循环）/ D105（市值自算口径）/ D107（降级显式不可用不回退 raw）
+
+正常化 P/E 体系（F220-a/b）每次**成功计算**时机会性写入的日级快照表，为未来 F220-f 历史分位计算预埋数据。写入发生在 `stock_detail_service.get_fundamentals()` 算出正常化 P/E 之后（**非 cron**，随 on-demand 请求触发；成员门控 + same-day `daily_payload_cache` 保证每票每日最多一次真实计算）。本轮**只写不算分位**：API 字段 `normalizedPePercentile` 恒 None，分位计算逻辑 = 未来 F220-f。按 `(ticker, as_of_date)` 唯一，同日重复请求幂等覆盖。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| as_of_date | Date | ✅ | 计算所属交易日（server local date），业务主键 |
+| normalized_pe | Float | ✅ | 正常化 P/E（当前价 ÷ 正常化 EPS）；仅成功计算时写行，故非 null |
+| normalized_eps | Float | ✅ | TTM 正常化 EPS（Σ最近4季取用盈利 ÷ 最新季 Diluted 股本） |
+| current_price | Float | ✅ | 计算用当前价（watchlist→`daily_bars` latest close；pool-非watchlist→FMP EOD 末根） |
+| p_fcf_adj | Float | ❌ | P/(FCF−SBC) adj（F220-b）；FCF−SBC ≤ 0 时 null |
+| computed_at | DateTime | ✅ | 写入 UTC 时间戳 |
+
+**唯一约束**：`uq_normalized_pe_history_ticker_date (ticker, as_of_date)`
+
+**业务规则**：
+- 写入时机：`get_fundamentals()` 正常化 P/E 计算成功（normalized_pe 非 None）后机会性 `upsert_today(ticker, as_of_date=today, ...)`；降级（degradeReason 非空）→ **不写行**
+- upsert 策略：按 `(ticker, as_of_date)` 覆盖（同日多次请求幂等，值相同）
+- 读取：本轮无分位读取逻辑；repository 提供 `get_series(ticker, since)`（升序、normalized_pe 非 None）供未来 F220-f 消费
+- **消费边界**：仅 `services/stock_detail_service.py` 与 `repositories/normalized_pe_history_repository.py` 读写；**不**进 cockpit 命名空间
+- 覆盖范围：仅 watchlist(active) + trend pool 成员（与 get_fundamentals 成员门控一致）；非成员不计算故不写行 → 历史天然稀疏（R4，分位计算 F220-f 时再处理"样本不足"标注）
+- 保留策略：保留全量历史（数据量小，每票每交易日最多 1 行）
+
+```python
+class NormalizedPeHistory(Base):
+    __tablename__ = "normalized_pe_history"
+    __table_args__ = (
+        UniqueConstraint("ticker", "as_of_date", name="uq_normalized_pe_history_ticker_date"),
+    )
+
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    ticker         = Column(String(10), nullable=False, index=True)
+    as_of_date     = Column(Date, nullable=False)
+    normalized_pe  = Column(Float, nullable=False)
+    normalized_eps = Column(Float, nullable=False)
+    current_price  = Column(Float, nullable=False)
+    p_fcf_adj      = Column(Float, nullable=True)
+    computed_at    = Column(
+        DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+```
+
+
+## AnalystEstimateSnapshot（F220-e — 分析师 EPS 预期快照）
+
+> 对应数据库表：`analyst_estimate_snapshots`
+> Feature：F220-e 预期修正方向
+> 决策依据：D106（成员门控 watchlist+pool + weekly cron）/ D107（辅助信号不进主锚 + fail-open）
+
+分析师 EPS 预期的周级快照表，供 F220-e 计算"预期修正方向"（两快照 diff）。数据源 FMP `/stable/analyst-estimates`（F220-e 新接入，fail-open 返 [] 与 D079 一致）。weekly cron（**周一 07:00 UTC**，紧接 06:30 pool rebuild、避开既有窗口）对 watchlist(active) + trend pool 批量抓快照入库。按 `(ticker, snapshot_date, target_period)` 唯一。**仅辅助信号**：F220-e 读最近两快照同 target_period 的 `estimated_eps_avg` diff 算上修/下修方向 + 幅度，离散度 = high − low；**不进** F220-a 正常化 P/E 主锚计算。首次抓取仅建基线（无 diff），标注"基线已建立，方向待下次快照"（R5）。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | Integer | ✅ | 主键，自增 |
+| ticker | String(10) | ✅ | 股票代码，全大写，有独立 index |
+| snapshot_date | Date | ✅ | 抓取快照所属日（周一 cron 运行日），业务主键之一 |
+| target_period | String(12) | ✅ | 目标预测财期标识（FMP analyst-estimates 行的 `date`/period 派生，如年度 "2027"）；两快照按同 target_period 对比算修正方向。**F220-e 实现时对真实 FMP 响应核对 period 字段形态（待查-3）** |
+| estimated_eps_avg | Float | ❌ | 分析师 EPS 预期均值（FMP `estimatedEpsAvg`）；缺失 → null |
+| estimated_eps_low | Float | ❌ | 分析师 EPS 预期低值（FMP `estimatedEpsLow`） |
+| estimated_eps_high | Float | ❌ | 分析师 EPS 预期高值（FMP `estimatedEpsHigh`） |
+| fetched_at | DateTime | ✅ | 最近一次从 FMP upsert 的 UTC 时间 |
+
+**唯一约束**：`uq_analyst_estimate_ticker_date_period (ticker, snapshot_date, target_period)`
+
+**业务规则**：
+- weekly cron（周一 07:00 UTC）触发：对 watchlist(active) + trend pool 每个 ticker 调用 FMP `/analyst-estimates?symbol={ticker}&period=annual&limit=...` 一次，取目标 forward 财期入库
+- upsert 策略：按 `(ticker, snapshot_date, target_period)` 覆盖；FMP null 字段不擦除既有值（fail-open）
+- 读取：repository 提供 `get_two_latest(ticker, target_period)`（按 snapshot_date 倒序取 2 行）供 F220-e diff
+- diff 语义（F220-e）：`direction` = sign(latest.avg − prev.avg)（上修/下修/持平）；`magnitude` = |latest.avg − prev.avg|；`dispersion` = latest.high − latest.low；单快照（无 prev）→ direction=None + 基线标注
+- **消费边界**：仅 `services/stock_detail_service.get_fundamentals()`（读 diff 填 estimateRevision）+ weekly job + `repositories/analyst_estimate_snapshot_repository.py`
+- **不进主锚**：estimateRevision 仅作 Fundamentals 质量表辅助展示，不参与正常化 P/E / P/(FCF−SBC) 数值
+
+```python
+class AnalystEstimateSnapshot(Base):
+    __tablename__ = "analyst_estimate_snapshots"
+    __table_args__ = (
+        UniqueConstraint("ticker", "snapshot_date", "target_period",
+                         name="uq_analyst_estimate_ticker_date_period"),
+    )
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    ticker             = Column(String(10), nullable=False, index=True)
+    snapshot_date      = Column(Date, nullable=False)
+    target_period      = Column(String(12), nullable=False)
+    estimated_eps_avg  = Column(Float, nullable=True)
+    estimated_eps_low  = Column(Float, nullable=True)
+    estimated_eps_high = Column(Float, nullable=True)
+    fetched_at         = Column(
         DateTime, nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )

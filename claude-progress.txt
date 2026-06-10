@@ -1,1 +1,54 @@
+=== PROJECT PROGRESS LOG ===
+项目：MA150 Tracker → Workbench → Cockpit
+注：详细进度以 docs/需求/features.json 各 feature 的 iteration_history + git commits 为权威，本文件仅记最近里程碑。
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-06-10] project-init 迭代模式：F220 登记完成（v2.6）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - features.json 登记 F220「Fundamentals 估值指标增强 — 正常化 P/E 体系」
+    · phase=design_needed / status=not_started / priority=P0
+    · 预拆 5 sub-sprint：F220-a 正常化P/E核心(P0) / F220-b P/(FCF−SBC)双版本+红旗(P0)
+      / F220-c 时序表预埋(P0) / F220-d EPS加速度(P1) / F220-e 预期修正方向(P1)
+    · dependencies [F102, F104, F218]
+    · 2 张新表 normalized_pe_history(alembic 026) + analyst_estimate_snapshots(alembic 027)
+  - _iteration_log 追加 v2.6；_pipeline_status.current_iteration → v2.6
+  - PRD.md 追加「v2.6 迭代」版本记录
+
+⚠️ 登记期发现并修正：
+  - 计划原 dependencies [F107,F111,F218] 有误 —— F111 不存在、F107 是纯图表 feature
+    与估值无关；用户 2026-06-10 确认改为 [F102,F104,F218]
+
+📌 关键约束（实现时守住）：
+  - 正常化计算模块放 services/（workbench 侧），禁 import cockpit/pool_helpers
+  - 防循环错误：平均有效税率用税率自身边界筛种子，非复用净利润异常判定
+  - 覆盖仅 watchlist+pool 成员门控；降级显式不可用，绝不回退 raw
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-06-10] system-design 变更协议完成（4 文档 confirmed @ 2026-06-10）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - API-CONTRACT §GET /fundamentals 扩展正常化字段 + traceability 子对象（保留 priceToEarnings 作 raw）
+  - DATA-MODEL +§NormalizedPeHistory(026) +§AnalystEstimateSnapshot(027) + DailyPayloadCache F220 复用注记
+  - DECISIONS +D104(税率防循环) +D105(市值自算口径+红旗) +D106(成员门控+pool只读访问) +D107(降级不回退raw)
+  - ARCHITECTURE +§Normalized Valuation 模块（禁 import cockpit）+ analyst-estimates 端点/常量 + weekly 周一07:00UTC cron
+  - features.json F220 contract.decision_refs → D104-D107；4 文档 frontmatter confirmed_at=2026-06-10
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-06-10] feature-dev A-1：F220-a1 Sprint Contract confirmed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - F220-a 全量 7 文件超 6 文件 → 拆 F220-a1 后端核心(4) + F220-a2 前端(3)，同 F219 a/b
+  - F220-a1 Sprint Contract confirmed（docs/开发/sprint-contracts/F220-a1-contract.md）
+    范围 = 正常化 P/E 主锚后端闭环：normalized_valuation.py 纯函数（税率防循环/异常季NOPAT/TTM/4种降级）
+    + get_fundamentals 成员门控 + _is_pool_member 直读 CockpitPoolCache + _resolve_current_price 内联(禁import cockpit)
+    + schema TraceabilityBlock/AbnormalQuarter + test。明确排除 P/FCF(b)/时序(c)/加速度(d)/预期(e)/前端(a2)
+  - features.json：sub_sprints F220-a→a1/a2；F220-a1 contract_agreed；父 F220 in_progress；active_sprint=F220-a1
+  - ⚠️ API-CONTRACT.md 未随本批提交（混入先前遗留的 Filing Events Tape 末尾改动，需用户先处理）
+
+[下一步]（新 session，Generator）
+  继续开发 F220-a1：读 SESSION-HANDOFF.md + F220-a1-contract.md，进 Generator 从开发步骤 1 开始。
+  开发顺序：normalized_valuation.py 纯函数 → 单测(防循环优先) → service 编排(_is_pool_member/_resolve_current_price/门控/fail-open) → schema。

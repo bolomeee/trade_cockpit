@@ -9,11 +9,11 @@
     "requirements": "done",
     "system_design": "done",
     "ui_design": "needs_update",
-    "development": "done",
+    "development": "in_progress",
     "deployment": "not_started",
-    "current_iteration": "v2.4",
-    "active_sprint": null,
-    "active_sprint_phase": null,
+    "current_iteration": "v2.6",
+    "active_sprint": "F220-a1",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -161,6 +161,17 @@
       "iteration": "v2.5",
       "date": "2026-05-21",
       "summary": "Add F219 (MACD Divergence minimal scheme); F219-a contract drafted, pending user confirmation."
+    },
+    {
+      "version": "v2.6",
+      "date": "2026-06-10",
+      "added": [
+        "F220"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "planned",
+      "description": "Fundamentals 估值指标增强 — 正常化 P/E 体系。把 get_fundamentals 的 P/E 从 FMP /ratios-ttm 透传的原始 GAAP P/E 升级为去噪+稳定的正常化估值体系（主锚=正常化P/E，异常季用税后营业利润 NOPAT 替代 GAAP 净利润；交叉验证=P/(FCF−SBC)，SBC 当真实股东成本；两者自洽性本身是信号）。范围 P0+P1：F220-a 正常化P/E核心 / F220-b P/(FCF−SBC)双版本+红旗 / F220-c 时序表预埋(alembic 026) / F220-d EPS加速度 / F220-e 预期修正方向(分析师 estimates + alembic 027 快照表 + weekly cron)；⑤历史分位计算 F220-f 后置不在本轮。覆盖仅 watchlist(active)+trend pool 成员门控；降级显式不可用、绝不回退 raw。dependencies [F102,F104,F218]（计划原写 [F107,F111,F218]，核查发现 F111 不存在 + F107 是纯图表 feature 与估值无关，用户 2026-06-10 确认修正）。下一步 system-design 变更协议更新 API-CONTRACT + DATA-MODEL（2 新表）+ DECISIONS + ARCHITECTURE。"
     }
   ],
   "_phase_legend": {
@@ -5006,6 +5017,106 @@
       "notes": "MACD 标准参数 12/26/9 硬编码不开放 query；divergence lookback=20；不接入 ready gate、不接入 AI 区块、不接入 CockpitChart overlay；F219-a 后端先行，F219-b 前端 follow-up。",
       "last_updated": "2026-05-21",
       "completed_at": "2026-05-21"
+    },
+    {
+      "id": "F220",
+      "name": "Fundamentals 估值指标增强 — 正常化 P/E 体系",
+      "description": "对照用户提供的『指标增强设计 v1.0』方案文档（~/Downloads/stock_porta-指标增强设计-v1.md，DUOL 案例）+ 已批准实现计划（SESSION-HANDOFF.md §5 完整蓝图），把 Fundamentals widget 的 P/E 从『FMP /ratios-ttm 透传的原始 GAAP P/E』升级为『去噪 + 稳定的正常化估值体系』。\n\n现状：stock_detail_service.get_fundamentals() 直接透传 FMP priceToEarningsRatioTTM，无任何计算，极易被一次性会计项目失真（DUOL FY2025 净利润含一次性递延税资产转回 ~$222.7M，原始 P/E ~13× 假象便宜，正常化后 ~28×）。主锚 = 正常化 P/E（异常季用税后营业利润 NOPAT 替代 GAAP 净利润，去噪）；交叉验证 = P/(FCF−SBC)（现金流视角，SBC 当真实股东成本）；两者自洽性本身是信号。\n\n范围 = P0 + P1（⑤历史分位计算后置到未来 F220-f，本轮只做 F220-c 时序表预埋）。覆盖 = 仅 watchlist(active) + trend pool 成员门控（FMP 调用限于小集合 + 同日缓存只算一次）。降级 = 显式『不可用』+原因 tooltip，绝不回退原始 P/E。\n\n5 个 sub-sprint：\n(F220-a) 正常化 P/E 核心 [P0]：新建 backend/app/services/normalized_valuation.py 纯函数模块（季报归一化 / 防循环平均有效税率 / 异常季 NOPAT 判定 / TTM 正常化 EPS / 正常化 P/E）+ get_fundamentals 成员门控编排 + 当前价路径 + schema 扩展 + same-day cache 扩展 + 前端主位渲染 + 追溯折叠区。\n(F220-b) P/(FCF−SBC) 双版本 + 自洽红旗 [P0]：p_fcf_raw / p_fcf_adj（市值 = 最新季 Diluted 股本 × 当前价，自算口径自洽）+ sbcSensitiveFlag（gap>40% 红旗）+ 前端。\n(F220-c) 正常化 P/E 时序表预埋 [P0]：新表 normalized_pe_history（alembic 026）+ repository + 机会性 upsert_today（同日幂等）；分位字段本轮恒 None。\n(F220-d) EPS 加速度 [P1]：compute_normalized_eps_series（最近 8 季滑动 4 季 TTM 正常化 EPS）+ 二阶差分信号（accelerating/decelerating/flat + 连续季数）+ 前端；<8 季 → None 不报错。\n(F220-e) 预期修正方向 [P1]：fmp_client 新增 get_analyst_estimates + 新表 analyst_estimate_snapshots（alembic 027）+ repository + weekly cron（建议 Mon 07:00 UTC）抓 watchlist+pool 快照 + 两快照 diff 算方向/幅度/离散度；仅辅助信号不进①主锚。\n\n⚠️ 架构守约：正常化计算模块放 services/（workbench 侧），照 cockpit/pool_helpers.py 纯函数模式（_to_float 容错 + None 传播）重写但禁止 import（依赖方向 routers→services→repositories→models，禁 workbench import cockpit）。\n\n⚠️ 防循环错误（设计文档点名，最易写错）：算平均有效税率时『正常季』判定绝不复用净利润异常判定（循环：异常判定依赖 NOPAT，NOPAT 依赖税率）；改用税率自身边界独立筛种子季（incomeBeforeTax>0 且 0≤rate≤0.50，取最近≤4 季均值）。无可信种子 → None → 整体降级，遵文档不用法定 21% 兜底。",
+      "user_story": "作为做 swing trading 的美股投资者，我看 Fundamentals widget 的 P/E 时，需要它是『算出来的去噪估值』而不是『FMP 透传的原始 GAAP P/E』—— 后者极易被一次性会计项目（如递延税转回）误导成假象便宜。我希望：(1) 主位看到正常化 P/E（异常季用税后营业利润替代），旁边小字标原始 P/E 供对比；(2) 并列看到 P/(FCF−SBC) 现金流视角交叉验证，两者差距过大时有红旗提示自洽性破裂；(3) 当数据不足以算正常化时显式标『不可用』+原因，绝不偷偷回退到那个失真的原始值；(4) 能展开追溯区看到哪些季被判为异常、偏离多少、平均税率来自哪几季、当前价来源 —— 满足『可追溯』硬要求。P1 再补 EPS 加速度（动量）与分析师预期修正方向（预期）两个 swing 有指征意义的派生信号。",
+      "priority": "P0",
+      "status": "in_progress",
+      "phase": "in_progress",
+      "sub_sprint_notes": "5 个 sub-sprint 已在方案 + 计划阶段预拆（用户批准），不同于 F218 的『不预拆留给 sizing』。开发顺序 a → b → c → d → e（b/c 依赖 a 的纯函数与 service 编排；d 复用 a 的盈利逻辑；e 独立但 schema 字段并入 a 的 Fundamentals 模型）。\n\n文件预算（feature-dev A-1 各 sub-sprint Contract 再精确化 + estimated_files_changed 填充）：F220-a ≈7 文件（normalized_valuation.py 新 + stock_detail_service.py 门控编排+_resolve_current_price + fmp_client.py 季报字段解析 + schemas/stock_detail.py + types/stockDetail.ts + FundamentalsCard.tsx + WidgetRegistry.ts）→ 超 6 文件原则，A-1 时按 F217-c2c / F218-d3a 模式申请超额授权或二次拆分；F220-b ≈3 文件；F220-c ≈5 文件（model 新 + __init__ + alembic 026 + repository 新 + stock_detail_service 机会性 upsert）；F220-d ≈3 文件；F220-e ≈9 文件（fmp_client + model 新 + __init__ + alembic 027 + repository 新 + refresh_job weekly cron + stock_detail_service 读快照 diff + schema + FundamentalsCard）→ 大概率二次拆分或申请超额授权。\n\n两张新表 migration 编号：normalized_pe_history = 026（接当前 head 025_f219a_setup_macd_divergence），analyst_estimate_snapshots = 027。\n\n待查（实现时确认，handoff §7）：(1) trend pool 成员查询的具体调用入口（核查 pool_cache_service 周边）；(2) FMP capex 符号（多为负，按符号直接加）/ OCF 字段名变体（operatingCashFlow vs netCashProvidedByOperatingActivities，需 fallback）—— 对真实 FMP 响应核对一次。\n\n阈值先硬编码常量（带注释来源，R2）：异常季 20% / 税率边界 0–50% / 红旗 40% / 滑动 4 季 / 季报 limit=8。",
+      "sub_sprints": {
+        "F220-a1": "contract_agreed",
+        "F220-a2": "design_needed",
+        "F220-b": "design_needed",
+        "F220-c": "design_needed",
+        "F220-d": "design_needed",
+        "F220-e": "design_needed"
+      },
+      "dependencies": [
+        "F102",
+        "F104",
+        "F218"
+      ],
+      "estimated_sessions": 5,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "Workbench"
+        ],
+        "api_endpoints": [
+          "GET /api/stocks/{ticker}/fundamentals (扩展：响应 Fundamentals 新增 normalizedPe / normalizedEps / normalizedTtmEarnings / pFcfRaw / pFcfAdj / sbcSensitiveFlag / traceability / epsAcceleration / estimateRevision / normalizedPePercentile(本轮恒None)；保留 priceToEarnings 作 raw；router stocks.py 无需改，response_model 自动带新字段)"
+        ],
+        "db_tables": [
+          "normalized_pe_history (新建, alembic 026：id / ticker(index) / as_of_date / normalized_pe / normalized_eps / current_price / p_fcf_adj / computed_at；UQ ticker+as_of_date 同日幂等；F220-c 预埋，分位计算 F220-f 后置)",
+          "analyst_estimate_snapshots (新建, alembic 027：id / ticker(index) / snapshot_date / target_period / estimated_eps_avg / estimated_eps_low / estimated_eps_high / fetched_at；UQ ticker+snapshot_date+target_period；F220-e)",
+          "daily_payload_cache (复用：新正常化字段塞进同一 payload Text(JSON)，无需新表/新 endpoint)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §Stock Detail → GET /api/stocks/:ticker/fundamentals (F220 正常化 P/E 体系字段 + traceability 子对象，向后兼容保留 priceToEarnings 作 raw)"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md §NormalizedPeHistory (新表，照 stock_key_metrics_quarterly 风格)",
+          "DATA-MODEL.md §AnalystEstimateSnapshot (新表)",
+          "DATA-MODEL.md §DailyPayloadCache (复用，payload 新增正常化字段口径说明)"
+        ],
+        "decision_refs": [
+          "DECISIONS.md §D104 正常化 P/E 平均有效税率防循环（税率自身边界筛种子）",
+          "DECISIONS.md §D105 市值自算口径（Diluted × price）+ P/(FCF−SBC) 自洽红旗",
+          "DECISIONS.md §D106 成员门控（仅 watchlist+pool）+ 同日缓存 + pool 只读访问边界",
+          "DECISIONS.md §D107 降级显式不可用不回退 raw + fail-open + 辅助信号不进主锚"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "正常化 P/E 核心（F220-a）：GET /api/stocks/DUOL/fundamentals 返回 normalizedPe ∈ [25,30]×，旁标 raw priceToEarnings ≈ 13×；traceability 标注 Q3'25 异常季 + 偏离%；平均有效税率排除越界/污染季并列出来源季度（taxRateSourceQuarters）",
+        "防循环错误单测（F220-a，硬要求）：构造含一次性税项的季报序列，断言污染季税率（畸高/畸低/越界）被剔除、平均税率仅来自 incomeBeforeTax>0 且 0≤rate≤0.50 的正常季；税率『正常季』判定不复用净利润异常判定（回归测试守住破环）",
+        "降级正确（F220-a）：季报<4 → degradeReason=insufficient_quarters；亏损即正常化EPS≤0 → negative_normalized_eps；无可信税率种子 → 税率 None；以上主位显式『—』+原因 tooltip，绝不回退 raw；endpoint 仍 200，原始 P/S/PEG/ROCE/FCF 照常返回（fail-open）",
+        "成员门控（F220-a）：非 watchlist/pool ticker 的 fundamentals 正常化字段为 None + degradeReason=out_of_scope，原始 TTM 指标照常返回",
+        "P/(FCF−SBC) 双版本 + 红旗（F220-b）：DUOL p_fcf_adj ∈ [20,22]×；市值用最新季 Diluted × 当前价自算口径；与正常化 P/E 差距 <40% 不打旗、>40% 自动 sbcSensitiveFlag 红旗",
+        "时序表预埋（F220-c）：alembic upgrade head 建 normalized_pe_history 表成功；每次成功计算机会性写当日一行，同日重复请求幂等（UQ ticker+as_of_date）；normalizedPePercentile 字段本轮恒 None",
+        "EPS 加速度（F220-d）：DUOL 给『减速』信号（decelerating）；正常化 EPS 序列 <8 季 → signal=None 不报错；连续加速/减速季数（consecutiveQuarters）计数正确",
+        "预期修正方向（F220-e）：analyst_estimate_snapshots 表上线（alembic 027）；weekly cron 入库 watchlist+pool 快照；两快照 diff 算方向（上修/下修）+幅度，离散度=high−low；首次仅基线（无 diff）标注；不影响①正常化数值",
+        "前端（preview 工具）：Workbench 打开 Fundamentals widget，正常化 P/E 大字主位 + raw 小灰字副标渲染；红旗角标 + tooltip；降级时主位『—』+原因；<details> 追溯折叠区（异常季表 / 平均税率+来源季度 / 当前价+priceSource / degradeReason）正确；widget 高度上调容纳新内容不截断",
+        "doc-first（CLAUDE.md 强制）：先更新 API-CONTRACT.md fundamentals 契约 + DATA-MODEL.md 两张新表字段口径，再动代码；DECISIONS.md 追加税率破环/市值自算/成员门控/降级策略",
+        "回归：全量后端 pytest + 前端 vitest 无新增失败；FMP get_analyst_estimates 有 mock-based 单测 + fail-open 覆盖"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-06-10",
+          "subtask": "F220",
+          "phase": "design_needed",
+          "session": "project-init 迭代登记（v2.6）",
+          "changes": "F220（Fundamentals 估值指标增强 / 正常化 P/E 体系）作为 v2.6 迭代注册。输入 = 用户提供『指标增强设计 v1.0』+ 上一 session 完成的实地核查 + 已批准实现计划（SESSION-HANDOFF.md §5 完整蓝图，3 个决策用户拍板：范围 P0+P1 / 覆盖仅 watchlist+pool 成员门控 / 降级显式不可用不回退 raw）。预拆 5 sub-sprint：F220-a 正常化P/E核心(P0) / F220-b P/(FCF−SBC)双版本+红旗(P0) / F220-c 时序表预埋(P0) / F220-d EPS加速度(P1) / F220-e 预期修正方向(P1)；⑤历史分位计算 F220-f 后置不在本轮。dependencies 修正：计划原写 [F107,F111,F218]，核查发现 F111 不存在、F107 是纯图表 feature（股价图成交量+MA5/MA20）与估值无关；用户 2026-06-10 确认改为 [F102,F104,F218]（F104=FMP 基本面接入 get_fundamentals/ratios-ttm 透传正是要改的方法 / F102=创建 Fundamentals widget 的 Workbench 重构 / F218=FMP 季报端点 income/cash-flow/balance-sheet 复用）。两张新表 migration 编号 026(normalized_pe_history) + 027(analyst_estimate_snapshots) 接当前 alembic head 025_f219a_setup_macd_divergence。下一步：触发 system-design 变更协议更新 API-CONTRACT（fundamentals 扩展）+ DATA-MODEL（2 新表 + daily_payload_cache 复用口径）+ DECISIONS（税率破环/市值自算/成员门控/降级 4 决策）+ ARCHITECTURE（normalized_valuation 模块位置 + 架构守约禁 import cockpit + weekly cron Mon 07:00 UTC），完成后进入 feature-dev A-1 从 F220-a sizing 协商（注意 F220-a ≈7 文件 / F220-e ≈9 文件超 6 文件原则，按 F217-c2c/F218-d3a 模式申请授权或二次拆）。"
+        },
+        {
+          "date": "2026-06-10",
+          "subtask": "F220",
+          "phase": "design_needed",
+          "session": "system-design 变更协议（4 文档同步 confirmed @ 2026-06-10）",
+          "_split_note": "feature-dev A-1 sizing（2026-06-10）：F220-a 全量 7 文件超 6 文件原则，用户确认拆 F220-a1 后端核心（normalized_valuation.py + test + stock_detail_service + schema，4 文件）/ F220-a2 前端展示（FundamentalsCard + types + WidgetRegistry，3 文件），同 F219 a/b 后端/前端模式。sub_sprints F220-a 删除，加 F220-a1/F220-a2。fmp_client 不改（季报方法已返 raw dict，新字段在 normalized_valuation 解析）；当前价 _resolve_current_price 内联复刻 LastCloseLoader 模式（禁 import cockpit）；pool 成员判断直接 select(CockpitPoolCache) 读模型（坐实待查-1，不新建 repository、不 import cockpit service）。",
+          "changes": "F220 system-design 变更协议完成，4 份系统设计文档 confirmed @ 2026-06-10。①API-CONTRACT §GET /fundamentals 扩展正常化字段（normalizedPe/normalizedEps/normalizedTtmEarnings/pFcfRaw/pFcfAdj/sbcSensitiveFlag/normalizedPePercentile恒None/epsAcceleration/estimateRevision + traceability 子对象 currentPrice/priceSource/dilutedShares/avgEffectiveTaxRate/taxRateSourceQuarters[]/abnormalQuarters[]/degradeReason），保留 priceToEarnings 作 raw，向后兼容；degradeReason 枚举 insufficient_quarters/negative_normalized_eps/no_tax_seed/no_price/out_of_scope/null。②DATA-MODEL 新增 §NormalizedPeHistory(alembic 026，UQ ticker+as_of_date) + §AnalystEstimateSnapshot(alembic 027，UQ ticker+snapshot_date+target_period) 两表 + DailyPayloadCache F220 复用注记。③DECISIONS 新增 D104(税率防循环：税率自身边界 IBT>0 且 0≤rate≤0.50 筛种子)/D105(市值自算 Diluted×price + 红旗)/D106(成员门控+同日缓存+pool 只读访问边界)/D107(降级不回退 raw + fail-open + 辅助信号不进主锚)。④ARCHITECTURE 新增 §Normalized Valuation 模块（workbench 纯函数照 pool_helpers 模式重写但禁 import cockpit + 编排链 + 模块边界）+ FMP analyst-estimates 端点/常量(FMP_EP_ANALYST_ESTIMATES) + weekly 周一 07:00 UTC cron。phase 维持 design_needed（design-spec 追溯折叠区由前端 sub-sprint 内联补，参考 F216-d3/F217-c2c，无需独立 design-bridge；feature-dev A-1 接手时 design_needed→in_progress，同 F218 先例）。3 个待查随实现确认：待查-1 pool 成员只读 repository 入口；待查-2 FMP capex 符号/OCF 字段名变体；待查-3 analyst-estimates period 字段形态。下一步：feature-dev 从 F220-a 起 sizing 协商。"
+        },
+        {
+          "date": "2026-06-10",
+          "subtask": "F220-a1",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Contract 协商（F220-a1 正常化 P/E 核心 后端切片）",
+          "changes": "F220-a 全量 7 文件超 6 文件原则，用户 2026-06-10 确认拆 F220-a1 后端核心(4 文件) + F220-a2 前端(3 文件)，同 F219 a/b 模式（sub_sprints F220-a 删，加 F220-a1/F220-a2）。F220-a1 Sprint Contract 起草并 confirmed（docs/开发/sprint-contracts/F220-a1-contract.md）：范围 = 正常化 P/E 主锚后端闭环 —— 新建 normalized_valuation.py 纯函数（normalize_income_quarter / compute_normal_tax_rate 防循环 D104 / classify_quarters NOPAT 异常季 / compute_normalized_pe + 4 种降级）+ stock_detail_service.get_fundamentals 成员门控编排 + _is_pool_member 直读 CockpitPoolCache 模型(坐实待查-1) + _resolve_current_price 内联复刻 LastCloseLoader(禁 import cockpit) + schemas/stock_detail.py Fundamentals +normalizedPe/Eps/TtmEarnings + TraceabilityBlock/AbnormalQuarter 子模型 + test_normalized_valuation.py。4 文件 6 文件内无需例外。明确排除：P/(FCF−SBC)+cash-flow fetch→F220-b、时序表+percentile→c、EPS加速度→d、预期修正→e、前端→a2。关键假设用户确认（全默认）：①FMP 利润表 raw dict 字段名 Generator 核对走 fail-open；②价格内联复刻禁 import cockpit；③pool 成员直读 CockpitPoolCache（不新建 repository、不 import cockpit service）。硬要求验收：防循环回归单测（污染季 rate<0/>0.50/IBT≤0 全剔除）+ DUOL fixture 正常化 P/E∈[25,30]×(raw≈13×) + 成员门控 out_of_scope + fail-open 200。F220 phase design_needed→in_progress，status not_started→in_progress，active_sprint=F220-a1。按 skill A-1 铁律停在本 session，Generator 在新 session（contract_agreed→in_progress）。"
+        }
+      ],
+      "notes": "架构守约：正常化计算模块放 backend/app/services/normalized_valuation.py（workbench 侧），照 cockpit/pool_helpers.py 纯函数模式（_to_float 容错 + None 传播）重写但禁止 import（依赖方向 routers→services→repositories→models，禁 workbench import cockpit）。主锚=正常化P/E（去噪、规避 NTM 主观性）；交叉验证=P/(FCF−SBC)（SBC 当真实股东成本）；两者自洽性本身是信号（gap>40% 红旗）。⚠️ 防循环错误：平均有效税率『正常季』判定用税率自身边界（IBT>0 且 0≤rate≤0.50）独立筛种子，绝不复用净利润异常判定。覆盖仅 watchlist(active)+trend pool 成员门控 + 同日缓存每票每日一次。降级显式不可用 + 原因 tooltip，绝不回退 raw（原始 GAAP P/E 正是要规避的失真源）。⑤历史分位计算后置 F220-f。",
+      "completed_at": null
     }
   ]
 }
