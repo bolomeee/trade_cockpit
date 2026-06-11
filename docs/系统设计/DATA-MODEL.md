@@ -345,6 +345,7 @@ AiMemo（独立实体；task_type + input_hash 双列索引供去重）
 - Watchlist ticker chart 仍走 `daily_bars` 表，不写入此表
 - 无需清理旧记录（数据量极小：每天最多几十行）
 - **F220（v2.6）复用**：`endpoint="fundamentals"` 的 payload 现额外携带正常化 P/E 体系字段（normalizedPe / normalizedEps / pFcfRaw / pFcfAdj / sbcSensitiveFlag / traceability / epsAcceleration / estimateRevision，见 API-CONTRACT §fundamentals）；复用同一行缓存，无新表 / 无新 endpoint 枚举值；成员门控保证非 watchlist+pool ticker 的 payload 仍只含原始 TTM 字段 + `traceability.degradeReason="out_of_scope"`
+  - ⚠️ **部分 DEPRECATED（2026-06-10）**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability / degradeReason / normalizedPePercentile`（F220-a/c）**作废**——P/E 改用 FMP raw，payload 不再携带这些。`pFcfRaw / pFcfAdj / sbcSensitiveFlag`（F220-b）/ `epsAcceleration`（F220-d）/ `estimateRevision`（F220-e）**保留**待评估。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
 
 ---
 
@@ -1242,7 +1243,11 @@ class StockFundamentalsQuarterly(Base):
 
 > 以下 2 张表放入 `backend/app/models/normalized_pe_history.py` 与 `backend/app/models/analyst_estimate_snapshot.py`（平铺，与 workbench 既有 models 同级；**非** cockpit 命名空间）。照 `StockKeyMetricsQuarterly` 风格。migration 编号接当前 head `025_f219a_setup_macd_divergence`：normalized_pe_history = **026**，analyst_estimate_snapshots = **027**。
 
+> ⚠️ **部分 DEPRECATED（2026-06-10）**：`normalized_pe_history`（**026**，F220-c）随 F220-a/c 正常化方案放弃而**作废、不建表**（P/E 改用 FMP raw，无需时序分位）。`analyst_estimate_snapshots`（**027**，F220-e 预期修正方向）**保留**待评估。alembic 编号 026 因此空缺，后续如启用 F220-e 直接用 027 或顺延。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+
 ## NormalizedPeHistory（F220-c — 正常化 P/E 日级时序，⑤分位预埋）
+
+> ⚠️ **DEPRECATED（2026-06-10）**：F220-a/c 取消，本表（alembic 026）**不建**。P/E 改用 FMP raw，无自算正常化值可写时序。以下定义仅作历史留档。
 
 > 对应数据库表：`normalized_pe_history`
 > Feature：F220-c 时序表预埋

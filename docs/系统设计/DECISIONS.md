@@ -2538,6 +2538,8 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 ## D104：F220 — 正常化 P/E 平均有效税率防循环（税率自身边界筛种子）
 
+> ⚠️ **DEPRECATED（2026-06-10）**：F220-a 自算正常化 P/E 方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（现状 F104 已透传）。本决策（税率防循环）失去落地对象，作废留档。原因：5 票实测显示 raw 对 4/5 已准且自动处理货币，自算反引入货币 bug + 阈值不普适。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+
 **日期**：2026-06-10
 
 **决定**：计算税后营业利润 NOPAT 所用的"平均有效税率"，其"正常季"判定**用税率自身边界独立筛选**——仅取 `incomeBeforeTax > 0` 且 `0 ≤ rate ≤ 0.50` 的季（rate = incomeTaxExpense / incomeBeforeTax），取最近 ≤4 季均值。**绝不复用净利润异常判定**来选税率正常季。无可信种子（全季 IBT≤0 或越界）→ 税率 None → 整体降级（degradeReason=`no_tax_seed`），**不用法定 21% 兜底**。
@@ -2584,6 +2586,8 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 ---
 
 ## D107：F220 — 降级显式"不可用"不回退 raw + fail-open + 辅助信号不进主锚
+
+> ⚠️ **DEPRECATED（2026-06-10）**：F220-a 正常化方案放弃，决策**反转**——P/E 主位**直接用 FMP raw** `priceToEarningsRatioTTM`（本决策原则恰是"绝不回退 raw"，现已不适用）。作废留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
 
 **日期**：2026-06-10
 

@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.6",
-    "active_sprint": "F220-a1",
-    "active_sprint_phase": "contract_agreed",
+    "active_sprint": null,
+    "active_sprint_phase": null,
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5028,10 +5028,10 @@
       "phase": "in_progress",
       "sub_sprint_notes": "5 个 sub-sprint 已在方案 + 计划阶段预拆（用户批准），不同于 F218 的『不预拆留给 sizing』。开发顺序 a → b → c → d → e（b/c 依赖 a 的纯函数与 service 编排；d 复用 a 的盈利逻辑；e 独立但 schema 字段并入 a 的 Fundamentals 模型）。\n\n文件预算（feature-dev A-1 各 sub-sprint Contract 再精确化 + estimated_files_changed 填充）：F220-a ≈7 文件（normalized_valuation.py 新 + stock_detail_service.py 门控编排+_resolve_current_price + fmp_client.py 季报字段解析 + schemas/stock_detail.py + types/stockDetail.ts + FundamentalsCard.tsx + WidgetRegistry.ts）→ 超 6 文件原则，A-1 时按 F217-c2c / F218-d3a 模式申请超额授权或二次拆分；F220-b ≈3 文件；F220-c ≈5 文件（model 新 + __init__ + alembic 026 + repository 新 + stock_detail_service 机会性 upsert）；F220-d ≈3 文件；F220-e ≈9 文件（fmp_client + model 新 + __init__ + alembic 027 + repository 新 + refresh_job weekly cron + stock_detail_service 读快照 diff + schema + FundamentalsCard）→ 大概率二次拆分或申请超额授权。\n\n两张新表 migration 编号：normalized_pe_history = 026（接当前 head 025_f219a_setup_macd_divergence），analyst_estimate_snapshots = 027。\n\n待查（实现时确认，handoff §7）：(1) trend pool 成员查询的具体调用入口（核查 pool_cache_service 周边）；(2) FMP capex 符号（多为负，按符号直接加）/ OCF 字段名变体（operatingCashFlow vs netCashProvidedByOperatingActivities，需 fallback）—— 对真实 FMP 响应核对一次。\n\n阈值先硬编码常量（带注释来源，R2）：异常季 20% / 税率边界 0–50% / 红旗 40% / 滑动 4 季 / 季报 limit=8。",
       "sub_sprints": {
-        "F220-a1": "contract_agreed",
-        "F220-a2": "design_needed",
+        "F220-a1": "deprecated",
+        "F220-a2": "deprecated",
         "F220-b": "design_needed",
-        "F220-c": "design_needed",
+        "F220-c": "deprecated",
         "F220-d": "design_needed",
         "F220-e": "design_needed"
       },
@@ -5113,6 +5113,27 @@
           "phase": "contract_agreed",
           "session": "feature-dev A-1 Contract 协商（F220-a1 正常化 P/E 核心 后端切片）",
           "changes": "F220-a 全量 7 文件超 6 文件原则，用户 2026-06-10 确认拆 F220-a1 后端核心(4 文件) + F220-a2 前端(3 文件)，同 F219 a/b 模式（sub_sprints F220-a 删，加 F220-a1/F220-a2）。F220-a1 Sprint Contract 起草并 confirmed（docs/开发/sprint-contracts/F220-a1-contract.md）：范围 = 正常化 P/E 主锚后端闭环 —— 新建 normalized_valuation.py 纯函数（normalize_income_quarter / compute_normal_tax_rate 防循环 D104 / classify_quarters NOPAT 异常季 / compute_normalized_pe + 4 种降级）+ stock_detail_service.get_fundamentals 成员门控编排 + _is_pool_member 直读 CockpitPoolCache 模型(坐实待查-1) + _resolve_current_price 内联复刻 LastCloseLoader(禁 import cockpit) + schemas/stock_detail.py Fundamentals +normalizedPe/Eps/TtmEarnings + TraceabilityBlock/AbnormalQuarter 子模型 + test_normalized_valuation.py。4 文件 6 文件内无需例外。明确排除：P/(FCF−SBC)+cash-flow fetch→F220-b、时序表+percentile→c、EPS加速度→d、预期修正→e、前端→a2。关键假设用户确认（全默认）：①FMP 利润表 raw dict 字段名 Generator 核对走 fail-open；②价格内联复刻禁 import cockpit；③pool 成员直读 CockpitPoolCache（不新建 repository、不 import cockpit service）。硬要求验收：防循环回归单测（污染季 rate<0/>0.50/IBT≤0 全剔除）+ DUOL fixture 正常化 P/E∈[25,30]×(raw≈13×) + 成员门控 out_of_scope + fail-open 200。F220 phase design_needed→in_progress，status not_started→in_progress，active_sprint=F220-a1。按 skill A-1 铁律停在本 session，Generator 在新 session（contract_agreed→in_progress）。"
+        },
+        {
+          "date": "2026-06-10",
+          "subtask": "F220-a1",
+          "phase": "needs_review",
+          "session": "feature-dev Generator + Evaluator（正常化 P/E 核心 后端切片）",
+          "changes": "Generator 按合约 4 文件实现 + Evaluator 测试门禁全过。①新建 backend/app/services/normalized_valuation.py 纯函数（normalize_income_quarter 解析 5 字段+IBT变体回退 / compute_normal_tax_rate 防循环 D104 税率自身边界筛种子 / classify_quarters NOPAT 异常季 20% 阈值 / compute_normalized_pe TTM+4 种降级 + 阈值常量）—— 零 import cockpit/db/httpx/logging（grep 验证）。②stock_detail_service.get_fundamentals 追加成员门控编排（_is_pool_member 直读 CockpitPoolCache 模型 + _resolve_current_price/_fmp_latest_close 内联复刻 LastCloseLoader 禁 import cockpit + _compute_normalized_block fail-open）。③schemas/stock_detail.py +AbnormalQuarter/TraceabilityBlock 子模型 + Fundamentals +normalizedPe/Eps/TtmEarnings/traceability。④新建 test_normalized_valuation.py 29 用例（防循环回归硬要求 + DUOL fixture 端到端 PE∈[25,30] + 5 种 degradeReason 含 out_of_scope 全覆盖 + 成员门控 + fail-open 200 + _resolve_current_price 三路）。⚠️ 合约外第 5 文件：tests/conftest.py FakeFMP 增 get_income_statement_quarterly（测试桩；既有 test_stock_detail.py 现走成员编排路径必须有此桩，否则 AttributeError 回归 + 合约 §4 集成用例 #8/#9/#11 无法运行）—— 纯测试基础设施，非生产文件。新测试 29 通过；test_stock_detail/F218 相邻 62 通过；全量 1294 passed，11 个 failed 均为 baseline b0ea8bd 既有失败（stash 验证，与本切片无关）。ruff clean。Generator 期实现细节定夺追加 DECISIONS D108（IBT 变体回退 / 5 字段全有 / 缺股本归 negative_normalized_eps / OI≈0 epsilon / abnormalQuarters 仅列异常季 / label YYYYQN 排序）。下游：acceptance（DUOL 实测，须 DUOL∈watchlist 或 pool）通过后 F220-a1→done，再开 F220-a2 前端。"
+        },
+        {
+          "date": "2026-06-10",
+          "subtask": "F220-a1",
+          "phase": "contract_agreed",
+          "session": "acceptance 验收发现设计偏差 → 回退合约重校算法",
+          "changes": "acceptance live DUOL 实测（真实 FMP，read-only smoke）暴露设计偏差，验收 NOT PASS，回退 needs_review→contract_agreed。证据见 docs/验收/v2.6-F220-a1-acceptance.md。关键发现：①字段名/fail-open 验证通过（FMP 利润表 incomeTaxExpense/incomeBeforeTax/weightedAverageShsOutDil/weightedAverageShsOutDil 全在；坐实合约假设1/待查2）；②但 classify_quarters 20% NOPAT 阈值把『一次性项目』和『结构性非经营收入』混为一谈 —— DUOL 每季 ~$8-12M 经常性利息收入(IBT−opInc) + 多个低税季(8%/3.6%/−0.4%) 使 NI 结构性高出 NOPAT 22%+，导致 8 季全判异常（deviatePct 0.22-1.12，真一次性税项季 2025Q3=8.40 是清晰离群值）；③后果：TTM 正常化盈利全用 NOPAT($422M→$127M)，normalizedPe=45.3×（设计本意 ~28×、验收标准 B1 要求[25,30]×），raw P/E 13.06× 符合。代码忠于合约（Evaluator+fixture 证明），偏差在合约算法本身 —— 设计『NOPAT 替代一次性项目』的 20% 阈值未区分一次性 vs 结构性非经营收入。用户裁决：回退合约、重校 classify_quarters（区分一次性 vs 结构性偏离，如大幅提阈值只捕 8.4 类离群值 / cohort 中位数相对法 / 把结构性非经营收入纳回正常盈利 —— 具体口径待 feature-dev 重谈合约时由用户定）。已实现代码保留（normalize/tax/compute_pe/service/schema 不变，仅 classify_quarters 口径待改）。Contract §B1 + classify_quarters 规格待修订，见合约 §Contract 修订。下一步：feature-dev 重新协商 F220-a1 合约（classify 口径），用户确认后 contract_agreed→in_progress 重走 Generator。"
+        },
+        {
+          "date": "2026-06-10",
+          "subtask": "F220-a1",
+          "phase": "deprecated",
+          "session": "重谈定调 → 用户决定 P/E 直接用 FMP raw，正常化方案放弃",
+          "changes": "重谈期跨 5 票（DUOL/NKE/NVO/NTDOY/GRAB）live FMP 探针 + 方向 c 三机制对比，暴露三层系统性问题：①货币/ADR 单位（NTDOY=JPY/NVO=DKK，5 只里 2 只，自算静默错值不降级）；②classify 绝对阈值跨公司不普适；③防循环税率对转盈公司(GRAB)筛非代表性低率。期间关键事实浮现：FMP raw priceToEarningsRatioTTM 对 5 只里 4 只（NKE/NVO/NTDOY/GRAB）本就准确且自动处理货币，唯 DUOL 被一次性税项压低（13.5× 虚低）。用户最终裁决（2026-06-10）：『不要搞复杂，主要目的是用一个接近正确的 P/E』→ 直接全用 FMP raw TTM P/E（get_fundamentals 现状 F104 已透传 priceToEarnings，零代码满足），接受 DUOL 类一次性虚低不修正。范围裁决『只砍正常化部分』：F220-a1/a2（正常化 P/E 后端+前端）+ F220-c（正常化时序表）→ deprecated；F220-b(P/FCF−SBC)/d(EPS加速度)/e(预期修正) 保留待后续评估（注：d 原依赖正常化 EPS 序列，重启时需改用 GAAP EPS 或一并评估）。held 代码全部丢弃（rm normalized_valuation.py + test_normalized_valuation.py；git restore stock_detail_service.py/stock_detail.py/conftest.py/DECISIONS.md 移除 D108），主分支零残留，baseline test_stock_detail 35 passed 恢复。⚠️ 连带孤儿契约已清理（2026-06-10，4 文档加 deprecated 注记，非物理删，可追溯）：DECISIONS D104(税率防循环)/D107(降级不回退raw) 标废、DATA-MODEL §NormalizedPeHistory(alembic 026 不建表)+DailyPayloadCache 字段注记+§F220实体总注记 标废、API-CONTRACT §fundamentals 正常化字段(normalizedPe/normalizedEps/normalizedTtmEarnings/traceability/degradeReason 枚举/normalizedPePercentile) 标废、ARCHITECTURE §Normalized Valuation 模块标废；保留 D105(市值自算)/D106(成员门控) + 027 表(analyst_estimate_snapshots)/analyst 端点/weekly cron(F220-b/e)。验收记录终稿见 docs/验收/v2.6-F220-a1-acceptance.md。"
         }
       ],
       "notes": "架构守约：正常化计算模块放 backend/app/services/normalized_valuation.py（workbench 侧），照 cockpit/pool_helpers.py 纯函数模式（_to_float 容错 + None 传播）重写但禁止 import（依赖方向 routers→services→repositories→models，禁 workbench import cockpit）。主锚=正常化P/E（去噪、规避 NTM 主观性）；交叉验证=P/(FCF−SBC)（SBC 当真实股东成本）；两者自洽性本身是信号（gap>40% 红旗）。⚠️ 防循环错误：平均有效税率『正常季』判定用税率自身边界（IBT>0 且 0≤rate≤0.50）独立筛种子，绝不复用净利润异常判定。覆盖仅 watchlist(active)+trend pool 成员门控 + 同日缓存每票每日一次。降级显式不可用 + 原因 tooltip，绝不回退 raw（原始 GAAP P/E 正是要规避的失真源）。⑤历史分位计算后置 F220-f。",

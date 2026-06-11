@@ -1,12 +1,17 @@
 ---
-status: confirmed
+status: deprecated
 feature: F220
 sub_sprint: F220-a1
 date: 2026-06-10
 confirmed_at: 2026-06-10
+revision_needed_at: 2026-06-10
+deprecated_at: 2026-06-10
 file_count: 4
 parent_split: F220-a 全量 7 文件 → F220-a1 后端核心(4) + F220-a2 前端展示(3)，用户 2026-06-10 确认
+deprecated_reason: 用户 2026-06-10 裁决放弃自算正常化 P/E，主位直接用 FMP raw priceToEarningsRatioTTM（现状 F104 已透传，零代码满足）。重谈期 5 票探针显示 raw 对 4/5 已准且自动处理货币，唯 DUOL 类一次性虚低不修正（接受）。F220-a1/a2/c 整体 deprecated，held 代码已丢弃。详见 docs/验收/v2.6-F220-a1-acceptance.md
 ---
+
+> ⚠️ **本合约已 DEPRECATED（2026-06-10）**。F220-a1 正常化 P/E 方案放弃，P/E 改用 FMP raw（现状即满足）。以下原合约内容仅作历史留档。
 
 # F220-a1 Sprint Contract — 正常化 P/E 核心（后端切片）
 
@@ -237,3 +242,55 @@ class Fundamentals(CamelModel):
 ---
 
 👤 **请确认：① 4 文件清单；② §5 假设（尤其 ⚠️ 1/3：FMP 字段核对走 fail-open、pool 成员直读模型 vs 独立 repository）；③ 完成标准。确认后我执行 A-1 收尾（落盘 confirmed + features.json + SESSION-HANDOFF + commit），然后按 skill 铁律停在本 session，Generator 开发在新 session 进行。**
+
+---
+
+## Contract 修订 — 2026-06-10（acceptance 验收发现设计偏差）
+
+> 状态：confirmed → **revision_needed**。Generator 已按原合约实现完毕、Evaluator + 29 单测全过（含 DUOL fixture），但 **acceptance live DUOL 实测**（真实 FMP，read-only smoke）暴露算法口径偏差，验收 **NOT PASS**，回退 needs_review → contract_agreed。完整验收记录：[docs/验收/v2.6-F220-a1-acceptance.md](../../验收/v2.6-F220-a1-acceptance.md)。
+
+**变更原因（验收发现需求理解偏差）**：
+
+原始 §1.1(c) `classify_quarters` + §4 标准 #4/#7 假定 DUOL 仅 2025Q3（一次性递延税项）为异常季，正常化 P/E 落 [25,30]×。**live DUOL 实测推翻此假定**：
+
+| 项 | 设计/B1 期望 | live 实际 |
+|---|---|---|
+| raw priceToEarnings | ≈13× | 13.06× ✅ |
+| normalizedPe | [25,30]× | **45.3×** ❌ |
+| 异常季 | 仅 2025Q3 | **8 季全异常**（deviatePct 0.22–1.12，唯 2025Q3=8.40 是真离群）❌ |
+| TTM 正常化盈利 | ~$373M | $127M（全 NOPAT）|
+
+**根因**：`NOPAT = operatingIncome × (1−taxRate)` 同时剔除「一次性项目」与「结构性经常性非经营收入」。DUOL 每季有 ~$8–12M 经常性利息收入（IBT−opInc）+ 多个低税季（8% / 3.6% / −0.4%），使 GAAP NI 结构性高出 NOPAT 22%+，20% 阈值因此把每一季都判异常 → 全量 NOPAT 替代 → 正常化盈利坍塌、P/E 虚高到 45×。代码忠于合约，**偏差在合约算法本身**：20% NOPAT 规则未区分「一次性」与「结构性非经营收入」。
+
+**待重谈（feature-dev 重新协商时由用户定口径）**：
+- §1.1(c) `classify_quarters` 异常判定口径 —— 候选方向：(a) 大幅提高 deviate 阈值（只捕 8.4 类真离群值，DUOL 数据中一次性 8.40 vs 结构性 ≤1.12 有清晰断层）；(b) 改用 cohort 中位数/MAD 相对法（季偏离显著高于本票自身基线才判异常）；(c) 把结构性经常性非经营收入纳回「正常盈利」，NOPAT 仅用于剥离真一次性项目。
+- §4 标准 #4（>20% → abnormal）+ #7（B1：DUOL∈[25,30]×、仅 Q3 异常）随口径同步修订；[25,30] 区间需按修订后口径 + 当前价（117.86，非设计时 258.7）重新标定。
+
+**不变（保留已实现代码，仅 classify_quarters 待改）**：normalize_income_quarter / compute_normal_tax_rate（防循环 D104）/ compute_normalized_pe（TTM+降级）/ get_fundamentals 成员门控编排 / _resolve_current_price / schema / fail-open / 字段名（live 已验证全在）。
+
+**修订后的 acceptance_criteria**：⬜ 待 feature-dev 重谈 session 精化方向 c 算法后填写（见下「修订方向已定」）。届时 phase contract_agreed → in_progress 重走 Generator。
+
+---
+
+### 修订方向已定（2026-06-10 用户拍板）
+
+5 样本跨公司探针（DUOL/NKE/NVO/NTDOY/GRAB，详见 [验收记录](../../验收/v2.6-F220-a1-acceptance.md)）暴露三层系统性问题，用户裁决两项变更 + 一项边缘待处理：
+
+**变更 1 — classify 口径改为方向 c（重定义正常盈利）**
+- 原（§1.1(c)）：deviate = (NI − NOPAT)/|NOPAT|，>20% 即判异常并用 NOPAT 替代 → 误把**经常性非经营收入**（利息等）当异常剥离。
+- 新口径：**正常盈利 = 经营利润 + 经常性非经营收入**（默认 `usedEarnings = GAAP netIncome`，保留经常性利息等）；NOPAT/替代**仅用于剥离真一次性项目**。
+- ⚠️ **核心待精化（feature-dev 重谈定）**：「真一次性项目」的识别机制。候选信号——
+  - (i) 极端有效税率季（如 DUOL 2025Q3 rate=−529%）→ 税项一次性；
+  - (ii) 某季 NI 相对**自身基线**（最近 N 季 NI 中位数 ± k×MAD）显著离群 → 一次性（吸收方向 b 的"自身基线相对"思想）；
+  - (iii) 一次性季的替代值口径（用经营+经常性非经营的近期均值？还是仅剔除异常税项？）。
+- 普适性约束（重谈验收须满足）：NKE/NVO 这类干净公司 → 0 异常季、正常化≈raw；DUOL → 仅 2025Q3 一次性税项被剥离（≈35× 量级，非 45×）；不得对"非经营收入占比高"的公司无差别全季剥离。
+
+**变更 2 — 新增货币闸（必修硬伤）**
+- `reportedCurrency != "USD"` → 正常化字段 None + **新 degradeReason `unsupported_currency`**，绝不吐出币种错配的错误值（NTDOY=JPY / NVO=DKK 实测会静默错成 0.1×/1.5×）。
+- ADR 折算（×汇率 ×ADR 比例）留后续 sub-sprint，本切片只做闸。
+- 📌 doc-first 联动：需在 API-CONTRACT.md §fundamentals degradeReason 枚举增补 `unsupported_currency`（重谈定稿时走 system-design 变更协议，先文档后代码）。
+
+**边缘 3 — 转盈/亏损公司税率代表性（GRAB）**
+- `compute_normal_tax_rate` 对 GRAB（真实税负 0%~68% 跳动）筛出 3.3% 非代表性低率。重谈时评估：是否对税率种子季数/离散度设下限，无足够稳定种子 → `no_tax_seed` 降级而非用偏低率。
+
+**保留不变（已实现、Evaluator 通过的部分）**：`normalize_income_quarter`（+IBT 变体回退、live 已验证字段名全在）/ `compute_normal_tax_rate` 防循环骨架（D104，仅边缘 3 待评估）/ `compute_normalized_pe`（TTM+降级）/ `get_fundamentals` 成员门控编排 / `_resolve_current_price` / schema / fail-open。**仅 `classify_quarters` 重写 + 新增货币闸 + (可能) 税率种子下限。**

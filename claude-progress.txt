@@ -52,3 +52,46 @@
 [下一步]（新 session，Generator）
   继续开发 F220-a1：读 SESSION-HANDOFF.md + F220-a1-contract.md，进 Generator 从开发步骤 1 开始。
   开发顺序：normalized_valuation.py 纯函数 → 单测(防循环优先) → service 编排(_is_pool_member/_resolve_current_price/门控/fail-open) → schema。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-06-10] feature-dev Generator + acceptance：F220-a1 实现完成但验收发现设计偏差 → 回退合约
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Generator + Evaluator 完成（代码保留，未提交 held）：
+  - normalized_valuation.py 纯函数（normalize / 防循环税率 D104 / classify_quarters / compute_pe + 降级）零 import cockpit
+  - stock_detail_service.get_fundamentals 成员门控编排 + _is_pool_member(直读 CockpitPoolCache) + _resolve_current_price 内联(禁 import cockpit)
+  - schemas Fundamentals +normalizedPe/Eps/TtmEarnings + TraceabilityBlock/AbnormalQuarter
+  - test_normalized_valuation.py 29 用例全过；相邻 62 过；全量 1294 passed / 11 pre-existing baseline 失败(stash 验证)
+  - DECISIONS D108（实现细节）；conftest.py 加 FakeFMP.get_income_statement_quarterly 桩（合约外第 5 文件，测试必需）
+
+❌ acceptance NOT PASS → F220-a1 needs_review 回退 contract_agreed：
+  - live DUOL 实测（真实 FMP，read-only）：normalizedPe=45.3×（设计本意 ~28×、B1 要求[25,30]×），raw 13.06× ✅
+  - 根因：classify_quarters 20% NOPAT 阈值把「一次性项目」和「结构性经常性非经营收入」混为一谈
+    DUOL 每季 ~$8-12M 利息收入 + 多个低税季 → NI 结构性高出 NOPAT 22%+ → 8 季全判异常(唯 2025Q3=8.40 真离群)
+    → 全量 NOPAT 替代，TTM 正常化盈利 $422M→$127M，P/E 虚高
+  - 代码忠于合约，偏差在合约算法本身。字段名/fail-open live 验证通过(坐实假设1/待查2)
+  - 验收记录：docs/验收/v2.6-F220-a1-acceptance.md；合约追加 §Contract 修订(status→revision_needed)
+
+📌 不相关发现：consistency-check 报 F203 status drift(done 但 sub_features b1/b2 未完) → 转独立任务 task_f1a667c4
+
+📊 5 样本跨公司探针（DUOL/NKE/NVO/NTDOY/GRAB，read-only live FMP）→ 三层系统性问题坐实：
+  ① 货币/ADR：NTDOY(JPY)+NVO(DKK) 5只里2只，price 美元↔报表外币 → 静默错值(0.1×/1.5×)，fail-open 救不了
+  ② classify 绝对阈值不普适：DUOL 灾难/NKE·NVO 无害/GRAB 乱跳，无共同断点 → 方向 a 证伪
+  ③ 防循环税率对转盈公司(GRAB)筛非代表性低率 3.3%
+
+✅ 用户拍板（2026-06-10）+ 已固化文档：
+  1. classify 口径 → 方向 c：正常盈利=经营利润+经常性非经营收入(默认 GAAP NI)，NOPAT 仅剥真一次性项目
+  2. 加货币闸：reportedCurrency!=USD → 降级 unsupported_currency(新枚举)，绝不出错值；ADR 折算留后续
+  3. 发现固化进 docs/验收/v2.6-F220-a1-acceptance.md + 合约 §修订(含方向 c 待精化点)
+
+✅ 最终裁决（2026-06-10，推翻方向 c）：放弃自算正常化，P/E 用 FMP raw
+  - 关键事实：FMP raw priceToEarningsRatioTTM 对 5 只里 4 只(NKE/NVO/NTDOY/GRAB)本就准、自动处理货币，唯 DUOL 一次性税项虚低(13.5×)
+  - 用户：『不要搞复杂，要个接近正确的 P/E』→ 主位直接用 FMP raw（get_fundamentals 现状 F104 已透传 priceToEarnings，零代码满足），DUOL 类虚低不修正(接受)
+  - 范围『只砍正常化部分』：F220-a1/a2/c → deprecated；F220-b/d/e 保留待评估
+  - held 代码全丢弃(rm 2 新文件 + git restore 3 backend + DECISIONS 移除 D108)，主分支零残留，baseline test_stock_detail 35 passed 恢复
+  - 孤儿契约已清理(2026-06-10，4 文档加 deprecated 注记)：DECISIONS D104/D107、DATA-MODEL NormalizedPeHistory(026)+DailyPayloadCache注记、API-CONTRACT 正常化字段、ARCHITECTURE Normalized Valuation；保留 D105/D106 + 027表/analyst(F220-b/e)
+  - 终稿：docs/验收/v2.6-F220-a1-acceptance.md；合约 frontmatter status→deprecated
+
+[下一步]
+  无活跃 sprint。P/E 诉求已由现状满足。F220-b/d/e 若要做，由 feature-dev 重新评估(注意 d 原依赖正常化 EPS)。
+  未提交改动：features.json/合约/progress/验收记录(F220-a1 deprecated 留痕) + 上个 session 遗留的 API-CONTRACT/Filing-Events tangle，均 held 待用户决定 commit。

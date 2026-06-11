@@ -618,6 +618,8 @@ APScheduler cron 周一-周五 22:40 UTC（refresh_job.py）：
 
 ## Normalized Valuation（F220 正常化 P/E 体系，v2.6，D104–D107）
 
+> ⚠️ **大部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化 P/E 方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（现状 F104 已透传）。本节**作废**部分：`normalized_valuation.py` 纯函数模块、税率防循环、异常季 NOPAT、`normalized_pe_history_repository`（026）、正常化编排链第 5/6 步。**保留**部分（F220-b/d/e 待评估）：`analyst_estimate_snapshot_repository`（027）+ `/analyst-estimates` 端点 + weekly 周一 07:00 UTC cron（F220-e）、P/(FCF−SBC)（F220-b）、`LastCloseLoader._fmp_latest_close` 复用模式。原因：5 票实测 raw 对 4/5 已准且自动处理货币。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。以下仅作历史留档。
+
 把 Fundamentals widget 的 P/E 从 FMP `/ratios-ttm` 透传的原始 GAAP P/E 升级为去噪 + 稳定的正常化估值体系。主锚 = 正常化 P/E（异常季用税后营业利润 NOPAT 替代 GAAP 净利润）；交叉验证 = P/(FCF−SBC)。**workbench 命名空间，非 cockpit。**
 
 ### 模块位置
