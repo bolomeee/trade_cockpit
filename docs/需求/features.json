@@ -12,8 +12,8 @@
     "development": "in_progress",
     "deployment": "not_started",
     "current_iteration": "v2.6",
-    "active_sprint": null,
-    "active_sprint_phase": null,
+    "active_sprint": "F220-b",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5030,7 +5030,7 @@
       "sub_sprints": {
         "F220-a1": "deprecated",
         "F220-a2": "deprecated",
-        "F220-b": "design_needed",
+        "F220-b": "contract_agreed",
         "F220-c": "deprecated",
         "F220-d": "design_needed",
         "F220-e": "design_needed"
@@ -5134,6 +5134,13 @@
           "phase": "deprecated",
           "session": "重谈定调 → 用户决定 P/E 直接用 FMP raw，正常化方案放弃",
           "changes": "重谈期跨 5 票（DUOL/NKE/NVO/NTDOY/GRAB）live FMP 探针 + 方向 c 三机制对比，暴露三层系统性问题：①货币/ADR 单位（NTDOY=JPY/NVO=DKK，5 只里 2 只，自算静默错值不降级）；②classify 绝对阈值跨公司不普适；③防循环税率对转盈公司(GRAB)筛非代表性低率。期间关键事实浮现：FMP raw priceToEarningsRatioTTM 对 5 只里 4 只（NKE/NVO/NTDOY/GRAB）本就准确且自动处理货币，唯 DUOL 被一次性税项压低（13.5× 虚低）。用户最终裁决（2026-06-10）：『不要搞复杂，主要目的是用一个接近正确的 P/E』→ 直接全用 FMP raw TTM P/E（get_fundamentals 现状 F104 已透传 priceToEarnings，零代码满足），接受 DUOL 类一次性虚低不修正。范围裁决『只砍正常化部分』：F220-a1/a2（正常化 P/E 后端+前端）+ F220-c（正常化时序表）→ deprecated；F220-b(P/FCF−SBC)/d(EPS加速度)/e(预期修正) 保留待后续评估（注：d 原依赖正常化 EPS 序列，重启时需改用 GAAP EPS 或一并评估）。held 代码全部丢弃（rm normalized_valuation.py + test_normalized_valuation.py；git restore stock_detail_service.py/stock_detail.py/conftest.py/DECISIONS.md 移除 D108），主分支零残留，baseline test_stock_detail 35 passed 恢复。⚠️ 连带孤儿契约已清理（2026-06-10，4 文档加 deprecated 注记，非物理删，可追溯）：DECISIONS D104(税率防循环)/D107(降级不回退raw) 标废、DATA-MODEL §NormalizedPeHistory(alembic 026 不建表)+DailyPayloadCache 字段注记+§F220实体总注记 标废、API-CONTRACT §fundamentals 正常化字段(normalizedPe/normalizedEps/normalizedTtmEarnings/traceability/degradeReason 枚举/normalizedPePercentile) 标废、ARCHITECTURE §Normalized Valuation 模块标废；保留 D105(市值自算)/D106(成员门控) + 027 表(analyst_estimate_snapshots)/analyst 端点/weekly cron(F220-b/e)。验收记录终稿见 docs/验收/v2.6-F220-a1-acceptance.md。"
+        },
+        {
+          "date": "2026-06-11",
+          "subtask": "F220-b",
+          "phase": "contract_agreed",
+          "session": "feature-dev A-1 Contract 协商（F220-b P/(FCF−SBC) 双版本）",
+          "changes": "F220-b Sprint Contract 起草并 confirmed（docs/开发/sprint-contracts/F220-b-contract.md）。上游正常化 P/E（F220-a1/a2/c）2026-06-10 已 deprecated，斩断原自洽红旗的锚（sbcSensitiveFlag=|pFcfAdj−normalizedPe|/normalizedPe>0.40，normalizedPe 恒 null → 红旗永不亮）。A-1 前置 AskUserQuestion 三项重定义用户拍板：①砍掉 sbcSensitiveFlag（不进 schema/契约）；②P/FCF 市值分子改用 FMP key-metrics-ttm marketCap（推翻 D105 自算 Diluted×price 口径 —— 自洽对比需求随 normalizedPe 废弃消失，且 FMP marketCap 极简 + ADR(JPY/DKK) 货币自动正确）；③pFcf 成员门控 watchlist(active)∪pool（D106 落地，pool 直读 CockpitPoolCache model 不 import cockpit）。最终范围 = 纯现金流交叉视角双版本 pFcfRaw=marketCap/Σ4季(OCF+capex)、pFcfAdj=marketCap/(FCF−ΣSBC)，SBC 当真实股东成本；无红旗/无新表/无新 endpoint/不改 fmp_client（复用 F218 get_cash_flow_quarterly）。6 文件（stock_detail_service 编排+_compute_p_fcf 内联纯函数+_is_pool_member / schema +pFcfRaw/pFcfAdj / types / FundamentalsCard 双版本行 / conftest FakeFMP 桩 / test_stock_detail），6-file 内无需例外。Generator step 0 doc-first：API-CONTRACT 移除 sbcSensitiveFlag+市值口径改 FMP+FCF 口径说明 / DECISIONS 修订 D105 / DATA-MODEL pFcf 并入 payload 注记。sub_sprints F220-b design_needed→contract_agreed，active_sprint=F220-b。按 skill A-1 铁律停在本 session，Generator 在新 session（contract_agreed→in_progress）。"
         }
       ],
       "notes": "架构守约：正常化计算模块放 backend/app/services/normalized_valuation.py（workbench 侧），照 cockpit/pool_helpers.py 纯函数模式（_to_float 容错 + None 传播）重写但禁止 import（依赖方向 routers→services→repositories→models，禁 workbench import cockpit）。主锚=正常化P/E（去噪、规避 NTM 主观性）；交叉验证=P/(FCF−SBC)（SBC 当真实股东成本）；两者自洽性本身是信号（gap>40% 红旗）。⚠️ 防循环错误：平均有效税率『正常季』判定用税率自身边界（IBT>0 且 0≤rate≤0.50）独立筛种子，绝不复用净利润异常判定。覆盖仅 watchlist(active)+trend pool 成员门控 + 同日缓存每票每日一次。降级显式不可用 + 原因 tooltip，绝不回退 raw（原始 GAAP P/E 正是要规避的失真源）。⑤历史分位计算后置 F220-f。",

@@ -92,6 +92,20 @@
   - 孤儿契约已清理(2026-06-10，4 文档加 deprecated 注记)：DECISIONS D104/D107、DATA-MODEL NormalizedPeHistory(026)+DailyPayloadCache注记、API-CONTRACT 正常化字段、ARCHITECTURE Normalized Valuation；保留 D105/D106 + 027表/analyst(F220-b/e)
   - 终稿：docs/验收/v2.6-F220-a1-acceptance.md；合约 frontmatter status→deprecated
 
+[2026-06-11] feature-dev A-1：F220-b Sprint Contract confirmed（P/(FCF−SBC) 双版本）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+上游正常化 P/E（F220-a1/a2/c）已 deprecated，斩断原自洽红旗的锚 → A-1 前置 AskUserQuestion 三项重定义用户拍板：
+  1. 砍掉 sbcSensitiveFlag（锚 normalizedPe 恒 null，红旗永不亮）
+  2. P/FCF 市值分子改用 FMP key-metrics-ttm marketCap（推翻 D105 自算 Diluted×price：自洽对比需求随 normalizedPe 废弃消失 + FMP marketCap 极简且 ADR 货币自动正确）
+  3. pFcf 成员门控 watchlist(active)∪pool（D106 落地，pool 直读 CockpitPoolCache model，不 import cockpit）
+
+✅ 最终范围：pFcfRaw=marketCap/Σ4季(OCF+capex)、pFcfAdj=marketCap/(FCF−ΣSBC)，SBC 当真实股东成本
+  - 无红旗 / 无新表 / 无新 endpoint / 不改 fmp_client（复用 F218 get_cash_flow_quarterly）
+  - 6 文件：stock_detail_service(编排+_compute_p_fcf 内联纯函数+_is_pool_member) / schema(+pFcfRaw/pFcfAdj) / types / FundamentalsCard(双版本行) / conftest(FakeFMP 桩) / test_stock_detail
+  - Generator step 0 doc-first：API-CONTRACT 移除 sbcSensitiveFlag+市值口径改 FMP+FCF 口径 / DECISIONS 修订 D105 / DATA-MODEL pFcf 并入 payload 注记
+  - features.json：sub_sprints F220-b design_needed→contract_agreed，active_sprint=F220-b
+
 [下一步]
-  无活跃 sprint。P/E 诉求已由现状满足。F220-b/d/e 若要做，由 feature-dev 重新评估(注意 d 原依赖正常化 EPS)。
-  未提交改动：features.json/合约/progress/验收记录(F220-a1 deprecated 留痕) + 上个 session 遗留的 API-CONTRACT/Filing-Events tangle，均 held 待用户决定 commit。
+  Generator 在新 session（contract_agreed→in_progress）：读 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F220-b-contract.md，A-2 pre-flight 后从 step 0（doc-first 三文档）开始。
+  按 skill A-1 铁律，本 session 停在 Contract confirmed，不进 Generator。

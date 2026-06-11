@@ -1,88 +1,91 @@
-# SESSION-HANDOFF — F219-b 完成 → F219 needs_review
+# SESSION-HANDOFF.md
 
-> 生成：2026-05-21 (Sonnet 4.6) | 用途：下一 session 进入 acceptance 阶段
-> 触发：F219-b Evaluator 通过，F219 整体升 needs_review
-
----
-
-## 1. 当前状态
-
-| 字段 | 值 |
-|------|-----|
-| `F219.phase` | **needs_review** |
-| `F219.sub_sprints["F219-a"]` | done（后端：indicator + persist + endpoint schema） |
-| `F219.sub_sprints["F219-b"]` | done（前端：PositionList ⚠️ + SetupMonitor MACD+ chip） |
-| `_pipeline_status.active_sprint` | null |
-| 最新 commit | `9637300 feat(F219-b): MACD divergence 前端 ⚠️ + MACD+ chip 切片` |
+> 生成时间：2026-06-11
+> 当前 Skill：feature-dev（类型 A 主流程，A-1 收尾）
+> 当前 Feature：F220-b — P/(FCF−SBC) 双版本（现金流交叉视角）
+> 当前 sub_sprint：**F220-b**　phase=`contract_agreed`
 
 ---
 
-## 2. F219-b 完成内容（本 session）
+## 完成的内容（本 session）
 
-**改动 6 文件**：
+- ✅ 前序门禁检查：F220-b 父级依赖 F102/F104/F218 全 done；sub_sprints.F220-b design_needed→contract_agreed 合法转移
+- ✅ 暴露并解决阻塞矛盾：上游正常化 P/E（F220-a1/a2/c）已 deprecated，原自洽红旗锚 `normalizedPe` 恒 null → 红旗永不亮
+- ✅ A-1 前置 AskUserQuestion 三项重定义用户拍板（见下「关键决策」）
+- ✅ Sprint Contract 起草 + confirmed：`docs/开发/sprint-contracts/F220-b-contract.md`
+- ✅ A-1 收尾：features.json / claude-progress.txt / 本 HANDOFF 更新 + commit
 
-| 文件 | 改动 |
-|------|------|
-| `frontend/src/cockpit/lib/api/setupMonitorApi.ts` | 新增 `export type MacdDivergence`；`SetupItem` 加 `macdDivergence` 字段 |
-| `frontend/src/cockpit/lib/api/cockpitPositionsApi.ts` | import `MacdDivergence`；`Position` 加 `macdDivergence` 字段 |
-| `frontend/src/cockpit/widgets/_positionListRow.tsx` | `PositionRow` ticker cell 注入 ⚠️ span（OPEN + bearish） |
-| `frontend/src/cockpit/widgets/SetupMonitorWidget.tsx` | Setup 列 inline-flex + CAPITULATION+bullish 渲染 'MACD+' chip |
-| `frontend/src/cockpit/widgets/__tests__/PositionListWidget.test.tsx` | fixture 加 `macdDivergence: null`；新增 S14-1~3（3/3 全绿） |
-| `frontend/src/cockpit/widgets/__tests__/SetupMonitorWidget.test.tsx` | fixture 加 `macdDivergence: null`；新增 M1~3（3/3 全绿） |
+## 关键决策（A-1 前置，用户 2026-06-11 拍板）
 
-**文档同步（Evaluator 阶段）**：
-- `docs/设计/design-spec.md` — 新增 §F219-b MACD Divergence 视觉规格段落
-- `docs/设计/data-mapping.md` — 新增 macdDivergence 字段映射表
-- `docs/系统设计/DECISIONS.md` — 新增 D102（不抽 MacdDivergenceBadge）+ D103（触发收紧 NP-3）
-- `docs/需求/features.json` — F219-b: done；F219.phase: needs_review；追加 needs_review iteration_history
+| 项 | 落定 | 影响 |
+|---|------|------|
+| 自洽红旗 `sbcSensitiveFlag` | **砍掉** | 不进 schema / 契约 / 代码 |
+| P/FCF 市值分子 | **FMP key-metrics-ttm marketCap** | 推翻 D105 自算 Diluted×price（自洽对比需求随 normalizedPe 废弃消失；FMP marketCap 极简 + ADR 货币正确） |
+| pFcf 成员门控 | **watchlist(active)∪pool**（D106 落地） | 非成员 → pFcf=null；pool 直读 CockpitPoolCache model，不 import cockpit |
 
-**Evaluator 结果**：
-- `pnpm tsc --noEmit` 零错误
-- 新增测试 6 个全绿（S14-1~3 + M1~3）
-- 全量回归：37 failed | 330 passed（与 F219-b 改动前基线完全一致，零新增失败）
+## 中断位置
 
----
+A-1 完整收尾，Contract confirmed + commit。**按 skill A-1 铁律停在本 session，未进 Generator。**
 
-## 3. 未提交改动（遗留）
+## Sprint Contract 执行状态
+
+**当前 Contract**：docs/开发/sprint-contracts/F220-b-contract.md（status: confirmed）
+
+| 开发步骤 | 状态 |
+|---------|------|
+| doc-first（API-CONTRACT/DECISIONS/DATA-MODEL 修订）| ⬜（Generator step 0） |
+| _compute_p_fcf 纯函数 + _is_pool_member | ⬜ |
+| stock_detail_service get_fundamentals 编排 | ⬜ |
+| schema + 前端 types/FundamentalsCard | ⬜ |
+| 单元 + 集成测试 | ⬜ |
+| E2E（preview）| ⬜ |
+| Evaluator 评估 | ⬜ |
+
+## 实现要点（Generator 直接照 Contract §1）
+
+- `_compute_p_fcf(quarters, market_cap)`：FCF=Σ最近4季(OCF+capex，capex 按符号直接加)；pFcfRaw=marketCap/FCF（FCF≤0→None）；pFcfAdj=marketCap/(FCF−ΣSBC)（≤0→None）；<4 季或某季 OCF/capex 缺→(None,None)；SBC 缺→按 0；OCF 用 operatingCashFlow，缺回退 netCashProvidedByOperatingActivities
+- 成员门控：`(stock active) or _is_pool_member(ticker)`；非成员→pFcf=None 且不调 get_cash_flow_quarterly
+- fail-open：现金流拉取 HTTPError / market_cap None → pFcf=None，endpoint 仍 200，原始指标照常
+- 复用 F218 `fmp.get_cash_flow_quarterly(ticker, limit=4)`，**不改 fmp_client**
+
+## 已创建/修改的文件（本 session，均产物文档）
+
+- `docs/开发/sprint-contracts/F220-b-contract.md` — 新建（confirmed）
+- `docs/需求/features.json` — sub_sprints.F220-b→contract_agreed + active_sprint + iteration_history
+- `claude-progress.txt` — 追加 F220-b A-1 条目
+
+## 本 session 产物 checksum(git sha)
+
+⚠️ 下一 session 进 Generator 前必须比对本表 sha 与当前 `git log -1 --format=%H -- <path>`，不匹配 → 退回 A-1 修复。
+
+| 产物 | 路径 | 最后 commit sha | uncommitted? |
+|------|------|----------------|-------------|
+| Sprint Contract | `docs/开发/sprint-contracts/F220-b-contract.md` | `__HEAD__` | ⬜ |
+| features.json | `docs/需求/features.json` | `__HEAD__` | ⬜ |
+| claude-progress.txt | `claude-progress.txt` | `__HEAD__` | ⬜ |
+| HEAD | — | `__HEAD__` | — |
+
+**下一 session 验证步骤**（必须先于 Generator 第一行代码）：
+
+```bash
+git log -1 --format=%H -- "docs/开发/sprint-contracts/F220-b-contract.md"
+git log -1 --format=%H -- "docs/需求/features.json"
+git rev-parse HEAD   # 必须 ≥ 表中 HEAD sha
+```
+
+任一不匹配 → **不要进 Generator**，先排查仓库状态变化原因。
+
+## 遗留决策（需要用户回答）
+
+无。三项核心决策已在 A-1 前置确认；FMP 现金流字段名（待查-2）由 Generator 对真实响应核对，走 fail-open，不阻断。
+
+## 下一个 Session 继续的指令
 
 ```
-M backend/uv.lock      ← F219-a 遗留，与前端无关（可在 acceptance 后与发版一起处理）
-M claude-progress.txt  ← 本 session 协商记录
+继续开发 F220-b，Sprint Contract 已确认。
+读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F220-b-contract.md，
+进入 Generator 模式（A-2 pre-flight 后 contract_agreed→in_progress），
+从 step 0（doc-first 三文档修订）开始。
 ```
 
----
-
-## 4. 下一步：acceptance skill
-
-F219 phase = `needs_review` → 触发 acceptance。
-
-**验收清单（合同 §4）**：
-
-| # | 验收标准 | 方法 |
-|---|---------|------|
-| 1 | `pnpm dev` 启动，PositionList 中 OPEN+bearish 持仓 ticker 后出现 ⚠️ | 真机 EOD 后观察 |
-| 2 | hover ⚠️ → tooltip 显示 'bearish divergence detected, consider partial exit at 2R' | 真机 |
-| 3 | CLOSED 持仓 bearish 行无 ⚠️ | 真机 |
-| 4 | SetupMonitor CAPITULATION+bullish 行 Setup 列 SetupTypeBadge 右侧出现绿色 'MACD+' | 真机 EOD |
-| 5 | non-CAPITULATION 行无 'MACD+' | 真机 |
-| 6 | Ready / Near filter tab 数字与添加 macdDivergence 字段前一致 | 单元测试 M3 已覆盖 |
-
-**前提**：EOD 跑完后 `setup_snapshots.macd_divergence` 有非 null 数据，才能看到真实渲染。
-
----
-
-## 5. Pre-existing test failures（不阻塞）
-
-以下失败是 F219-b 之前已存在，本切片未引入：
-- `SetupMonitorWidget.test.tsx` §R-R11（ai-rank-close testid 已移除）
-- `SetupMonitorWidget.test.tsx` §S 系列（AiSetupExplainerPopover ? button testid 问题）
-- `TopNav.test.tsx` S12/S13（TooltipProvider 缺失）
-
----
-
-## 6. 下一 session 恢复指令
-
-```
-F219 phase = needs_review，F219-b 已完成（前端 ⚠️ + MACD+ chip，6 文件）。
-触发 acceptance skill，验收 F219 整体（含后端 EOD 实际落数据 + 两个 widget 真机渲染）。
-```
+> 建议用 Sonnet 开启新 session（纯执行，合约已锁）。
