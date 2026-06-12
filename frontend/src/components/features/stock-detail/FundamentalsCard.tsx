@@ -47,10 +47,12 @@ function buildMetrics(f: Fundamentals | undefined): { left: Metric[]; right: Met
       { label: 'P/E', value: formatRatio(f?.priceToEarnings) },
       { label: 'P/S', value: formatRatio(f?.priceToSales) },
       { label: 'PEG', value: formatRatio(f?.peg) },
+      { label: 'ROCE', value: roce == null ? null : formatPercent(roce * 100) },
     ],
     right: [
-      { label: 'ROCE', value: roce == null ? null : formatPercent(roce * 100) },
       { label: 'FCF', value: f ? formatCurrency(f.freeCashFlow) : null },
+      { label: 'P/FCF', value: formatRatio(f?.pFcfRaw) },
+      { label: 'P/FCF(−SBC)', value: formatRatio(f?.pFcfAdj) },
       { label: 'Float', value: formatShares(f?.sharesFloat) },
     ],
   }

@@ -17,6 +17,8 @@ export interface Fundamentals {
   freeCashFlow: number
   marketCap: number
   sharesFloat: number | null
+  pFcfRaw?: number | null
+  pFcfAdj?: number | null
   source: string
   updatedAt: string
 }
