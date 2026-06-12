@@ -1,91 +1,79 @@
 # SESSION-HANDOFF.md
 
-> 生成时间：2026-06-11
-> 当前 Skill：feature-dev（类型 A 主流程，A-1 收尾）
+> 生成时间：2026-06-12
+> 当前 Skill：feature-dev（类型 A 主流程，A-2 Generator + A-3 Evaluator 完成）
 > 当前 Feature：F220-b — P/(FCF−SBC) 双版本（现金流交叉视角）
-> 当前 sub_sprint：**F220-b**　phase=`contract_agreed`
+> 当前 sub_sprint：**F220-b**　phase=`needs_review`
 
 ---
 
 ## 完成的内容（本 session）
 
-- ✅ 前序门禁检查：F220-b 父级依赖 F102/F104/F218 全 done；sub_sprints.F220-b design_needed→contract_agreed 合法转移
-- ✅ 暴露并解决阻塞矛盾：上游正常化 P/E（F220-a1/a2/c）已 deprecated，原自洽红旗锚 `normalizedPe` 恒 null → 红旗永不亮
-- ✅ A-1 前置 AskUserQuestion 三项重定义用户拍板（见下「关键决策」）
-- ✅ Sprint Contract 起草 + confirmed：`docs/开发/sprint-contracts/F220-b-contract.md`
-- ✅ A-1 收尾：features.json / claude-progress.txt / 本 HANDOFF 更新 + commit
+- ✅ A-2 pre-flight 全过：checksum 4 项匹配 `8dbff1fb`，contract `confirmed`，phase `contract_agreed`
+- ✅ 开局异常处置：API-CONTRACT.md 工作区存在上游 F220 system-design v2.6 漏 commit 块 → 用户裁决「先独立补提再叠 doc-first」→ commit `84f9d02`（provenance 归 system-design）
+- ✅ step 0 doc-first 三文档修订（先于代码）：API-CONTRACT / DECISIONS / DATA-MODEL 同步 F220-b 三决策
+- ✅ 后端：`_compute_p_fcf` 模块级纯函数 + `_is_pool_member` + `get_fundamentals` 成员门控编排 + schema +2 字段
+- ✅ 前端：types +pFcfRaw?/pFcfAdj?、FundamentalsCard 6→8 指标（2 栏各 4，右栏聚现金流簇）
+- ✅ 测试：conftest FakeFMP 桩 + test_stock_detail +11 用例（5 单测 + 6 集成）
+- ✅ A-3 Evaluator 全绿 → phase `needs_review`；consistency-check C1/C4/C5 全清
+- ✅ 全程逻辑原子 commit（doc-first / service / schema+tests / 前端 / feat 收尾）
 
-## 关键决策（A-1 前置，用户 2026-06-11 拍板）
+## 关键决策（A-1 前置已拍板，本 session 落地）
 
-| 项 | 落定 | 影响 |
+| 项 | 落定 | 落地点 |
 |---|------|------|
-| 自洽红旗 `sbcSensitiveFlag` | **砍掉** | 不进 schema / 契约 / 代码 |
-| P/FCF 市值分子 | **FMP key-metrics-ttm marketCap** | 推翻 D105 自算 Diluted×price（自洽对比需求随 normalizedPe 废弃消失；FMP marketCap 极简 + ADR 货币正确） |
-| pFcf 成员门控 | **watchlist(active)∪pool**（D106 落地） | 非成员 → pFcf=null；pool 直读 CockpitPoolCache model，不 import cockpit |
+| 自洽红旗 `sbcSensitiveFlag` | **砍掉** | 代码零残留（grep 校验）；契约/DECISIONS 标砍 |
+| P/FCF 市值分子 | **FMP key-metrics-ttm marketCap** | `get_fundamentals` 顶层 `market_cap` 直用；推翻 D105 自算 |
+| pFcf 成员门控 | **watchlist(active)∪pool** | `_is_pool_member` 直读 CockpitPoolCache model（坐实待查-1）；非成员不拉现金流 |
+
+## 测试结果
+
+| 范围 | 结果 |
+|------|------|
+| test_stock_detail.py | 46 passed（35 baseline + 11 新） |
+| 后端全量回归 | 1277 passed / 11 failed —— **均预先存在**（baseline conftest 复现，与 F220-b 无关：ai_schemas/earnings/fmp_client/regime/schema/alembic） |
+| 前端 vitest | 331 passed / 22 failed —— **均预先存在**（失败测试零引用本次文件，CockpitRegistry baseline 复现） |
+| E2E #11 | 本环境无 FMP key → fundamentals 整体 502（非 F220-b 限制），改一次性 render 验证（两行渲染+null→'—'+无报错）通过即删 |
 
 ## 中断位置
 
-A-1 完整收尾，Contract confirmed + commit。**按 skill A-1 铁律停在本 session，未进 Generator。**
+F220-b Generator+Evaluator 完整完成，phase=`needs_review`，feat commit `dee39aa` 已落地。**下一步是 acceptance skill（live 实测），不在本 session 范围。**
 
-## Sprint Contract 执行状态
+## 已修改文件（本 session）
 
-**当前 Contract**：docs/开发/sprint-contracts/F220-b-contract.md（status: confirmed）
+代码（6 文件 = Contract §2）：
+- `backend/app/services/stock_detail_service.py`、`backend/app/schemas/stock_detail.py`
+- `backend/tests/conftest.py`、`backend/tests/test_stock_detail.py`
+- `frontend/src/types/stockDetail.ts`、`frontend/src/components/features/stock-detail/FundamentalsCard.tsx`
 
-| 开发步骤 | 状态 |
-|---------|------|
-| doc-first（API-CONTRACT/DECISIONS/DATA-MODEL 修订）| ⬜（Generator step 0） |
-| _compute_p_fcf 纯函数 + _is_pool_member | ⬜ |
-| stock_detail_service get_fundamentals 编排 | ⬜ |
-| schema + 前端 types/FundamentalsCard | ⬜ |
-| 单元 + 集成测试 | ⬜ |
-| E2E（preview）| ⬜ |
-| Evaluator 评估 | ⬜ |
+文档/流程：
+- `docs/系统设计/API-CONTRACT.md`、`DECISIONS.md`、`DATA-MODEL.md`（doc-first）
+- `docs/需求/features.json`（phase→needs_review + iteration_history）
+- `claude-progress.txt`
 
-## 实现要点（Generator 直接照 Contract §1）
+## 本 session commit 链
 
-- `_compute_p_fcf(quarters, market_cap)`：FCF=Σ最近4季(OCF+capex，capex 按符号直接加)；pFcfRaw=marketCap/FCF（FCF≤0→None）；pFcfAdj=marketCap/(FCF−ΣSBC)（≤0→None）；<4 季或某季 OCF/capex 缺→(None,None)；SBC 缺→按 0；OCF 用 operatingCashFlow，缺回退 netCashProvidedByOperatingActivities
-- 成员门控：`(stock active) or _is_pool_member(ticker)`；非成员→pFcf=None 且不调 get_cash_flow_quarterly
-- fail-open：现金流拉取 HTTPError / market_cap None → pFcf=None，endpoint 仍 200，原始指标照常
-- 复用 F218 `fmp.get_cash_flow_quarterly(ticker, limit=4)`，**不改 fmp_client**
-
-## 已创建/修改的文件（本 session，均产物文档）
-
-- `docs/开发/sprint-contracts/F220-b-contract.md` — 新建（confirmed）
-- `docs/需求/features.json` — sub_sprints.F220-b→contract_agreed + active_sprint + iteration_history
-- `claude-progress.txt` — 追加 F220-b A-1 条目
-
-## 本 session 产物 checksum(git sha)
-
-⚠️ 下一 session 进 Generator 前必须比对本表 sha 与当前 `git log -1 --format=%H -- <path>`，不匹配 → 退回 A-1 修复。
-
-| 产物 | 路径 | 最后 commit sha | uncommitted? |
-|------|------|----------------|-------------|
-| Sprint Contract | `docs/开发/sprint-contracts/F220-b-contract.md` | `__HEAD__` | ⬜ |
-| features.json | `docs/需求/features.json` | `__HEAD__` | ⬜ |
-| claude-progress.txt | `claude-progress.txt` | `__HEAD__` | ⬜ |
-| HEAD | — | `__HEAD__` | — |
-
-**下一 session 验证步骤**（必须先于 Generator 第一行代码）：
-
-```bash
-git log -1 --format=%H -- "docs/开发/sprint-contracts/F220-b-contract.md"
-git log -1 --format=%H -- "docs/需求/features.json"
-git rev-parse HEAD   # 必须 ≥ 表中 HEAD sha
+```
+dee39aa feat(F220-b): P/(FCF−SBC) 双版本（现金流交叉视角）
+adf7357 wip(F220-b): 前端 Fundamentals 类型 +pFcf + FundamentalsCard 双版本 P/FCF 行
+4e37c84 wip(F220-b): schema +pFcfRaw/pFcfAdj + FakeFMP 桩 + 单元/集成测试
+0bc492a wip(F220-b): _compute_p_fcf 纯函数 + _is_pool_member + get_fundamentals 编排
+ce2e71f wip(F220-b): step 0 doc-first 三文档修订 + phase→in_progress
+84f9d02 docs: F220 system-design v2.6 契约块补提（漏 commit）
 ```
 
-任一不匹配 → **不要进 Generator**，先排查仓库状态变化原因。
+## 遗留 / 未决事项
 
-## 遗留决策（需要用户回答）
-
-无。三项核心决策已在 A-1 前置确认；FMP 现金流字段名（待查-2）由 Generator 对真实响应核对，走 fail-open，不阻断。
+- **acceptance 期**：DUOL live 实测 pFcfAdj 量级合理（需 DUOL ∈ watchlist 或 pool，否则验收前手动加入）。原设计标 [20,22]×，当前价已非设计时点，量级核对为主不卡死区间。
+- **未跟踪的无关文件**（非本 sprint，未动）：`docs/需求/.features.json.bak`、`docs/系统设计/FILING-EVENTS-CONTRACT.md`、`docs/设计/年报阅读*.md` —— 属「年报阅读」feature 规划产物，留待对应 owner 处置。
+- 预先存在的回归失败（后端 11 / 前端 22）独立于 F220-b，建议另开 session 排查。
 
 ## 下一个 Session 继续的指令
 
 ```
-继续开发 F220-b，Sprint Contract 已确认。
-读取 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F220-b-contract.md，
-进入 Generator 模式（A-2 pre-flight 后 contract_agreed→in_progress），
-从 step 0（doc-first 三文档修订）开始。
+F220-b 已 needs_review，运行 acceptance skill 验收：
+DUOL（确保 ∈ watchlist 或 pool）live 实测 pFcfRaw/pFcfAdj 量级合理 → 通过后 F220-b → done。
+注意：F220 父 feature 由 consistency-check C1 决定，存活子 d/e 仍 design_needed，父保持 in_progress。
 ```
 
-> 建议用 Sonnet 开启新 session（纯执行，合约已锁）。
+> 建议开启新 session 跑 acceptance。
