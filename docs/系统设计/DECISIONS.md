@@ -1,7 +1,7 @@
 ---
 status: confirmed
 confirmed_at: 2026-06-10
-last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — 新增 D104 税率防循环 / D105 市值自算 / D106 成员门控 / D107 降级不回退 raw；上一版 F218 Phase D 见 git history)
+last_modified_by: feature-dev (F220-b doc-first 2026-06-12 — D105 推翻自算市值+砍 sbcSensitiveFlag / D106 pFcf 成员门控落地+坐实待查-1；v2.6 原 D104-D107 见 git history)
 ---
 
 # DECISIONS.md — 技术决策记录
@@ -2557,6 +2557,12 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 ## D105：F220 — 市值自算口径（Diluted × price）+ P/(FCF−SBC) 自洽红旗
 
+> ⚠️ **F220-b 推翻（2026-06-12）**：本决策两个支柱均失效——
+> 1. **自洽红旗 `sbcSensitiveFlag` 砍掉**：红旗规则锚在 `normalizedPe`，而正常化 P/E 方案已于 2026-06-10 整体 deprecated（F220-a/a1/a2/c），锚恒 null，红旗永不亮，形同虚设 → 直接删除，不进 schema/类型/代码。
+> 2. **市值改用 FMP `marketCap`**：自算口径的唯一理由是「与 normalizedPe 的 diluted EPS 口径自洽」；normalizedPe 已废，自洽前提消失。`pFcfRaw / pFcfAdj` 改用 schema 顶层 `marketCap`（FMP key-metrics-ttm，已在 get_fundamentals 拉取）—— 极简零额外调用，且 ADR/JPY/DKK 货币自动正确（自算 Diluted×price 有货币错配坑）。
+>
+> F220-b 最终口径以 [API-CONTRACT §fundamentals「F220-b 落地修订」](API-CONTRACT.md) 为准；下方原决策正文仅留档。
+
 **日期**：2026-06-10
 
 **决定**：P/(FCF−SBC) 双版本与自洽红旗所用的市值 = **最新季 `weightedAverageShsOutDil`（Diluted）× 当前价（自算）**，与正常化 EPS 口径自洽；**不用** FMP key-metrics-ttm 的 `marketCap`。红旗规则：`|pFcfAdj − normalizedPe| / normalizedPe > 0.40` → `sbcSensitiveFlag = true`。
@@ -2582,6 +2588,8 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 - workbench 直接 import cockpit pool service 做成员判断（违反依赖层级，改走只读 repository 数据访问）
 
 **影响**：get_fundamentals 门控编排短路；normalized_pe_history / analyst_estimate_snapshots 覆盖天然限于成员，历史稀疏（R4 留待 F220-f）；**待查-1** = pool 成员只读 repository 入口（F220-a 实现确认）。
+
+> ✅ **F220-b 落地（2026-06-12）**：成员门控正式落到 `pFcfRaw / pFcfAdj` —— `is_member = (stock active) or _is_pool_member(ticker)`，非成员两字段 null 且不调 `get_cash_flow_quarterly`（省 FMP 季报配额）。**待查-1 坐实**：pool 成员判断直读 `CockpitPoolCache` model（`app.models.cockpit_pool_cache`，`stock_detail_service._is_pool_member`），**不新建 repository、不 import cockpit service**——守 workbench↛cockpit 依赖层级。
 
 ---
 

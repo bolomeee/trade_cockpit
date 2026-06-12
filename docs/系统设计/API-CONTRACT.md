@@ -494,7 +494,15 @@ last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /funda
 
 **正常化 P/E 体系字段（F220 / v2.6 新增，向后兼容）**：
 
-> ⚠️ **部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（即 `priceToEarnings`，F104 现状已透传，**就是当前 P/E 主值**）。以下字段**作废、不实现**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability(全部子字段) / degradeReason 枚举 / normalizedPePercentile`。**保留**待评估（F220-b/d/e）：`pFcfRaw / pFcfAdj / sbcSensitiveFlag`(b) / `epsAcceleration`(d) / `estimateRevision`(e)。下方 F220 正常化字段定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+> ⚠️ **部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（即 `priceToEarnings`，F104 现状已透传，**就是当前 P/E 主值**）。以下字段**作废、不实现**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability(全部子字段) / degradeReason 枚举 / normalizedPePercentile`。**保留**待评估（F220-d/e）：`epsAcceleration`(d) / `estimateRevision`(e)。下方 F220 正常化字段定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+
+> ✅ **F220-b 落地修订（2026-06-12，本切片权威）**：F220-b 在上游归零后独立重定义，**激活** `pFcfRaw / pFcfAdj` 两字段，**砍掉** `sbcSensitiveFlag`（自洽红旗——锚 `normalizedPe` 已废，对比无意义）。两点关键变更覆盖上方历史块：
+> 1. **市值分子改 FMP marketCap**：`pFcfRaw / pFcfAdj` 的分子 = schema 顶层 `marketCap`（FMP key-metrics-ttm，已在 get_fundamentals 拉取），**不再**自算 `Diluted × currentPrice`（D105 自算口径前提随 normalizedPe 废弃而消失；FMP marketCap 极简零额外调用，且 ADR/JPY/DKK 货币自动正确）。
+> 2. **成员门控（D106 落地）**：仅 ticker ∈ watchlist(active) **或** trend pool 成员才计算 `pFcfRaw / pFcfAdj`；非成员 → 两字段 null，**不**拉取季报现金流（省 FMP 配额）。pool 成员判断直读 `CockpitPoolCache` model（禁 import cockpit service）。
+> 3. **FCF 口径**：`FCF = Σ最近4季(operatingCashFlow + capitalExpenditure)`（capex 多为负，**按符号直接加**，不取绝对值）；`pFcfRaw = marketCap / FCF`（FCF≤0 → null）；`pFcfAdj = marketCap / (FCF − Σ最近4季 stockBasedCompensation)`（FCF−SBC≤0 → null，SBC 当真实股东成本）。OCF 缺则回退 `netCashProvidedByOperatingActivities`；<4 季或某季 OCF/capex 缺 → 两字段 null；SBC 缺按 0。
+> 4. **fail-open**：季报拉取失败 / marketCap 为 None → `pFcfRaw / pFcfAdj` null，endpoint 仍 200，原始 TTM 指标照常。
+>
+> 下方历史块中 `pFcfRaw / pFcfAdj` 行的「自算市值」与 `sbcSensitiveFlag` 行均被本修订覆盖，仅留档。
 
 > doc-first：本节为 F220 契约权威，先于代码。`priceToEarnings` **保留为 raw**（不替换，向后兼容 + 自洽检验对比），前端主位渲染 `normalizedPe`、raw 作副标。新增字段全部可选（默认 null）。**成员门控**：仅 ticker ∈ watchlist(active) 或 trend pool 才计算正常化字段；否则正常化字段 null + `traceability.degradeReason="out_of_scope"`，原始 TTM 指标（priceToEarnings/priceToSales/peg/roce/freeCashFlow 等）照常返回。新字段塞进同一 `daily_payload_cache`（endpoint="fundamentals"），无新 endpoint。
 
@@ -545,9 +553,9 @@ last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /funda
 | normalizedPe | number \| null | 当前价 ÷ 正常化 EPS（异常季用税后营业利润 NOPAT 替代 GAAP 净利润，**主锚**） | 季报<4 / 正常化EPS≤0 / 无可信税率种子 / 无当前价 / 非成员 → null（**绝不回退 raw**），原因见 traceability.degradeReason |
 | normalizedEps | number \| null | TTM Σ最近4季取用盈利 ÷ 最新季 Diluted 股本 | 同 normalizedPe |
 | normalizedTtmEarnings | number \| null | TTM 正常化盈利（Σ最近4季取用盈利，美元） | 同上 |
-| pFcfRaw | number \| null | 自算市值 ÷ FCF（FCF=ΣOCF+Σcapex，capex 多为负按符号加）；同行可比 | FCF ≤ 0 或缺数据 → null |
-| pFcfAdj | number \| null | 自算市值 ÷ (FCF−ΣSBC)；SBC 当真实股东成本，自洽检验 | FCF−SBC ≤ 0 或缺数据 → null |
-| sbcSensitiveFlag | boolean | 自洽红旗：`\|pFcfAdj − normalizedPe\| / normalizedPe > 0.40` → true | 任一为 null → false（不打旗） |
+| pFcfRaw | number \| null | **FMP marketCap** ÷ FCF（FCF=ΣOCF+Σcapex，capex 多为负按符号加）；同行可比。**口径见上方 F220-b 修订** | FCF ≤ 0 / <4 季 / 缺数据 / 非成员 / marketCap 缺 → null |
+| pFcfAdj | number \| null | **FMP marketCap** ÷ (FCF−ΣSBC)；SBC 当真实股东成本。**口径见上方 F220-b 修订** | FCF−SBC ≤ 0 / 同 pFcfRaw 降级条件 → null |
+| ~~sbcSensitiveFlag~~ | ~~boolean~~ | **🚫 F220-b 砍掉**（锚 normalizedPe 已废，自洽对比无意义）—— 不进 schema / 类型 / 代码 | — |
 | normalizedPePercentile | number \| null | **本轮恒 null**（F220-c 仅预埋时序，分位计算 = 未来 F220-f） | 恒 null |
 | epsAcceleration | object \| null | `{signal: "accelerating"\|"decelerating"\|"flat", consecutiveQuarters: int}`，正常化 EPS 序列二阶差分（F220-d） | <8 季正常化 EPS → null（不报错） |
 | estimateRevision | object \| null | `{direction: "up"\|"down"\|"flat", magnitude: number, dispersion: number}`，两快照 analyst EPS diff（F220-e） | 无快照 / 仅基线（单快照）→ null |
@@ -567,7 +575,7 @@ last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /funda
 
 **说明（F220）**：
 - **绝不回退 raw**：正常化算不出时 normalizedPe=null（前端主位显示"—"+ degradeReason tooltip），原始 `priceToEarnings` 仍在但仅作副标/参考；原始 GAAP P/E 正是 F220 要规避的失真源
-- **市值自算口径（D105）**：pFcfRaw/Adj 与 sbcSensitiveFlag 用的市值 = `dilutedShares × currentPrice`（自算，与 normalizedPe 口径自洽）；schema 顶层 `marketCap` 仍保留 FMP key-metrics-ttm 值（口径分叉见 D105，自算市值仅用于 traceability 语义内）
+- ~~**市值自算口径（D105）**：pFcfRaw/Adj 与 sbcSensitiveFlag 用的市值 = `dilutedShares × currentPrice`~~ → **F220-b 推翻**：pFcfRaw/Adj 直接用 schema 顶层 `marketCap`（FMP key-metrics-ttm），不再自算；sbcSensitiveFlag 已砍。详见上方「F220-b 落地修订」+ DECISIONS §D105/D106
 - **fail-open**：季报拉取失败/不足 → 正常化字段 null + degradeReason，endpoint 仍 200，原始 P/S/PEG/ROCE/FCF 照常（新功能不拖垮既有 widget）
 - 前端 `Fundamentals` 类型新增上述可选字段（与后端对齐，现有 `priceToEarnings` 等改为 `\| null`）
 

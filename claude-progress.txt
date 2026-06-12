@@ -109,3 +109,18 @@
 [下一步]
   Generator 在新 session（contract_agreed→in_progress）：读 SESSION-HANDOFF.md + docs/开发/sprint-contracts/F220-b-contract.md，A-2 pre-flight 后从 step 0（doc-first 三文档）开始。
   按 skill A-1 铁律，本 session 停在 Contract confirmed，不进 Generator。
+
+[2026-06-12] feature-dev A-2 Generator：F220-b step 0 doc-first（P/(FCF−SBC) 双版本）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A-2 pre-flight 全过（checksum 4 项匹配 8dbff1fb / contract confirmed / phase contract_agreed）。
+异常处置：API-CONTRACT.md 工作区有上游 F220 system-design v2.6 漏 commit 块 → 用户裁决「先独立补提再叠 doc-first」→ commit 84f9d02（provenance 归 system-design）。
+
+phase：sub_sprints.F220-b contract_agreed → in_progress。
+
+✅ step 0 doc-first 三文档修订（先于代码）：
+  - API-CONTRACT §fundamentals：横幅加「F220-b 落地修订」权威子节（激活 pFcfRaw/Adj、砍 sbcSensitiveFlag、市值改 FMP marketCap、成员门控 D106、FCF=Σ4季(OCF+capex)/Adj=−ΣSBC、fail-open）；表中 pFcf 行市值口径改 FMP + sbcSensitiveFlag 行标砍；D105 自算说明行划除
+  - DECISIONS §D105：加 F220-b 推翻横幅（砍红旗 + 市值改 FMP）；§D106：pFcf 成员门控落地 + 坐实待查-1（直读 CockpitPoolCache model）；frontmatter last_modified_by 更新
+  - DATA-MODEL §DailyPayloadCache：补 F220-b 落地注记（仅新增 pFcfRaw/Adj、无新表、sbcSensitiveFlag 砍）
+
+[下一步] Generator §1.1 后端：_compute_p_fcf 纯函数 + _is_pool_member + get_fundamentals 编排。
