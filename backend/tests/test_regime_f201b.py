@@ -103,11 +103,11 @@ class TestRegimeApiEndpoint:
         assert subscores["riskAppetite"] == 7
         assert subscores["volatilityStress"] == 6
 
-    def test_s4_indices_has_exactly_3_items(self, client, db_session):
-        """S4: indices 固定 3 条 (SPY/QQQ/IWM)."""
+    def test_s4_indices_has_exactly_4_items(self, client, db_session):
+        """S4: indices 固定 4 条 (SPY/QQQ/IWM/VXX)."""
         _seed_snapshot(db_session)
         data = client.get("/api/cockpit/regime").json()["data"]
-        assert len(data["indices"]) == 3
+        assert len(data["indices"]) == 4
         symbols = [item["symbol"] for item in data["indices"]]
         assert symbols == list(SHARED.INDEX_ETFS)
 

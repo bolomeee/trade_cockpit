@@ -518,17 +518,17 @@ class TestRegistry:
             assert task_type in gr._HOOKS, f"missing hook for {task_type}"
             assert callable(gr._HOOKS[task_type])
 
-    def test_R5_contradiction_detector_resolves_default(self):
-        """routing.resolve_tier('contradiction_detector') → 'default'."""
+    def test_R5_contradiction_detector_resolves_critical(self):
+        """routing.resolve_tier('contradiction_detector') → 'critical' (upgraded to mini)."""
         from app.ai.routing import resolve_tier
 
-        assert resolve_tier("contradiction_detector") == "default"
+        assert resolve_tier("contradiction_detector") == "critical"
 
-    def test_R6_news_summarizer_resolves_default(self):
-        """routing.resolve_tier('news_summarizer') → 'default'."""
+    def test_R6_news_summarizer_resolves_critical(self):
+        """routing.resolve_tier('news_summarizer') → 'critical' (upgraded to mini)."""
         from app.ai.routing import resolve_tier
 
-        assert resolve_tier("news_summarizer") == "default"
+        assert resolve_tier("news_summarizer") == "critical"
 
     def test_R7_journal_assistant_resolves_complex(self):
         """routing.resolve_tier('journal_assistant') → 'complex'."""

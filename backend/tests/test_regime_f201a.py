@@ -322,7 +322,7 @@ def test_s14_cockpit_params_import_no_exception() -> None:
     assert SHARED.MA_LONG == 200
     assert SHARED.REGIME_LOOKBACK_DAYS == 200
     assert len(SHARED.SECTOR_ETFS) == 11
-    assert len(SHARED.INDEX_ETFS) == 3
+    assert len(SHARED.INDEX_ETFS) == 4  # SPY/QQQ/IWM/VXX (VXX added as VIX proxy)
 
     assert REGIME.RISK_ON_MIN == 80
     assert REGIME.CONSTRUCTIVE_MIN == 60

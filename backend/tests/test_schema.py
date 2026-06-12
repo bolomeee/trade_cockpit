@@ -30,6 +30,10 @@ EXPECTED_TABLES = {
     "positions",                # F206-a
     "pending_orders",           # F206-b1
     "cockpit_pool_cache",       # F205-e
+    "weekly_stage_snapshots",       # F216-b (migration 019)
+    "repricing_triggers",           # F218 (migration 022)
+    "stock_key_metrics_quarterly",  # F218-d3a (migration 023)
+    "stock_fundamentals_quarterly", # F218-d6a (migration 024)
 }
 
 EXPECTED_COLUMNS: dict[str, set[str]] = {

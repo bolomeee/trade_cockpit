@@ -232,17 +232,20 @@ def test_fetch_and_store_normalizes_time_of_day(db_session, fake_fmp):
 
 def test_get_next_earnings_returns_camelcase_dict(db_session, fake_fmp):
     """标准 11: get_next_earnings 返回 dict，键名 camelCase 与 API-CONTRACT 对齐."""
+    # get_next_earnings filters by REAL today → use a future date relative to
+    # today so the test doesn't expire (within fetch_and_store's +30d window).
+    future = date.today() + timedelta(days=20)
     fake_fmp.earnings_calendar_result = [
-        _make_fmp_item("TSLA", "2026-05-20", eps_estimated=0.72, time="AMC"),
+        _make_fmp_item("TSLA", future.isoformat(), eps_estimated=0.72, time="AMC"),
     ]
 
     svc = EarningsService(db_session, fake_fmp)
-    svc.fetch_and_store(today=date(2026, 4, 24))
+    svc.fetch_and_store(today=date.today())
 
     result = svc.get_next_earnings("TSLA")
 
     assert result["ticker"] == "TSLA"
-    assert result["nextEarningsDate"] == "2026-05-20"
+    assert result["nextEarningsDate"] == future.isoformat()
     assert isinstance(result["daysUntil"], int)
     assert result["timeOfDay"] == "AMC"
     assert result["epsEstimate"] == pytest.approx(0.72)

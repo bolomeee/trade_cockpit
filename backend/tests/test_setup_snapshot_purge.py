@@ -103,7 +103,10 @@ def test_T1_migration_upgrade_downgrade_upgrade(tmp_path):
     assert cols["legacy"][3] == 1, "legacy must be NOT NULL"
     conn.close()
 
-    command.downgrade(cfg, "-1")
+    # `legacy` is added by migration 021; downgrade to its down_revision (020)
+    # so 021.down() runs and drops it (head has since advanced past 021, so a
+    # bare "-1" would only reverse the newest migration and leave legacy intact).
+    command.downgrade(cfg, "020_f216d1_setup_weekly_stage_column")
     conn = sqlite3.connect(db_path)
     cols_after_down = {c[1] for c in conn.execute("PRAGMA table_info(setup_snapshots)").fetchall()}
     assert "legacy" not in cols_after_down, "legacy column must disappear after downgrade"

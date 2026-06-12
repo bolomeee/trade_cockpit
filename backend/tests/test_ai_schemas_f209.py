@@ -418,7 +418,7 @@ class TestEndpointIntegration:
         assert m["tokensIn"] == 10
         assert m["tokensOut"] == 5
         assert m["cacheHit"] is False
-        assert m["tier"] == "default"
+        assert m["tier"] == "critical"  # market_narrator upgraded to mini (critical tier)
         assert "modelUsed" in m
         assert "latencyMs" in m
 

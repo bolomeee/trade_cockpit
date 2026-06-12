@@ -192,9 +192,9 @@ class TestAlembic018RoundTrip:
         with engine.connect() as conn:
             conn.execute(text("""
                 INSERT INTO setup_snapshots
-                    (ticker, scan_date, setup_type, earnings_risk, ready_signal, scanned_at)
+                    (ticker, scan_date, setup_type, earnings_risk, ready_signal, legacy, scanned_at)
                 VALUES
-                    ('OLD', '2024-01-01', 'NONE', 'SAFE', 0, '2024-01-01T00:00:00')
+                    ('OLD', '2024-01-01', 'NONE', 'SAFE', 0, 0, '2024-01-01T00:00:00')
             """))
             conn.commit()
             row = conn.execute(

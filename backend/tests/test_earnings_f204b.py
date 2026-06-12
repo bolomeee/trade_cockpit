@@ -12,7 +12,7 @@ Sprint Contract 标准 S1–S8:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,7 +39,9 @@ def _reset_scheduler():
 def _seed_earnings(db_session, ticker: str = "AAPL", days_from_now: int = 28) -> EarningsEvent:
     event = EarningsEvent(
         ticker=ticker,
-        earnings_date=date(2026, 5, 22),
+        # relative to REAL today (get_next_earnings filters future) so the test
+        # doesn't expire as the hardcoded date slips into the past
+        earnings_date=date.today() + timedelta(days=days_from_now),
         eps_estimate=5.20,
         eps_actual=None,
         revenue_estimate=48_000_000_000,
@@ -65,7 +67,7 @@ class TestEarningsApiEndpoint:
         assert body["message"] == "success"
         data = body["data"]
         assert data["ticker"] == "AAPL"
-        assert data["nextEarningsDate"] == "2026-05-22"
+        assert data["nextEarningsDate"] == (date.today() + timedelta(days=28)).isoformat()
         assert data["daysUntil"] is not None
         assert data["timeOfDay"] == "AMC"
         assert data["epsEstimate"] == pytest.approx(5.20)

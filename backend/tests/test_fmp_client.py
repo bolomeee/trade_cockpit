@@ -531,7 +531,7 @@ def test_get_screener_universe_merges_three_exchanges_and_dedupes(clock):
     assert exchanges_requested == ["NYSE", "NASDAQ", "AMEX"]
     for c in calls:
         assert c.url.path.endswith(FMP_EP_SCREENER)
-        assert c.url.params["marketCapMoreThan"] == "50000000000"
+        assert c.url.params["marketCapMoreThan"] == "5000000000"
 
 
 def test_get_screener_universe_skips_non_dict_rows(clock):
