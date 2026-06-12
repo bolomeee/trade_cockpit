@@ -175,3 +175,18 @@ F220-b 验收标准「DUOL live 实测量级」三前提（FMP key/DUOL∈watchl
 父 F220 由 C1 决定保持 in_progress（存活子 d/e 仍 design_needed，未误升）。临时 uvicorn 已停。
 
 [下一步] 部署需重建 8001 Docker 镜像纳入 F220-b（部署步骤）。F220-d/e 待后续 feature-dev。
+
+[2026-06-12] 部署：docker compose 重建 8001/8080（F220-b 上线）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+用户决定直接 docker compose 部署（不打 tag，从 indicator_enhance 分支源码重建）。
+
+⚠️ 部署前阻塞：pnpm build（tsc -b 严格项目引用）被 6 个【预存】TS 错误卡住（与 F220-b 无关，MarketRegime/PoolBuilder/SetupMonitor/AiNewsSummaryBar）→ 用户同意修复 → 独立 chore commit（删死代码/Th children 可选/删未用 import/去 JSX.Element 标注），pnpm build 恢复 exit 0。
+
+部署：备份回滚镜像（:rollback-pre-f220b）→ docker compose build（前后端，烤入 F220-b）→ up -d 重建容器。
+冒烟全过：
+  - 后端 8001：AAPL（prod watchlist 成员）pFcfRaw=33.61/pFcfAdj=37.53（F220-b 在镜像里；自洽 SBC≈13.3B 合 AAPL 年量级）；sbcSensitiveFlag 不在
+  - 前端 8080：HTTP 200
+  - 后端日志：无 ERROR，alembic migration 正常，startup complete
+注：生产 DB=backend/data/prod.db（DUOL 不在其 watchlist/pool，prod 上 DUOL 显示 '—' 属正常门控）。
+回滚镜像 :rollback-pre-f220b 保留备用。
