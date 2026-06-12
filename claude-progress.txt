@@ -157,3 +157,21 @@ F220-b 验收标准「DUOL live 实测量级」三前提（FMP key/DUOL∈watchl
 已生成 docs/验收/v2.6-F220-b-acceptance.md（业务/视觉自动化证据 ✅ 全绿 + L1–L5 用户 live 清单）。
 
 [下一步] 用户部署环境跑 L1–L5（DUOL pFcfAdj 量级合理）→ 全过通知 Claude 标 done；L2 异常 → feature-dev 类型 D。
+
+[2026-06-12] acceptance：F220-b live 实测通过 → done ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 纠正前一条误判：FMP key 实际在【项目根 .env】（config.py 用 parent.parent.parent/.env 加载根 .env），非 backend/.env。live 验收可行且已完成。
+
+发现 8001 跑的是 Docker 容器旧镜像（Jun 11，无 F220-b）→ 缺 pFcf 字段。从源码起临时 uvicorn(8002)，删今日 DUOL fundamentals same-day cache（旧 payload）后实测真实 FMP：
+  - L1 DUOL pFcfRaw=13.87 / pFcfAdj=20.98（双行有值）✅
+  - L2 pFcfAdj 20.98 ∈ 设计 [20,22]×，精准命中 ✅
+  - L3 camelCase pFcfRaw/pFcfAdj 在、sbcSensitiveFlag 不在 ✅
+  - L4 非成员 KO → pFcf null，P/E·marketCap 照常 ✅
+  - L5 后端日志无报错 ✅
+  数值自洽：mc 5.77B÷pFcfRaw≈FCF 416M（同 FMP freeCashFlow）、÷pFcfAdj≈275M→ΣSBC≈141M（DUOL 年 SBC 量级吻合）。
+
+收尾：features.json sub_sprints.F220-b needs_review→done + iteration_history done 条目 + active_sprint→null；验收记录 docs/验收/v2.6-F220-b-acceptance.md 标 ✅。
+父 F220 由 C1 决定保持 in_progress（存活子 d/e 仍 design_needed，未误升）。临时 uvicorn 已停。
+
+[下一步] 部署需重建 8001 Docker 镜像纳入 F220-b（部署步骤）。F220-d/e 待后续 feature-dev。
