@@ -4,6 +4,21 @@
 
 ---
 
+## [v2.6.0] - 2026-06-12
+
+### ✨ 新增
+- **基本面 P/FCF 双版本估值（F220-b）**：Fundamentals widget 新增 `P/FCF` 与 `P/FCF(−SBC)` 两行（现金流交叉视角）
+  - watchlist(active) / 趋势池成员：`pFcfRaw = FMP marketCap / Σ最近4季(OCF+capex)`、`pFcfAdj = marketCap / (FCF − Σ4季SBC)`（SBC 当真实股东成本）
+  - 成员门控 + fail-open：非成员 / marketCap 缺 / 季报拉取失败 / 不足 4 季 → 显示 "—"，endpoint 仍 200，其余指标照常
+  - 已 docker 上线（8001/8080）；DUOL 实测 pFcfAdj=20.98（设计区间 [20,22]）
+
+### 🔧 维护
+- 修复 33 个陈旧测试（后端 11 + 前端 22，代码演进后测试未跟上，零真实回归）→ 回归基线干净（后端 1288 / 前端 353 全绿）
+- 收尾 F220：弃用未落地的 EPS 加速度（F220-d）与预期修正方向（F220-e）子项
+- 修正 backend 版本号（此前漏 bump）
+
+---
+
 ## [v2.5.0] - 2026-05-21
 
 ### ✨ 新增
