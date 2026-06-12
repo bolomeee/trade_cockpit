@@ -13,7 +13,6 @@ import { removeStock } from '@/lib/api/watchlist'
 import { SetupTypeBadge } from '../components/SetupTypeBadge'
 import { SetupQualityBadge } from '../components/SetupQualityBadge'
 import { EarningsRiskDot } from '../components/EarningsRiskDot'
-import { AiSetupExplainerPopover } from '../components/AiSetupExplainerPopover'
 import { getCockpitRegime } from '../lib/api/cockpitRegimeApi'
 import { AiCandidateRankerSection } from '../components/AiCandidateRankerSection'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -216,7 +215,7 @@ export function SetupMonitorWidget() {
   )
 }
 
-function Th({ children, width, align = 'left' }: { children: React.ReactNode; width: string; align?: 'left' | 'center' | 'right' }) {
+function Th({ children, width, align = 'left' }: { children?: React.ReactNode; width: string; align?: 'left' | 'center' | 'right' }) {
   return (
     <th
       style={{

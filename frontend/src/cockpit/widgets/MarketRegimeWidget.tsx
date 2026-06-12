@@ -91,14 +91,6 @@ function sectorStateColor(state: SectorState): string {
   return map[state]
 }
 
-function subscoreBarColor(pct: number): string {
-  if (pct >= 0.8) return 'var(--color-regime-risk-on)'
-  if (pct >= 0.6) return 'var(--color-regime-constructive)'
-  if (pct >= 0.4) return 'var(--color-log-warn)'
-  if (pct >= 0.2) return 'var(--color-regime-defensive)'
-  return 'var(--color-regime-risk-off)'
-}
-
 // ── score hero ────────────────────────────────────────────────────────────────
 
 function ScoreHero({ data }: { data: CockpitRegimeData }) {
@@ -135,7 +127,6 @@ function ScoreHero({ data }: { data: CockpitRegimeData }) {
 // ── subscores grid ─────────────────────────────────────────────────────────────
 
 function SubscoreCard({ label, value, max }: { label: string; value: number; max: number }) {
-  const pct = max > 0 ? value / max : 0
   return (
     <div
       style={{

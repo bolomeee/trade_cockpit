@@ -135,7 +135,7 @@ function SectionHeader({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function AiNewsSummaryBar(): JSX.Element | null {
+export function AiNewsSummaryBar() {
   const open = useAppStore((s) => s.aiNewsSummaryOpen)
   const setOpen = useAppStore((s) => s.setAiNewsSummaryOpen)
   const [hash, setHash] = useState<string | null>(null)

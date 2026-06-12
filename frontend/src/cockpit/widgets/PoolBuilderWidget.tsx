@@ -355,7 +355,7 @@ function PoolRow({
   )
 }
 
-function Th({ children, width, style }: { children: React.ReactNode; width: string; style?: React.CSSProperties }) {
+function Th({ children, width, style }: { children?: React.ReactNode; width: string; style?: React.CSSProperties }) {
   return (
     <th
       style={{
