@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.external.fmp_client import FmpClient
 from app.models import DailyBar, Signal
+from app.models.cockpit_pool_cache import CockpitPoolCache
 from app.models.daily_payload_cache import (
     ENDPOINT_CHART,
     ENDPOINT_FUNDAMENTALS,
@@ -217,6 +218,17 @@ class StockDetailService:
             for p in rows
         ]
 
+    def _is_pool_member(self, ticker: str) -> bool:
+        """D106: trend pool membership via read-only CockpitPoolCache model.
+
+        Direct model read — no cockpit service import (guards the
+        workbench↛cockpit dependency layering).
+        """
+        stmt = select(CockpitPoolCache.ticker).where(
+            CockpitPoolCache.ticker == ticker
+        )
+        return self.db.execute(stmt).first() is not None
+
     def get_fundamentals(self, raw_ticker: str) -> dict[str, Any]:
         ticker = raw_ticker.strip().upper()
         if not ticker:
@@ -254,6 +266,21 @@ class StockDetailService:
             else None
         )
 
+        # F220-b / D106: member-gated P/(FCF−SBC) dual version. Only watchlist
+        # active OR trend pool members pull quarterly cash flow (FMP quota).
+        # fail-open: any miss → pFcf null, endpoint stays 200.
+        is_member = (
+            stock is not None and stock.is_active
+        ) or self._is_pool_member(ticker)
+        p_fcf_raw = p_fcf_adj = None
+        if is_member and market_cap is not None:
+            try:
+                cash_flow = self.fmp.get_cash_flow_quarterly(ticker, limit=4)
+            except httpx.HTTPError:
+                cash_flow = None
+            if cash_flow:
+                p_fcf_raw, p_fcf_adj = _compute_p_fcf(cash_flow, market_cap)
+
         payload = {
             "ticker": ticker,
             "priceToEarnings": _as_float(ratios.get("priceToEarningsRatioTTM")),
@@ -263,6 +290,8 @@ class StockDetailService:
             "freeCashFlow": free_cash_flow,
             "marketCap": market_cap,
             "sharesFloat": shares_float,
+            "pFcfRaw": p_fcf_raw,
+            "pFcfAdj": p_fcf_adj,
             "source": FUNDAMENTALS_SOURCE_FMP,
             "updatedAt": date.today(),
         }
@@ -313,3 +342,37 @@ def _as_float(v: Any) -> float | None:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _compute_p_fcf(
+    quarters: list[dict[str, Any]], market_cap: float
+) -> tuple[float | None, float | None]:
+    """F220-b: P/FCF dual version from the last 4 quarterly cash-flow rows.
+
+    FCF = Σ(OCF + capex)  — capex is negative; added by sign, no abs.
+    pFcfRaw = market_cap / FCF             (FCF ≤ 0 → None)
+    pFcfAdj = market_cap / (FCF − Σ SBC)   (FCF − SBC ≤ 0 → None)
+
+    < 4 quarters, or any quarter missing OCF/capex → (None, None).
+    SBC missing → treated as 0. OCF reads `operatingCashFlow`, falling back
+    to `netCashProvidedByOperatingActivities`.
+    """
+    if len(quarters) < 4:
+        return None, None
+
+    fcf = 0.0
+    sbc_total = 0.0
+    for q in quarters[:4]:
+        ocf = _as_float(q.get("operatingCashFlow"))
+        if ocf is None:
+            ocf = _as_float(q.get("netCashProvidedByOperatingActivities"))
+        capex = _as_float(q.get("capitalExpenditure"))
+        if ocf is None or capex is None:
+            return None, None
+        fcf += ocf + capex
+        sbc_total += _as_float(q.get("stockBasedCompensation")) or 0.0
+
+    p_fcf_raw = market_cap / fcf if fcf > 0 else None
+    fcf_adj = fcf - sbc_total
+    p_fcf_adj = market_cap / fcf_adj if fcf_adj > 0 else None
+    return p_fcf_raw, p_fcf_adj
