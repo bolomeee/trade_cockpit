@@ -1,7 +1,7 @@
 ---
 status: confirmed
 confirmed_at: 2026-06-10
-last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — 新增 §NormalizedPeHistory(026) + §AnalystEstimateSnapshot(027) 两表 + DailyPayloadCache F220 复用注记；上一版 F218 Phase D 修正见 git history)
+last_modified_by: feature-dev (F220 收尾 2026-06-12 — §AnalystEstimateSnapshot(027) 随 F220-e deprecated 标不建表；DailyPayloadCache 实际仅携 pFcfRaw/pFcfAdj；026/027 两表均不建，head 停 025。v2.6 历史见 git history)
 ---
 
 # DATA-MODEL.md
@@ -345,7 +345,7 @@ AiMemo（独立实体；task_type + input_hash 双列索引供去重）
 - Watchlist ticker chart 仍走 `daily_bars` 表，不写入此表
 - 无需清理旧记录（数据量极小：每天最多几十行）
 - **F220（v2.6）复用**：`endpoint="fundamentals"` 的 payload 现额外携带正常化 P/E 体系字段（normalizedPe / normalizedEps / pFcfRaw / pFcfAdj / sbcSensitiveFlag / traceability / epsAcceleration / estimateRevision，见 API-CONTRACT §fundamentals）；复用同一行缓存，无新表 / 无新 endpoint 枚举值；成员门控保证非 watchlist+pool ticker 的 payload 仍只含原始 TTM 字段 + `traceability.degradeReason="out_of_scope"`
-  - ⚠️ **部分 DEPRECATED（2026-06-10）**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability / degradeReason / normalizedPePercentile`（F220-a/c）**作废**——P/E 改用 FMP raw，payload 不再携带这些。`pFcfRaw / pFcfAdj / sbcSensitiveFlag`（F220-b）/ `epsAcceleration`（F220-d）/ `estimateRevision`（F220-e）**保留**待评估。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+  - ⚠️ **部分 DEPRECATED（2026-06-10）**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability / degradeReason / normalizedPePercentile`（F220-a/c）**作废**——P/E 改用 FMP raw，payload 不再携带这些。`sbcSensitiveFlag`（F220-b 砍）/ `epsAcceleration`（F220-d）/ `estimateRevision`（F220-e）亦**作废**（F220-d/e 于 2026-06-12 收尾 F220 时 deprecated）。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。**payload 实际仅携带 F220-b 新增的 `pFcfRaw` / `pFcfAdj`**（见上方 F220-b 落地注记）。
   - ✅ **F220-b 落地（2026-06-12）**：`endpoint="fundamentals"` payload **仅新增** `pFcfRaw / pFcfAdj` 两字段（Float JSON，camelCase），并入同一行缓存，**无新表 / 无新列 / 无新 endpoint 枚举**。`sbcSensitiveFlag` 已砍（不携带）。两字段口径 = FMP `marketCap` ÷ FCF / (FCF−ΣSBC)，成员门控同上。详见 API-CONTRACT §fundamentals「F220-b 落地修订」+ DECISIONS §D105/D106。
 
 ---
@@ -1244,7 +1244,7 @@ class StockFundamentalsQuarterly(Base):
 
 > 以下 2 张表放入 `backend/app/models/normalized_pe_history.py` 与 `backend/app/models/analyst_estimate_snapshot.py`（平铺，与 workbench 既有 models 同级；**非** cockpit 命名空间）。照 `StockKeyMetricsQuarterly` 风格。migration 编号接当前 head `025_f219a_setup_macd_divergence`：normalized_pe_history = **026**，analyst_estimate_snapshots = **027**。
 
-> ⚠️ **部分 DEPRECATED（2026-06-10）**：`normalized_pe_history`（**026**，F220-c）随 F220-a/c 正常化方案放弃而**作废、不建表**（P/E 改用 FMP raw，无需时序分位）。`analyst_estimate_snapshots`（**027**，F220-e 预期修正方向）**保留**待评估。alembic 编号 026 因此空缺，后续如启用 F220-e 直接用 027 或顺延。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+> ⚠️ **DEPRECATED（2026-06-10 / 2026-06-12）**：`normalized_pe_history`（**026**，F220-c）随 F220-a/c 正常化方案放弃而**作废、不建表**。`analyst_estimate_snapshots`（**027**，F220-e）于 2026-06-12 收尾 F220 时**一并 deprecated、不建表**（F220-e 属未来独立 feature）。**两张表均不建**，alembic head 停在 `025`；下方两表定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
 
 ## NormalizedPeHistory（F220-c — 正常化 P/E 日级时序，⑤分位预埋）
 
@@ -1299,6 +1299,8 @@ class NormalizedPeHistory(Base):
 
 
 ## AnalystEstimateSnapshot（F220-e — 分析师 EPS 预期快照）
+
+> ⚠️ **DEPRECATED（2026-06-12 收尾 F220）**：F220-e 一并放弃，本表（alembic 027）**不建**，无 FMP analyst-estimates 接入 / 无 weekly cron / 无 estimateRevision 字段。以下定义仅作历史留档；如未来需要预期修正信号，另起独立 feature 重新评估。
 
 > 对应数据库表：`analyst_estimate_snapshots`
 > Feature：F220-e 预期修正方向

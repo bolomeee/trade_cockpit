@@ -1,7 +1,7 @@
 ---
 status: confirmed
 confirmed_at: 2026-06-10
-last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /fundamentals 扩展正常化字段 + traceability 子对象，向后兼容保留 priceToEarnings 作 raw；上一版 F218 Phase D 见 git history)
+last_modified_by: feature-dev (F220 收尾 2026-06-12 — §GET /fundamentals 仅 F220-b pFcfRaw/pFcfAdj 落地；正常化字段 + epsAcceleration(d)/estimateRevision(e) 全 deprecated 留档。v2.6 历史见 git history)
 ---
 
 # API-CONTRACT.md
@@ -494,7 +494,9 @@ last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /funda
 
 **正常化 P/E 体系字段（F220 / v2.6 新增，向后兼容）**：
 
-> ⚠️ **部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（即 `priceToEarnings`，F104 现状已透传，**就是当前 P/E 主值**）。以下字段**作废、不实现**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability(全部子字段) / degradeReason 枚举 / normalizedPePercentile`。**保留**待评估（F220-d/e）：`epsAcceleration`(d) / `estimateRevision`(e)。下方 F220 正常化字段定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+> ⚠️ **部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（即 `priceToEarnings`，F104 现状已透传，**就是当前 P/E 主值**）。以下字段**作废、不实现**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability(全部子字段) / degradeReason 枚举 / normalizedPePercentile`。下方 F220 正常化字段定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+
+> ⚠️ **F220-d/e 一并 DEPRECATED（2026-06-12 收尾 F220）**：`epsAcceleration`(F220-d) / `estimateRevision`(F220-e) 亦**作废、不实现**——F220-d 地基（正常化 EPS 序列）随正常化方案废弃；F220-e 属未建的完整新 feature（027 表+cron+FMP+UI）。**F220 实际交付仅 F220-b** `pFcfRaw`/`pFcfAdj`（见下方「F220-b 落地修订」）。如未来需要预期修正信号，另起独立 feature。
 
 > ✅ **F220-b 落地修订（2026-06-12，本切片权威）**：F220-b 在上游归零后独立重定义，**激活** `pFcfRaw / pFcfAdj` 两字段，**砍掉** `sbcSensitiveFlag`（自洽红旗——锚 `normalizedPe` 已废，对比无意义）。两点关键变更覆盖上方历史块：
 > 1. **市值分子改 FMP marketCap**：`pFcfRaw / pFcfAdj` 的分子 = schema 顶层 `marketCap`（FMP key-metrics-ttm，已在 get_fundamentals 拉取），**不再**自算 `Diluted × currentPrice`（D105 自算口径前提随 normalizedPe 废弃而消失；FMP marketCap 极简零额外调用，且 ADR/JPY/DKK 货币自动正确）。
@@ -557,8 +559,8 @@ last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /funda
 | pFcfAdj | number \| null | **FMP marketCap** ÷ (FCF−ΣSBC)；SBC 当真实股东成本。**口径见上方 F220-b 修订** | FCF−SBC ≤ 0 / 同 pFcfRaw 降级条件 → null |
 | ~~sbcSensitiveFlag~~ | ~~boolean~~ | **🚫 F220-b 砍掉**（锚 normalizedPe 已废，自洽对比无意义）—— 不进 schema / 类型 / 代码 | — |
 | normalizedPePercentile | number \| null | **本轮恒 null**（F220-c 仅预埋时序，分位计算 = 未来 F220-f） | 恒 null |
-| epsAcceleration | object \| null | `{signal: "accelerating"\|"decelerating"\|"flat", consecutiveQuarters: int}`，正常化 EPS 序列二阶差分（F220-d） | <8 季正常化 EPS → null（不报错） |
-| estimateRevision | object \| null | `{direction: "up"\|"down"\|"flat", magnitude: number, dispersion: number}`，两快照 analyst EPS diff（F220-e） | 无快照 / 仅基线（单快照）→ null |
+| ~~epsAcceleration~~ | ~~object~~ | **🚫 F220-d DEPRECATED（2026-06-12）**——地基正常化 EPS 已废，不实现 | — |
+| ~~estimateRevision~~ | ~~object~~ | **🚫 F220-e DEPRECATED（2026-06-12）**——027 表+cron 未建，属未来独立 feature | — |
 | traceability | object \| null | 追溯块（见下表）；满足"必须可追溯"硬要求 | 非成员仅含 degradeReason="out_of_scope" |
 
 **traceability 子对象**：

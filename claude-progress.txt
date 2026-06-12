@@ -190,3 +190,21 @@ F220-b 验收标准「DUOL live 实测量级」三前提（FMP key/DUOL∈watchl
   - 后端日志：无 ERROR，alembic migration 正常，startup complete
 注：生产 DB=backend/data/prod.db（DUOL 不在其 watchlist/pool，prod 上 DUOL 显示 '—' 属正常门控）。
 回滚镜像 :rollback-pre-f220b 保留备用。
+
+[2026-06-12] 收尾 F220：deprecate d/e → F220 done（全项目功能开发完成）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+用户裁决 deprecate F220-d/e，F220 收口为 done：
+  - F220-d（EPS 加速度）地基=正常化 EPS 序列，随正常化方案废弃，复活需从头重设计（GAAP EPS），属净新增非收尾
+  - F220-e（预期修正方向）独立可行但需 alembic 027 表+FMP analyst-estimates+weekly cron+repo/service/schema/前端，是完整新 feature（代码/表全未建）→ 如未来需要另起独立 feature
+
+features.json：sub_sprints F220-d/e design_needed→deprecated；存活集仅 F220-b=done → C1 满足 → F220 status/phase→done + completed_at=2026-06-12；清理重度陈旧 acceptance_criteria（11→5，反映实际交付 F220-b）+ notes（陈旧正常化架构描述→准确收口说明，C6 已自检无状态关键词）；_pipeline_status.development→done。
+
+下游文档同步（doc hygiene）：
+  - API-CONTRACT §fundamentals：epsAcceleration(d)/estimateRevision(e) 横幅+表行标 deprecated；frontmatter 更新
+  - DATA-MODEL §AnalystEstimateSnapshot(027) 加 deprecated 横幅（不建表）；DailyPayloadCache 注记澄清实际仅携 pFcfRaw/pFcfAdj；026/027 均不建，alembic head 停 025；frontmatter 更新
+
+✅ 全项目状态：60 done + 1 deprecated（F103），无 in_progress/未完成 feature。stock_portal v2.6 功能开发收口。
+F220-b 已 docker 上线（8001/8080）；回归基线干净（后端 1288 / 前端 353 全绿）。
+
+[下一步可选] 正式发版（project-commiter 打 tag v2.6.0 + CHANGELOG，跑 strict consistency-check 闸门 + 并入 main）。
