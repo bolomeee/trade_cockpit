@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-05-18
-last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Triggers 命名空间 2 endpoint + Namespace 汇总表 cockpit 总数 18 → 20)
+confirmed_at: 2026-06-10
+last_modified_by: system-design (F220 正常化 P/E 体系 v2.6 — §GET /fundamentals 扩展正常化字段 + traceability 子对象，向后兼容保留 priceToEarnings 作 raw；上一版 F218 Phase D 见 git history)
 ---
 
 # API-CONTRACT.md
@@ -440,9 +440,9 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
 ---
 
 ### GET /api/stocks/:ticker/fundamentals
-> Feature：F005 个股详情；F104 数据源迁移至 FMP
+> Feature：F005 个股详情；F104 数据源迁移至 FMP；F220 正常化 P/E 估值体系增强（v2.6）
 
-**用途**：获取基本面 TTM 数据（D034 起代理 FMP `/stable/ratios-ttm`）
+**用途**：获取基本面 TTM 数据（D034 起代理 FMP `/stable/ratios-ttm`）；F220 起对 watchlist+pool 成员**附加**正常化 P/E 估值体系（D104–D107）
 **认证**：不需要
 
 **路径参数**：`ticker` — 股票代码
@@ -489,6 +489,87 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
 **说明（F108 更新）**：
 - 任意 ticker 均可调用，无需在 watchlist 中（D047）
 - `sharesFloat` 仍仅对 watchlist active ticker 有值，非 watchlist / inactive → null（D054 不变）
+
+---
+
+**正常化 P/E 体系字段（F220 / v2.6 新增，向后兼容）**：
+
+> ⚠️ **部分 DEPRECATED（2026-06-10）**：F220-a/c 正常化方案放弃，P/E 改用 FMP raw `priceToEarningsRatioTTM`（即 `priceToEarnings`，F104 现状已透传，**就是当前 P/E 主值**）。以下字段**作废、不实现**：`normalizedPe / normalizedEps / normalizedTtmEarnings / traceability(全部子字段) / degradeReason 枚举 / normalizedPePercentile`。**保留**待评估（F220-b/d/e）：`pFcfRaw / pFcfAdj / sbcSensitiveFlag`(b) / `epsAcceleration`(d) / `estimateRevision`(e)。下方 F220 正常化字段定义仅作历史留档。详见 [验收记录](../验收/v2.6-F220-a1-acceptance.md)。
+
+> doc-first：本节为 F220 契约权威，先于代码。`priceToEarnings` **保留为 raw**（不替换，向后兼容 + 自洽检验对比），前端主位渲染 `normalizedPe`、raw 作副标。新增字段全部可选（默认 null）。**成员门控**：仅 ticker ∈ watchlist(active) 或 trend pool 才计算正常化字段；否则正常化字段 null + `traceability.degradeReason="out_of_scope"`，原始 TTM 指标（priceToEarnings/priceToSales/peg/roce/freeCashFlow 等）照常返回。新字段塞进同一 `daily_payload_cache`（endpoint="fundamentals"），无新 endpoint。
+
+**扩展成功响应（200，正常化成功示例，DUOL）**：
+```json
+{
+  "data": {
+    "ticker": "DUOL",
+    "priceToEarnings": 13.2,
+    "priceToSales": 18.5,
+    "peg": null,
+    "roce": 0.21,
+    "freeCashFlow": 320000000,
+    "marketCap": 11200000000,
+    "sharesFloat": 41000000,
+    "source": "fmp",
+    "updatedAt": "2026-06-10",
+
+    "normalizedPe": 28.4,
+    "normalizedEps": 9.1,
+    "normalizedTtmEarnings": 373000000,
+    "pFcfRaw": 19.8,
+    "pFcfAdj": 21.3,
+    "sbcSensitiveFlag": false,
+    "normalizedPePercentile": null,
+    "epsAcceleration": { "signal": "decelerating", "consecutiveQuarters": 3 },
+    "estimateRevision": { "direction": "up", "magnitude": 0.42, "dispersion": 1.10 },
+    "traceability": {
+      "currentPrice": 258.7,
+      "priceSource": "daily_bars",
+      "dilutedShares": 41000000,
+      "avgEffectiveTaxRate": 0.18,
+      "taxRateSourceQuarters": ["2025Q2", "2025Q1", "2024Q4", "2024Q3"],
+      "abnormalQuarters": [
+        { "label": "2025Q3", "gaapNi": 295000000, "nopat": 72000000, "deviatePct": 3.10, "abnormal": true, "usedEarnings": 72000000, "reason": "deviate_over_threshold" }
+      ],
+      "degradeReason": null
+    }
+  },
+  "message": "success"
+}
+```
+
+**新增字段语义**：
+
+| 字段 | 类型 | 来源 / 计算 | null 语义 |
+|------|------|------------|----------|
+| normalizedPe | number \| null | 当前价 ÷ 正常化 EPS（异常季用税后营业利润 NOPAT 替代 GAAP 净利润，**主锚**） | 季报<4 / 正常化EPS≤0 / 无可信税率种子 / 无当前价 / 非成员 → null（**绝不回退 raw**），原因见 traceability.degradeReason |
+| normalizedEps | number \| null | TTM Σ最近4季取用盈利 ÷ 最新季 Diluted 股本 | 同 normalizedPe |
+| normalizedTtmEarnings | number \| null | TTM 正常化盈利（Σ最近4季取用盈利，美元） | 同上 |
+| pFcfRaw | number \| null | 自算市值 ÷ FCF（FCF=ΣOCF+Σcapex，capex 多为负按符号加）；同行可比 | FCF ≤ 0 或缺数据 → null |
+| pFcfAdj | number \| null | 自算市值 ÷ (FCF−ΣSBC)；SBC 当真实股东成本，自洽检验 | FCF−SBC ≤ 0 或缺数据 → null |
+| sbcSensitiveFlag | boolean | 自洽红旗：`\|pFcfAdj − normalizedPe\| / normalizedPe > 0.40` → true | 任一为 null → false（不打旗） |
+| normalizedPePercentile | number \| null | **本轮恒 null**（F220-c 仅预埋时序，分位计算 = 未来 F220-f） | 恒 null |
+| epsAcceleration | object \| null | `{signal: "accelerating"\|"decelerating"\|"flat", consecutiveQuarters: int}`，正常化 EPS 序列二阶差分（F220-d） | <8 季正常化 EPS → null（不报错） |
+| estimateRevision | object \| null | `{direction: "up"\|"down"\|"flat", magnitude: number, dispersion: number}`，两快照 analyst EPS diff（F220-e） | 无快照 / 仅基线（单快照）→ null |
+| traceability | object \| null | 追溯块（见下表）；满足"必须可追溯"硬要求 | 非成员仅含 degradeReason="out_of_scope" |
+
+**traceability 子对象**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| currentPrice | number \| null | 计算用当前价 |
+| priceSource | string \| null | `"daily_bars"`（watchlist）/ `"fmp_eod"`（pool-非watchlist）/ null |
+| dilutedShares | number \| null | 最新季 weightedAverageShsOutDil（股本统一口径，市值自算也用它） |
+| avgEffectiveTaxRate | number \| null | 平均有效税率（**防循环**：仅取 incomeBeforeTax>0 且 0≤rate≤0.50 的正常季均值，D104） |
+| taxRateSourceQuarters | string[] | 税率来源季度标签（可追溯，畸高/畸低/越界季已剔除） |
+| abnormalQuarters | object[] | 异常季表：`{label, gaapNi, nopat, deviatePct, abnormal, usedEarnings, reason}` |
+| degradeReason | string \| null | 降级原因枚举：`"insufficient_quarters"` / `"negative_normalized_eps"` / `"no_tax_seed"` / `"no_price"` / `"out_of_scope"` / null（成功） |
+
+**说明（F220）**：
+- **绝不回退 raw**：正常化算不出时 normalizedPe=null（前端主位显示"—"+ degradeReason tooltip），原始 `priceToEarnings` 仍在但仅作副标/参考；原始 GAAP P/E 正是 F220 要规避的失真源
+- **市值自算口径（D105）**：pFcfRaw/Adj 与 sbcSensitiveFlag 用的市值 = `dilutedShares × currentPrice`（自算，与 normalizedPe 口径自洽）；schema 顶层 `marketCap` 仍保留 FMP key-metrics-ttm 值（口径分叉见 D105，自算市值仅用于 traceability 语义内）
+- **fail-open**：季报拉取失败/不足 → 正常化字段 null + degradeReason，endpoint 仍 200，原始 P/S/PEG/ROCE/FCF 照常（新功能不拖垮既有 widget）
+- 前端 `Fundamentals` 类型新增上述可选字段（与后端对齐，现有 `priceToEarnings` 等改为 `\| null`）
 
 **错误响应**：
 
@@ -2121,3 +2202,11 @@ last_modified_by: system-design (F218 Phase D — 新增 §Cockpit Repricing Tri
 - `backend/app/routers/cockpit/*` ⇄ `backend/app/routers/{watchlist,signals,stocks,news,...}/*` **零交叉 import**
 - `backend/app/services/cockpit/*` 可 import `backend/app/services/signal_engine.py` 中的**纯函数** MA/ATR utility（函数级复用允许），但不得 import `journal_service` / `watchlist_service` 等有状态服务
 - `frontend/src/cockpit/*` ⇄ `frontend/src/workbench/*` 零交叉 import（ESLint 规则 enforce）
+
+---
+
+## 跨服务契约（cross-service contracts）
+
+| 模块 | 文档 | 状态 | 说明 |
+|------|------|------|------|
+| Filing Events Tape | [`FILING-EVENTS-CONTRACT.md`](./FILING-EVENTS-CONTRACT.md) | proposed（2026-05-22） | edgar-reader 项目通过 `POST /api/filing-events` push SEC filing diff 摘要;stock_portal V1 仅 stub(202+log),V2 持久化 + GET endpoints。详见独立契约文档 |
