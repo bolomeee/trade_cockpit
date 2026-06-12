@@ -8,8 +8,24 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import DailyBar, Stock
+from app.models.cockpit_pool_cache import CockpitPoolCache
 from app.repositories.pullback_repository import PullbackRepository
 from app.services.signal_service import SignalService
+from app.services.stock_detail_service import _compute_p_fcf
+
+
+def _seed_pool(db: Session, ticker: str) -> None:
+    """F220-b: insert a trend-pool membership row (read by _is_pool_member)."""
+    db.add(CockpitPoolCache(ticker=ticker, rs_percentile=90.0))
+    db.commit()
+
+
+def _cf_q(ocf, capex, sbc=None, *, ocf_key="operatingCashFlow"):
+    """Build one FMP quarterly cash-flow row for P/FCF tests."""
+    q: dict = {ocf_key: ocf, "capitalExpenditure": capex}
+    if sbc is not None:
+        q["stockBasedCompensation"] = sbc
+    return q
 
 
 def _seed_stock(db: Session, ticker: str, is_active: bool = True) -> Stock:
@@ -676,3 +692,144 @@ def test_chart_fmp_error_not_cached(client: TestClient, fake_fmp) -> None:
     r2 = client.get("/api/stocks/ERRCH/chart")
     assert r2.status_code == 200
     assert len(fake_fmp.daily_bars_calls) == 1  # FMP called, not cache
+
+
+# ───────────────────────── F220-b: P/(FCF−SBC) 双版本 ─────────────────────────
+
+
+def test_compute_p_fcf_normal_four_quarters() -> None:
+    # OCF=100, capex=-30 → 70/quarter → FCF=280; SBC=10/quarter → 40
+    quarters = [_cf_q(100, -30, 10)] * 4
+    raw, adj = _compute_p_fcf(quarters, market_cap=700)
+    assert raw == pytest.approx(700 / 280)          # 2.5
+    assert adj == pytest.approx(700 / (280 - 40))   # 700/240
+
+
+def test_compute_p_fcf_capex_added_by_sign() -> None:
+    # capex must be added by its (negative) sign, not abs / double-negated.
+    # OCF=100, capex=-30 → FCF=70/quarter. abs would give 130 → FCF 520.
+    raw, _ = _compute_p_fcf([_cf_q(100, -30)] * 4, market_cap=280)
+    assert raw == pytest.approx(280 / 280)          # FCF=280 → 1.0, not 280/520
+
+
+def test_compute_p_fcf_nonpositive_fcf_and_adj_independent() -> None:
+    # FCF>0 but FCF−SBC<0 → raw has value, adj None (independent)
+    quarters = [_cf_q(20, -10, 25)] * 4             # FCF=40, SBC=100 → adj denom -60
+    raw, adj = _compute_p_fcf(quarters, market_cap=400)
+    assert raw == pytest.approx(400 / 40)           # 10.0
+    assert adj is None
+
+    # FCF≤0 → raw None (and adj None too)
+    raw2, adj2 = _compute_p_fcf([_cf_q(10, -20)] * 4, market_cap=400)  # FCF=-40
+    assert raw2 is None
+    assert adj2 is None
+
+
+def test_compute_p_fcf_degrades_on_insufficient_or_missing() -> None:
+    # < 4 quarters → (None, None)
+    assert _compute_p_fcf([_cf_q(100, -30)] * 3, market_cap=700) == (None, None)
+    # a quarter missing capex → (None, None)
+    bad = [_cf_q(100, -30)] * 3 + [{"operatingCashFlow": 100}]
+    assert _compute_p_fcf(bad, market_cap=700) == (None, None)
+    # SBC missing → treated as 0 → adj == raw
+    raw, adj = _compute_p_fcf([_cf_q(100, -30)] * 4, market_cap=700)
+    assert raw == pytest.approx(2.5)
+    assert adj == pytest.approx(2.5)
+
+
+def test_compute_p_fcf_ocf_fallback_field() -> None:
+    # operatingCashFlow absent → fall back to netCashProvidedByOperatingActivities
+    quarters = [_cf_q(100, -30, ocf_key="netCashProvidedByOperatingActivities")] * 4
+    raw, _ = _compute_p_fcf(quarters, market_cap=700)
+    assert raw == pytest.approx(700 / 280)
+
+
+def test_fundamentals_non_member_skips_cash_flow(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    # NMBR: not watchlist, not pool → pFcf null, cash flow never pulled
+    fake_fmp.ratios_results["NMBR"] = {"priceToEarningsRatioTTM": 18.0}
+    fake_fmp.key_metrics_results["NMBR"] = {"marketCap": 2_000_000_000}
+    fake_fmp.cash_flow_results["NMBR"] = [_cf_q(100, -30, 10)] * 4  # present but ignored
+
+    data = client.get("/api/stocks/NMBR/fundamentals").json()["data"]
+    assert data["pFcfRaw"] is None
+    assert data["pFcfAdj"] is None
+    assert fake_fmp.cash_flow_calls == []           # gating short-circuits
+    assert data["priceToEarnings"] == 18.0          # raw TTM metrics intact
+    assert data["marketCap"] == 2_000_000_000
+
+
+def test_fundamentals_pool_member_computes_p_fcf(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    # POOL: not in watchlist, but a trend-pool member → cash flow pulled
+    _seed_pool(db_session, "POOL")
+    fake_fmp.key_metrics_results["POOL"] = {"marketCap": 700}
+    fake_fmp.cash_flow_results["POOL"] = [_cf_q(100, -30, 10)] * 4
+
+    resp = client.get("/api/stocks/POOL/fundamentals")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["pFcfRaw"] == pytest.approx(700 / 280)
+    assert data["pFcfAdj"] == pytest.approx(700 / 240)
+    assert fake_fmp.cash_flow_calls == [("POOL", 4)]
+
+
+def test_fundamentals_fail_open_on_cash_flow_error(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    # watchlist member but cash flow raises → pFcf null, endpoint still 200
+    _seed_stock(db_session, "FAILX")
+    fake_fmp.ratios_results["FAILX"] = {"priceToSalesRatioTTM": 9.0}
+    fake_fmp.key_metrics_results["FAILX"] = {"marketCap": 1_000_000_000}
+    fake_fmp.cash_flow_exc = httpx.HTTPError("boom")
+
+    resp = client.get("/api/stocks/FAILX/fundamentals")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["pFcfRaw"] is None
+    assert data["pFcfAdj"] is None
+    assert data["priceToSales"] == 9.0              # raw metrics unaffected
+    assert data["marketCap"] == 1_000_000_000
+
+
+def test_fundamentals_fail_open_on_insufficient_quarters(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    _seed_stock(db_session, "SHRTQ")
+    fake_fmp.key_metrics_results["SHRTQ"] = {"marketCap": 700}
+    fake_fmp.cash_flow_results["SHRTQ"] = [_cf_q(100, -30, 10)] * 3  # only 3 quarters
+
+    data = client.get("/api/stocks/SHRTQ/fundamentals").json()["data"]
+    assert data["pFcfRaw"] is None
+    assert data["pFcfAdj"] is None
+
+
+def test_fundamentals_member_without_market_cap(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    # member but no marketCap → pFcf null, no division, cash flow not pulled
+    _seed_stock(db_session, "NOMC")
+    fake_fmp.ratios_results["NOMC"] = {"priceToEarningsRatioTTM": 12.0}
+    fake_fmp.key_metrics_results["NOMC"] = {"returnOnCapitalEmployedTTM": 0.3}
+    fake_fmp.cash_flow_results["NOMC"] = [_cf_q(100, -30, 10)] * 4
+
+    data = client.get("/api/stocks/NOMC/fundamentals").json()["data"]
+    assert data["marketCap"] is None
+    assert data["pFcfRaw"] is None
+    assert data["pFcfAdj"] is None
+    assert fake_fmp.cash_flow_calls == []           # short-circuit on None market_cap
+    assert data["priceToEarnings"] == 12.0
+
+
+def test_fundamentals_response_has_camelcase_p_fcf_keys(
+    client: TestClient, db_session: Session, fake_fmp
+) -> None:
+    _seed_stock(db_session, "CAML")
+    fake_fmp.key_metrics_results["CAML"] = {"marketCap": 700}
+    fake_fmp.cash_flow_results["CAML"] = [_cf_q(100, -30, 10)] * 4
+
+    data = client.get("/api/stocks/CAML/fundamentals").json()["data"]
+    assert "pFcfRaw" in data and "pFcfAdj" in data
+    assert "sbcSensitiveFlag" not in data           # 砍掉，绝不出现

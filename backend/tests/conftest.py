@@ -53,6 +53,11 @@ class FakeFMP:
         self.shares_float_calls: list[str] = []
         self.shares_float_exc: Exception | None = None
 
+        # F220-b: FMP /stable/cash-flow-statement quarterly (P/FCF dual version)
+        self.cash_flow_results: dict[str, list[dict[str, Any]]] = {}
+        self.cash_flow_calls: list[tuple[str, int]] = []
+        self.cash_flow_exc: Exception | None = None
+
         # F105: screener universe + MA150 series/fallback
         self.screener_universe_result: list[dict[str, Any]] = []
         self.screener_universe_calls: int = 0
@@ -104,6 +109,14 @@ class FakeFMP:
         if self.shares_float_exc is not None:
             raise self.shares_float_exc
         return self.shares_float_results.get(symbol)
+
+    def get_cash_flow_quarterly(
+        self, symbol: str, limit: int = 8
+    ) -> list[dict[str, Any]]:
+        self.cash_flow_calls.append((symbol, limit))
+        if self.cash_flow_exc is not None:
+            raise self.cash_flow_exc
+        return list(self.cash_flow_results.get(symbol, []))
 
     def get_screener_universe(
         self,

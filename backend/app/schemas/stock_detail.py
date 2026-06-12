@@ -53,5 +53,7 @@ class Fundamentals(CamelModel):
     free_cash_flow: float | None = None
     market_cap: float | None = None
     shares_float: int | None = None
+    p_fcf_raw: float | None = None  # alias pFcfRaw (F220-b)
+    p_fcf_adj: float | None = None  # alias pFcfAdj (F220-b)
     source: str
     updated_at: date
