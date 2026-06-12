@@ -145,3 +145,15 @@ consistency-check (interactive) C1/C4/C5 全清：父 F220 正确保持 in_progr
 phase：F220-b testing→needs_review。
 
 [下一步] acceptance skill：DUOL（需 ∈ watchlist 或 pool）live 实测 pFcfAdj 量级合理 → done。
+
+[2026-06-12] acceptance：F220-b 部分验收（live 待用户部署环境）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step -1 consistency-check 入口闸 C1/C2/C5 全清（无 🔴）。
+Step 0 冒烟探针无法执行：本环境无 FMP key → fundamentals 端点 502，FundamentalsCard 落 ErrorState。
+F220-b 验收标准「DUOL live 实测量级」三前提（FMP key/DUOL∈watchlist∪pool/实时现金流）本环境不具备。
+
+用户决定（2026-06-12）：保持 needs_review，由用户在带 FMP key 的部署环境 live 验收后再标 done。
+已生成 docs/验收/v2.6-F220-b-acceptance.md（业务/视觉自动化证据 ✅ 全绿 + L1–L5 用户 live 清单）。
+
+[下一步] 用户部署环境跑 L1–L5（DUOL pFcfAdj 量级合理）→ 全过通知 Claude 标 done；L2 异常 → feature-dev 类型 D。
