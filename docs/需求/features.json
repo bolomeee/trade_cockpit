@@ -5030,7 +5030,7 @@
       "sub_sprints": {
         "F220-a1": "deprecated",
         "F220-a2": "deprecated",
-        "F220-b": "in_progress",
+        "F220-b": "needs_review",
         "F220-c": "deprecated",
         "F220-d": "design_needed",
         "F220-e": "design_needed"
@@ -5141,6 +5141,13 @@
           "phase": "contract_agreed",
           "session": "feature-dev A-1 Contract 协商（F220-b P/(FCF−SBC) 双版本）",
           "changes": "F220-b Sprint Contract 起草并 confirmed（docs/开发/sprint-contracts/F220-b-contract.md）。上游正常化 P/E（F220-a1/a2/c）2026-06-10 已 deprecated，斩断原自洽红旗的锚（sbcSensitiveFlag=|pFcfAdj−normalizedPe|/normalizedPe>0.40，normalizedPe 恒 null → 红旗永不亮）。A-1 前置 AskUserQuestion 三项重定义用户拍板：①砍掉 sbcSensitiveFlag（不进 schema/契约）；②P/FCF 市值分子改用 FMP key-metrics-ttm marketCap（推翻 D105 自算 Diluted×price 口径 —— 自洽对比需求随 normalizedPe 废弃消失，且 FMP marketCap 极简 + ADR(JPY/DKK) 货币自动正确）；③pFcf 成员门控 watchlist(active)∪pool（D106 落地，pool 直读 CockpitPoolCache model 不 import cockpit）。最终范围 = 纯现金流交叉视角双版本 pFcfRaw=marketCap/Σ4季(OCF+capex)、pFcfAdj=marketCap/(FCF−ΣSBC)，SBC 当真实股东成本；无红旗/无新表/无新 endpoint/不改 fmp_client（复用 F218 get_cash_flow_quarterly）。6 文件（stock_detail_service 编排+_compute_p_fcf 内联纯函数+_is_pool_member / schema +pFcfRaw/pFcfAdj / types / FundamentalsCard 双版本行 / conftest FakeFMP 桩 / test_stock_detail），6-file 内无需例外。Generator step 0 doc-first：API-CONTRACT 移除 sbcSensitiveFlag+市值口径改 FMP+FCF 口径说明 / DECISIONS 修订 D105 / DATA-MODEL pFcf 并入 payload 注记。sub_sprints F220-b design_needed→contract_agreed，active_sprint=F220-b。按 skill A-1 铁律停在本 session，Generator 在新 session（contract_agreed→in_progress）。"
+        },
+        {
+          "date": "2026-06-12",
+          "subtask": "F220-b",
+          "phase": "needs_review",
+          "session": "feature-dev A-2 Generator + A-3 Evaluator（F220-b P/(FCF−SBC) 双版本）",
+          "changes": "A-2 pre-flight 全过（checksum 4 项匹配 8dbff1fb / contract confirmed / phase contract_agreed）。开局异常处置：API-CONTRACT.md 工作区存在上游 F220 system-design v2.6 漏 commit 块（normalizedPe/traceability/pFcf 字段块 + 部分 deprecated 横幅，从未 commit），用户裁决『先独立补提再叠 doc-first』→ commit 84f9d02（provenance 归 system-design）。step 0 doc-first 三文档：API-CONTRACT §fundamentals 加『F220-b 落地修订』权威子节（激活 pFcfRaw/Adj、砍 sbcSensitiveFlag、市值改 FMP marketCap、成员门控 D106、FCF=Σ4季(OCF+capex)/Adj=−ΣSBC、fail-open）+ 表中 pFcf 行市值口径改 FMP + sbcSensitiveFlag 行标砍 + D105 自算说明划除；DECISIONS D105 加推翻横幅、D106 pFcf 落地+坐实待查-1（直读 CockpitPoolCache model）；DATA-MODEL §DailyPayloadCache 补 F220-b 注记。实现：stock_detail_service +_compute_p_fcf 模块级纯函数（capex 按符号加、OCF 缺回退 netCashProvidedByOperatingActivities、<4季/缺值→None、SBC 缺按0）+_is_pool_member（SQLAlchemy 2.0 select 直读 CockpitPoolCache）+ get_fundamentals 成员门控编排（is_member=(stock active)∪pool，market_cap None 或非成员短路不拉现金流，try/except httpx.HTTPError fail-open）；schema +p_fcf_raw/p_fcf_adj；conftest FakeFMP +get_cash_flow_quarterly 桩(+cash_flow_exc)；test_stock_detail +11 用例（5 单测 capex符号/降级/OCF回退 + 6 集成 门控/pool-only/fail-open×2/marketCap缺/camelCase+sbcSensitiveFlag 不出现）；前端 types +pFcfRaw?/pFcfAdj?、FundamentalsCard 6→8 指标（2 栏各 4，右栏聚现金流簇 FCF/P/FCF/P/FCF(−SBC)/Float，null→'—'）。Evaluator：test_stock_detail 46 passed（35 baseline+11 新）；全量后端 1277 passed / 11 失败均预先存在（baseline conftest 复现，与 F220-b 无关，涉 ai_schemas/earnings/fmp_client/regime/schema/alembic）；前端 vitest 331 passed / 22 失败均预先存在（失败测试零引用本次文件，CockpitRegistry baseline 复现）；E2E #11 因本环境无 FMP key（fundamentals 整体 502，非 F220-b 限制）改用一次性 render 验证两行渲染+null→'—'+无报错通过即删，live 实测留 acceptance 期 DUOL。严格 6 代码文件 = Contract §2，sbcSensitiveFlag 代码零残留。"
         }
       ],
       "notes": "架构守约：正常化计算模块放 backend/app/services/normalized_valuation.py（workbench 侧），照 cockpit/pool_helpers.py 纯函数模式（_to_float 容错 + None 传播）重写但禁止 import（依赖方向 routers→services→repositories→models，禁 workbench import cockpit）。主锚=正常化P/E（去噪、规避 NTM 主观性）；交叉验证=P/(FCF−SBC)（SBC 当真实股东成本）；两者自洽性本身是信号（gap>40% 红旗）。⚠️ 防循环错误：平均有效税率『正常季』判定用税率自身边界（IBT>0 且 0≤rate≤0.50）独立筛种子，绝不复用净利润异常判定。覆盖仅 watchlist(active)+trend pool 成员门控 + 同日缓存每票每日一次。降级显式不可用 + 原因 tooltip，绝不回退 raw（原始 GAAP P/E 正是要规避的失真源）。⑤历史分位计算后置 F220-f。",

@@ -124,3 +124,24 @@ phase：sub_sprints.F220-b contract_agreed → in_progress。
   - DATA-MODEL §DailyPayloadCache：补 F220-b 落地注记（仅新增 pFcfRaw/Adj、无新表、sbcSensitiveFlag 砍）
 
 [下一步] Generator §1.1 后端：_compute_p_fcf 纯函数 + _is_pool_member + get_fundamentals 编排。
+
+[2026-06-12] feature-dev A-3 Evaluator：F220-b → needs_review（全绿）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Evaluator 全部通过：
+  - test_stock_detail.py 46 passed（35 baseline + 11 新：5 单测 + 6 集成）
+  - _compute_p_fcf 纯函数：capex 符号/FCF≤0&FCF−SBC≤0 互不影响/<4季降级/OCF 回退 全守住
+  - get_fundamentals：成员门控（非成员不调 get_cash_flow_quarterly）/pool-only 走编排/fail-open(HTTPError+不足4季)/marketCap None 短路/camelCase pFcfRaw·pFcfAdj
+  - sbcSensitiveFlag 代码零残留（grep backend/app + frontend/src 空）
+  - 严格 6 代码文件 = Contract §2
+
+回归（标注预先存在，与 F220-b 无关）：
+  - 后端全量 1277 passed / 11 failed —— baseline conftest 复现，涉 ai_schemas/earnings/fmp_client/regime/schema/alembic，早于本 session
+  - 前端 vitest 331 passed / 22 failed —— 失败测试零引用本次文件，CockpitRegistry 等 baseline 复现
+
+E2E #11：本环境无 FMP key → fundamentals 整体 502（非 F220-b 限制），改用一次性 render 验证（两行渲染 + 值格式化 + null→'—' + 无报错）通过即删；live 实测留 acceptance 期 DUOL。
+
+consistency-check (interactive) C1/C4/C5 全清：父 F220 正确保持 in_progress（未误升 done）。
+phase：F220-b testing→needs_review。
+
+[下一步] acceptance skill：DUOL（需 ∈ watchlist 或 pool）live 实测 pFcfAdj 量级合理 → done。
