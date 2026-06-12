@@ -109,12 +109,12 @@ describe('S4 – ticker NVDA → loading → renders all decision fields', () =>
     useCockpitStore.setState({ selectedTicker: 'NVDA' })
     renderWidget()
 
-    // Header should show ticker immediately
-    expect(screen.getByText(/Decision · NVDA/)).toBeInTheDocument()
+    // Header should show ticker immediately (header prefix "Decision · " removed)
+    expect(screen.getByText(/^NVDA/)).toBeInTheDocument()
 
     // Wait for data to render
     await waitFor(() => {
-      expect(screen.getByText(/Decision.*BREAKOUT.*A/)).toBeInTheDocument()
+      expect(screen.getByText(/NVDA.*BREAKOUT.*A/)).toBeInTheDocument()
     })
 
     // Decision Card fields

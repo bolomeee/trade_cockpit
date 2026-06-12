@@ -14,7 +14,7 @@ describe('S11 – CockpitRegistry manifest', () => {
     expect(manifest.title).toBe('Market Regime')
     expect(manifest.component).toBe(MarketRegimeWidget)
     expect(manifest.category).toBe('regime')
-    expect(manifest.defaultLayout).toMatchObject({ x: 0, y: 0, w: 4, h: 8, minW: 3, minH: 4 })
+    expect(manifest.defaultLayout).toMatchObject({ x: 0, y: 0, w: 12, h: 8, minW: 3, minH: 4 })
   })
 
   it('cockpit.placeholder is NOT in registry', () => {
@@ -406,7 +406,7 @@ describe('S14 – AI Market Notes integration', () => {
     expect(refreshBtn).toBeDisabled()
   })
 
-  it('S14.4: successful AI fetch → Refresh button immediately disabled (1h cooldown)', async () => {
+  it('S14.4: successful AI fetch → Refresh button stays enabled (cooldown removed)', async () => {
     vi.stubGlobal(
       'fetch',
       makeRoutedFetch({ '/cockpit/regime': REGIME_OK_FETCH, '/ai/': AI_SUCCESS_FETCH }),
@@ -414,7 +414,7 @@ describe('S14 – AI Market Notes integration', () => {
     renderWidget()
     await screen.findByText('Market holding constructive posture')
     const refreshBtn = screen.getByRole('button', { name: /Refresh/ })
-    expect(refreshBtn).toBeDisabled()
+    expect(refreshBtn).not.toBeDisabled()
   })
 
   it('S14.5: Refresh click sends noCache: true in request body', async () => {

@@ -323,8 +323,8 @@ describe('T10 – Registry', () => {
     expect(COCKPIT_WIDGET_REGISTRY['cockpit.pool-builder'].category).toBe('pool')
     expect(COCKPIT_WIDGET_REGISTRY['cockpit.pool-builder'].defaultLayout).toMatchObject({
       x: 0,
-      y: 22,
-      w: 12,
+      y: 8,
+      w: 6,
     })
   })
 

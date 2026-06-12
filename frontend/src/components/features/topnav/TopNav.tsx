@@ -190,7 +190,7 @@ export function TopNav() {
           {showCockpitReset && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+                <Button variant="outline" size="sm" aria-label="用户设置" onClick={() => setSettingsOpen(true)}>
                   <Settings />
                 </Button>
               </TooltipTrigger>

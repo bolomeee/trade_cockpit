@@ -12,17 +12,32 @@ import type { NewsArticle } from '@/types/news'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const { mockCallAiTask, mockUseNewsArticles, mockSetSelectedSymbol } = vi.hoisted(() => ({
-  mockCallAiTask: vi.fn(),
-  mockUseNewsArticles: vi.fn(),
-  mockSetSelectedSymbol: vi.fn(),
-}))
+const { mockCallAiTask, mockUseNewsArticles, mockSetSelectedSymbol, mockSetOpen, openState } =
+  vi.hoisted(() => ({
+    mockCallAiTask: vi.fn(),
+    mockUseNewsArticles: vi.fn(),
+    mockSetSelectedSymbol: vi.fn(),
+    mockSetOpen: vi.fn(),
+    openState: { value: true },
+  }))
 
 vi.mock('@/cockpit/lib/api/aiApi', () => ({ callAiTask: mockCallAiTask }))
 vi.mock('@/hooks/useNewsArticles', () => ({ useNewsArticles: mockUseNewsArticles }))
+// Component is store-driven (open state lives in the store; the trigger button
+// now lives in TopNav). Drive `aiNewsSummaryOpen` via openState.value per test.
 vi.mock('@/store/useAppStore', () => ({
-  useAppStore: (selector: (s: { setSelectedSymbol: typeof mockSetSelectedSymbol }) => unknown) =>
-    selector({ setSelectedSymbol: mockSetSelectedSymbol }),
+  useAppStore: (
+    selector: (s: {
+      aiNewsSummaryOpen: boolean
+      setAiNewsSummaryOpen: typeof mockSetOpen
+      setSelectedSymbol: typeof mockSetSelectedSymbol
+    }) => unknown,
+  ) =>
+    selector({
+      aiNewsSummaryOpen: openState.value,
+      setAiNewsSummaryOpen: mockSetOpen,
+      setSelectedSymbol: mockSetSelectedSymbol,
+    }),
 }))
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -84,27 +99,28 @@ beforeEach(() => {
   mockCallAiTask.mockReset()
   mockUseNewsArticles.mockReset()
   mockSetSelectedSymbol.mockReset()
+  mockSetOpen.mockReset()
+  openState.value = true
 })
 
 // ── Component tests C1-C8 ─────────────────────────────────────────────────────
 
-describe('AiNewsSummaryBar — component', () => {
-  it('C1: renders trigger button when closed', () => {
+describe('AiNewsSummaryBar — component (store-driven; trigger lives in TopNav)', () => {
+  it('C1: renders nothing when closed (aiNewsSummaryOpen=false)', () => {
+    openState.value = false
     mockUseNewsArticles.mockReturnValue({ data: MOCK_ARTICLES })
     mockCallAiTask.mockReturnValue(new Promise(() => {}))
 
-    render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
+    const { container } = render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
 
-    expect(screen.getByTestId('ai-news-summary-trigger')).toBeInTheDocument()
-    expect(screen.queryByTestId('ai-news-summary-loading')).toBeNull()
+    expect(container).toBeEmptyDOMElement()
   })
 
-  it('C2: renders skeleton during loading after trigger click', async () => {
+  it('C2: open → renders skeleton while summarizing', async () => {
     mockUseNewsArticles.mockReturnValue({ data: MOCK_ARTICLES })
     mockCallAiTask.mockReturnValue(new Promise(() => {})) // never resolves
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-skeleton-summary')).toBeInTheDocument(),
@@ -117,7 +133,6 @@ describe('AiNewsSummaryBar — component', () => {
     mockCallAiTask.mockResolvedValue(MOCK_SUCCESS_RESPONSE)
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-result')).toBeInTheDocument(),
@@ -139,7 +154,6 @@ describe('AiNewsSummaryBar — component', () => {
     })
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-result')).toBeInTheDocument(),
@@ -156,7 +170,6 @@ describe('AiNewsSummaryBar — component', () => {
     })
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-result')).toBeInTheDocument(),
@@ -164,20 +177,20 @@ describe('AiNewsSummaryBar — component', () => {
     expect(screen.queryByTestId('ai-news-summary-tickers')).toBeNull()
   })
 
-  it('C6: error 502 → shows "AI 暂不可用" + close returns to trigger', async () => {
+  it('C6: error 502 → shows "AI 暂不可用" + close calls setAiNewsSummaryOpen(false)', async () => {
     mockUseNewsArticles.mockReturnValue({ data: MOCK_ARTICLES })
     mockCallAiTask.mockRejectedValue(new ApiError('UNKNOWN', 'server error', 502))
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-error')).toBeInTheDocument(),
     )
     expect(screen.getByText('AI 暂不可用')).toBeInTheDocument()
 
+    // Close now delegates to the store (trigger lives in TopNav)
     fireEvent.click(screen.getByTestId('ai-news-summary-error-close'))
-    expect(screen.getByTestId('ai-news-summary-trigger')).toBeInTheDocument()
+    expect(mockSetOpen).toHaveBeenCalledWith(false)
   })
 
   it('C7: error 409 → shows "AI 输出被拦截" guardrail banner', async () => {
@@ -185,7 +198,6 @@ describe('AiNewsSummaryBar — component', () => {
     mockCallAiTask.mockRejectedValue(new ApiError('GUARDRAIL_VIOLATION', 'banned phrase', 409))
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
-    fireEvent.click(screen.getByTestId('ai-news-summary-trigger'))
 
     await waitFor(() =>
       expect(screen.getByTestId('ai-news-summary-guardrail-error')).toBeInTheDocument(),
@@ -193,14 +205,14 @@ describe('AiNewsSummaryBar — component', () => {
     expect(screen.getByText('AI 输出被拦截')).toBeInTheDocument()
   })
 
-  it('C8: articles empty → trigger disabled with title="暂无 news"', () => {
+  it('C8: open but articles empty → no AI call, nothing rendered', () => {
     mockUseNewsArticles.mockReturnValue({ data: [] })
 
     render(<AiNewsSummaryBar />, { wrapper: makeWrapper() })
 
-    const trigger = screen.getByTestId('ai-news-summary-trigger')
-    expect(trigger).toBeDisabled()
-    expect(trigger).toHaveAttribute('title', '暂无 news')
+    expect(mockCallAiTask).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('ai-news-summary-result')).toBeNull()
+    expect(screen.queryByTestId('ai-news-summary-skeleton-summary')).toBeNull()
   })
 })
 

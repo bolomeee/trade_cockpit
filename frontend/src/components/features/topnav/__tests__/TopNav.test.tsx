@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { TopNav } from '../TopNav'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -38,9 +39,11 @@ function renderAt(path: string) {
   )
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <TopNav />
-      </MemoryRouter>
+      <TooltipProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <TopNav />
+        </MemoryRouter>
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 }
@@ -56,26 +59,27 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('S12 – gear button visibility by route', () => {
+  // Gear is now an icon-only button labelled via aria-label '用户设置' (F203-d → tooltip).
   it('renders Settings button on /cockpit route', () => {
     renderAt('/cockpit')
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '用户设置' })).toBeInTheDocument()
   })
 
   it('does NOT render Settings on / route', () => {
     renderAt('/')
-    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '用户设置' })).not.toBeInTheDocument()
   })
 
   it('does NOT render Settings on /journal route', () => {
     renderAt('/journal')
-    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '用户设置' })).not.toBeInTheDocument()
   })
 })
 
 describe('S13 – settings dialog open/close via TopNav', () => {
   it('clicking Settings opens the dialog', async () => {
     renderAt('/cockpit')
-    fireEvent.click(screen.getByText('Settings'))
+    fireEvent.click(screen.getByRole('button', { name: '用户设置' }))
     await waitFor(() => {
       expect(screen.getByText('User Settings')).toBeInTheDocument()
     })
@@ -83,7 +87,7 @@ describe('S13 – settings dialog open/close via TopNav', () => {
 
   it('clicking Cancel in dialog closes it', async () => {
     renderAt('/cockpit')
-    fireEvent.click(screen.getByText('Settings'))
+    fireEvent.click(screen.getByRole('button', { name: '用户设置' }))
     await waitFor(() => screen.getByText('Cancel'))
     fireEvent.click(screen.getByText('Cancel'))
     await waitFor(() => {

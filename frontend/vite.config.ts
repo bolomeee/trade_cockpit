@@ -20,5 +20,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // e2e/ is Playwright's (testDir in playwright.config.ts); keep vitest out of it.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
   },
 })
