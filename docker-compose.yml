@@ -7,6 +7,8 @@ services:
       - DATABASE_URL=sqlite:////app/data/prod.db
       - POLYGON_API_KEY=${POLYGON_API_KEY}
       - FMP_API_KEY=${FMP_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_TASK_OVERRIDES_JSON=${AI_TASK_OVERRIDES_JSON}
     volumes:
       - ./backend/data:/app/data
     ports:
