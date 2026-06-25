@@ -13,6 +13,8 @@ import {
 } from 'lightweight-charts'
 import type { ChartBar, ChartData } from '@/types/stockDetail'
 import { formatPercent } from '@/lib/format'
+import { useThemeStore } from '@/store/useThemeStore'
+import { readCssColor as readToken } from '@/lib/cssColor'
 
 interface PriceChartProps {
   data: ChartData
@@ -24,17 +26,10 @@ function toUtcTimestamp(dateStr: string): UTCTimestamp {
   return (Date.parse(`${dateStr}T00:00:00Z`) / 1000) as UTCTimestamp
 }
 
-function readToken(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  const v = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim()
-  return v || fallback
-}
-
 export function PriceChart({ data }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
+  const theme = useThemeStore((s) => s.theme)
 
   useEffect(() => {
     const container = containerRef.current
@@ -223,7 +218,8 @@ export function PriceChart({ data }: PriceChartProps) {
       hideTooltip()
       chart.remove()
     }
-  }, [data])
+    // theme: rebuild so layout/series colors re-read the (now dark) tokens
+  }, [data, theme])
 
   return (
     <div

@@ -10,6 +10,8 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useCockpitStore } from '@/store/cockpitStore'
+import { useThemeStore } from '@/store/useThemeStore'
+import { readCssColor as readToken } from '@/lib/cssColor'
 import { getCockpitWeeklyChart } from '../lib/api/cockpitWeeklyChartApi'
 import { STAGE_LABELS, STAGE_BG_TOKENS, STAGE_BG_FALLBACKS } from '../lib/weeklyStageTokens'
 
@@ -28,17 +30,13 @@ const MA_FALLBACKS: Record<string, string> = {
   '40': '#717182',
 }
 
-function readToken(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-}
-
 function toTs(date: string): UTCTimestamp {
   return (Date.parse(`${date}T00:00:00Z`) / 1000) as UTCTimestamp
 }
 
 export function WeeklyStageChartWidget() {
   const ticker = useCockpitStore((s) => s.selectedTicker)
+  const theme = useThemeStore((s) => s.theme)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   const chartQuery = useQuery({
@@ -140,7 +138,8 @@ export function WeeklyStageChartWidget() {
       observer.disconnect()
       chart.remove()
     }
-  }, [chartQuery.data])
+    // theme: rebuild so layout/series colors re-read the (now dark) tokens
+  }, [chartQuery.data, theme])
 
   if (!ticker) {
     return (

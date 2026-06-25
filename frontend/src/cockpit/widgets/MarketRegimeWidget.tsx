@@ -282,7 +282,7 @@ function SectorCell({ sector, onClick }: { sector: RegimeSector; onClick: () => 
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: 'var(--color-primary)',
-            color: 'var(--color-text-on-dark)',
+            color: 'var(--primary-foreground)',
             padding: '4px 8px',
             borderRadius: '4px',
             fontSize: '11px',

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { TopNav } from '../TopNav'
+import { useThemeStore } from '@/store/useThemeStore'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -93,5 +94,26 @@ describe('S13 – settings dialog open/close via TopNav', () => {
     await waitFor(() => {
       expect(screen.queryByText('User Settings')).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('dark mode toggle', () => {
+  beforeEach(() => {
+    useThemeStore.setState({ theme: 'light' })
+  })
+
+  it.each(['/', '/cockpit', '/journal', '/news', '/logs'])(
+    'renders the theme toggle on %s (all routes)',
+    (path) => {
+      renderAt(path)
+      expect(screen.getByRole('button', { name: '切换到深色模式' })).toBeInTheDocument()
+    },
+  )
+
+  it('clicking toggles light -> dark and swaps the icon/label', () => {
+    renderAt('/')
+    fireEvent.click(screen.getByRole('button', { name: '切换到深色模式' }))
+    expect(useThemeStore.getState().theme).toBe('dark')
+    expect(screen.getByRole('button', { name: '切换到浅色模式' })).toBeInTheDocument()
   })
 })

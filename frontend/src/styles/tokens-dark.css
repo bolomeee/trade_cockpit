@@ -1,0 +1,56 @@
+/* ============================================================
+   设计 token 层的暗色覆盖。
+   tokens.css 是生成文件（请勿编辑），本文件补它缺的 .dark 值。
+   中性/表面/文字/边框尽量 alias 到 shadcn 暗色变量（见 index.css 的 .dark），
+   使两套颜色层在暗色下保持一致、只有一个真源。
+   饱和语义色（signal / action / log / regime / change / chart-line）有意不覆盖
+   —— 它们在暗底上可读，且与 DATA-MODEL 枚举绑定。
+   在 index.css 中紧跟 tokens.css 之后导入。
+   ============================================================ */
+
+/* widget 拖拽把手条是 tokens.css 没有的 app 级 token，light 值在此定义（必须早于
+   下面的 .dark，且不要再在 index.css :root 里重复，否则源序会盖掉 .dark 覆盖）。 */
+:root {
+  --color-widget-header: #ebf2fa;
+}
+
+.dark {
+  /* 表面 / 文字 / 边框：alias shadcn 暗色 */
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-input-background: var(--muted);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+
+  /* 手挑（无干净 shadcn 对应） */
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-text-muted: #9ca3af; /* gray-400，暗底可读 */
+  --color-text-placeholder: #6b7280; /* gray-500，比 muted 更弱 */
+
+  /* 导航 */
+  --color-nav-active: var(--foreground);
+  --color-nav-inactive: var(--muted-foreground);
+  --color-nav-hover: var(--foreground);
+
+  /* 表格 */
+  --color-table-row-hover: rgba(255, 255, 255, 0.05);
+  --color-table-row-alt: rgba(255, 255, 255, 0.025);
+  --color-table-header-bg: var(--card);
+  --color-table-border: rgba(255, 255, 255, 0.08);
+
+  /* 遮罩 */
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.6);
+
+  /* Cockpit Action List 三栏底色：light 是 4–6% 白底 rgba，暗底几乎不可见，提到 ~12–14% 同色调 */
+  --color-action-must-bg: rgba(239, 68, 68, 0.14);
+  --color-action-monitor-bg: rgba(245, 158, 11, 0.14);
+  --color-action-noaction-bg: rgba(16, 185, 129, 0.12);
+
+  /* widget 拖拽把手条（light 值在本文件 :root，暗色略提亮以区分卡片） */
+  --color-widget-header: var(--muted);
+}

@@ -12,6 +12,8 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { useCockpitStore } from '@/store/cockpitStore'
+import { useThemeStore } from '@/store/useThemeStore'
+import { readCssColor as readToken } from '@/lib/cssColor'
 import { getCockpitChart } from '../lib/api/cockpitChartApi'
 import { getCockpitDecision } from '../lib/api/cockpitDecisionApi'
 
@@ -36,17 +38,13 @@ const MA_FALLBACKS: Record<string, string> = {
   '200': '#717182',
 }
 
-function readToken(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-}
-
 function toTs(date: string): UTCTimestamp {
   return (Date.parse(`${date}T00:00:00Z`) / 1000) as UTCTimestamp
 }
 
 export function CockpitChartWidget() {
   const ticker = useCockpitStore((s) => s.selectedTicker)
+  const theme = useThemeStore((s) => s.theme)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
@@ -192,7 +190,8 @@ export function CockpitChartWidget() {
       chartRef.current = null
       chart.remove()
     }
-  }, [chartQuery.data])
+    // theme: rebuild so layout/series colors re-read the (now dark) tokens
+  }, [chartQuery.data, theme])
 
   // Guard: 当 isError 变为 true 时（data 未必从非-undefined 变化），
   // 显式销毁可能遗留的 canvas，避免 stale chart 透过条件渲染缺口继续显示。
@@ -256,7 +255,8 @@ export function CockpitChartWidget() {
         title: '',
       }),
     ]
-  }, [decisionQuery.data, chartQuery.data])
+    // theme: chart rebuild (above) creates a new series, so re-add the lines
+  }, [decisionQuery.data, chartQuery.data, theme])
 
   if (!ticker) {
     return (

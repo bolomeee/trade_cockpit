@@ -2629,4 +2629,29 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：config 新增 `universe_cron_weekday`（弃用 `universe_cron_day`）；`POOL_CACHE_CRON` 改 weekdays；universe service 增 `DEGRADE_FRACTION` 判定；新增 health router/schema/service + 前端 `useRefreshHealth` + TopNav 徽标；pool-cache 每工作日多 ~500 次 FMP 调用（限流内）。
 
+---
+
+## D109：Dark 模式 — class 切换 + token 层 `.dark` 覆盖 + 跟随系统默认 + 图表 oklch→rgb 边界转换
+
+**日期**：2026-06-26
+
+**决定**：
+1. **机制**：手动 class 切换（`document.documentElement` 上加/去 `.dark`，已有的 `@custom-variant dark (&:is(.dark *))` 配套）。状态用持久化 zustand store `useThemeStore`（`light|dark`，persist key `ma150.theme.v1`），TopNav 右侧常驻 Sun/Moon 图标按钮切换（所有路由可见）。
+2. **首次默认跟随系统**：无持久化值时读 `prefers-color-scheme`（store 初值 + `index.html` 内联脚本各算一次，均 guard `matchMedia`）；用户手动切换后记住选择。
+3. **两套颜色层都要响应**：shadcn 层（`--background`/`--foreground`…）已有 `.dark` 值，自动跟随。设计 token 层（`tokens.css`，生成文件、light-only）由**新增手写 `tokens-dark.css`**（紧跟 `tokens.css` 之后 import）补 `.dark` 值——中性/文字/表面/边框/导航/表格 alias 到 shadcn 暗色变量；**饱和语义色（signal/action/log/regime/change/chart-line）不覆盖**（暗底可读 + 绑定 DATA-MODEL 枚举）。52 个 `var(--color-*)` 消费文件零改动（CSS 级联）。
+4. **FOUC**：`index.html` 内联脚本在首帧前按持久化值/系统偏好加 `.dark`。
+5. **图表（lightweight-charts）oklch 边界转换**：3 个图表用 `readToken()` 从 CSS 读色。暗色下中性 token 解析为 `oklch(...)`，而本版 lightweight-charts 的 ColorParser **无法解析 oklch**（`Failed to parse color` → 图表崩溃、整页白）。新增 `src/lib/cssColor.ts` 的 `readCssColor`：仅对 oklch/lab/lch/color() 值用 **canvas 1px 栅格化 + getImageData 读 sRGB 字节**转 rgb(a)（本浏览器 getComputedStyle/canvas fillStyle getter 均保留 oklch 原样，故必须栅格化），hex/rgb **原样透传**（保住成交量柱 `${color}66` 十六进制 alpha 拼接）。图表 effect 依赖加 `theme` 以在切换时重建重读 token。
+6. **widget header**：两个 shell 的硬编码 `#ebf2fa` 改 `var(--color-widget-header)`（light=#ebf2fa 在 `tokens-dark.css` 的 `:root`，dark=`var(--muted)`）。
+
+**原因**：用户需求。难点是项目有两套颜色变量层，只切 class 仅 shadcn 组件变暗、自定义 UI（含 TopNav 整条）停在亮色；核心工作是补 token 层 dark 值。图表崩溃是 lightweight-charts 不支持 oklch（CSS 渲染没问题，只在 canvas 颜色解析边界出问题）。
+
+**放弃了什么**：
+- 改生成的 `tokens.css`（违"勿手动编辑"，改走手写 `tokens-dark.css`）。
+- 把 dark 值纳入 Figma `tokens.json` 生成管线（更大改动，本次手写即可）。
+- `'system'` 三态（极简，仅"首次跟随系统"，之后二元 light/dark）。
+- 给图表 token 硬编码 rgb 暗色值（会与 CSS 渲染的 oklch 有偏差，改走边界栅格化转换以精确一致）。
+- `--color-widget-header` 的 light 值放 index.css `:root`（曾导致源序盖掉 `.dark` 覆盖、暗色 header 仍亮蓝，已修：light 值移入 `tokens-dark.css` 早于其 `.dark`）。
+
+**影响**：新增 `useThemeStore.ts`（+ `applyThemeClass`）、`styles/tokens-dark.css`、`lib/cssColor.ts`；改 `main.tsx`(订阅应用 `.dark`)、`index.html`(FOUC)、`index.css`(import)、`TopNav.tsx`(开关)、3 图表(`readCssColor` + theme 依赖)、2 shell、`MarketRegimeWidget`(主色 tooltip 文字改 `--primary-foreground` 配合 primary 暗色翻浅)；新增 `useThemeStore` 单测 + TopNav 开关测试。**后续打磨**：Cockpit Action List 三栏浅底 chip（`--color-action-*-bg` 4–6% 白底 rgba）暗色下近不可见，待提到 ~12–15% alpha。
+
 

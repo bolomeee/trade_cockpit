@@ -48,7 +48,7 @@ export default function CockpitShell() {
                   <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
                     <div
                       className="widget-handle flex h-[14px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
-                      style={{ backgroundColor: '#ebf2fa' }}
+                      style={{ backgroundColor: 'var(--color-widget-header)' }}
                     >
                       <span className="text-xs text-foreground">{manifest.title}</span>
                       <button

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { AlertTriangle, CloudDownload, CloudUpload, Settings } from 'lucide-react'
+import { AlertTriangle, CloudDownload, CloudUpload, Moon, Settings, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
@@ -16,6 +16,7 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RefreshButton } from './RefreshButton'
 import { useAppStore } from '@/store/useAppStore'
+import { useThemeStore } from '@/store/useThemeStore'
 import { useNewsArticles } from '@/hooks/useNewsArticles'
 import { useNewsLayoutStore } from '@/pages/useNewsLayoutStore'
 
@@ -51,6 +52,8 @@ export function TopNav() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const aiNewsSummaryOpen = useAppStore((s) => s.aiNewsSummaryOpen)
   const setAiNewsSummaryOpen = useAppStore((s) => s.setAiNewsSummaryOpen)
+  const theme = useThemeStore((s) => s.theme)
+  const toggleTheme = useThemeStore((s) => s.toggleTheme)
   const { data: newsArticles = [] } = useNewsArticles()
   const isNewsDisabled = showNewsSummary && newsArticles.length === 0
 
@@ -144,6 +147,19 @@ export function TopNav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{theme === 'dark' ? '浅色模式' : '深色模式'}</TooltipContent>
+        </Tooltip>
         {refreshHasIssue && (
           <Tooltip>
             <TooltipTrigger asChild>
