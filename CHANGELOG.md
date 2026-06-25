@@ -4,6 +4,25 @@
 
 ---
 
+## [v2.7.0] - 2026-06-25
+
+> ⚠️ consistency-check 违例覆盖：C7（F221 为 code-first 回填登记，phase 直接建于 needs_review 的跳步）属本项目 `_phase_transition_convention` 文档化的预期可忽略情形；strict 扫描无 🔴 严重违例，用户 2026-06-25 明确『强制发版』。
+
+### ✨ 新增
+- **定时刷新可见化（F221）**：FMP 依赖的定时刷新失效不再静默——
+  - 新增只读 `GET /api/refresh-health`：从 `market_scan_universe.last_seen_at` / `market_breakout_scans.scanned_at` 聚合数据新鲜度 + 近期错误计数（陈旧判定基于表数据，不依赖 system_logs 保留窗口）
+  - TopNav 告警徽标：universe/breakout 数据陈旧或近 24h 有刷新 ERROR 时点亮，点击跳 `/logs`
+  - `UniverseRefreshService`：单次刷新 price/volume ≥50% 行缺失时记 ERROR（原 OK），暴露"刷新成功但数据不可用"的静默退化
+- **刷新 cadence 提频（F221）**：缩小静默停滞的恢复窗口
+  - universe 刷新：每月 1 号 → **每周一 05:00 UTC**
+  - pool-cache 重建：每周一 → **每工作日 06:30 UTC**（紧跟 06:15 scanner）
+  - 其余 9 个定时任务排程（D024 晚间 EOD 依赖链 / D042 早晨限流错峰）维持不动
+
+### 🔧 维护
+- DECISIONS 新增 D108（含修正 D038“universe 月度”的 cadence 部分）；API-CONTRACT 新增 §Refresh Health；features.json 登记 F221（迭代 v2.7，发版时 needs_review→done）
+
+---
+
 ## [v2.6.0] - 2026-06-12
 
 ### ✨ 新增

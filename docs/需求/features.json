@@ -181,7 +181,9 @@
       ],
       "modified": [],
       "deprecated": [],
-      "status": "needs_review",
+      "status": "done",
+      "released_at": "2026-06-25",
+      "released_tag": "v2.7.0",
       "description": "定时刷新可见化 + universe/pool-cache cadence 提频（D108）。code-first 回填登记：本功能在 plan-mode 直接实现并通过前后端测试（后端 1297 / 前端 355 全绿），未走标准 design→contract→generator 流水线。①排程：universe 月度→每周一 05:00 UTC、pool-cache 周一→每工作日 06:30 UTC（缩小静默停滞恢复窗口）；②软退化告警：universe 刷新 price/volume ≥50% 缺失时记 ERROR（原 OK）；③健康端点 GET /api/refresh-health（从表 last_seen_at/scanned_at 算陈旧，不依赖 system_logs 7 天保留）+ TopNav 告警徽标。其余排程（D024 晚间 EOD 链 / D042 早晨限流错峰）维持。未部署——落地 :8001 需重建 Docker 镜像。"
     }
   ],
@@ -5178,8 +5180,8 @@
       "description": "把 FMP 依赖的『喂数据』定时任务从静默失效改为可见，并缩短两处过稀疏刷新的恢复窗口。起因 2026-06 事故：universe 因 FMP 套餐失效连续两月刷新失败、且失败批次 price/volume 全 NULL 使 Pool Builder tradable 滤网清零，全程无任何主界面提示（详见 DECISIONS D108）。三块改动：①排程提频——universe 月度（每月1号）→每周一 05:00 UTC，pool-cache 周度（周一）→每工作日 06:30 UTC（紧跟 scanner 06:15）；其余排程（D024 晚间 EOD 依赖链 / D042 早晨限流错峰 / D078/D080 价量技术债）维持不变；②软退化告警——UniverseRefreshService 在 price/volume ≥50% 行缺失时记 ERROR（原 OK），让『刷新成功但数据不可用』可见；③健康端点 + 前端徽标——新增只读 GET /api/refresh-health（从 market_scan_universe.last_seen_at / market_breakout_scans.scanned_at / system_logs 聚合新鲜度+近期错误，陈旧判定基于表数据不依赖 system_logs 7 天保留），TopNav 加红色告警徽标（陈旧或近期错误时亮、点击跳 /logs）。",
       "user_story": "作为依赖这个工作台做决策的投资者/运维者，当某个定时刷新任务失败或数据变陈旧时，我希望主界面（TopNav）主动告诉我，而不是等我发现某个 widget（如 Pool Builder）空了才察觉；并且我希望 universe/pool 这类喂数据的刷新足够频繁，万一某次失败，恢复窗口是天/周级而不是整月。",
       "priority": "P1",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "dependencies": [
         "F105",
         "F205",
@@ -5237,10 +5239,17 @@
           "phase": "needs_review",
           "session": "project-init 迭代登记（v2.7，code-first 回填）",
           "changes": "F221 在本 session 由 plan-mode 直接实现并通过测试后回填登记（非标准 design→contract→generator→acceptance 流水线，用户明确『不再路由去开发』）。先改文档（API-CONTRACT 新增 §Refresh Health、DECISIONS 新增 D108），后改代码：①config.py +universe_cron_weekday（弃用 universe_cron_day）；②refresh_job.py universe trigger day=→day_of_week=mon、POOL_CACHE_CRON '30 6 * * 1'→'30 6 * * 1-5'；③universe_refresh_service.py +DEGRADE_FRACTION=0.5 软退化 ERROR；④新增 schemas/health.py + services/refresh_health_service.py + routers/health.py（GET /api/refresh-health）+ main.py 注册；⑤前端新增 lib/api/refreshHealth.ts + hooks/useRefreshHealth.ts + TopNav 告警徽标。测试：新增 test_f221_refresh_visibility.py（9 例）+ TopNav.refreshHealth.test.tsx（2 例），更新 3 处既有断言（universe 月→周、cold-start/success 行补 price/volume）；后端 1297 passed、前端 355 passed、tsc/eslint 干净；live curl /api/refresh-health 验证 stale 分支。phase=needs_review（测试全过、待验收+部署），status=in_progress，completed_at=null。⚠️ 未部署：线上 :8001 Docker 旧镜像无新端点/新 cadence，落地需重建前后端镜像。"
+        },
+        {
+          "date": "2026-06-25",
+          "subtask": "F221",
+          "phase": "done",
+          "session": "project-commiter 发版 v2.7.0（强制发版，覆盖 C7）",
+          "changes": "F221 needs_review→done。发版前本 session 实跑回归全绿（backend pytest 1297 passed / frontend vitest 355 passed），已 docker compose 重建前后端镜像部署到 :8001/:8080，GET /api/refresh-health live、回归健康（signals 60 / pool funnel 1579→200→63→29→29）。consistency-check strict 唯一违例 C7（F221 code-first 跳步）属 _phase_transition_convention 文档化预期，用户 2026-06-25 明确『强制发版』覆盖（理由写入 CHANGELOG v2.7.0 块）。completed_at=2026-06-25。"
         }
       ],
       "notes": "Code-first 回填登记的运维可靠性 feature。线上生效需重建 Docker 镜像（前后端）——在此之前 :8001 仍按旧 cadence（universe 月度 / pool-cache 周度）运行且无 /api/refresh-health 端点。排程优化只动 universe(月→周一)、pool-cache(周→工作日) 两处；其余 9 个定时任务的排程是刻意的依赖链/限流设计（D024/D042/D078/D080），不动。",
-      "completed_at": null
+      "completed_at": "2026-06-25"
     }
   ]
 }
