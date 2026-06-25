@@ -435,3 +435,18 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 2. system-design 完成后进入 `feature-dev` A-1，从 F220-a 起逐 sub-sprint sizing 协商（注意 F220-a ≈7 文件 / F220-e ≈9 文件超 6 文件原则，按 F217-c2c / F218-d3a 模式申请超额授权或二次拆）。design-spec.md 由前端 sub-sprint 内联模式更新（参考 F216-d3 / F217-c2c）。
 3. F220 全部 sub-sprint done 后做 DUOL 实测 acceptance（正常化 P/E ∈ [25,30]× / p_fcf_adj ∈ [20,22]× / EPS 加速度给减速 / 追溯区可查），衔接 v2.6 发版。
 
+### v2.7 迭代 — 2026-06-25（定时刷新可见化 + 刷新 cadence 提频）
+
+**变更原因**：2026-06 一次事故——universe 因 FMP 套餐失效连续两月刷新失败，且失败批次 price/volume 全 NULL 使 Cockpit Pool Builder 的 tradable 滤网清零、整个候选漏斗塌空，而全程主界面无任何提示（失败日志写了 `system_logs` 但只在 `/logs` 页、且 7 天即被 purge）。根因 = FMP 依赖刷新静默失效 + 月/周级 cadence 让恢复窗口过长。
+
+**新增 feature**：
+- **F221：定时刷新可见化 + 刷新 cadence 提频** — ①排程：universe 月度→每周一 05:00 UTC、pool-cache 周度→每工作日 06:30 UTC（其余 9 个定时任务排程是刻意的依赖链/限流设计 D024/D042/D078/D080，不动）；②`UniverseRefreshService` 在 price/volume ≥50% 行缺失时记 ERROR（原 OK），让"刷新成功但数据不可用"可见；③新增只读 `GET /api/refresh-health`（从表 `last_seen_at`/`scanned_at` 算陈旧，不依赖日志保留）+ TopNav 红色告警徽标（陈旧/近期错误时亮、点击跳 /logs）。
+
+**修改 feature**：无（F221 为独立运维可靠性 feature）。
+
+**废弃 feature**：无。
+
+**对应决策**：DECISIONS.md §D108（含修正 D038"universe 月度"的 cadence 部分）。
+
+**特殊说明**：F221 为 **code-first 回填登记**——在 plan-mode 直接实现并通过测试（后端 1297 / 前端 355 全绿）后补登 features.json，未走标准 design→contract→generator 流水线。**未部署**：线上 :8001 仍 Docker 旧镜像（无新端点、旧 cadence），生效需重建前后端镜像。
+

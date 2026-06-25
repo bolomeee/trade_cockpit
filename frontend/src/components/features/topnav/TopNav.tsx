@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { CloudDownload, CloudUpload, Settings } from 'lucide-react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { AlertTriangle, CloudDownload, CloudUpload, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { CockpitResetLayoutButton } from '@/cockpit/CockpitResetLayoutButton'
 import { useCockpitLayoutStore } from '@/cockpit/useCockpitLayoutStore'
 import { UserSettingsDialog } from '@/cockpit/components/UserSettingsDialog'
 import { useRefreshStatus } from '@/hooks/useRefreshStatus'
+import { useRefreshHealth } from '@/hooks/useRefreshHealth'
 import { loadLayout, saveLayout } from '@/lib/api/layouts'
 import { ResetLayoutButton } from '@/workbench/ResetLayoutButton'
 import { useLayoutStore } from '@/workbench/useLayoutStore'
@@ -40,6 +41,8 @@ function formatLastRefresh(iso: string | null): string {
 
 export function TopNav() {
   const { lastRefreshedAt, isRefreshing, refresh } = useRefreshStatus()
+  const { hasIssue: refreshHasIssue, reasons: refreshReasons } = useRefreshHealth()
+  const navigate = useNavigate()
   const { pathname } = useLocation()
   const showResetLayout = pathname === '/'
   const showCockpitReset = pathname === '/cockpit'
@@ -141,6 +144,32 @@ export function TopNav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+        {refreshHasIssue && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="刷新告警"
+                onClick={() => navigate('/logs')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-log-error)',
+                  fontSize: 'var(--font-size-caption)',
+                  fontWeight: 'var(--font-weight-medium)',
+                }}
+              >
+                <AlertTriangle size={14} />
+                {refreshReasons.length}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{refreshReasons.join('；')}</TooltipContent>
+          </Tooltip>
+        )}
         <span
           style={{
             fontSize: 'var(--font-size-caption)',

@@ -55,10 +55,10 @@ SETUP_JOB_ID = "cockpit_setup_refresh"
 WEEKLY_STAGE_JOB_ID = "cockpit_weekly_stage_refresh"
 PENDING_ORDERS_EXPIRER_CRON = "35 22 * * 1-5"
 PENDING_ORDERS_EXPIRER_JOB_ID = "cockpit_pending_orders_expirer"
-# F205-e: pool cache weekly rebuild — Mon 06:30 UTC
-# Avoids: universe_cron (1st of month 05:00), earnings_cron (weekdays 05:30),
-#         setup_cron (weekdays 22:30). Gives 8h buffer after the prior day's setup tick.
-POOL_CACHE_CRON = "30 6 * * 1"
+# F205-e / D108: pool cache rebuild — weekdays 06:30 UTC (was Mon-only).
+# Runs right after the daily scanner (06:15) so the RS/fundamental cache stays
+# aligned with each day's breakout snapshot instead of lagging up to a week.
+POOL_CACHE_CRON = "30 6 * * 1-5"
 POOL_CACHE_JOB_ID = "cockpit_pool_cache_rebuild"
 # F211-d2: monthly journal review — 1st of month 06:00 UTC (1h after universe at 05:00)
 JOURNAL_MONTHLY_JOB_ID = "f211_journal_monthly_review"
@@ -232,11 +232,13 @@ def start_scheduler(
             args=[session_factory, fmp_factory],
             replace_existing=True,
         )
-        # F105 D038: monthly universe refresh
+        # F105 D038 + D108: universe refresh — weekly (Mon 05:00 UTC), was monthly.
+        # Keeps the morning-chain slot (universe → earnings → scanner → pool-cache)
+        # but shrinks the silent-staleness window from a month to a week.
         sched.add_job(
             _universe_tick,
             trigger=CronTrigger(
-                day=settings.universe_cron_day,
+                day_of_week=settings.universe_cron_weekday,
                 hour=settings.universe_cron_hour,
                 minute=settings.universe_cron_minute,
                 timezone="UTC",

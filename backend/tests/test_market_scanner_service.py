@@ -103,7 +103,7 @@ def _eod_series_breakout(n: int = 180, pct_above: float = 2.0) -> dict:
 def test_scan_cold_start_triggers_universe_refresh(db_session, fake_fmp):
     # Universe empty; screener returns 1 stock; that stock's MA150 series satisfies breakout.
     fake_fmp.screener_universe_result = [
-        {"symbol": "AAPL", "companyName": "Apple", "exchange": "NASDAQ", "marketCap": 3_000_000_000_000},
+        {"symbol": "AAPL", "companyName": "Apple", "exchange": "NASDAQ", "marketCap": 3_000_000_000_000, "price": 175.0, "volume": 50_000_000},
     ]
     fake_fmp.ma150_results["AAPL"] = _sma_series_breakout()
 
@@ -336,7 +336,9 @@ def test_refresh_job_registers_scanner_and_universe_jobs(session_engine):
             assert str(scanner_fields["hour"]) == "6"
             assert str(scanner_fields["minute"]) == "15"
             universe_fields = {f.name: f for f in universe_job.trigger.fields}
-            assert str(universe_fields["day"]) == "1"
+            # D108: universe is now weekly (Mon), no longer monthly (day-of-month "1")
+            assert "mon" in str(universe_fields["day_of_week"])
+            assert str(universe_fields["day"]) == "*"
             assert str(universe_fields["hour"]) == "5"
             assert str(universe_fields["minute"]) == "0"
         finally:

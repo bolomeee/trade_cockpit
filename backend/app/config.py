@@ -13,10 +13,14 @@ class Settings(BaseSettings):
     polygon_api_key: str = ""  # legacy, kept as D034 rollback anchor
     app_env: str = "development"
 
-    # F105 cron schedule (D038 universe monthly refresh; D042 independent scanner)
+    # F105 cron schedule (D042 independent scanner)
     scanner_cron_hour: int = 6
     scanner_cron_minute: int = 15
+    # D108: universe refresh moved monthly→weekly (Mon 05:00 UTC) to shrink the
+    # silent-staleness window. universe_cron_day is deprecated/unused (kept for
+    # env back-compat); the trigger now uses universe_cron_weekday.
     universe_cron_day: int = 1
+    universe_cron_weekday: str = "mon"
     universe_cron_hour: int = 5
     universe_cron_minute: int = 0
 

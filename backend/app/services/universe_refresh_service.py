@@ -40,6 +40,13 @@ from app.repositories.system_log_repository import SystemLogRepository
 
 LOG_SOURCE = "universe_refresher"
 
+# D108: a refresh can "succeed" yet return rows whose price/volume are all NULL
+# (FMP screener returns "N/A" when its snapshot is stale). Those rows fail the
+# pool tradable filter (price/ADV gate) and silently empty the Pool Builder.
+# When the missing fraction crosses this threshold, log ERROR (not OK) so the
+# degradation surfaces instead of hiding behind a green "refreshed" line.
+DEGRADE_FRACTION = 0.5
+
 # Mutable single-element list used as a thread-local-free counter to signal
 # unexpected parse exceptions from _parse_screener_row back to refresh().
 # reset to 0 after each refresh() call.
@@ -113,15 +120,29 @@ class UniverseRefreshService:
         now = datetime.now(timezone.utc)
         self.repo.upsert_many(rows, now=now)
 
-        self.log_repo.create(
-            level="OK",
-            source=LOG_SOURCE,
-            message=(
-                f"universe refreshed: upserted={len(rows)} skipped={skipped}"
-                f" sector_missing={sector_missing} industry_missing={industry_missing}"
-                f" price_missing={price_missing} volume_missing={volume_missing}"
-            ),
+        degraded = len(rows) > 0 and (
+            max(price_missing, volume_missing) >= DEGRADE_FRACTION * len(rows)
         )
+        summary = (
+            f"upserted={len(rows)} skipped={skipped}"
+            f" sector_missing={sector_missing} industry_missing={industry_missing}"
+            f" price_missing={price_missing} volume_missing={volume_missing}"
+        )
+        if degraded:
+            self.log_repo.create(
+                level="ERROR",
+                source=LOG_SOURCE,
+                message=(
+                    f"universe refresh degraded: {summary}"
+                    " — price/volume mostly missing, Pool tradable filter will return empty"
+                ),
+            )
+        else:
+            self.log_repo.create(
+                level="OK",
+                source=LOG_SOURCE,
+                message=f"universe refreshed: {summary}",
+            )
         if parse_exception > 0:
             self.log_repo.create(
                 level="WARN",

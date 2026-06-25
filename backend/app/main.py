@@ -10,6 +10,7 @@ from app.external.fmp_client import FmpClient, default_rate_limiter
 from app.routers import admin as admin_router
 from app.routers import data, journal, layouts, logs, market, news, signals, stocks, watchlist
 from app.routers import ai as ai_router  # noqa: F401
+from app.routers import health as health_router
 from app.routers.cockpit import router as cockpit_router
 from app.services.refresh_job import shutdown_scheduler, start_scheduler
 from app.services.watchlist_service import APIError
@@ -73,3 +74,4 @@ app.include_router(cockpit_router, prefix="/api/cockpit")
 app.include_router(ai_router.router, prefix="/api/ai")
 app.include_router(admin_router.router)
 app.include_router(layouts.router)
+app.include_router(health_router.router)

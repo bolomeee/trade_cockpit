@@ -2610,4 +2610,23 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：degradeReason 枚举（5 值 + null）；前端主位降级渲染 + tooltip + `<details>` 追溯折叠区；P/(FCF−SBC) 始终并列展示供参考（即便 normalizedPe 降级）。
 
+---
+
+## D108：定时刷新可见化 + universe/pool-cache cadence 提频（F221）
+
+**日期**：2026-06-25
+
+**决定**：
+1. **cadence 提频**（修正 D038 "universe 月度" 的 cadence 部分）：universe 刷新 月度（每月1号）→ **每周一 05:00 UTC**；pool-cache 重建 周度（周一）→ **每工作日 06:30 UTC**（紧跟 scanner 06:15）。其余排程（D024 晚间 EOD 依赖链、D042 早晨限流错峰、D078/D080 价量技术债）**维持不变**。
+2. **软退化告警**：`UniverseRefreshService.refresh()` 在"刷新成功但 price/volume 大面积缺失（≥ `DEGRADE_FRACTION`=50% 行）"时记 **ERROR**（原为 OK），让"表面成功、数据不可用"的静默退化可见。
+3. **健康端点 + 前端徽标**：新增只读 `GET /api/refresh-health`，从 `market_scan_universe.last_seen_at` / `market_breakout_scans.scanned_at` / `system_logs` 聚合新鲜度与近期错误；TopNav 加告警徽标（陈旧或近期错误时亮起，点击跳 `/logs`）。陈旧指示基于**表数据**，不依赖 `system_logs` 的 7 天保留。
+
+**原因**：2026-06 事故——universe 因 FMP 套餐失效连续两月刷新失败，且失败批次 `price/volume` 全 NULL 使 Pool Builder tradable 滤网清零，全程无任何主界面提示。根因是 FMP 依赖刷新**静默失效** + 月/周级 cadence 让恢复窗口过长。提频缩小恢复窗口；软退化告警 + 健康端点把"喂数据"任务的失败/陈旧暴露到主界面。
+
+**放弃了什么**：
+- universe 月度（D038 "用户敲定月级"）——composition 月度足够，但其 price/volume 快照是 tradable 闸门（D080 技术债），月度太旧且失败盲区一个月，故提到每周。
+- 仅靠 `/logs` 页查失败（无主动提示 + 7 天即清，事故时早已无痕）。
+
+**影响**：config 新增 `universe_cron_weekday`（弃用 `universe_cron_day`）；`POOL_CACHE_CRON` 改 weekdays；universe service 增 `DEGRADE_FRACTION` 判定；新增 health router/schema/service + 前端 `useRefreshHealth` + TopNav 徽标；pool-cache 每工作日多 ~500 次 FMP 调用（限流内）。
+
 

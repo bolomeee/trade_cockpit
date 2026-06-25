@@ -11,7 +11,7 @@
     "ui_design": "needs_update",
     "development": "done",
     "deployment": "not_started",
-    "current_iteration": "v2.6",
+    "current_iteration": "v2.7",
     "active_sprint": null,
     "active_sprint_phase": null,
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
@@ -172,6 +172,17 @@
       "deprecated": [],
       "status": "planned",
       "description": "Fundamentals 估值指标增强 — 正常化 P/E 体系。把 get_fundamentals 的 P/E 从 FMP /ratios-ttm 透传的原始 GAAP P/E 升级为去噪+稳定的正常化估值体系（主锚=正常化P/E，异常季用税后营业利润 NOPAT 替代 GAAP 净利润；交叉验证=P/(FCF−SBC)，SBC 当真实股东成本；两者自洽性本身是信号）。范围 P0+P1：F220-a 正常化P/E核心 / F220-b P/(FCF−SBC)双版本+红旗 / F220-c 时序表预埋(alembic 026) / F220-d EPS加速度 / F220-e 预期修正方向(分析师 estimates + alembic 027 快照表 + weekly cron)；⑤历史分位计算 F220-f 后置不在本轮。覆盖仅 watchlist(active)+trend pool 成员门控；降级显式不可用、绝不回退 raw。dependencies [F102,F104,F218]（计划原写 [F107,F111,F218]，核查发现 F111 不存在 + F107 是纯图表 feature 与估值无关，用户 2026-06-10 确认修正）。下一步 system-design 变更协议更新 API-CONTRACT + DATA-MODEL（2 新表）+ DECISIONS + ARCHITECTURE。"
+    },
+    {
+      "version": "v2.7",
+      "date": "2026-06-25",
+      "added": [
+        "F221"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "needs_review",
+      "description": "定时刷新可见化 + universe/pool-cache cadence 提频（D108）。code-first 回填登记：本功能在 plan-mode 直接实现并通过前后端测试（后端 1297 / 前端 355 全绿），未走标准 design→contract→generator 流水线。①排程：universe 月度→每周一 05:00 UTC、pool-cache 周一→每工作日 06:30 UTC（缩小静默停滞恢复窗口）；②软退化告警：universe 刷新 price/volume ≥50% 缺失时记 ERROR（原 OK）；③健康端点 GET /api/refresh-health（从表 last_seen_at/scanned_at 算陈旧，不依赖 system_logs 7 天保留）+ TopNav 告警徽标。其余排程（D024 晚间 EOD 链 / D042 早晨限流错峰）维持。未部署——落地 :8001 需重建 Docker 镜像。"
     }
   ],
   "_phase_legend": {
@@ -5160,6 +5171,76 @@
       ],
       "notes": "F220 原为正常化 P/E 估值体系（主锚=正常化 P/E + 交叉验证 P/(FCF−SBC) + EPS 加速度 + 预期修正方向）。2026-06-10 用户裁决放弃正常化方案（货币/ADR 单位错配 + 跨公司绝对阈值不普适 + 防循环税率对转盈公司失真），P/E 改用 FMP raw。最终落地范围 = F220-b P/(FCF−SBC) 双版本（现金流交叉视角，FMP marketCap 口径，成员门控 watchlist∪pool，无红旗）。F220-d（EPS 加速度）地基为正常化 EPS 序列，随正常化方案一同放弃；F220-e（预期修正方向）需 alembic 027 表 + weekly cron + FMP analyst-estimates 接入，属完整新功能，未落地——如未来需要预期修正信号，另起独立 feature 重新评估。各子任务状态见 sub_sprints 字段。",
       "completed_at": "2026-06-12"
+    },
+    {
+      "id": "F221",
+      "name": "定时刷新可见化 + 刷新 cadence 提频（universe 周度 / pool-cache 每工作日）",
+      "description": "把 FMP 依赖的『喂数据』定时任务从静默失效改为可见，并缩短两处过稀疏刷新的恢复窗口。起因 2026-06 事故：universe 因 FMP 套餐失效连续两月刷新失败、且失败批次 price/volume 全 NULL 使 Pool Builder tradable 滤网清零，全程无任何主界面提示（详见 DECISIONS D108）。三块改动：①排程提频——universe 月度（每月1号）→每周一 05:00 UTC，pool-cache 周度（周一）→每工作日 06:30 UTC（紧跟 scanner 06:15）；其余排程（D024 晚间 EOD 依赖链 / D042 早晨限流错峰 / D078/D080 价量技术债）维持不变；②软退化告警——UniverseRefreshService 在 price/volume ≥50% 行缺失时记 ERROR（原 OK），让『刷新成功但数据不可用』可见；③健康端点 + 前端徽标——新增只读 GET /api/refresh-health（从 market_scan_universe.last_seen_at / market_breakout_scans.scanned_at / system_logs 聚合新鲜度+近期错误，陈旧判定基于表数据不依赖 system_logs 7 天保留），TopNav 加红色告警徽标（陈旧或近期错误时亮、点击跳 /logs）。",
+      "user_story": "作为依赖这个工作台做决策的投资者/运维者，当某个定时刷新任务失败或数据变陈旧时，我希望主界面（TopNav）主动告诉我，而不是等我发现某个 widget（如 Pool Builder）空了才察觉；并且我希望 universe/pool 这类喂数据的刷新足够频繁，万一某次失败，恢复窗口是天/周级而不是整月。",
+      "priority": "P1",
+      "status": "in_progress",
+      "phase": "needs_review",
+      "dependencies": [
+        "F105",
+        "F205",
+        "F008"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [],
+      "scope": {
+        "pages": [
+          "全局 TopNav（Workbench / Cockpit / News / Journal / Logs）",
+          "Cockpit（Pool Builder 受 cadence 提频影响）"
+        ],
+        "api_endpoints": [
+          "GET /api/refresh-health (新增，只读)"
+        ],
+        "db_tables": [
+          "market_scan_universe (复用只读：last_seen_at 算陈旧)",
+          "market_breakout_scans (复用只读：scanned_at 算陈旧)",
+          "system_logs (复用：universe 软退化 ERROR + recentErrors 计数)",
+          "cockpit_pool_cache (复用只读：行数)"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md §Refresh Health → GET /api/refresh-health (只读，universe/breakout 新鲜度 + poolCacheRows + recentErrors)"
+        ],
+        "data_model_refs": [],
+        "decision_refs": [
+          "DECISIONS.md §D108 定时刷新可见化 + universe/pool-cache cadence 提频"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "排程：scheduler 注册断言 universe job 为每周一（day_of_week 含 mon、day=*、05:00），pool-cache job 为每工作日（day_of_week≠*、06:30）",
+        "软退化：universe 刷新 price/volume ≥50% 行缺失时，system_logs 出现 source=universe_refresher 的 ERROR（含 'degraded'），而非 OK；price/volume 齐时仍记 OK",
+        "健康端点：GET /api/refresh-health 返回 universe/breakout 的 lastAt/ageDays/stale + poolCacheRows + recentErrors；陈旧数据 → stale=true（live 验证 dev.db universe 4/30 → stale:true ageDays 56.32）",
+        "前端徽标：TopNav 在 universe/breakout 陈旧或近 24h 有 ERROR 时显示红色告警徽标 + 计数，点击跳 /logs；无异常时不渲染",
+        "回归：后端 pytest 1297 passed、前端 vitest 355 passed（14 skipped），tsc -b 0 错、eslint 干净"
+      ],
+      "test_cases": {
+        "unit": [
+          "backend/tests/test_f221_refresh_visibility.py：scheduler cadence（universe 周度 / pool-cache 工作日）+ universe 软退化 ERROR + RefreshHealthService 陈旧/计数",
+          "frontend TopNav.refreshHealth.test.tsx：徽标 stale→显示 / OK→隐藏"
+        ],
+        "integration": [
+          "GET /api/refresh-health 端点形状（TestClient，camelCase 契约 + 空库 universe stale）"
+        ],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-06-25",
+          "subtask": "F221",
+          "phase": "needs_review",
+          "session": "project-init 迭代登记（v2.7，code-first 回填）",
+          "changes": "F221 在本 session 由 plan-mode 直接实现并通过测试后回填登记（非标准 design→contract→generator→acceptance 流水线，用户明确『不再路由去开发』）。先改文档（API-CONTRACT 新增 §Refresh Health、DECISIONS 新增 D108），后改代码：①config.py +universe_cron_weekday（弃用 universe_cron_day）；②refresh_job.py universe trigger day=→day_of_week=mon、POOL_CACHE_CRON '30 6 * * 1'→'30 6 * * 1-5'；③universe_refresh_service.py +DEGRADE_FRACTION=0.5 软退化 ERROR；④新增 schemas/health.py + services/refresh_health_service.py + routers/health.py（GET /api/refresh-health）+ main.py 注册；⑤前端新增 lib/api/refreshHealth.ts + hooks/useRefreshHealth.ts + TopNav 告警徽标。测试：新增 test_f221_refresh_visibility.py（9 例）+ TopNav.refreshHealth.test.tsx（2 例），更新 3 处既有断言（universe 月→周、cold-start/success 行补 price/volume）；后端 1297 passed、前端 355 passed、tsc/eslint 干净；live curl /api/refresh-health 验证 stale 分支。phase=needs_review（测试全过、待验收+部署），status=in_progress，completed_at=null。⚠️ 未部署：线上 :8001 Docker 旧镜像无新端点/新 cadence，落地需重建前后端镜像。"
+        }
+      ],
+      "notes": "Code-first 回填登记的运维可靠性 feature。线上生效需重建 Docker 镜像（前后端）——在此之前 :8001 仍按旧 cadence（universe 月度 / pool-cache 周度）运行且无 /api/refresh-health 端点。排程优化只动 universe(月→周一)、pool-cache(周→工作日) 两处；其余 9 个定时任务的排程是刻意的依赖链/限流设计（D024/D042/D078/D080），不动。",
+      "completed_at": null
     }
   ]
 }

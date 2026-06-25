@@ -37,10 +37,12 @@ def _screener_row(
 
 
 def test_refresh_success_upserts_rows_and_logs_ok(db_session, fake_fmp):
+    # D108: healthy refresh carries price/volume; rows missing both would now be
+    # flagged ERROR (degraded), so a "logs OK" test must use realistic rows.
     fake_fmp.screener_universe_result = [
-        _screener_row("AAPL", "Apple Inc.", 3_000_000_000_000),
-        _screener_row("MSFT", "Microsoft Corp.", 2_800_000_000_000),
-        _screener_row("GOOG", "Alphabet Inc.", 2_000_000_000_000, "NYSE"),
+        _screener_row("AAPL", "Apple Inc.", 3_000_000_000_000, price=175.0, volume=50_000_000),
+        _screener_row("MSFT", "Microsoft Corp.", 2_800_000_000_000, price=410.0, volume=20_000_000),
+        _screener_row("GOOG", "Alphabet Inc.", 2_000_000_000_000, "NYSE", price=140.0, volume=15_000_000),
     ]
 
     result = UniverseRefreshService(db_session, fake_fmp).refresh()
