@@ -73,6 +73,7 @@ def _build_board_item(stock: Stock, signal: Signal) -> dict[str, Any]:
         "distancePct": signal.distance_pct,
         "slopePositive": signal.slope_positive,
         "slopeValue": signal.slope_value,
+        "labelColor": stock.label_color,
     }
 
 
