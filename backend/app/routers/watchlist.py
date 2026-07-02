@@ -9,6 +9,8 @@ from app.schemas.watchlist import (
     BulkAddResult,
     DeleteStockResponse,
     ResponseEnvelope,
+    UpdateColorRequest,
+    UpdateColorResponse,
     WatchlistCreatedItem,
     WatchlistItem,
 )
@@ -60,4 +62,16 @@ def remove_stock(
     removed_ticker = service.remove_stock(ticker)
     return ResponseEnvelope(
         data=DeleteStockResponse(ticker=removed_ticker, removed=True)
+    )
+
+
+@router.put("/{ticker}/color", response_model=ResponseEnvelope[UpdateColorResponse])
+def update_color(
+    ticker: str,
+    payload: UpdateColorRequest,
+    service: WatchlistService = Depends(get_watchlist_service),
+) -> ResponseEnvelope[UpdateColorResponse]:
+    stock = service.update_color(ticker, payload.color)
+    return ResponseEnvelope(
+        data=UpdateColorResponse(ticker=stock.ticker, label_color=stock.label_color)
     )
