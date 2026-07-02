@@ -8,12 +8,12 @@
   "_pipeline_status": {
     "requirements": "done",
     "system_design": "done",
-    "ui_design": "needs_update",
+    "ui_design": "done",
     "development": "done",
     "deployment": "not_started",
-    "current_iteration": "v2.7",
-    "active_sprint": null,
-    "active_sprint_phase": null,
+    "current_iteration": "v2.8",
+    "active_sprint": "F222-a",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -185,6 +185,17 @@
       "released_at": "2026-06-25",
       "released_tag": "v2.7.0",
       "description": "定时刷新可见化 + universe/pool-cache cadence 提频（D108）。code-first 回填登记：本功能在 plan-mode 直接实现并通过前后端测试（后端 1297 / 前端 355 全绿），未走标准 design→contract→generator 流水线。①排程：universe 月度→每周一 05:00 UTC、pool-cache 周一→每工作日 06:30 UTC（缩小静默停滞恢复窗口）；②软退化告警：universe 刷新 price/volume ≥50% 缺失时记 ERROR（原 OK）；③健康端点 GET /api/refresh-health（从表 last_seen_at/scanned_at 算陈旧，不依赖 system_logs 7 天保留）+ TopNav 告警徽标。其余排程（D024 晚间 EOD 链 / D042 早晨限流错峰）维持。未部署——落地 :8001 需重建 Docker 镜像。"
+    },
+    {
+      "version": "v2.8",
+      "date": "2026-07-02",
+      "added": [
+        "F222"
+      ],
+      "modified": [],
+      "deprecated": [],
+      "status": "in_progress",
+      "description": "Watchlist 颜色标记（F222）——ticker 左侧圆形色块 + Popover 四色选择（红/黄/蓝/无色），后端持久化，CSV 导出携带颜色列，导入/新增默认无色。"
     }
   ],
   "_phase_legend": {
@@ -5250,6 +5261,88 @@
       ],
       "notes": "Code-first 回填登记的运维可靠性 feature。线上生效需重建 Docker 镜像（前后端）——在此之前 :8001 仍按旧 cadence（universe 月度 / pool-cache 周度）运行且无 /api/refresh-health 端点。排程优化只动 universe(月→周一)、pool-cache(周→工作日) 两处；其余 9 个定时任务的排程是刻意的依赖链/限流设计（D024/D042/D078/D080），不动。",
       "completed_at": "2026-06-25"
+    },
+    {
+      "id": "F222",
+      "name": "Watchlist 颜色标记",
+      "description": "用户可以为 watchlist 中的每只股票打颜色标记（红/黄/蓝/无色），用于快速视觉分组；标记持久化保存，导出 CSV 时携带颜色信息",
+      "user_story": "作为投资者，我想给 watchlist 里的股票打颜色标记，这样能用颜色快速区分不同类别（如重点关注/观察中/风险），不打标记时默认无色",
+      "priority": "P2",
+      "status": "in_progress",
+      "phase": "ready_to_dev",
+      "sub_sprints": {
+        "F222-a": "contract_agreed",
+        "F222-b": "ready_to_dev",
+        "F222-c": "ready_to_dev"
+      },
+      "dependencies": [
+        "F001"
+      ],
+      "estimated_sessions": 1,
+      "estimated_files_changed": [
+        "backend/app/models/stock.py",
+        "backend/alembic/versions/026_f222_stock_label_color.py",
+        "backend/app/schemas/signal.py",
+        "backend/app/services/signal_service.py",
+        "backend/tests/test_watchlist_label_color_f222a.py",
+        "backend/app/schemas/watchlist.py",
+        "backend/app/repositories/stock_repository.py",
+        "backend/app/services/watchlist_service.py",
+        "backend/app/routers/watchlist.py",
+        "backend/tests/test_watchlist_api.py",
+        "frontend/src/types/signal.ts",
+        "frontend/src/components/features/dashboard/ColorTagButton.tsx",
+        "frontend/src/lib/api/watchlist.ts",
+        "frontend/src/workbench/widgets/WatchlistWidget.tsx",
+        "frontend/src/workbench/widgets/__tests__/WatchlistWidget.test.tsx"
+      ],
+      "scope": {
+        "pages": [
+          "Workbench / WatchlistWidget"
+        ],
+        "api_endpoints": [
+          "PUT /api/watchlist/{ticker}/color",
+          "GET /api/signals（响应新增 labelColor 字段）"
+        ],
+        "db_tables": [
+          "Stock（新增 label_color 字段）"
+        ],
+        "design_figma_link": null
+      },
+      "contract": {
+        "api_refs": [
+          "API-CONTRACT.md#watchlist",
+          "API-CONTRACT.md#signals"
+        ],
+        "data_model_refs": [
+          "DATA-MODEL.md#stock"
+        ],
+        "acceptance_type": "functional"
+      },
+      "acceptance_criteria": [
+        "Watchlist 每行 ticker 左侧显示一个圆形色块按钮，未标记时为无色态",
+        "点击色块弹出 Popover，展示 红/黄/蓝/无色 四个色块（单选），点击任一色块后立即生效并关闭 Popover",
+        "刷新页面后颜色标记保持不变（已持久化到后端）",
+        "导出 CSV 时每行携带对应颜色列",
+        "通过 CSV 批量导入或 Quick Add 新增的 ticker，颜色标记默认显示为无色"
+      ],
+      "test_cases": {
+        "unit": [],
+        "integration": [],
+        "e2e": []
+      },
+      "iteration_history": [
+        {
+          "date": "2026-07-02",
+          "subtask": "F222-a",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：backend 读路径——Stock 新增 label_color 列（String(10) nullable，red/yellow/blue/null）+ alembic migration 026 + SignalBoardItem 新增 labelColor 字段（Literal[\"red\",\"yellow\",\"blue\"] | None 类型）+ signal_service._build_board_item 传值。5 个文件（model + migration + schemas/signal.py + signal_service.py + 1 个新测试文件 test_watchlist_label_color_f222a.py），全部 backend，无新增文档改动（system-design 阶段已完成）。F222 因预计 14 文件超 6-file 上限拆为 F222-a(backend 读)/F222-b(backend 写)/F222-c(frontend) 三个 sub-sprint，本次是第一个。下一 session Generator 模式从开发步骤 1（Stock 模型加列）开始。",
+          "contract": "docs/开发/sprint-contracts/F222-a-contract.md",
+          "contract_agreed_at": "2026-07-02"
+        }
+      ],
+      "notes": "跳过完整 design-bridge（无新 Figma 稿，用户已指定 shadcn Popover + 色块网格交互）；system-design 阶段直接在 design-spec.md 登记颜色 token。CSV 导入路径无需改动——现有解析逻辑只提取 ticker 列，其余列本就忽略，颜色字段 DB 默认 null 天然满足'未识别列→无色'要求。拆分为 F222-a(backend 读路径)/F222-b(backend 写路径)/F222-c(frontend) 三个 sub-sprint（14 文件超 6-file 上限，2026-07-02 用户确认拆分边界）。",
+      "completed_at": null
     }
   ]
 }

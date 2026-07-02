@@ -1,0 +1,80 @@
+=== PROJECT PROGRESS LOG ===
+项目：MA150 Tracker → Workbench
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 0：迭代需求登记（v2.8）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - project-init 迭代模式：新增 F222（Watchlist 颜色标记）
+  - 更新 docs/需求/PRD.md「版本迭代记录」章节（v2.8）
+  - 更新 docs/需求/features.json：追加 F222（phase=design_needed）、_iteration_log、_pipeline_status.current_iteration=v2.8
+
+📊 F222 摘要：
+  Watchlist ticker 左侧圆形色块按钮 + Popover 四色选择（红/黄/蓝/无色），
+  后端持久化（Stock.label_color），CSV 导出携带颜色列，导入/新增默认无色。
+  跳过完整 design-bridge（无新 Figma 稿），system-design 阶段直接补
+  design-spec.md 颜色 token。
+
+[下一步]
+  触发 system-design：补 DATA-MODEL.md（Stock.label_color）+
+  API-CONTRACT.md（PUT /api/watchlist/{ticker}/color，GET /api/signals
+  新增 labelColor）+ component-plan.md + design-spec.md 颜色 token 章节
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 1：system-design 补文档（F222）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成（跳过 design-bridge，system-design 直接登记）：
+  - DATA-MODEL.md：Stock 新增 label_color 字段（String(10) nullable，
+    red/yellow/blue/null，默认 null）+ 枚举值表
+  - API-CONTRACT.md：新增 PUT /api/watchlist/{ticker}/color；
+    GET /api/signals 响应新增 labelColor 字段
+  - docs/设计/component-plan.md：追加 §F222 ColorTagButton / ColorTagPopover
+    组件边界
+  - docs/设计/design-spec.md：追加 §F222 颜色 token（--color-label-red/
+    yellow/blue，全部别名到既有 token）+ 视觉规格
+  - DECISIONS.md：新增 D110（字段/挂载点/token 设计 + 不设 dark 覆盖，
+    理由引用 D109 既有惯例）
+  - features.json：F222 phase design_needed → ready_to_dev；
+    _pipeline_status.system_design / ui_design → done
+
+⚠️ 与 SESSION-HANDOFF.md 原指令的一处偏离（已在 DECISIONS.md D110 说明）：
+  未给 label 颜色 token 设置 dark mode 覆盖。原因：D109 已确立"饱和语义色
+  （signal/action/log/regime/setup）在 tokens-dark.css 中有意不覆盖"的
+  惯例（暗底本身可读 + 绑定 DATA-MODEL 枚举），label-* 属同类色，沿用
+  该惯例而非另起例外。如 feature-dev 阶段发现暗色主题下可读性问题，
+  再补 tokens-dark.css 覆盖。
+
+[下一步]
+  进入 feature-dev：协商 F222 Sprint Contract（后端字段+迁移+端点，
+  前端 ColorTagButton/Popover + WatchlistWidget 接入 + CSV 导出列）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 2：F222 Sprint Contract 协商（F222-a）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 前序门禁扫描发现 F222 预计修改 14 个文件（backend 9 + frontend 5），
+  超出 feature-dev 6-file 上限。用户确认拆分为 3 个 sub-sprint：
+    F222-a：backend 读路径（4→5 文件，含新测试文件）
+    F222-b：backend 写路径（5 文件）
+    F222-c：frontend（5 文件）
+  依赖顺序 a → b → c（b 需要 a 的列存在；c 需要 a+b 的 API 就绪）。
+
+✅ 本次完成：
+  - features.json：F222 新增 sub_sprints 字段（a/b/c），consistency-check
+    C5 验证通过（sub_sprints ↔ 合约目录双向一致，0 违例）
+  - F222-a Sprint Contract 已协商 + 用户 ack + 确认：
+    docs/开发/sprint-contracts/F222-a-contract.md（status: confirmed）
+  - F222-a 范围：Stock.label_color 列 + alembic migration 026 +
+    SignalBoardItem.labelColor 字段 + signal_service 传值；
+    5 个文件，全部 backend，测试文件
+    test_watchlist_label_color_f222a.py（migration 升降级 cycle +
+    GET /api/signals labelColor 字段测试）
+  - features.json：F222.status → in_progress，
+    sub_sprints['F222-a'] → contract_agreed，
+    _pipeline_status.active_sprint → "F222-a"
+
+[下一步]
+  开新 session，进入 Generator 模式开发 F222-a（开发步骤 1：
+  Stock 模型加 label_color 列 → migration → schema → service → 测试）
