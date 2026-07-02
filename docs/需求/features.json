@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v2.8",
-    "active_sprint": "F222-a",
-    "active_sprint_phase": "done",
+    "active_sprint": "F222-b",
+    "active_sprint_phase": "contract_agreed",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5272,7 +5272,7 @@
       "phase": "ready_to_dev",
       "sub_sprints": {
         "F222-a": "done",
-        "F222-b": "ready_to_dev",
+        "F222-b": "contract_agreed",
         "F222-c": "ready_to_dev"
       },
       "dependencies": [
@@ -5347,6 +5347,14 @@
           "summary": "Generator + Evaluator 完成。Stock.label_color 列 + alembic migration 026 + SignalBoardItem.labelColor 字段 + signal_service._build_board_item 传值 + test_watchlist_label_color_f222a.py（5 用例全过）。全量回归 1302 passed；alembic upgrade→downgrade→upgrade 三段在 dev.db 上验证干净；ruff 对本 sprint 5 文件全过。连带修复 2 处不在 Contract §2 清单内但被本次 migration 暴露的既有回归测试问题（均获用户批准、独立 fix commit，不计入 F222-a feat）：test_schema.py EXPECTED_COLUMNS 补 label_color；test_setup_macd_f219a.py 降级测试改用显式 revision id 而非相对 -1（见 DECISIONS.md D111）。",
           "contract": "docs/开发/sprint-contracts/F222-a-contract.md",
           "evaluator_passed_at": "2026-07-02"
+        },
+        {
+          "date": "2026-07-02",
+          "subtask": "F222-b",
+          "phase": "contract_agreed",
+          "summary": "Sprint Contract 已确认。范围：backend 写路径——新增 PUT /api/watchlist/{ticker}/color；schemas/watchlist.py 新增 UpdateColorRequest/UpdateColorResponse + stock_repository.py 新增 set_label_color + watchlist_service.py 新增 update_color（NOT_FOUND 判定沿用 remove_stock 同款逻辑：行不存在或 is_active=false）+ routers/watchlist.py 新增路由 + test_watchlist_api.py 追加 TC1–TC7 共 7 用例。5 个文件，全部 backend，无新增文档改动（system-design 阶段已完成读写两路径定义）。无技术决策分叉，字段类型/校验分层/repository 模式均沿用 F222-a 已确立惯例。下一 session Generator 模式从开发步骤 1（schemas/watchlist.py 加请求/响应模型）开始。",
+          "contract": "docs/开发/sprint-contracts/F222-b-contract.md",
+          "contract_agreed_at": "2026-07-02"
         }
       ],
       "notes": "跳过完整 design-bridge（无新 Figma 稿，用户已指定 shadcn Popover + 色块网格交互）；system-design 阶段直接在 design-spec.md 登记颜色 token。CSV 导入路径无需改动——现有解析逻辑只提取 ticker 列，其余列本就忽略，颜色字段 DB 默认 null 天然满足'未识别列→无色'要求。拆分为 F222-a(backend 读路径)/F222-b(backend 写路径)/F222-c(frontend) 三个 sub-sprint（14 文件超 6-file 上限，2026-07-02 用户确认拆分边界）。",

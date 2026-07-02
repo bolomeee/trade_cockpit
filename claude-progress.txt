@@ -123,3 +123,30 @@
   schemas/watchlist.py UpdateColorRequest + stock_repository.set_label_color +
   watchlist_service.update_color + routers/watchlist.py 路由 + 测试，预计 5 文件）
   进入 Sprint Contract 协商
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 4：F222-b Sprint Contract 协商
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 前序门禁检查：F001 done ✓、F222-a done ✓，均满足门禁，直接进入协商。
+
+✅ 本次完成：
+  - F222-b Sprint Contract 已协商 + 用户 ack + 确认：
+    docs/开发/sprint-contracts/F222-b-contract.md（status: confirmed）
+  - F222-b 范围：新增 PUT /api/watchlist/{ticker}/color 写入口——
+    schemas/watchlist.py 新增 UpdateColorRequest（color: Literal["red","yellow","blue"]|None，
+    必填无 default）+ UpdateColorResponse；stock_repository.py 新增
+    set_label_color(stock, color)（mutate+commit+refresh，同 soft_delete 模式）；
+    watchlist_service.py 新增 update_color(ticker, color)（NOT_FOUND 判定沿用
+    remove_stock 同款逻辑：行不存在或 is_active=false）；routers/watchlist.py
+    新增路由；test_watchlist_api.py 追加 TC1–TC7 共 7 用例。5 个文件，全部
+    backend，无新增文档改动（system-design 阶段已完成读写两路径定义）。
+    无技术决策分叉，全部沿用 F222-a 已确立的代码惯例。
+  - features.json：F222.sub_sprints['F222-b'] ready_to_dev → contract_agreed，
+    _pipeline_status.active_sprint → "F222-b"，active_sprint_phase → "contract_agreed"，
+    iteration_history 追加 contract_agreed 记录
+
+[下一步]
+  开新 session，进入 Generator 模式开发 F222-b（开发步骤 1：
+  schemas/watchlist.py 加 UpdateColorRequest/UpdateColorResponse →
+  repository → service → router → 测试）
