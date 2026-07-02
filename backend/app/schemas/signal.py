@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
 
 from app.schemas.watchlist import CamelModel
 
@@ -15,6 +16,7 @@ class SignalBoardItem(CamelModel):
     distance_pct: float | None = None
     slope_positive: bool | None = None
     slope_value: float | None = None
+    label_color: Literal["red", "yellow", "blue"] | None = None
 
 
 class SignalLatest(CamelModel):
