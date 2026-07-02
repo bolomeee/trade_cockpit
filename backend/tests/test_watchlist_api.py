@@ -1,4 +1,5 @@
-"""Integration tests for F001-a Watchlist + Stock Search API (T1–T17) and F110-a bulk add (TB1–TB9)."""
+"""Integration tests for F001-a Watchlist + Stock Search API (T1–T17), F110-a bulk add (TB1–TB9),
+and F222-b color tag write path (TC1–TC7)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -338,3 +339,80 @@ def test_tb9_bulk_fmp_error_aborts_batch(client: TestClient, fake_fmp, db_sessio
     r = client.post("/api/watchlist/bulk", json={"tickers": ["AAPL", "MSFT"]})
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "EXTERNAL_API_ERROR"
+
+
+# =============================================================================
+# F222-b: PUT /api/watchlist/{ticker}/color (TC1–TC7)
+# =============================================================================
+
+# --- TC1 ---------------------------------------------------------------------
+
+def test_tc1_put_color_sets_red(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.put("/api/watchlist/AAPL/color", json={"color": "red"})
+    assert r.status_code == 200
+    assert r.json()["data"] == {"ticker": "AAPL", "labelColor": "red"}
+
+    db_session.expire_all()
+    stored = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert stored.label_color == "red"
+
+
+# --- TC2 ---------------------------------------------------------------------
+
+def test_tc2_put_color_null_clears(client: TestClient, db_session: Session) -> None:
+    stock = _mk_stock(db_session, "AAPL", is_active=True)
+    stock.label_color = "blue"
+    db_session.commit()
+
+    r = client.put("/api/watchlist/AAPL/color", json={"color": None})
+    assert r.status_code == 200
+    assert r.json()["data"]["labelColor"] is None
+
+    db_session.expire_all()
+    stored = db_session.query(Stock).filter_by(ticker="AAPL").one()
+    assert stored.label_color is None
+
+
+# --- TC3 ---------------------------------------------------------------------
+
+def test_tc3_put_color_case_insensitive(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.put("/api/watchlist/aapl/color", json={"color": "yellow"})
+    assert r.status_code == 200
+    assert r.json()["data"]["ticker"] == "AAPL"
+
+
+# --- TC4 ---------------------------------------------------------------------
+
+def test_tc4_put_color_invalid_enum(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.put("/api/watchlist/AAPL/color", json={"color": "green"})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- TC5 ---------------------------------------------------------------------
+
+def test_tc5_put_color_ticker_never_added(client: TestClient) -> None:
+    r = client.put("/api/watchlist/XXX/color", json={"color": "red"})
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+# --- TC6 ---------------------------------------------------------------------
+
+def test_tc6_put_color_soft_deleted_ticker(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=False)
+    r = client.put("/api/watchlist/AAPL/color", json={"color": "red"})
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+# --- TC7 ---------------------------------------------------------------------
+
+def test_tc7_put_color_missing_color_field(client: TestClient, db_session: Session) -> None:
+    _mk_stock(db_session, "AAPL", is_active=True)
+    r = client.put("/api/watchlist/AAPL/color", json={})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
