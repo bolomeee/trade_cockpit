@@ -2675,4 +2675,20 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：`backend/app/models/stock.py` 新增字段 + 一条 alembic migration；`SignalService.list_board()` / `SignalBoardItem` schema 各加一行；新增 watchlist color router/service 方法；前端 `tokens.css` 加 3 个 token（`tokens-dark.css` 不改动）；`ColorTagButton` / `ColorTagPopover` 两个新组件挂载于 `WatchlistWidget`。
 
+---
+
+## D111：alembic 降级测试禁用相对 `-1`，改用显式 revision id（F222-a 连带修复）
+
+**日期**：2026-07-02
+
+**决定**：所有 alembic downgrade 测试（`command.downgrade(cfg, ...)`）禁止使用相对定位 `"-1"`，一律传入目标迁移的显式 revision id（即待验证迁移的 `down_revision` 值）。
+
+**原因**：F222-a 新增 migration 026 后，`test_setup_macd_f219a.py` 中两处 `command.downgrade(cfg, "-1")`（原意"撤销 025，验证 macd_divergence 列消失"）失败——因为 head 已从 025 变成 026，`-1` 现在撤销的是 026（label_color），而非 025。这是相对定位相对于"当前 head"而非"目标迁移"的必然脆弱性：任何后续在链尾追加的迁移，都会让所有使用 `-1` 的既有降级测试失去原意，即使它们语义上与新迁移完全无关。属于 F222-a 未列入 Contract §2 但被迫连带修复的问题，已征得用户同意（fix 类型独立 commit，不计入 F222-a feat）。
+
+**放弃了什么**：
+- 保持 `-1` 不改，仅这次手动改测试期望值——治标不治本，下一条链尾迁移会再次触发同样的失败。
+- 给 alembic 测试加"固定在某个历史 revision，不随 head 变化"的 fixture 抽象——本项目 migration 数量尚少（26 个），过度设计，直接改两处调用点即可。
+
+**影响**：`backend/tests/test_setup_macd_f219a.py` 两处 `downgrade(cfg, "-1")` → `downgrade(cfg, "f218_d6a_fundamentals_quarterly")`；`backend/tests/test_schema.py` `EXPECTED_COLUMNS["stocks"]` 同步加入 `label_color`（该测试职责就是追踪 schema drift，非本次决策范围但同批修复）。今后新增 alembic migration 时，若已有降级测试用 `-1`，应主动检查是否需要同样改为显式 revision id。
+
 

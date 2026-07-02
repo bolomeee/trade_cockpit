@@ -78,3 +78,48 @@
 [下一步]
   开新 session，进入 Generator 模式开发 F222-a（开发步骤 1：
   Stock 模型加 label_color 列 → migration → schema → service → 测试）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 3：F222-a Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成（Contract §2 五文件全部落地，逐步 wip commit）：
+  - backend/app/models/stock.py：Stock 新增 label_color = Column(String(10), nullable=True)
+  - backend/alembic/versions/026_f222_stock_label_color.py：新迁移，
+    down_revision=025_f219a_setup_macd_divergence，upgrade 加列/downgrade 删列，不回填
+  - backend/app/schemas/signal.py：SignalBoardItem 新增
+    label_color: Literal["red","yellow","blue"] | None = None（序列化 labelColor）
+  - backend/app/services/signal_service.py：_build_board_item() 新增 "labelColor": stock.label_color
+  - backend/tests/test_watchlist_label_color_f222a.py：新增 5 用例（alembic 升降级 3 段
+    cycle + GET /api/signals labelColor 默认 null / 显式值透传），全过
+
+✅ Evaluator 自检（Contract §6 逐条）：
+  - pytest 新测试文件：5/5 通过
+  - alembic upgrade head → downgrade -1 → upgrade head：在真实 dev.db 上跑通，三段干净
+  - 全量回归：1302 passed，0 新增失败
+  - ruff：本 sprint 5 文件全过
+  - API-CONTRACT.md / DATA-MODEL.md 一致性：已核对（GET /api/signals.labelColor 字段名/类型/位置
+    与文档一致；GET /api/watchlist、GET /api/signals/:ticker 均未误动，符合 Contract §1.5 排除范围）
+  - 无 print/调试残留；ruff 报告的 2 处死代码（sqlalchemy.text / SetupSnapshotRepository 未用 import）
+    经核实为 F219-a 遗留、与本次改动无关，按规则 3 不清理
+  - 修改文件严格等于 Contract §2 清单（5 个，无新增无遗漏）
+
+⚠️ 连带修复（不在 Contract §2 内，本次 migration 新增导致的既有回归测试失败，
+  已征得用户同意，各自独立 fix commit，不计入 F222-a feat commit）：
+  - backend/tests/test_schema.py：EXPECTED_COLUMNS["stocks"] 补 label_color
+    （该测试职责是追踪 schema drift，DATA-MODEL.md 已定义此字段但常量未同步）
+  - backend/tests/test_setup_macd_f219a.py：两处 downgrade(cfg, "-1") 改为显式
+    revision id "f218_d6a_fundamentals_quarterly"（相对 -1 假设 025 是 head，
+    026 追加后该假设失效）。技术决策见 DECISIONS.md D111。
+
+  同时补提交一处上个 session 遗留的 SESSION-HANDOFF.md 收尾编辑
+  （补全 checksum 表 sha，docs 类型 commit）。
+
+✅ features.json：F222.sub_sprints['F222-a'] contract_agreed → done；
+  _pipeline_status.active_sprint_phase → "done"；iteration_history 追加 done 记录
+
+[下一步]
+  F222-b（backend 写路径：PUT /api/watchlist/{ticker}/color +
+  schemas/watchlist.py UpdateColorRequest + stock_repository.set_label_color +
+  watchlist_service.update_color + routers/watchlist.py 路由 + 测试，预计 5 文件）
+  进入 Sprint Contract 协商
