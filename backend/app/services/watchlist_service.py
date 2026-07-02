@@ -141,6 +141,13 @@ class WatchlistService:
         self.repo.soft_delete(stock)
         return ticker
 
+    def update_color(self, raw_ticker: str, color: str | None) -> Stock:
+        ticker = raw_ticker.strip().upper()
+        stock = self.repo.get_by_ticker(ticker)
+        if stock is None or not stock.is_active:
+            raise APIError("NOT_FOUND", f"ticker {ticker} not in watchlist", 404)
+        return self.repo.set_label_color(stock, color)
+
     def search(self, q: str, limit: int) -> list[dict[str, Any]]:
         capped = min(max(1, limit), SEARCH_LIMIT_MAX)
         try:
