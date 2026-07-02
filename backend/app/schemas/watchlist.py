@@ -93,3 +93,15 @@ class StockSearchItem(CamelModel):
     name: str
     exchange: str | None = None
     type: str | None = None
+
+
+# --- Color Tag -----------------------------------------------------------------
+
+
+class UpdateColorRequest(CamelModel):
+    color: Literal["red", "yellow", "blue"] | None
+
+
+class UpdateColorResponse(CamelModel):
+    ticker: str
+    label_color: Literal["red", "yellow", "blue"] | None = None
