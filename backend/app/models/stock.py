@@ -18,6 +18,7 @@ class Stock(Base):
     last_refreshed_at = Column(DateTime, nullable=True)
     shares_float = Column(BigInteger, nullable=True)
     shares_float_refreshed_at = Column(DateTime, nullable=True)
+    label_color = Column(String(10), nullable=True)  # F222: 'red' / 'yellow' / 'blue' / None
 
     daily_bars = relationship("DailyBar", back_populates="stock")
     signals = relationship("Signal", back_populates="stock")
