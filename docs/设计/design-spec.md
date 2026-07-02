@@ -1282,3 +1282,36 @@ header 行下方、body 状态分支之前，常驻区域。调用 `GET /api/coc
 2. **PoolBuilder funnel 分段点击是否真的过滤前端 items**：v1.9 实现时用 fixture 验证（API 是否一次返回完整 items 还是只返回 action 层；当前 contract 写"items 是最终层"，意味着前端只能展示最终层，funnel 数字是参考）
 3. **PendingOrder Triggered 后是否自动创建 Position**：✅ 已决策（F206-c2 Sprint Contract §7 用户确认，见 DECISIONS.md D060-a）。v1.9 不自动创建，仅切 status=TRIGGERED + toast 引导手工在 PositionListWidget 录入实际持仓。
 4. **AI Daily Brief 的具体 prompt schema**：F209/F211 feature-dev 阶段在 `backend/app/ai/schemas/` 落地，本 design-spec 不约束
+
+---
+
+## F222 — Watchlist 颜色标记（2026-07-02 system-design 追加）
+
+### 新增设计 Token
+
+| 用途 | Token | 取值 / 来源 | DATA-MODEL 对应 |
+|---|---|---|---|
+| 标记：红 | `--color-label-red` | `var(--color-change-negative)`（#ef4444） | `Stock.label_color = "red"` |
+| 标记：黄 | `--color-label-yellow` | `var(--color-log-warn)`（#f59e0b） | `Stock.label_color = "yellow"` |
+| 标记：蓝 | `--color-label-blue` | `var(--color-signal-breakout)`（#2962ff） | `Stock.label_color = "blue"` |
+| 标记：无色 | 不设 token | `label_color = null` → 空心圆环（1.5px border，`var(--color-border)`），不填充 | `Stock.label_color = null` |
+
+> 复用现有 token 别名，不新增 hex（沿用 Cockpit token 惯例）。
+> ⚠️ **不设置 dark mode 覆盖**：饱和语义色（signal / action / log / regime / setup）在 `tokens-dark.css` 中有意不覆盖——暗底下本身可读，且与 DATA-MODEL 枚举强绑定（见 DECISIONS.md D109）。`label-*` 属同类饱和语义色，同一处理，`.dark` 下沿用 `:root` 原值。
+
+### ColorTagButton / ColorTagPopover 视觉
+
+```
+Watchlist 行：  (●) AAPL   Apple Inc.   [BUY_ZONE]  ...
+                 ↑ 色块按钮：red/yellow/blue 实心圆 14px；无色态空心圆环 14px + 1.5px border
+
+点击后弹出 Popover（横排 4 色块，当前选中态外描边高亮）：
+┌───────────────────┐
+│  ●   ●   ●   ○     │   红   黄   蓝   无色
+└───────────────────┘
+```
+
+- 色块直径：`14px`，`--radius-full`
+- Popover 内边距：`--spacing-2`（8px），色块间距 `--spacing-2`
+- 选中态：外描边 `2px solid var(--color-ring)`，offset 2px
+- 点击任一色块：立即调用 `onSelect` → 关闭 Popover（不额外确认按钮）

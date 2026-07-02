@@ -2654,4 +2654,25 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：新增 `useThemeStore.ts`（+ `applyThemeClass`）、`styles/tokens-dark.css`、`lib/cssColor.ts`；改 `main.tsx`(订阅应用 `.dark`)、`index.html`(FOUC)、`index.css`(import)、`TopNav.tsx`(开关)、3 图表(`readCssColor` + theme 依赖)、2 shell、`MarketRegimeWidget`(主色 tooltip 文字改 `--primary-foreground` 配合 primary 暗色翻浅)；新增 `useThemeStore` 单测 + TopNav 开关测试。**后续打磨**：Cockpit Action List 三栏浅底 chip（`--color-action-*-bg` 4–6% 白底 rgba）暗色下近不可见，待提到 ~12–15% alpha。
 
+---
+
+## D110：Watchlist 颜色标记 — 字段设计 + 挂载端点 + 不设 dark 覆盖（F222）
+
+**日期**：2026-07-02
+
+**决定**：
+1. **字段**：`Stock.label_color`，`String(10) nullable`，枚举 `red` / `yellow` / `blue`，默认 `null`（无色）。不建独立表——纯视觉标记，无需历史/审计。
+2. **挂载点**：新增 `PUT /api/watchlist/{ticker}/color` 写入；读取挂在既有 `GET /api/signals`（`SignalBoardItem` 新增 `labelColor`），因为 Watchlist 表格实际数据源是 `/api/signals` 而非 `/api/watchlist`（`SignalService.list_board()` 已持有 `Stock` ORM 对象，加字段成本低）。
+3. **Token**：`--color-label-red/yellow/blue` 全部别名到既有 token（`--color-change-negative` / `--color-log-warn` / `--color-signal-breakout`），不新增 hex。`null` 不设 token，前端渲染空心圆环。
+4. **不设 dark mode 覆盖**：沿用 D109 确立的惯例——饱和语义色（signal/action/log/regime/setup）在 `tokens-dark.css` 中有意不覆盖，因为暗底下本身可读且与 DATA-MODEL 枚举强绑定；`label-*` 是同类饱和语义色，同一处理，不新增 `.dark` 覆盖。
+
+**原因**：功能本身极小（单字段 + 单 Popover），不值得新建表或新增 hex 色板；复用现有 token 与既有 dark mode 惯例保持一致性，避免为 3 个饱和色单独决策一套例外规则。
+
+**放弃了什么**：
+- 独立 `WatchlistLabel` 表（历史/多标记）——当前需求是单色单选，Stock 加字段即可，YAGNI。
+- 新增 3 个专属 hex（如更饱和的品牌红/黄/蓝）——复用现有语义色，减少调色板碎片化，且红/黄/蓝在信号/日志/图表语境下已有稳定含义（负向/警告/positive-breakout），语义可迁移。
+- 给 `label-*` token 单独写 `.dark` 覆盖（如提高饱和度或调整亮度）——没有证据表明这三色在暗底下不可读，先沿用 D109 惯例，若 acceptance 测试中发现暗色主题下可读性问题再补覆盖。
+
+**影响**：`backend/app/models/stock.py` 新增字段 + 一条 alembic migration；`SignalService.list_board()` / `SignalBoardItem` schema 各加一行；新增 watchlist color router/service 方法；前端 `tokens.css` 加 3 个 token（`tokens-dark.css` 不改动）；`ColorTagButton` / `ColorTagPopover` 两个新组件挂载于 `WatchlistWidget`。
+
 

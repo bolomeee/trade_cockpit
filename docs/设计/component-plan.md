@@ -568,3 +568,21 @@ src/
 | v1.8 P0（F200/F201/F202/F203/F204） | CockpitPage / CockpitRegistry / 两个 store / RegimePill / SetupTypeBadge / SetupQualityBadge / EarningsRiskDot / ChartHorizontalLine / MarketRegimeWidget / EarningsWidget / CockpitChartWidget / SetupMonitorWidget / DecisionPanelWidget / UserSettingsDialog | PoolBuilder / Position / PendingOrders / ActionList / 全部 AI 子区 |
 | v1.9 P1（F205/F206/F207） | PoolBuilderWidget / PositionListWidget / PendingOrdersWidget / ActionListWidget / PositionFormDialog / PendingOrderFormDialog / SaveAsPendingOrderConfirm | AI 子区仍延后 |
 | v2.0 AI（F208/F209/F210/F211） | `lib/api/ai.ts` 客户端封装 / 各 widget 内的 AI 子区域（不新增 widget） | — |
+
+---
+
+## F222 · Watchlist 颜色标记（2026-07-02 system-design 追加，跳过 design-bridge）
+
+> 范围仅本 feature 新增的两个小组件，挂载于既有 `WatchlistWidget`（`src/workbench/widgets/`）表格行内；`WatchlistWidget` 自身完整组件边界不在本次范围内。
+
+### ColorTagButton
+- Props：`ticker: string`、`color: 'red' | 'yellow' | 'blue' | null`、`onChange: (color: 'red' | 'yellow' | 'blue' | null) => void`
+- 职责：渲染圆形色块按钮（`red`/`yellow`/`blue` 实心圆，`null` 为空心圆环）；点击打开 `ColorTagPopover`
+- 位置：`WatchlistWidget` 表格每行，ticker 文字左侧
+- 不包含：持久化请求本身（由父组件 mutation 调用 `PUT /api/watchlist/{ticker}/color`，成功后更新本地/react-query 缓存）
+
+### ColorTagPopover
+- 基于 shadcn `Popover`，内容为 4 个色块（红/黄/蓝/无色）横排，单选态
+- Props：`value: 'red' | 'yellow' | 'blue' | null`、`onSelect: (color: 'red' | 'yellow' | 'blue' | null) => void`
+- 职责：展示 4 个可点击色块，当前值描边高亮；点击任一色块后立即调用 `onSelect` 并关闭 Popover（open state 由 shadcn `Popover` 自身管理，不额外加 state）
+- 必须：使用 `--color-label-*` token（见 design-spec.md），不直接写 hex；`null` 态用 border-only 渲染，不填充

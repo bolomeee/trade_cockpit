@@ -1,7 +1,7 @@
 ---
 status: confirmed
-confirmed_at: 2026-06-10
-last_modified_by: feature-dev (F220 收尾 2026-06-12 — §AnalystEstimateSnapshot(027) 随 F220-e deprecated 标不建表；DailyPayloadCache 实际仅携 pFcfRaw/pFcfAdj；026/027 两表均不建，head 停 025。v2.6 历史见 git history)
+confirmed_at: 2026-07-02
+last_modified_by: system-design (F222 2026-07-02 — Stock 新增 label_color 字段)
 ---
 
 # DATA-MODEL.md
@@ -66,12 +66,23 @@ AiMemo（独立实体；task_type + input_hash 双列索引供去重）
 | last_refreshed_at | DateTime | ❌ | 最后一次数据刷新时间 |
 | shares_float | Integer | ❌ | 流通股数量（F107-b1）；FMP `/stable/shares-float` 的 `floatShares`（D051 修订：原计划走 `/profile`，Starter 档位不含该字段）；ETF / 小盘无数据时 null |
 | shares_float_refreshed_at | DateTime | ❌ | shares_float 最近一次从 FMP 刷新的 UTC 时间（F107-b1）；24h TTL 缓存戳（D050） |
+| label_color | String(10) | ❌ | Watchlist 颜色标记（F222），枚举见下表；默认 `null`（无色） |
+
+**label_color 枚举值**（F222）：
+
+| 值 | 含义 | 前端颜色 Token |
+|----|------|--------------|
+| red | 红色标记 | --color-label-red |
+| yellow | 黄色标记 | --color-label-yellow |
+| blue | 蓝色标记 | --color-label-blue |
+| null | 无色（默认） | 不填充，渲染空心圆环 |
 
 **业务规则**：
 - ticker 全大写存储
 - 删除股票时设 is_active = false（软删除），保留历史数据
 - 重新添加同一 ticker 时恢复 is_active = true
 - shares_float 懒加载：首次 `/chart` 调用后写入；超过 24h 自动过期回源（D050）；FMP miss 仍写 refreshed_at 以避免反复请求
+- label_color 只接受 red/yellow/blue/null 四值，非法值拒绝写入（422，见 API-CONTRACT.md#watchlist）；CSV 导入 / Quick Add 新增 ticker 不设置该字段，天然落默认值 null
 
 ---
 
