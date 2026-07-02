@@ -190,3 +190,38 @@
   F222-c（frontend：ColorTagButton + Popover 交互 + WatchlistWidget 接入 +
   API client + CSV 导出携带颜色列）进入 Sprint Contract 协商，
   a + b 都 done 后方可真正联调。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02 18:26] Sprint:F222-c Watchlist 颜色标记（frontend）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 本次完成：
+  - F222-c Sprint Contract 已协商 + 用户 ack + 确认：
+    docs/开发/sprint-contracts/F222-c-contract.md（status: confirmed）
+  - F222-c 范围：ColorTagButton + Popover 前端接入——
+    tokens.css 新增 --color-label-red/yellow/blue 3 个别名 token（发现
+    design-spec.md 已登记但实现层遗漏，本次补齐，同步更新 features.json 的
+    estimated_files_changed）；types/signal.ts 新增 LabelColor 类型 +
+    SignalBoardItem.labelColor 字段；lib/api/watchlist.ts 新增 updateColor；
+    components/features/dashboard/ColorTagButton.tsx 新建（含内部
+    ColorTagPopover 子组件，不单开文件，事件冒泡隔离——阻止色块点击穿透到行的
+    onSelect）；WatchlistWidget.tsx 接入色块按钮 + mutation + CSV 导出加颜色列；
+    WatchlistWidget.test.tsx 新建（TC1–TC9，仅覆盖颜色标记相关行为，不补齐
+    delete/import/add 等既有功能回归测试）。6 个文件，全部 frontend。
+  - 协商中与用户确认两点：① 颜色更新失败（非 NOT_FOUND）用 sonner toast 提示，
+    NOT_FOUND 静默刷新；② CSV 未标记行写字面值 none，颜色列追加在 name 之后。
+    另有 2 处纯实现细节技术决策（Popover 关闭机制用 radix-ui 原语、事件冒泡
+    隔离范围）未单独征询用户，Evaluator 通过后一并追加 DECISIONS.md。
+  - features.json：F222.sub_sprints['F222-c'] ready_to_dev → contract_agreed，
+    _pipeline_status.active_sprint → "F222-c"，active_sprint_phase →
+    "contract_agreed"，iteration_history 追加 contract_agreed 记录
+
+📊 功能状态：
+  F222 Watchlist 颜色标记：🔧 in_progress（F222-a done / F222-b done / F222-c contract_agreed）
+
+[下一步]
+  开新 session，进入 Generator 模式开发 F222-c（开发步骤 1：
+  tokens.css 加 3 个 --color-label-* token → types/signal.ts →
+  lib/api/watchlist.ts → ColorTagButton.tsx → WatchlistWidget.tsx →
+  WatchlistWidget.test.tsx）。全部完成后 F222 三个 sub-sprint 齐活，
+  触发 acceptance。
