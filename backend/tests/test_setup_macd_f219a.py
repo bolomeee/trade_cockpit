@@ -112,10 +112,14 @@ class TestAlembic025:
         assert "macd_divergence" in cols
 
     def test_s9_downgrade_removes_column(self, alembic_db: str, tmp_path: Path) -> None:
-        """#9b: After downgrade -1, macd_divergence column is gone."""
+        """#9b: After downgrading past 025, macd_divergence column is gone.
+
+        Targets the explicit down_revision of 025 rather than relative "-1" so
+        this test stays correct as later migrations (e.g. 026) extend the head.
+        """
         cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
         cfg.set_main_option("sqlalchemy.url", f"sqlite:///{alembic_db}")
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "f218_d6a_fundamentals_quarterly")
         engine = create_engine(f"sqlite:///{alembic_db}")
         cols = {c["name"] for c in inspect(engine).get_columns("setup_snapshots")}
         assert "macd_divergence" not in cols
@@ -124,7 +128,7 @@ class TestAlembic025:
         """#9c: upgrade→downgrade→upgrade three-step runs clean."""
         cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
         cfg.set_main_option("sqlalchemy.url", f"sqlite:///{alembic_db}")
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "f218_d6a_fundamentals_quarterly")
         command.upgrade(cfg, "head")
         engine = create_engine(f"sqlite:///{alembic_db}")
         cols = {c["name"] for c in inspect(engine).get_columns("setup_snapshots")}
