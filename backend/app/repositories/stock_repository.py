@@ -48,6 +48,12 @@ class StockRepository:
         self.db.refresh(stock)
         return stock
 
+    def set_label_color(self, stock: Stock, color: str | None) -> Stock:
+        stock.label_color = color
+        self.db.commit()
+        self.db.refresh(stock)
+        return stock
+
     def count_bars(self, stock_id: int) -> int:
         stmt = select(func.count(DailyBar.id)).where(DailyBar.stock_id == stock_id)
         return int(self.db.execute(stmt).scalar_one())
