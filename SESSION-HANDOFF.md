@@ -64,10 +64,12 @@ F222-a 的 Sprint Contract 已确认，**尚未开始任何代码开发**（Gene
 
 | 产物 | 路径 | 最后 commit sha | uncommitted? |
 |------|------|----------------|-------------|
-| Sprint Contract | `docs/开发/sprint-contracts/F222-a-contract.md` | `PENDING` | ⬜ |
-| features.json | `docs/需求/features.json` | `PENDING` | ⬜ |
-| claude-progress.txt | `claude-progress.txt` | `PENDING` | ⬜ |
-| HEAD | — | `PENDING` | — |
+| Sprint Contract | `docs/开发/sprint-contracts/F222-a-contract.md` | `990ac9d` | ⬜ |
+| features.json | `docs/需求/features.json` | `990ac9d` | ⬜ |
+| claude-progress.txt | `claude-progress.txt` | `990ac9d` | ⬜ |
+| HEAD | — | `990ac9d` | — |
+
+（另有 `ca81e80` — system-design 文档提交，位于本 commit 之前，与本表校验无关但供参考。`.claude/launch.json` / `docs/需求/PRD.md` 仍是上一阶段遗留的未提交改动，与本 sprint 无关，未处理。）
 
 **下一 session 验证步骤**（必须先于 Generator 第一行代码）：
 
