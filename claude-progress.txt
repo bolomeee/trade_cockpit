@@ -150,3 +150,43 @@
   开新 session，进入 Generator 模式开发 F222-b（开发步骤 1：
   schemas/watchlist.py 加 UpdateColorRequest/UpdateColorResponse →
   repository → service → router → 测试）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-02] Pipeline 阶段 5：F222-b Generator + Evaluator
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Generator 入口 pre-flight：核对 SESSION-HANDOFF.md checksum 表（contract /
+  features.json 均落在 commit 0fbd917，HEAD 已推进到 a121be6，符合"可推进不可早于"
+  约束）；consistency-check（interactive，scope=F222-b，C5/C10/C11）：C5 双向一致 ✓、
+  C10 phase 转移+dependency gating ✓（F001 done、F222-a done）、C11 因项目无
+  tools/sdlc-doctor.py 优雅跳过。全清后进入 Generator。
+
+✅ 开发步骤（按 Contract §1.1→§1.5 顺序，每步 wip commit）：
+  - backend/app/schemas/watchlist.py：新增 UpdateColorRequest(color: Literal
+    ["red","yellow","blue"]|None，无 default) + UpdateColorResponse
+  - backend/app/repositories/stock_repository.py：新增 set_label_color(stock, color)
+    （mutate+commit+refresh，同 soft_delete/reactivate 模式）
+  - backend/app/services/watchlist_service.py：新增 update_color(raw_ticker, color)
+    （ticker 归一化 + NOT_FOUND 判定沿用 remove_stock 同款逻辑）
+  - backend/app/routers/watchlist.py：新增 PUT /{ticker}/color 路由
+  - backend/tests/test_watchlist_api.py：追加 TC1–TC7（7 用例：设红/清空/大小写
+    不敏感/非法枚举/未加入/已软删/缺字段），全过
+
+✅ Evaluator 自检（Contract §6 逐条）：
+  - pytest tests/test_watchlist_api.py：35/35 通过（含 TC1–TC7）
+  - 全量回归：1309 passed, 11 deselected，0 新增失败（含 F222-a 5 例）
+  - API-CONTRACT.md §Watchlist PUT .../color：字段名/类型/错误码逐条核对一致
+  - DATA-MODEL.md：label_color 字段命名一致（复用 F222-a 已定义列，未改 schema）
+  - 无 print/调试残留；无死代码；ruff 对本 sprint 5 文件全过；mypy 项目未配置，跳过
+  - 实现范围严格等于 Contract §1（未碰 GET 读路径、未碰任何前端文件）
+  - 修改文件严格等于 Contract §2 清单（5 个，git diff 核对一致）
+
+✅ features.json：F222.sub_sprints['F222-b'] in_progress → done；
+  _pipeline_status.active_sprint_phase → "done"；iteration_history 追加 done 记录。
+  父 feature F222 status 保持 in_progress（F222-c 仍 ready_to_dev，未触发 C1 父完成
+  invariant）。
+
+[下一步]
+  F222-c（frontend：ColorTagButton + Popover 交互 + WatchlistWidget 接入 +
+  API client + CSV 导出携带颜色列）进入 Sprint Contract 协商，
+  a + b 都 done 后方可真正联调。
