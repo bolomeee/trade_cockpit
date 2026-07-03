@@ -101,6 +101,11 @@
   --color-earnings-caution: var(--color-log-warn);
   --color-earnings-danger: var(--color-change-negative);
 
+  /* ---------- 颜色 · Watchlist 颜色标记（F222，ColorTagButton 色块） ---------- */
+  --color-label-red: var(--color-change-negative);
+  --color-label-yellow: var(--color-log-warn);
+  --color-label-blue: var(--color-signal-breakout);
+
   /* ---------- 颜色 · Cockpit Action List 三栏背景（对齐 actions/today actionType 分组） ---------- */
   --color-action-must-bg: rgba(239, 68, 68, 0.06);
   --color-action-monitor-bg: rgba(245, 158, 11, 0.06);

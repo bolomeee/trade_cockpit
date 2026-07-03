@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.8",
     "active_sprint": "F222-c",
-    "active_sprint_phase": "contract_agreed",
+    "active_sprint_phase": "in_progress",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5273,7 +5273,7 @@
       "sub_sprints": {
         "F222-a": "done",
         "F222-b": "done",
-        "F222-c": "contract_agreed"
+        "F222-c": "in_progress"
       },
       "dependencies": [
         "F001"
