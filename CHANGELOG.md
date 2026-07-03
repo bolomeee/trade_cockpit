@@ -4,6 +4,19 @@
 
 ---
 
+## [v2.8.0] - 2026-07-03
+
+> ⚠️ consistency-check 违例覆盖：strict 扫描发现 3 项历史遗留违例，均与本次 F222 发版无关——C1（`F220` 父 done 但 `F220-a1/a2/c/d/e` 为已裁决弃用范围，仅 `F220-b` 落地，notes 已记录）、C3（`F206-c1-contract.md` 文首 drafted 标签未随 F206 完成同步更新，纯文档滞后）、C7（`F217` 同日多子任务交错记录的读取假象；`F220-a1` 的业务性回退已有 `docs/验收/v2.6-F220-a1-acceptance.md` 完整记录）。三项自 v2.4 起即存在，非本次引入。用户 2026-07-03 明确『强制发版』。
+
+### ✨ 新增
+- **Watchlist 颜色标记（F222）**：可为 watchlist 中每只股票打颜色标记（红/黄/蓝/无色），用于快速视觉分组
+  - ticker 左侧新增圆形色块按钮，点击弹出 Popover 选色，单选即时生效
+  - 标记持久化到后端（`PUT /api/watchlist/{ticker}/color`），刷新页面保持不变
+  - 导出 CSV 时携带颜色列（未标记显示 `none`）
+  - 新增股票（CSV 导入 / Quick Add）默认无色
+
+---
+
 ## [v2.7.0] - 2026-06-25
 
 > ⚠️ consistency-check 违例覆盖：C7（F221 为 code-first 回填登记，phase 直接建于 needs_review 的跳步）属本项目 `_phase_transition_convention` 文档化的预期可忽略情形；strict 扫描无 🔴 严重违例，用户 2026-06-25 明确『强制发版』。
