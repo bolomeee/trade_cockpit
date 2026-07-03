@@ -450,3 +450,18 @@ v1.0.0 的全部功能作为"首批 widget"完整保留：
 
 **特殊说明**：F221 为 **code-first 回填登记**——在 plan-mode 直接实现并通过测试（后端 1297 / 前端 355 全绿）后补登 features.json，未走标准 design→contract→generator 流水线。**未部署**：线上 :8001 仍 Docker 旧镜像（无新端点、旧 cadence），生效需重建前后端镜像。
 
+---
+
+### v2.8 迭代 — 2026-07-02（Watchlist 颜色标记）
+
+**变更原因**：用户希望用颜色快速区分 watchlist 里不同类别的股票（如重点关注/观察中/风险），需要一个轻量的视觉分组机制。
+
+**新增 feature**：
+- **F222：Watchlist 颜色标记** — ticker 左侧新增圆形色块按钮，点击弹出 Popover 选择 红/黄/蓝/无色（单选，shadcn Popover + 色块网格），选择后持久化到后端；CSV 导出携带颜色列；CSV 导入 / Quick Add 新增 ticker 默认无色。
+
+**修改 feature**：无。
+
+**废弃 feature**：无。
+
+**特殊说明**：跳过完整 design-bridge（无新 Figma 稿，交互方式已由用户明确指定），system-design 阶段直接在 design-spec.md 登记颜色 token 后进入 feature-dev。
+

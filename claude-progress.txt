@@ -262,3 +262,40 @@
   （含真实前后端联调，非 mock——F222-c 开发期间已完成过一轮真实联调验证，
   acceptance 阶段可直接复用该验证结论或按需重跑）。acceptance 通过后
   F222.status 才可标记 done。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-03 11:15] F222 Watchlist 颜色标记 — acceptance 验收通过
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - consistency-check 入口扫描（mode=report，全项目 63 feature）：0 🔴 严重违例，
+    可放行进入 acceptance（详见验收记录）
+  - 真实浏览器复核 5 条 acceptance_criteria：
+    1) 色块渲染（未标记=空心圆环 14px）✅
+    2) 点击弹出 Popover 4 色块单选，点击立即生效并关闭 ✅
+    3) 刷新页面颜色标记持久化（AVGO 标红→reload→仍为红）✅
+    4) CSV 导出携带颜色列（拦截 blob 读取真实内容核对：
+       ticker,name,color，AVGO=red/MCD=blue/其余=none）✅
+    5) CSV 导入/Quick Add 新增 ticker 默认无色 —— 自动化证据覆盖（F222-a
+       后端默认值 + 前端 TC1），未在验收中新增真实 ticker 以免污染 dev.db
+  - 事件隔离（TC5）真实浏览器补充验证：MCD 行完整交互全程 Price Chart
+    选中状态未变化，PUT 成功后无任何 /api/stocks/*/chart 跟随请求
+  - 异常排查：验收过程中一度怀疑"点击色块误选中列表第 9 行之后股票"的
+    bug，排查后确认是浏览器自动化工具（preview_click）scroll+click 时序
+    竞态，非产品代码缺陷——elementFromPoint 核对布局无重叠/无重复 DOM，
+    用精确构造的 PointerEvent 序列复测异常不再复现，Vitest TC5（jsdom，
+    无真实滚动坐标问题）本身也通过。未产生任何代码改动
+  - 测试数据清理：AVGO/MCD 临时标记验证后已通过 UI 清除，dev.db 无残留
+  - features.json：F222.status in_progress→done，phase needs_review→done，
+    completed_at=2026-07-03；iteration_history 追加 acceptance 收尾记录；
+    _pipeline_status.active_sprint 清空（v2.8 范围内唯一 feature 已完成）
+  - 验收记录：docs/验收/v2.8-F222-acceptance.md
+
+📊 功能状态：
+  F222 Watchlist 颜色标记：✅ done（F222-a/b/c 三个 sub-sprint + 父 feature 全部完成）
+  v2.8 迭代（当前范围仅 F222）：全部 feature 已 done
+
+[下一步]
+  v2.8 范围内无遗留 feature，可衔接部署流程（本地 Docker 构建 + 冒烟测试），
+  或触发 project-commiter 生成 CHANGELOG + 打 tag。二者均需用户明确指令触发，
+  本次 acceptance 不自动执行部署。

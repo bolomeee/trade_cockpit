@@ -12,8 +12,8 @@
     "development": "done",
     "deployment": "not_started",
     "current_iteration": "v2.8",
-    "active_sprint": "F222-c",
-    "active_sprint_phase": "needs_review",
+    "active_sprint": null,
+    "active_sprint_phase": "done",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5268,8 +5268,8 @@
       "description": "用户可以为 watchlist 中的每只股票打颜色标记（红/黄/蓝/无色），用于快速视觉分组；标记持久化保存，导出 CSV 时携带颜色信息",
       "user_story": "作为投资者，我想给 watchlist 里的股票打颜色标记，这样能用颜色快速区分不同类别（如重点关注/观察中/风险），不打标记时默认无色",
       "priority": "P2",
-      "status": "in_progress",
-      "phase": "needs_review",
+      "status": "done",
+      "phase": "done",
       "sub_sprints": {
         "F222-a": "done",
         "F222-b": "done",
@@ -5380,10 +5380,19 @@
           "summary": "Generator + Evaluator 完成。tokens.css 新增 --color-label-red/yellow/blue 3 个别名 token + types/signal.ts 新增 LabelColor 类型与 SignalBoardItem.labelColor 字段 + lib/api/watchlist.ts 新增 updateColor + components/features/dashboard/ColorTagButton.tsx 新建（ColorTagButton + 内部 ColorTagPopover，radix-ui Popover.Close 原语 + 双重 stopPropagation 事件隔离）+ WatchlistWidget.tsx 接入色块按钮/colorMutation/CSV 导出加颜色列 + WatchlistWidget.test.tsx 新建（TC1-TC9 全过）。6 个文件，全部 frontend，无超出 Contract §1 范围。全量回归 374 passed（无新增失败）；npm run build 通过无 TS 类型错误；真实前后端联调验证（源码临时 uvicorn + 真实 dev.db）：色块渲染/Popover 4 色块/选色写入 PUT /api/watchlist/{ticker}/color/事件隔离（点击色块不触发行选中）/CSV 导出携带颜色列/清除标记 全部通过浏览器实测，测试数据已清理归零；DECISIONS.md 追加 D112（4 项前端实现细节决策）。F222-a/b/c 三个 sub-sprint 全部 done，F222 转入 needs_review 等待 acceptance。",
           "contract": "docs/开发/sprint-contracts/F222-c-contract.md",
           "evaluator_passed_at": "2026-07-03"
+        },
+        {
+          "date": "2026-07-03",
+          "subtask": "F222",
+          "phase": "done",
+          "summary": "acceptance 通过。consistency-check 入口扫描 0 🔴 严重违例。真实浏览器复核 5 条 acceptance_criteria 全过：色块渲染/Popover 交互/刷新持久化/CSV 导出颜色列/事件隔离。验收过程中排查一处疑似 bug（点击色块误选中列表中第 9 行之后的股票），定位为浏览器自动化工具 scroll+click 时序竞态（非产品代码缺陷）——用精确构造的 PointerEvent 序列复测后异常不再复现，且与 elementFromPoint 布局核对、既有 Vitest TC5 均印证事件隔离代码本身正确。测试数据（AVGO/MCD 临时标记）已清理。F222-a/b/c 三个 sub-sprint + 父 feature 全部 done，v2.8 迭代范围内唯一 feature 完成，可衔接部署。",
+          "contract": "docs/开发/sprint-contracts/F222-c-contract.md",
+          "acceptance_record": "docs/验收/v2.8-F222-acceptance.md",
+          "completed_at": "2026-07-03"
         }
       ],
       "notes": "跳过完整 design-bridge（无新 Figma 稿，用户已指定 shadcn Popover + 色块网格交互）；system-design 阶段直接在 design-spec.md 登记颜色 token。CSV 导入路径无需改动——现有解析逻辑只提取 ticker 列，其余列本就忽略，颜色字段 DB 默认 null 天然满足'未识别列→无色'要求。拆分为 F222-a(backend 读路径)/F222-b(backend 写路径)/F222-c(frontend) 三个 sub-sprint（14 文件超 6-file 上限，2026-07-02 用户确认拆分边界）。",
-      "completed_at": null
+      "completed_at": "2026-07-03"
     }
   ]
 }
