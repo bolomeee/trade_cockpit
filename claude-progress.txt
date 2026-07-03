@@ -225,3 +225,40 @@
   lib/api/watchlist.ts → ColorTagButton.tsx → WatchlistWidget.tsx →
   WatchlistWidget.test.tsx）。全部完成后 F222 三个 sub-sprint 齐活，
   触发 acceptance。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-03 10:29] Sprint:F222-c Watchlist 颜色标记（frontend）— Generator + Evaluator 完成
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - tokens.css 新增 --color-label-red/yellow/blue 3 个别名 token
+  - types/signal.ts 新增 LabelColor 类型 + SignalBoardItem.labelColor 字段
+  - lib/api/watchlist.ts 新增 updateColor(ticker, color)
+  - ColorTagButton.tsx 新建（含内部 ColorTagPopover：radix-ui Popover.Close
+    原语关闭机制 + 触发按钮容器/PopoverContent 双重 stopPropagation 事件隔离）
+  - WatchlistWidget.tsx 接入色块按钮 + colorMutation（NOT_FOUND 静默刷新，
+    其余错误 sonner toast）+ CSV 导出加颜色列（name 之后，null→"none"）
+  - WatchlistWidget.test.tsx 新建，TC1–TC9 全部覆盖颜色标记相关行为
+  - 单元测试：9/9 通过（WatchlistWidget 专项）
+  - 全量回归：374 passed，无新增失败
+  - npm run build：通过，无 TS 类型错误
+  - 真实前后端联调（源码临时 uvicorn + 真实 dev.db）：色块渲染/Popover 4 色块/
+    选色写入 PUT /api/watchlist/{ticker}/color/事件隔离（点击色块不触发行选中，
+    Price Chart 面板未跳转）/CSV 导出内容抓取校验/清除标记 全部浏览器实测通过，
+    测试数据已清理归零（AVGO/CIM/F 恢复 null）
+  - Evaluator 自检清单：全部通过（含"实现范围严格等于 Contract §1"、
+    "修改文件严格等于 Contract §2 清单 6 个"两项范围检查）
+  - DECISIONS.md 追加 D112（Popover 关闭机制 / 错误提示 / CSV 空值 / 事件冒泡隔离）
+  - consistency-check（C1+C4+C5，scope=F222）：0 违例
+  - phase → F222.sub_sprints['F222-c']: in_progress → done；
+    F222.phase: ready_to_dev(stale) → needs_review；F222.status 保持
+    in_progress（C1 invariant：acceptance 未跑，不自动升 done）
+
+📊 功能状态：
+  F222 Watchlist 颜色标记：🔍 needs_review（F222-a done / F222-b done / F222-c done，等待 acceptance）
+
+[下一步]
+  触发 acceptance skill，对 F222 五条 acceptance_criteria 做最终验收
+  （含真实前后端联调，非 mock——F222-c 开发期间已完成过一轮真实联调验证，
+  acceptance 阶段可直接复用该验证结论或按需重跑）。acceptance 通过后
+  F222.status 才可标记 done。
