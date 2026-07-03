@@ -2691,4 +2691,25 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 
 **影响**：`backend/tests/test_setup_macd_f219a.py` 两处 `downgrade(cfg, "-1")` → `downgrade(cfg, "f218_d6a_fundamentals_quarterly")`；`backend/tests/test_schema.py` `EXPECTED_COLUMNS["stocks"]` 同步加入 `label_color`（该测试职责就是追踪 schema drift，非本次决策范围但同批修复）。今后新增 alembic migration 时，若已有降级测试用 `-1`，应主动检查是否需要同样改为显式 revision id。
 
+---
+
+## D112：Watchlist 颜色标记 — 前端实现细节（Popover 关闭机制 / 错误提示 / CSV 空值 / 事件冒泡隔离，F222-c）
+
+**日期**：2026-07-02
+
+**决定**：
+1. **Popover 关闭机制**：`ColorTagButton.tsx` 内联从 `radix-ui` 引入 `Popover as PopoverPrimitive`（与 `components/ui/popover.tsx` 自身的引入方式一致），色块用 `PopoverPrimitive.Close asChild` 包裹，靠 Radix 原语的 context 自动关闭，组件不额外加 `useState` 管 `open`。不改共享 `components/ui/popover.tsx`（该文件未导出 `PopoverClose`，改造成本高于内联引入）。
+2. **错误提示**：`colorMutation` 的 `onError` 中，`ApiError.code === 'NOT_FOUND'` 走静默 `invalidate()`（镜像 `deleteMutation` 的既有处理——该行数据已过期，刷新即可，无需打扰用户）；其余错误（422/502/网络失败等）统一走 `sonner` 的 `toast('颜色标记更新失败，请重试')`。
+3. **CSV 颜色列**：追加在 `name` 列之后（`ticker,name,color`）；`labelColor: null` 的行写字面值 `none`（而非空字符串），保证列对齐且人工可读。
+4. **事件冒泡隔离**：`WatchlistWidget` 每行绑定 `onClick={onSelect}`（点击行开个股详情）。React 合成事件沿 React 树冒泡，Radix `PopoverContent` 虽经 `Portal` 挂载到 DOM 外层，点击仍会沿 React 树冒泡到 `TableRow`。因此 `ColorTagButton.tsx` 内部两处加 `onClick={(e) => e.stopPropagation()}`：触发按钮外层 `<span>` 容器、以及 `PopoverPrimitive.Content` 根节点。两处隔离均封装在组件内部，`WatchlistWidget.tsx` 调用方无需关心。
+
+**原因**：均为 Sprint Contract 协商阶段已识别的实现细节，无产品行为分歧（前 3 项已在协商中征询用户；第 4 项是协商中新发现的技术点，唯一合理实现路径，未单独征询）。开发中经浏览器真实交互验证：色块点击不会误触发行选中、Popover 选色后立即关闭且正确调用 `PUT /api/watchlist/{ticker}/color`。
+
+**放弃了什么**：
+- 给 `ColorTagButton` 加本地 `open` state 手动控制 Popover——Radix `Popover.Close` 已经解决"选色后自动关闭"，多余的 state 违反极简原则。
+- 修改共享 `components/ui/popover.tsx` 补导出 `PopoverClose`——影响面覆盖所有消费该文件的组件，超出本 sprint 范围，内联引入 `radix-ui` 原语成本更低且不影响他处。
+- CSV 空值列用空字符串——`none` 字面值更利于人工核对导出文件，空字符串在部分表格软件中会被裁剪掉逗号导致列错位视觉误判。
+
+**影响**：`frontend/src/components/features/dashboard/ColorTagButton.tsx`（新建）；`frontend/src/workbench/widgets/WatchlistWidget.tsx`（`colorMutation` + CSV 导出）。
+
 

@@ -13,7 +13,7 @@
     "deployment": "not_started",
     "current_iteration": "v2.8",
     "active_sprint": "F222-c",
-    "active_sprint_phase": "in_progress",
+    "active_sprint_phase": "needs_review",
     "_phase_transition_convention": "本项目 Generator 模式：iteration_history 仅记录 contract_agreed 和 needs_review/done 节点；in_progress/testing 阶段在 git commits 中体现，不另记 history 条目。consistency-check C7 跳步警告对本项目属预期行为，可忽略。"
   },
   "_iteration_log": [
@@ -5269,11 +5269,11 @@
       "user_story": "作为投资者，我想给 watchlist 里的股票打颜色标记，这样能用颜色快速区分不同类别（如重点关注/观察中/风险），不打标记时默认无色",
       "priority": "P2",
       "status": "in_progress",
-      "phase": "ready_to_dev",
+      "phase": "needs_review",
       "sub_sprints": {
         "F222-a": "done",
         "F222-b": "done",
-        "F222-c": "in_progress"
+        "F222-c": "done"
       },
       "dependencies": [
         "F001"
@@ -5372,6 +5372,14 @@
           "summary": "Sprint Contract 已确认。范围：frontend 接入——tokens.css 新增 --color-label-red/yellow/blue 3 个别名 token（design-spec.md 已登记但实现层遗漏，本次补上，同步更新 estimated_files_changed）+ types/signal.ts 新增 LabelColor 类型与 SignalBoardItem.labelColor 字段 + lib/api/watchlist.ts 新增 updateColor + components/features/dashboard/ColorTagButton.tsx 新建（含内部 ColorTagPopover 子组件，不单开文件）+ WatchlistWidget.tsx 接入色块按钮/mutation/CSV 导出加颜色列 + WatchlistWidget.test.tsx 新建（TC1-TC9，仅覆盖颜色标记相关行为，不补齐既有功能回归测试）。6 个文件，全部 frontend。协商中与用户确认两点：颜色更新失败用 sonner toast 提示（NOT_FOUND 静默刷新）；CSV 未标记行写字面值 none，列追加在 name 之后。另有 2 处纯实现细节技术决策（Popover 关闭机制用 radix-ui 原语、事件冒泡隔离）未单独征询，Evaluator 通过后一并追加 DECISIONS.md。下一 session Generator 模式从开发步骤 1（tokens.css 加 token）开始。",
           "contract": "docs/开发/sprint-contracts/F222-c-contract.md",
           "contract_agreed_at": "2026-07-02"
+        },
+        {
+          "date": "2026-07-03",
+          "subtask": "F222-c",
+          "phase": "done",
+          "summary": "Generator + Evaluator 完成。tokens.css 新增 --color-label-red/yellow/blue 3 个别名 token + types/signal.ts 新增 LabelColor 类型与 SignalBoardItem.labelColor 字段 + lib/api/watchlist.ts 新增 updateColor + components/features/dashboard/ColorTagButton.tsx 新建（ColorTagButton + 内部 ColorTagPopover，radix-ui Popover.Close 原语 + 双重 stopPropagation 事件隔离）+ WatchlistWidget.tsx 接入色块按钮/colorMutation/CSV 导出加颜色列 + WatchlistWidget.test.tsx 新建（TC1-TC9 全过）。6 个文件，全部 frontend，无超出 Contract §1 范围。全量回归 374 passed（无新增失败）；npm run build 通过无 TS 类型错误；真实前后端联调验证（源码临时 uvicorn + 真实 dev.db）：色块渲染/Popover 4 色块/选色写入 PUT /api/watchlist/{ticker}/color/事件隔离（点击色块不触发行选中）/CSV 导出携带颜色列/清除标记 全部通过浏览器实测，测试数据已清理归零；DECISIONS.md 追加 D112（4 项前端实现细节决策）。F222-a/b/c 三个 sub-sprint 全部 done，F222 转入 needs_review 等待 acceptance。",
+          "contract": "docs/开发/sprint-contracts/F222-c-contract.md",
+          "evaluator_passed_at": "2026-07-03"
         }
       ],
       "notes": "跳过完整 design-bridge（无新 Figma 稿，用户已指定 shadcn Popover + 色块网格交互）；system-design 阶段直接在 design-spec.md 登记颜色 token。CSV 导入路径无需改动——现有解析逻辑只提取 ticker 列，其余列本就忽略，颜色字段 DB 默认 null 天然满足'未识别列→无色'要求。拆分为 F222-a(backend 读路径)/F222-b(backend 写路径)/F222-c(frontend) 三个 sub-sprint（14 文件超 6-file 上限，2026-07-02 用户确认拆分边界）。",
