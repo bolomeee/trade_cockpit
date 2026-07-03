@@ -2,6 +2,8 @@ import type { SignalType } from './watchlist'
 
 export type { SignalType }
 
+export type LabelColor = 'red' | 'yellow' | 'blue' | null
+
 export interface SignalBoardItem {
   ticker: string
   name: string
@@ -12,4 +14,5 @@ export interface SignalBoardItem {
   distancePct: number | null
   slopePositive: boolean | null
   slopeValue: number | null
+  labelColor: LabelColor
 }
