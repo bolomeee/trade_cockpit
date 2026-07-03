@@ -76,9 +76,9 @@
 |------|------|----------------|-------------|
 | F222-c Sprint Contract | `docs/开发/sprint-contracts/F222-c-contract.md` | `aac46e57f4a96adf12832adfbb8a97917ade4814` | ⬜ |
 | features.json | `docs/需求/features.json` | `5c5b19b6299cec92ae5ab30ecee69f4116f72b52` | ⬜ |
-| claude-progress.txt | `claude-progress.txt` | `<填于本次 commit 后>` | ⬜ |
+| claude-progress.txt | `claude-progress.txt` | `cc7bd31d9af30fb4e9bd3238a78725c00c978751` | ⬜ |
 | DECISIONS.md | `docs/系统设计/DECISIONS.md` | `5c5b19b6299cec92ae5ab30ecee69f4116f72b52` | ⬜ |
-| HEAD | — | `<填于本次 commit 后>` | — |
+| HEAD | — | `cc7bd31d9af30fb4e9bd3238a78725c00c978751` | — |
 
 ## 遗留决策（需要用户回答）
 
