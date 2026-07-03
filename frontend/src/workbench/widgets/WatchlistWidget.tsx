@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Loader2, Upload, CircleX } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { getSignals } from '@/lib/api/signals'
-import { removeStock } from '@/lib/api/watchlist'
+import { removeStock, updateColor } from '@/lib/api/watchlist'
 import { useAppStore } from '@/store/useAppStore'
 import { AddStockCard } from '@/components/features/dashboard/AddStockCard'
+import { ColorTagButton } from '@/components/features/dashboard/ColorTagButton'
 import { CsvImportDialog } from '@/components/features/dashboard/CsvImportDialog'
 import { SignalBadge } from '@/components/features/dashboard/SignalBadge'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -13,7 +15,7 @@ import { ErrorState } from '@/components/common/ErrorState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ApiError } from '@/lib/api/client'
-import type { SignalBoardItem, SignalType } from '@/types/signal'
+import type { LabelColor, SignalBoardItem, SignalType } from '@/types/signal'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,8 +44,10 @@ const SIGNAL_PRIORITY: Record<SignalType, number> = {
 }
 
 function exportCsv(stocks: SignalBoardItem[]) {
-  const rows = stocks.map((s) => `${s.ticker},"${s.name.replace(/"/g, '""')}"`)
-  const csv = ['ticker,name', ...rows].join('\n')
+  const rows = stocks.map(
+    (s) => `${s.ticker},"${s.name.replace(/"/g, '""')}",${s.labelColor ?? 'none'}`,
+  )
+  const csv = ['ticker,name,color', ...rows].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -145,7 +149,7 @@ export function WatchlistWidget() {
 }
 
 function WatchlistRow({ stock, onSelect }: { stock: SignalBoardItem; onSelect: () => void }) {
-  const { ticker, name, signalType, closePrice, distancePct } = stock
+  const { ticker, name, signalType, closePrice, distancePct, labelColor } = stock
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -173,6 +177,18 @@ function WatchlistRow({ stock, onSelect }: { stock: SignalBoardItem; onSelect: (
     },
   })
 
+  const colorMutation = useMutation({
+    mutationFn: (color: LabelColor) => updateColor(ticker, color),
+    onSuccess: invalidate,
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === 'NOT_FOUND') {
+        invalidate()
+        return
+      }
+      toast('颜色标记更新失败，请重试')
+    },
+  })
+
   const distanceColor =
     distancePct !== null
       ? distancePct >= 0
@@ -186,7 +202,16 @@ function WatchlistRow({ stock, onSelect }: { stock: SignalBoardItem; onSelect: (
       className="cursor-pointer"
       style={{ opacity: deleteMutation.isPending ? 0.5 : 1 }}
     >
-      <TableCell className="font-bold">{ticker}</TableCell>
+      <TableCell className="font-bold">
+        <div className="flex items-center gap-1.5">
+          <ColorTagButton
+            ticker={ticker}
+            color={labelColor}
+            onChange={(color) => colorMutation.mutate(color)}
+          />
+          {ticker}
+        </div>
+      </TableCell>
       <TableCell className="text-muted-foreground">{name}</TableCell>
       <TableCell>
         <SignalBadge signalType={signalType} />
