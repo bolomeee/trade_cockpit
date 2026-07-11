@@ -9,7 +9,7 @@ Funnel layers:
 
 Cache miss (empty cockpit_pool_cache): rs=0, fundamental=0, action=0 + WARN log (Q3=A).
 ADV = last_price × last_volume (single-day proxy, tech-debt D080).
-Trend cap: POOL_TREND_CAP tickers by market_cap desc before RS layer (D080).
+Trend cap: POOL_TREND_CAP tickers by market_cap desc before RS layer (D080, D114).
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ from app.services.cockpit.pool_helpers import (
 
 logger = logging.getLogger(__name__)
 
-POOL_TREND_CAP: int = 200
+POOL_TREND_CAP: int = 300
 
 
 @dataclass

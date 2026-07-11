@@ -2734,3 +2734,21 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 - bump layout store 版本号强制新布局——会清掉用户自定义网格，改用"缺失则追加"迁移更友好。
 
 **影响**：`frontend/src/workbench/widgets/ArticleDetailWidget.tsx`（新建）、`frontend/src/workbench/widgets/__tests__/ArticleDetailWidget.test.tsx`（新建）、`frontend/src/workbench/WidgetRegistry.ts`（注册 news.detail）、`frontend/src/pages/News.tsx`（特判 + 迁移 + 移除 modal）、`frontend/src/components/common/ArticleModal.tsx`（删除）、`frontend/src/components/common/__tests__/ArticleModal.test.tsx`（删除）。
+
+---
+
+## D114：POOL_TREND_CAP 200 → 300（Cockpit Pool Builder trend 层截断阈值）
+
+**日期**：2026-07-11
+
+**背景**：用户在 `/logs` 页反复看到 `pool trend cap hit, dropped N tickers` WARN。排查发现这是 D080 决策3 既定的保护机制：`PoolService._filter_trend()` 的 trend 子集（tradable ∩ 最新 breakout snapshot）超过 `POOL_TREND_CAP` 时按 `market_cap` 降序截断，并写 WARN。原阈值 200 的理由是 D080 时代 RS/fundamental 层对 trend 子集做实时 FMP 调用，200 ticker × 2 calls 在 6 并发下约需 30-40s，接近 60s 前端超时。
+
+**决定**：`pool_service.py` 的 `POOL_TREND_CAP` 由 200 提高到 **300**。
+
+**原因**：
+- **D081** 已把 RS + fundamental 层改为从每周预计算的 `cockpit_pool_cache` 读取，`get_pool()` 实时路径不再对 trend 子集做任何 FMP 调用——截断后续只是一次 DB `IN` 查询。D080 里"防 FMP 限流/超时"的理由已不适用于该 cap 在实时路径的作用，抬高阈值的边际成本接近于零。
+- 查询 `dev.db` 的 `system_logs`：2026-07-11 当天该 WARN 在约1小时内出现15次，全部是 `dropped 14 tickers`（trend 子集稳定在214），说明并非偶发数据抖动，而是当前 breakout snapshot 规模本身持续略超过200。同日 `market_breakout_scans` 最新 `scan_date` 的 distinct ticker 数为237（`a2_slope_flip` 141 + `b2_ma_pullback` 111 + `legacy_crossover` 25，有重叠）。300 相对237留出约25%余量，消除当前"几乎每次请求都触发"的高频 WARN。
+- `PoolCacheService.rebuild()`（每周 cron，`pool_cache_service.py`）**不受 `POOL_TREND_CAP` 约束**，本来就处理 breakout snapshot 全部 ticker（当前237个）；本次调整不影响该任务行为。其文档字符串"~50"的历史假设已过时，是独立于本决策的既有技术债，未在本次一并修正。
+- 仍保留为 `pool_service.py` 顶层模块常量，不迁入 `cockpit_params.py`——沿用 D080 决策3"避免凭空扩 section"的既有理由；截断机制本身保留作为兜底保护（防止 breakout snapshot 规模未来失控增长）。
+
+**影响**：`backend/app/services/cockpit/pool_service.py`（`POOL_TREND_CAP` 常量 + 模块文档字符串引用更新）、`backend/tests/test_pool_service.py`（trend-cap 测试去除硬编码 200，改为动态引用 `POOL_TREND_CAP`）。

@@ -177,9 +177,9 @@ def test_revenue_growth_none_fail_open(db: Session, fmp: FmpClient):
     assert result["items"][0]["revenue_growth_yoy"] is None
 
 
-def test_trend_cap_truncates_to_200_by_market_cap(db: Session, fmp: FmpClient):
-    """#10: trend subset > POOL_TREND_CAP → cap to 200 by market_cap desc."""
-    n_tickers = POOL_TREND_CAP + 20  # 220
+def test_trend_cap_truncates_to_cap_by_market_cap(db: Session, fmp: FmpClient):
+    """#10: trend subset > POOL_TREND_CAP → cap to POOL_TREND_CAP by market_cap desc."""
+    n_tickers = POOL_TREND_CAP + 20
     tickers_caps = [(f"T{i:03d}", (1000 - i) * 1_000_000_000) for i in range(n_tickers)]
     _insert_universe(db, tickers_caps)
     _insert_breakout(db, [t for t, _ in tickers_caps])
@@ -189,12 +189,14 @@ def test_trend_cap_truncates_to_200_by_market_cap(db: Session, fmp: FmpClient):
     ])
 
     svc = _make_service(db, fmp)
-    result = svc.get_pool(PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0, limit=200))
+    result = svc.get_pool(
+        PoolParams(rs_percentile_min=0.0, revenue_growth_yoy_min=0.0, limit=POOL_TREND_CAP)
+    )
 
     assert result["funnel"]["trend"] == POOL_TREND_CAP
     item_tickers = {i["ticker"] for i in result["items"]}
     assert "T000" in item_tickers
-    assert "T200" not in item_tickers
+    assert f"T{POOL_TREND_CAP:03d}" not in item_tickers
 
 
 def test_ticker_not_in_cache_excluded_from_rs(db: Session, fmp: FmpClient):
