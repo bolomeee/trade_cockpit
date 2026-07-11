@@ -10,7 +10,7 @@ type WidgetShellProps = {
 
 export function WidgetShell({ title, children, onClose, noPaddingRight }: WidgetShellProps) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
+    <div className="widget-shell flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
       <div
         className="widget-handle flex h-[18px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
         style={{ backgroundColor: 'var(--color-widget-header)' }}
@@ -31,7 +31,7 @@ export function WidgetShell({ title, children, onClose, noPaddingRight }: Widget
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-auto p-4" style={noPaddingRight ? { paddingRight: 0 } : undefined}>{children}</div>
+      <div className="widget-scroll-area flex-1 overflow-auto p-4" style={noPaddingRight ? { paddingRight: 0 } : undefined}>{children}</div>
     </div>
   )
 }

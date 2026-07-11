@@ -45,7 +45,7 @@ export default function CockpitShell() {
               const Widget = manifest.component
               return (
                 <div key={item.i}>
-                  <div className="flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
+                  <div className="widget-shell flex h-full flex-col overflow-hidden rounded border border-border bg-card shadow-sm">
                     <div
                       className="widget-handle flex h-[14px] shrink-0 cursor-grab items-center justify-between border-b border-border px-2 active:cursor-grabbing"
                       style={{ backgroundColor: 'var(--color-widget-header)' }}
@@ -64,7 +64,7 @@ export default function CockpitShell() {
                         <X size={10} strokeWidth={2} />
                       </button>
                     </div>
-                    <div className="flex-1 overflow-auto">
+                    <div className="widget-scroll-area flex-1 overflow-auto">
                       <Widget />
                     </div>
                   </div>

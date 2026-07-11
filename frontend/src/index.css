@@ -126,6 +126,27 @@ body {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Keep every scroll track inside cockpit widgets visually continuous with the
+   dark card surface. Native browser defaults otherwise render a light track. */
+.dark .widget-shell,
+.dark .widget-shell * {
+  scrollbar-color: var(--muted-foreground) var(--card);
+}
+
+.dark .widget-shell ::-webkit-scrollbar-track {
+  background-color: var(--card);
+}
+
+.dark .widget-shell ::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
+  border: 2px solid var(--card);
+  border-radius: 9999px;
+}
+
+.dark .widget-shell ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
