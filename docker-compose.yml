@@ -1,25 +1,106 @@
 services:
   backend:
+    profiles: ["prod"]
     build:
       context: ./backend
+      target: production
     environment:
-      - APP_ENV=production
-      - DATABASE_URL=sqlite:////app/data/prod.db
-      - POLYGON_API_KEY=${POLYGON_API_KEY}
-      - FMP_API_KEY=${FMP_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - AI_TASK_OVERRIDES_JSON=${AI_TASK_OVERRIDES_JSON}
+      APP_ENV: production
+      DATABASE_URL: sqlite:////app/data/prod.db
+      FMP_API_KEY: ${FMP_API_KEY:-}
+      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_TASK_OVERRIDES_JSON: ${AI_TASK_OVERRIDES_JSON:-}
+      SCANNER_CRON_HOUR: ${SCANNER_CRON_HOUR:-6}
+      SCANNER_CRON_MINUTE: ${SCANNER_CRON_MINUTE:-15}
+      UNIVERSE_CRON_WEEKDAY: ${UNIVERSE_CRON_WEEKDAY:-mon}
+      UNIVERSE_CRON_HOUR: ${UNIVERSE_CRON_HOUR:-5}
+      UNIVERSE_CRON_MINUTE: ${UNIVERSE_CRON_MINUTE:-0}
+      EARNINGS_CRON_HOUR: ${EARNINGS_CRON_HOUR:-5}
+      EARNINGS_CRON_MINUTE: ${EARNINGS_CRON_MINUTE:-30}
+      REGIME_CRON_HOUR: ${REGIME_CRON_HOUR:-22}
+      REGIME_CRON_MINUTE: ${REGIME_CRON_MINUTE:-15}
+      SETUP_CRON_HOUR: ${SETUP_CRON_HOUR:-22}
+      SETUP_CRON_MINUTE: ${SETUP_CRON_MINUTE:-30}
+      WEEKLY_STAGE_CRON_HOUR: ${WEEKLY_STAGE_CRON_HOUR:-22}
+      WEEKLY_STAGE_CRON_MINUTE: ${WEEKLY_STAGE_CRON_MINUTE:-20}
+      JOURNAL_MONTHLY_CRON_DAY: ${JOURNAL_MONTHLY_CRON_DAY:-1}
+      JOURNAL_MONTHLY_CRON_HOUR: ${JOURNAL_MONTHLY_CRON_HOUR:-6}
+      JOURNAL_MONTHLY_CRON_MINUTE: ${JOURNAL_MONTHLY_CRON_MINUTE:-0}
+      AI_MODEL_DEFAULT: ${AI_MODEL_DEFAULT:-gpt-5.4-nano}
+      AI_MODEL_CRITICAL: ${AI_MODEL_CRITICAL:-gpt-5.4-mini}
+      AI_MODEL_COMPLEX: ${AI_MODEL_COMPLEX:-gpt-5.4}
+      AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-20.0}
+      AI_MEMO_CACHE_TTL_HOURS: ${AI_MEMO_CACHE_TTL_HOURS:-24}
+      AI_SCHEMA_VERSION: ${AI_SCHEMA_VERSION:-v1}
     volumes:
       - ./backend/data:/app/data
     ports:
       - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
     restart: unless-stopped
 
   frontend:
+    profiles: ["prod"]
     build:
       context: ./frontend
+      target: production
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
     restart: unless-stopped
+
+  backend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./backend
+      target: development
+    environment:
+      APP_ENV: development
+      DATABASE_URL: sqlite:////app/data/dev.db
+      MA150_DISABLE_SCHEDULER: "1"
+      FMP_API_KEY: ${FMP_API_KEY:-}
+      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_TASK_OVERRIDES_JSON: ${AI_TASK_OVERRIDES_JSON:-}
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/tests:/app/tests:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/pyproject.toml:/app/pyproject.toml:ro
+      - ./backend/uv.lock:/app/uv.lock:ro
+      - ./backend/data:/app/data
+    ports:
+      - "8001:8000"
+
+  frontend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./frontend
+      target: development
+    environment:
+      BACKEND_URL: http://backend-dev:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend-dev:
+        condition: service_started
+
+volumes:
+  frontend_node_modules:

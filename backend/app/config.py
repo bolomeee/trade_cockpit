@@ -1,14 +1,20 @@
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Resolve .env relative to this file so it works regardless of CWD.
 # backend/app/config.py → go up 2 levels → project root
+_BACKEND_DIR = Path(__file__).parent.parent
 _ENV_FILE = Path(__file__).parent.parent.parent / ".env"
+_DEFAULT_DB_URL = f"sqlite:///{(_BACKEND_DIR / 'dev.db').resolve()}"
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./dev.db"
+    # Runtime environment always wins over the root .env file.  Only an
+    # explicitly-development Settings instance may fall back to this stable,
+    # absolute local database path.
+    database_url: str | None = None
     fmp_api_key: str = ""  # D034: primary external data source
     polygon_api_key: str = ""  # legacy, kept as D034 rollback anchor
     app_env: str = "development"
@@ -57,6 +63,15 @@ class Settings(BaseSettings):
     ai_task_overrides_json: str = ""  # JSON dict: task_type → {model, base_url, api_key, input_cost_per_1m, output_cost_per_1m}
 
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="after")
+    def require_database_url_outside_development(self) -> "Settings":
+        if self.database_url:
+            return self
+        if self.app_env == "development":
+            self.database_url = _DEFAULT_DB_URL
+            return self
+        raise ValueError("DATABASE_URL must be set when APP_ENV is not development")
 
 
 settings = Settings()

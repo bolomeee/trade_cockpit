@@ -1,44 +1,33 @@
 # Stock Portal
 
-> 个人投资工作台 — 单页面承载多个可拖拽 widget（持仓 / 走势 / 基本面 / 新闻 / 扫描 / AI 观点 …）。
-> 当前版本：**v1.2.0** · 最后更新：2026-04-21
-
-## 主要功能
-
-- **Workbench**：基于 `react-grid-layout` 的多 widget 单页工作台，布局持久化到 localStorage
-- **SMA150 套件**：Chart / Fundamentals / PullbackHistory / Watchlist / QuickAdd
-- **Market Breakout Scanner (v1.2.0)**：每日盘后扫描全美大市值股票池的 MA150 穿越候选，行点击联动 ChartWidget
-- **数据源**：FMP (Financial Modeling Prep) 为主，Polygon 作为回滚锚点
-
-更多版本变更见 [CHANGELOG.md](CHANGELOG.md)。
+个人投资工作台：单页面承载可拖拽 widget（持仓、走势、基本面、新闻、扫描和 AI 观点）。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
-| 前端 | React 18 + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui |
-| 后端 | FastAPI + Python 3.12 + SQLAlchemy 2.0 + APScheduler |
-| 数据 | SQLite (prod.db via Docker volume) |
-| 部署 | Docker Compose |
+| 前端 | React + TypeScript + Vite + Tailwind CSS |
+| 后端 | FastAPI + Python + SQLAlchemy + APScheduler |
+| 数据 | SQLite（Docker bind mount） |
+| 运行环境 | Docker Compose（开发、测试、生产的唯一受支持入口） |
 
-## 本地 Docker 部署
+## 前置条件
 
-### 1. 配置环境变量
+只需安装 Docker Desktop（含 Docker Compose）。不需要在本机安装或维护 Node、npm、pnpm、Python 或 uv。
+
+首次运行时复制环境变量模板；外部数据与 AI 功能按需填写密钥。
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env`，填入真实的 `FMP_API_KEY`（必填）和 `POLYGON_API_KEY`（可选，rollback 用）。
+`.env` 不会提交。注释必须单独成行，不要写成 `KEY= # comment`，否则 Compose 会把注释当作值的一部分。
 
-### 2. 构建 & 启动
+## 生产模式
 
 ```bash
-docker compose build
-docker compose up -d
+make up
 ```
-
-### 3. 访问
 
 | 服务 | 地址 |
 |---|---|
@@ -46,50 +35,38 @@ docker compose up -d
 | 后端 API | http://localhost:8001 |
 | OpenAPI Docs | http://localhost:8001/docs |
 
-> 后端对外暴露 `:8001`（宿主），容器内仍是 `:8000`，避免与其他服务端口冲突。
-
-### 4. 常用命令
+容器内后端端口固定为 `8000`，Compose 统一发布为宿主机 `8001`。数据库持久化在 `./backend/data`。
 
 ```bash
-docker compose logs -f backend      # 查看后端日志（含 cron 执行轨迹）
-docker compose logs -f frontend
-docker compose restart backend      # 重启后端
-docker compose down                 # 停止并移除容器（数据卷保留）
-docker compose up -d --build        # 代码变更后重新构建
+make logs       # 查看全部服务日志
+make verify     # 构建、等待 healthcheck、验证两个入口
+make down       # 停止并移除容器（保留 bind-mounted 数据）
 ```
 
-### 5. 数据持久化
+## 开发与测试
 
-- 后端 SQLite 挂载在 `./backend/data:/app/data`，容器销毁不丢数据
-- 数据库迁移：镜像启动时 alembic 自动 upgrade 到最新 revision
-
-### 6. Cron 定时任务
-
-容器内置以下调度任务（时区：服务器本地）：
-
-| 任务 | 默认时间 | 说明 |
-|---|---|---|
-| Watchlist refresh | 每日 06:00 | 拉取 watchlist 股票 SMA/EOD |
-| Market Breakout Scanner | 工作日 06:15 | F105 每日市场扫描（D042） |
-| Universe refresh | 每月 1 号 05:00 | F105 候选池月级刷新（D038） |
-
-可在 `.env` 中通过 `SCANNER_CRON_*` / `UNIVERSE_CRON_*` 变量覆盖。
-
-## 开发模式（非 Docker）
+开发模式运行容器化 Vite 和 FastAPI reload：
 
 ```bash
-# 后端
-cd backend
-uv sync
-uv run uvicorn app.main:app --reload --port 8000
-
-# 前端
-cd frontend
-pnpm install
-pnpm dev
+make dev
 ```
 
-Vite dev server 默认代理 `/api` → `http://localhost:8000`。
+`make dev` 会停止生产 profile，因为两者都按约定使用宿主机后端端口 `8001`；回到生产模式时运行 `make up`。
+
+访问前端 http://localhost:5173；其 `/api` 请求会在 Docker 网络中代理至开发后端。开发后端仍发布到 http://localhost:8001，使用独立的 `backend/data/dev.db`，且默认关闭 scheduler。
+
+```bash
+make test       # 后端 pytest + 前端 Vitest
+make lint       # 后端 Ruff + 前端 ESLint
+make build      # 构建生产镜像
+make config     # 校验 Compose 解析结果
+```
+
+所有命令使用镜像中锁定的 Python/uv/Node/pnpm 版本。依赖升级必须同步更新锁文件和容器工具链版本，而不是依赖开发机全局安装。
+
+## 配置原则
+
+后端配置优先级为：进程环境变量（Compose）> 根目录 `.env` > 明确的 development 默认值。生产环境必须显式提供 `DATABASE_URL`；Compose 已固定为容器内的 `/app/data/prod.db`。因此从任意工作目录启动都不会意外创建或使用不同的 SQLite 数据库。
 
 ## 项目文档
 
@@ -101,7 +78,6 @@ Vite dev server 默认代理 `/api` → `http://localhost:8000`。
 | 数据模型 | [docs/系统设计/DATA-MODEL.md](docs/系统设计/DATA-MODEL.md) |
 | API 合约 | [docs/系统设计/API-CONTRACT.md](docs/系统设计/API-CONTRACT.md) |
 | 技术决策 | [docs/系统设计/DECISIONS.md](docs/系统设计/DECISIONS.md) |
-| 视觉规格 | [docs/设计/design-spec.md](docs/设计/design-spec.md) |
 
 ## License
 

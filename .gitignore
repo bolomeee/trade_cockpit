@@ -30,6 +30,7 @@ backend/data/
 
 # Node / frontend (for future F000-b)
 node_modules/
+.pnpm-store/
 .vite/
 
 # Editor
