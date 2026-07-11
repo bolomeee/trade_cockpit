@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LayoutItem } from 'react-grid-layout'
+import { ArticleDetailWidget } from './widgets/ArticleDetailWidget'
 import { ChartWidget } from './widgets/ChartWidget'
 import { FundamentalsWidget } from './widgets/FundamentalsWidget'
 import { MarketBreakoutWidget } from './widgets/MarketBreakoutWidget'
@@ -83,6 +84,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetManifest> = {
     title: 'Fundamentals',
     component: FundamentalsWidget,
     defaultLayout: { x: 8, y: 8, w: 4, h: 6, minW: 3, minH: 3 },
+    category: 'news',
+  },
+  'news.detail': {
+    id: 'news.detail',
+    title: 'News Detail',
+    component: ArticleDetailWidget,
+    defaultLayout: { x: 0, y: 14, w: 8, h: 12, minW: 4, minH: 5 },
     category: 'news',
   },
 }

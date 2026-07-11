@@ -1,13 +1,14 @@
 /**
- * F213-b: ArticleModal auto-translate tests (AM1-AM14)
- * LIB1 is in src/lib/api/__tests__/translateArticle.test.ts — kept separate
- * because AM* tests mock translateArticle at module level, which prevents
- * testing the real function's callAiTask forwarding in the same file.
+ * ArticleDetailWidget auto-translate tests (AD1-AD13).
+ * Ported from the former ArticleModal (F213-b, AM1-AM14) after the article
+ * detail + auto-translate flow moved out of the full-screen modal into an
+ * inline News-page widget. Modal-only cases (dialog role, ESC/onClose) are
+ * replaced by the widget empty-state case (AD1).
  */
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ArticleModal } from '../ArticleModal'
+import { ArticleDetailWidget } from '../ArticleDetailWidget'
 import type { NewsArticle } from '@/types/news'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
@@ -87,24 +88,22 @@ function makeQC(gcTime = 0) {
   })
 }
 
-function renderModal(
+function renderWidget(
   article: NewsArticle | null,
   {
     qc = makeQC(),
-    onClose = vi.fn(),
     onSelectTicker = vi.fn(),
   }: {
     qc?: QueryClient
-    onClose?: ReturnType<typeof vi.fn>
     onSelectTicker?: ReturnType<typeof vi.fn>
   } = {},
 ) {
   const result = render(
     <QueryClientProvider client={qc}>
-      <ArticleModal article={article} onClose={onClose} onSelectTicker={onSelectTicker} />
+      <ArticleDetailWidget article={article} onSelectTicker={onSelectTicker} />
     </QueryClientProvider>,
   )
-  return { ...result, onClose, onSelectTicker, qc }
+  return { ...result, onSelectTicker, qc }
 }
 
 beforeEach(() => {
@@ -113,48 +112,41 @@ beforeEach(() => {
   mockMarkAsRead.mockReset()
 })
 
-// ── AM1-AM3: basic render regression ─────────────────────────────────────────
+// ── AD1: empty state ──────────────────────────────────────────────────────────
 
-describe('AM1: article=null → renders nothing', () => {
-  it('returns null when article is null', () => {
+describe('AD1: article=null → empty-state prompt, no translate call', () => {
+  it('renders the empty-state hint and does not call translateArticle', () => {
     mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    const { container } = renderModal(null)
-    expect(container.firstChild).toBeNull()
+    renderWidget(null)
+
+    expect(screen.getByText('点击左侧新闻查看详情')).toBeInTheDocument()
+    expect(mockTranslateArticle).not.toHaveBeenCalled()
   })
 })
 
-describe('AM2: article provided → dialog + title + tickers', () => {
-  it('renders dialog role, title text and ticker buttons', () => {
-    mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    renderModal(ARTICLE_A)
+// ── AD2: basic render ─────────────────────────────────────────────────────────
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+describe('AD2: article provided → title + ticker buttons', () => {
+  it('renders the title text and ticker buttons', () => {
+    mockTranslateArticle.mockReturnValue(new Promise(() => {}))
+    renderWidget(ARTICLE_A)
+
     expect(screen.getByText('Apple Q1 Earnings Beat')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'AAPL' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'QQQ' })).toBeInTheDocument()
   })
 })
 
-describe('AM3: ESC → onClose', () => {
-  it('fires onClose when Escape key is pressed', () => {
-    mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    const { onClose } = renderModal(ARTICLE_A)
+// ── AD3-AD4: HTML stripping ───────────────────────────────────────────────────
 
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-})
-
-// ── AM4-AM5: HTML stripping ───────────────────────────────────────────────────
-
-describe('AM4: contentHtml with <script> → translateArticle receives stripped text', () => {
+describe('AD3: contentHtml with <script> → translateArticle receives stripped text', () => {
   it('strips script tags before passing contentText to translateArticle', async () => {
     const maliciousArticle: NewsArticle = {
       ...ARTICLE_A,
       contentHtml: '<script>alert("xss")</script><p>Clean content here.</p>',
     }
     mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    renderModal(maliciousArticle)
+    renderWidget(maliciousArticle)
 
     await waitFor(() => expect(mockTranslateArticle).toHaveBeenCalled())
     const { contentText } = mockTranslateArticle.mock.calls[0][0] as { contentText: string }
@@ -164,45 +156,33 @@ describe('AM4: contentHtml with <script> → translateArticle receives stripped 
   })
 })
 
-describe('AM5: empty contentHtml → translateArticle not called (enabled=false)', () => {
+describe('AD4: empty contentHtml → translateArticle not called (enabled=false)', () => {
   it('skips the query when contentHtml is empty', () => {
     const emptyArticle: NewsArticle = { ...ARTICLE_A, contentHtml: '' }
     mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    renderModal(emptyArticle)
+    renderWidget(emptyArticle)
 
     expect(mockTranslateArticle).not.toHaveBeenCalled()
   })
 })
 
-// ── AM6-AM8: loading state ────────────────────────────────────────────────────
+// ── AD5-AD6: loading state ────────────────────────────────────────────────────
 
-describe('AM6: loading — shows original title + "正在翻译..." + Loader2', () => {
+describe('AD5: loading — shows original title + "正在翻译..." + spinner', () => {
   it('renders loading indicator while translateArticle is pending', () => {
     mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
-    // Original title shown during loading
     expect(screen.getByText('Apple Q1 Earnings Beat')).toBeInTheDocument()
     expect(screen.getByText('正在翻译...')).toBeInTheDocument()
-    // Loader2 icon rendered (lucide gives it an SVG with the class)
     expect(document.querySelector('.animate-spin')).toBeInTheDocument()
   })
 })
 
-describe('AM7: loading — ESC still closes the modal', () => {
-  it('fires onClose while translateArticle is still pending', () => {
-    mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    const { onClose } = renderModal(ARTICLE_A)
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('AM8: translateArticle called once on first render with correct args', () => {
+describe('AD6: translateArticle called once on first render with correct args', () => {
   it('called exactly once with {title, contentText}', async () => {
     mockTranslateArticle.mockReturnValue(new Promise(() => {}))
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
     await waitFor(() => expect(mockTranslateArticle).toHaveBeenCalledTimes(1))
     const callArg = mockTranslateArticle.mock.calls[0][0] as {
@@ -210,97 +190,98 @@ describe('AM8: translateArticle called once on first render with correct args', 
       contentText: string
     }
     expect(callArg.title).toBe('Apple Q1 Earnings Beat')
-    // contentText should be the stripped version of contentHtml
     expect(callArg.contentText).toBe('Apple reported strong Q1 earnings.')
   })
 })
 
-// ── AM9-AM10: success state ───────────────────────────────────────────────────
+// ── AD7-AD8: success state ────────────────────────────────────────────────────
 
-describe('AM9: resolve → titleZh replaces title, contentZh rendered as <p> segments', () => {
+describe('AD7: resolve → titleZh replaces title, contentZh rendered as <p> segments', () => {
   it('shows translated title and split paragraphs', async () => {
     mockTranslateArticle.mockResolvedValue(SUCCESS_NO_CACHE)
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
     await waitFor(() => expect(screen.getByText('苹果Q1财报超预期')).toBeInTheDocument())
-    // contentZh has \n\n → two <p> elements
     expect(screen.getByText('苹果报告了强劲的Q1业绩。')).toBeInTheDocument()
     expect(screen.getByText('分析师预期被超越。')).toBeInTheDocument()
-    // Loading indicator gone
     expect(screen.queryByText('正在翻译...')).toBeNull()
   })
 })
 
-describe('AM10: meta.cacheHit=true → shows "已缓存" badge', () => {
+describe('AD8: meta.cacheHit=true → shows "已缓存" badge', () => {
   it('shows cache badge when cacheHit is true', async () => {
     mockTranslateArticle.mockResolvedValue(SUCCESS_CACHE_HIT)
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
     await waitFor(() => expect(screen.getByText('已缓存')).toBeInTheDocument())
   })
 })
 
-// ── AM11-AM12: error state ────────────────────────────────────────────────────
+// ── AD9-AD10: error state ─────────────────────────────────────────────────────
 
-describe('AM11: reject → original title kept, dompurify path, "翻译失败" shown', () => {
+describe('AD9: reject → original title kept, dompurify path, "翻译失败" shown', () => {
   it('falls back to original title and HTML content on error', async () => {
     mockTranslateArticle.mockRejectedValue(new Error('Network error'))
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
     await waitFor(() => expect(screen.getByText('翻译失败，显示原文')).toBeInTheDocument())
-    // Original title retained
     expect(screen.getByText('Apple Q1 Earnings Beat')).toBeInTheDocument()
-    // dompurify-rendered content present (via dangerouslySetInnerHTML)
     expect(document.querySelector('.article-content')).toBeInTheDocument()
-    // No translated title
     expect(screen.queryByText('苹果Q1财报超预期')).toBeNull()
   })
 })
 
-describe('AM12: error → toast.error fired exactly once', () => {
+describe('AD10: error → toast.error fired exactly once', () => {
   it('calls toast.error once with the failure message', async () => {
     mockTranslateArticle.mockRejectedValue(new Error('Network error'))
-    renderModal(ARTICLE_A)
+    renderWidget(ARTICLE_A)
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(1))
     expect(mockToastError).toHaveBeenCalledWith('文章翻译失败，已显示原文')
   })
 })
 
-// ── AM13: cache reuse ─────────────────────────────────────────────────────────
+// ── AD11: markAsRead ──────────────────────────────────────────────────────────
 
-describe('AM13: same article close+reopen → translateArticle called only once (react-query cache)', () => {
-  it('second open uses in-memory cache without re-calling translateArticle', async () => {
-    // Use a shared QC with gcTime=Infinity so cache survives unmount
+describe('AD11: opening an article marks it as read', () => {
+  it('calls markAsRead once when an article is shown', async () => {
+    mockTranslateArticle.mockReturnValue(new Promise(() => {}))
+    renderWidget(ARTICLE_A)
+
+    await waitFor(() => expect(mockMarkAsRead).toHaveBeenCalledTimes(1))
+  })
+})
+
+// ── AD12: cache reuse ─────────────────────────────────────────────────────────
+
+describe('AD12: same article re-show → translateArticle called only once (react-query cache)', () => {
+  it('second mount uses in-memory cache without re-calling translateArticle', async () => {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     })
     mockTranslateArticle.mockResolvedValue(SUCCESS_NO_CACHE)
 
-    // First open
-    const { unmount } = renderModal(ARTICLE_A, { qc })
+    const { unmount } = renderWidget(ARTICLE_A, { qc })
     await waitFor(() => expect(screen.getByText('苹果Q1财报超预期')).toBeInTheDocument())
     unmount()
 
-    // Second open — same article, same QC
     mockTranslateArticle.mockClear()
-    renderModal(ARTICLE_A, { qc })
-    // Wait a tick then assert not called again
+    renderWidget(ARTICLE_A, { qc })
     await act(async () => {})
     expect(mockTranslateArticle).toHaveBeenCalledTimes(0)
   })
 })
 
-// ── AM14: article switch → two calls with correct args ───────────────────────
+// ── AD13: article switch → two calls with correct args ───────────────────────
 
-describe('AM14: switching article A→B → two translateArticle calls with distinct args', () => {
+describe('AD13: switching article A→B → two translateArticle calls with distinct args', () => {
   it('calls translateArticle once for A and once for B', async () => {
     const qc = makeQC(0)
     mockTranslateArticle.mockResolvedValue(SUCCESS_NO_CACHE)
 
     const { rerender } = render(
       <QueryClientProvider client={qc}>
-        <ArticleModal article={ARTICLE_A} onClose={vi.fn()} />
+        <ArticleDetailWidget article={ARTICLE_A} />
       </QueryClientProvider>,
     )
     await waitFor(() => expect(mockTranslateArticle).toHaveBeenCalledTimes(1))
@@ -308,7 +289,7 @@ describe('AM14: switching article A→B → two translateArticle calls with dist
 
     rerender(
       <QueryClientProvider client={qc}>
-        <ArticleModal article={ARTICLE_B} onClose={vi.fn()} />
+        <ArticleDetailWidget article={ARTICLE_B} />
       </QueryClientProvider>,
     )
     await waitFor(() => expect(mockTranslateArticle).toHaveBeenCalledTimes(2))

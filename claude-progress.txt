@@ -1,1 +1,31 @@
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-11 10:15] UI 变更（Type B）：F223 News 详情 widget 化
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - News 页点击新闻不再弹全屏遮罩（挡住 chart），改为在新增的
+    "News Detail" widget（左列 News 下方）内联展示全文 + 自动翻译
+  - 自动翻译（DeepSeek override + 已缓存 badge + 失败兜底原文）原样搬入新 widget
+  - 点详情内 ticker：只切右侧 chart，保留详情（可边读边看图）
+  - 老布局用户自动补齐 news.detail widget，不重置自定义布局
+  - 删除废弃的 ArticleModal + 其测试（避免死代码）
+  - 单元测试：13/13 通过（ArticleDetailWidget AD1–AD13，移植自 AM1–AM14）
+  - TypeScript：tsc --noEmit 0 错误
+  - Lint：改动文件 0 error / 0 warning
+  - 全量回归：仅 useThemeStore/TopNav 10 项 localStorage 环境失败（预先存在，
+    clean tree 复现，非本次引入）
+  - 浏览器真机验证：无遮罩、chart 不被挡、翻译正常、ticker 切图保留详情、无 console error
+
+🔧 系统变更：
+  - 新增 frontend/src/workbench/widgets/ArticleDetailWidget.tsx (+ 测试)
+  - WidgetRegistry.ts 注册 news.detail
+  - News.tsx 特判 news.detail + 布局迁移 + 移除 modal
+  - 删除 ArticleModal.tsx + 测试
+  - DECISIONS.md 追加 D113
+
+📊 功能状态：
+  F223 News 详情 widget 化：🔍 needs_review
+
+[下一个 Session]
+  运行 acceptance skill 做最终验收（对照本次 UI 变更）

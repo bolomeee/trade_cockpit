@@ -2713,3 +2713,24 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 **影响**：`frontend/src/components/features/dashboard/ColorTagButton.tsx`（新建）；`frontend/src/workbench/widgets/WatchlistWidget.tsx`（`colorMutation` + CSV 导出）。
 
 
+
+---
+
+## D113：News 页新闻详情从全屏 ArticleModal 改为独立 news.detail widget（F223）
+
+**日期**：2026-07-11
+
+**决定**：
+1. **详情展示载体**：删除 `components/common/ArticleModal.tsx`（`createPortal` 全屏 `position:fixed; inset:0; rgba(0,0,0,0.5)` 遮罩），新增 `workbench/widgets/ArticleDetailWidget.tsx`，作为 News 页第 4 个 widget（`news.detail`，category=news，默认 `x:0 y:14 w:8 h:12`，左列 News 表格正下方）内联展示。自动翻译逻辑（`useQuery(['translate-article', articleKey])` + `translateArticle` DeepSeek override + `已缓存` badge + 失败 toast + DOMPurify 原文兜底）原样搬入新 widget，query key / 缓存行为 / markAsRead 均不变。
+2. **跨 widget 数据传递**：沿用 `News.tsx` 既有的 page-local `selectedArticle` state + 网格渲染特判模式（原本已对 `news.table` 特判注入 `onOpenArticle`），对 `news.detail` 特判注入 `article={selectedArticle}`。不引入新的 zustand store——page-local state 已足够，且与 `news.table` 的处理保持同构。
+3. **点击 ticker 行为**：详情内点击 ticker 只 `setSelectedSymbol`（切右侧 chart），**不清空** `selectedArticle`（可边读文边看图）。删除原 `handleSelectTicker` 中的 `setSelectedArticle(null)`——旧 modal 会关闭是因为它是遮罩，widget 无此约束。
+4. **老布局迁移**：`useNewsLayoutStore` 持久化 key 保持 `ma150.news.layouts.v3` 不 bump 版本（bump 会重置用户自定义布局）。改为在 `News.tsx` 的 useEffect 中检测：若 layout 非空但缺 `news.detail`，追加其 defaultLayout。既显示新 widget，又保留用户已有布局。
+
+**原因**：全屏 modal 遮挡右侧 Price Chart，无法边看新闻边看图（用户诉求）。widget 化后详情与 chart 在同一网格并存、可拖拽/关闭/调整。搬迁而非重构翻译逻辑，最大限度复用 F213-b 已验证行为；13 条单测（AD1–AD13，从 AM1–AM14 移植，去掉 modal 专属的 dialog/ESC/onClose 用例，新增空状态与 markAsRead 用例）全绿。浏览器真机验证：点击新闻行 → 详情 widget 内联出中文翻译 + `已缓存`，无遮罩、chart 不被挡；点详情内 IHG → chart 切 IHG、详情保留。
+
+**放弃了什么**：
+- 保留 ArticleModal 仅在 News.tsx 停用——会留死代码（其唯一引用就是 News.tsx），违反"无死代码"，故连同其测试一并删除，翻译测试移植到新 widget 测试。
+- 新建 zustand store 承载 selectedArticle——page-local state 足够，避免无谓全局状态。
+- bump layout store 版本号强制新布局——会清掉用户自定义网格，改用"缺失则追加"迁移更友好。
+
+**影响**：`frontend/src/workbench/widgets/ArticleDetailWidget.tsx`（新建）、`frontend/src/workbench/widgets/__tests__/ArticleDetailWidget.test.tsx`（新建）、`frontend/src/workbench/WidgetRegistry.ts`（注册 news.detail）、`frontend/src/pages/News.tsx`（特判 + 迁移 + 移除 modal）、`frontend/src/components/common/ArticleModal.tsx`（删除）、`frontend/src/components/common/__tests__/ArticleModal.test.tsx`（删除）。
