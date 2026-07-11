@@ -147,19 +147,6 @@ export function TopNav() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
-              onClick={toggleTheme}
-            >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{theme === 'dark' ? '浅色模式' : '深色模式'}</TooltipContent>
-        </Tooltip>
         {refreshHasIssue && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -195,6 +182,19 @@ export function TopNav() {
           {formatLastRefresh(lastRefreshedAt)}
         </span>
         <ButtonGroup>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{theme === 'dark' ? '浅色模式' : '深色模式'}</TooltipContent>
+          </Tooltip>
           {showNewsSummary && (
             <Tooltip>
               <TooltipTrigger asChild>
