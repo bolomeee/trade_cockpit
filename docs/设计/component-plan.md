@@ -1,6 +1,6 @@
 # component-plan.md
 
-> 最后更新：2026-04-24 | 维护者：design-bridge skill
+> 最后更新：2026-07-11 | 维护者：design-bridge skill
 > ⚠️ feature-dev 阶段开发组件前必须查阅本文件确认边界。不要引入未规划的组件。
 > 技术栈：React 18 + TypeScript + Vite (SPA) + Tailwind CSS v4 + shadcn/ui。
 > 项目不是 Next.js，**不使用 Server Components / 'use client'**；所有组件都是 React 函数组件。
@@ -48,7 +48,7 @@
 
 | 组件 | 复用于 | 说明 |
 |------|--------|------|
-| TopNav | 所有页面 | MA150 Tracker 品牌 + 路由链接 + Last refresh + Refresh 按钮 |
+| TopNav | 所有页面 | MA150 Tracker 品牌 + 路由链接 + Last refresh + 主题切换 + 同组操作按钮 |
 | MarketOverviewBar | 所有页面 | 展示 S&P500 / NASDAQ100 / 10Y Treasury 三个指标 |
 | RefreshButton | TopNav（内部） | 封装 `POST /api/data/refresh` 调用 + loading 态 |
 | SignalBoard | Dashboard | 接收 stocks[]，渲染 SignalCard grid，按信号优先级排序 |
@@ -99,7 +99,9 @@ StockDetailModal 虽为弹窗但逻辑复杂，作为"业务组件"放在 `featu
 
 ### TopNav
 - Props：无（内部自己读 `react-router` 的 location 和 react-query 的 refresh mutation 状态）
-- 职责：品牌 + 路由链接（高亮当前）+ RefreshButton
+- 职责：品牌 + 路由链接（高亮当前）+ Last refresh + 主题切换 + 路由相关操作。
+  - 右侧操作统一由一个 `ButtonGroup` 承载；主题切换为首项，紧接 Last refresh，后接当前路由可用的 AI 摘要、刷新、布局、设置与同步操作。
+  - 主题状态来自 `useThemeStore`，切换按钮在所有路由可见；深色显示 `Sun` / “切换到浅色模式”，浅色显示 `Moon` / “切换到深色模式”。
 - 不包含：MarketOverviewBar（独立组件）
 
 ### MarketOverviewBar
@@ -309,7 +311,7 @@ src/
 
 | 页面 | 路由 | 区块 |
 |---|---|---|
-| Cockpit | `/cockpit` | TopNav（共享 + Settings 齿轮 + ResetLayout）、MarketOverviewBar（共享）、CockpitGrid（react-grid-layout）、9 个 widget、UserSettingsDialog |
+| Cockpit | `/cockpit` | TopNav（共享 ButtonGroup：主题 + 刷新 + ResetLayout + Settings + 布局同步）、MarketOverviewBar（共享）、CockpitGrid（react-grid-layout）、9 个 widget、UserSettingsDialog |
 
 CockpitGrid 默认布局见 `design-spec.md` 表格（左 4 cols / 中 5 cols / 右 3 cols；rowHeight 40 / margin 12 / padding 16，与 Workbench 一致）。
 
@@ -377,7 +379,7 @@ shadcn/ui 全局复用；Cockpit 不引入新基础组件。
 
 ### TopNav / MarketOverviewBar 沿用
 
-不为 Cockpit 单独实现 nav 组件；TopNav 内部按 `useLocation` 增加 `/cockpit` 高亮分支 + 在 `/cockpit` 路由下额外渲染 `[Reset Layout]` + `[⚙ Settings]` 两个按钮。MarketOverviewBar 共享。
+不为 Cockpit 单独实现 nav 组件；TopNav 内部按 `useLocation` 增加 `/cockpit` 高亮分支，并在同一个右侧 `ButtonGroup` 内依次组合主题切换、刷新、`[Reset Layout]`、`[⚙ Settings]` 和布局同步按钮。MarketOverviewBar 共享。
 
 ---
 
