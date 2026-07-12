@@ -37,6 +37,47 @@ make up
 
 容器内后端端口固定为 `8000`，Compose 统一发布为宿主机 `8001`。数据库持久化在 `./backend/data`。
 
+### 端口与访问方式
+
+| 用途 | 正确地址 | 说明 |
+|---|---|---|
+| 生产网页 | `http://localhost:8080` | Nginx 托管的 React 页面；日常在浏览器中使用此地址。 |
+| 生产 API / 运维接口 | `http://localhost:8001` | FastAPI 的宿主机端口；脚本、OpenAPI 和手动刷新任务使用此地址。 |
+| 开发网页 | `http://localhost:5173` | 仅在执行 `make dev` 后使用；对应独立的开发数据库。 |
+| 容器内后端 | `http://backend:8000` | 仅 Docker 网络内部使用，不能作为宿主机命令地址。 |
+
+`8080` 会将普通 `/api/*` 请求代理到生产后端，适合页面访问；但 Nginx 对耗时请求有超时限制。**所有手动管理刷新命令都应直接请求 `8001`，不要通过 `8080`，也不要在生产环境使用 `5173`。**
+
+### Pool Builder 数据刷新与故障恢复
+
+Pool Builder 右上角的刷新按钮只会重新读取已经生成的候选池，不会抓取市场数据或重建缓存。正常情况下，生产调度器会按 UTC 自动执行：
+
+| 任务 | 默认时间（UTC） | 北京时间 | 作用 |
+|---|---:|---:|---|
+| Universe refresh | 每周一 05:00 | 周一 13:00 | 更新可扫描股票池。 |
+| Market scanner | 工作日 06:15 | 工作日 14:15 | 扫描 Universe，生成趋势 / 突破快照。 |
+| Pool cache rebuild | 工作日 06:30 | 工作日 14:30 | 计算 RS 与基本面缓存，供 Pool Builder 展示。 |
+
+首次启动、数据库恢复、或上述任务失败时，按以下顺序手动补跑；每个命令必须等待返回 JSON 后再执行下一条：
+
+```bash
+# 1. 更新 Universe
+curl -sS -X POST http://localhost:8001/api/admin/refresh-universe
+
+# 2. 扫描趋势 / 突破信号（可能需要数分钟）
+curl -sS -X POST http://localhost:8001/api/admin/refresh-scanner
+
+# 3. 重建 Pool Builder 的 RS 与基本面缓存（可能需要数分钟）
+curl -sS -X POST http://localhost:8001/api/admin/refresh-pool-cache
+```
+
+第 3 步成功后刷新 `http://localhost:8080/cockpit` 页面。若命令返回 `504 Gateway Time-out`，通常表示请求误经 `8080` 的 Nginx；改用上面的 `8001` 地址重试。可用以下接口检查刷新链条：
+
+```bash
+curl -sS http://localhost:8001/api/refresh-health
+curl -sS http://localhost:8001/api/cockpit/pool
+```
+
 ```bash
 make logs       # 查看全部服务日志
 make verify     # 构建、等待 healthcheck、验证两个入口
