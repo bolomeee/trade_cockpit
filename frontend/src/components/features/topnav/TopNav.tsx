@@ -125,7 +125,7 @@ export function TopNav() {
             textDecoration: 'none',
           }}
         >
-          MA150 Tracker
+          Stock Portal
         </NavLink>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-4)' }}>
           {NAV_LINKS.map((link) => (
