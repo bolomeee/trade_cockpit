@@ -22,6 +22,9 @@ import type { BreakoutItem, SignalType } from '@/types/market'
 
 type TabKey = 'stage' | 'pullback'
 
+// 只显示市值 ≥ $5B 的公司
+const MIN_MARKET_CAP = 5_000_000_000
+
 const TAB_SIGNALS: Record<TabKey, readonly SignalType[]> = {
   stage: ['a1_stage_breakout', 'a2_slope_flip'],
   pullback: ['b2_ma_pullback'],
@@ -124,7 +127,9 @@ function BreakoutPane({
     return <EmptyState title="Waiting for today's scan" />
   }
 
-  if (data.items.length === 0) return <EmptyState title={emptyLabel} />
+  const items = data.items.filter((item) => item.marketCap >= MIN_MARKET_CAP)
+
+  if (items.length === 0) return <EmptyState title={emptyLabel} />
 
   const showSignalCol = signalTypes.length > 1
 
@@ -143,7 +148,7 @@ function BreakoutPane({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.items.map((item) => (
+          {items.map((item) => (
             <BreakoutRow
               key={`${item.ticker}-${item.signalType}`}
               item={item}

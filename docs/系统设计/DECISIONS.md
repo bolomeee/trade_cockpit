@@ -2752,3 +2752,21 @@ D097 原文（2026-05-18 早些时候）写"FMP 4 endpoint：key-metrics-ttm + r
 - 仍保留为 `pool_service.py` 顶层模块常量，不迁入 `cockpit_params.py`——沿用 D080 决策3"避免凭空扩 section"的既有理由；截断机制本身保留作为兜底保护（防止 breakout snapshot 规模未来失控增长）。
 
 **影响**：`backend/app/services/cockpit/pool_service.py`（`POOL_TREND_CAP` 常量 + 模块文档字符串引用更新）、`backend/tests/test_pool_service.py`（trend-cap 测试去除硬编码 200，改为动态引用 `POOL_TREND_CAP`）。
+
+---
+
+## D115：Market Breakout 列表前端过滤市值 ≥ $5B
+
+**日期**：2026-07-14
+
+**决定**：`MarketBreakoutWidget.tsx` 的 `BreakoutPane` 在渲染前对 `data.items` 按 `marketCap >= 5_000_000_000`（常量 `MIN_MARKET_CAP`）过滤，Breakout / Pullback 两个 tab 同时生效；空态判断也基于过滤后的列表。纯前端展示层过滤，不改 API / DB / 合约。
+
+**原因**：用户要求 Market Breakout 列表只显示市值 ≥ $50 亿（$5B）的公司。选前端过滤而非改后端 `/market/breakouts`——展示层需求，避免改动 API-CONTRACT 与数据管线；`BreakoutItem.marketCap` 字段前端已具备（来自 `BreakoutItemOut.market_cap`），过滤零成本。
+
+**已知局限（须知）**：
+- 扫描 universe 在构建时已由 FMP screener `marketCapMoreThan=5_000_000_000` 预过滤（`fmp_client.get_screener_universe` 默认阈值），每行的 `market_cap` 即那时抓取的快照值。因此在当前默认管线下该过滤基本是 **no-op**——仅当某次 universe 用更低阈值构建时才会真正剔除条目。
+- `market_cap` 是 universe 刷新时的快照、之后不更新。若一家公司刷新时 ≥$5B、现已跌破，存量值仍为旧值，本过滤（基于存量值）拦不住。要真正拦这种需在扫描/刷新时用实时市值——未在本次改动范围内。
+
+**放弃了什么**：后端 `/market/breakouts` 加市值过滤——会改 API 行为、需先更新 API-CONTRACT，且同样受"存量快照"局限，收益不优于前端过滤。
+
+**影响**：`frontend/src/workbench/widgets/MarketBreakoutWidget.tsx`（新增 `MIN_MARKET_CAP` 常量 + `BreakoutPane` 过滤）。

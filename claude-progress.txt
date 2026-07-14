@@ -29,3 +29,23 @@
 
 [下一个 Session]
   运行 acceptance skill 做最终验收（对照本次 UI 变更）
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026-07-14] UI 变更：Market Breakout 列表过滤市值 ≥ $5B
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 完成内容：
+  - MarketBreakoutWidget 的 BreakoutPane 渲染前按 marketCap >= 5_000_000_000
+    过滤，Breakout / Pullback 两个 tab 同时生效；空态判断基于过滤后列表
+  - 纯前端展示层过滤，不动 API / DB / 合约
+  - TypeScript：tsc --noEmit 0 错误
+  - DECISIONS.md 追加 D115（含"存量快照"已知局限）
+
+🔧 系统变更：
+  - frontend/src/workbench/widgets/MarketBreakoutWidget.tsx（+MIN_MARKET_CAP 常量 + 过滤）
+
+⚠️ 已知局限：
+  - universe 构建时已用 FMP screener marketCapMoreThan=5B 预过滤，
+    当前默认管线下此过滤近似 no-op；market_cap 为刷新快照、不实时更新，
+    公司跌破 $5B 后存量旧值拦不住。要真拦需扫描/刷新时用实时市值。
